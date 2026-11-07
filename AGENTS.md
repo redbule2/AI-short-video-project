@@ -15,5 +15,9 @@
 - 写或改剧本、镜头表时，读取并使用 `.agents/skills/script-shotlist-format/SKILL.md` 的固定格式：每段一个剧本 DOCX、一个镜头表 DOCX，放在 `定稿的剧本/第N段/` 下；镜头表一镜一行概述，不超过十个字；剧本和镜头表都不写时长和秒数。
 - 本目录的 `项目管理.html` 是按这套格式做的编辑器（用 Chrome 或 Edge 打开），可以逐段修改剧本、镜头表和提示词；保存前会把原文件移进该项目 `历史记录` 下的同样路径。
 
+## ChatGPT 出图
+
+- 要用 ChatGPT 模式出图（不是 Codex 的 image_gen）时，读取并使用 `.agents/skills/chatgpt-mode-image/SKILL.md`。脚本都在该目录里，只属于本项目，不与其他项目共用。
+
 
 
