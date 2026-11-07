@@ -1,0 +1,3379 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>案头 · 短视频项目</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='9' fill='%23a83a2c'/%3E%3Crect x='9' y='9' width='46' height='46' rx='5' fill='none' stroke='%23f6e2d6' stroke-opacity='.5' stroke-width='1.5'/%3E%3Ctext x='32' y='44' font-size='32' text-anchor='middle' fill='%23fbf1e6' font-family='KaiTi,STKaiti,serif'%3E%E6%A1%88%3C/text%3E%3C/svg%3E">
+<style>
+/* ============================================================
+   案头 · 样式　纸、墨、朱、黛、赭
+   ============================================================ */
+:root {
+  --paper: #f4efe6;
+  --paper-2: #ece5d8;
+  --paper-3: #e4dbca;
+  --sheet: #fffdf9;
+  --ink: #2a2622;
+  --ink-2: #554d45;
+  --ink-3: #887e74;
+  --ink-4: #b2a89b;
+  --line: #e5dccd;
+  --line-2: #d6cab6;
+  --zhu: #a83a2c;  --zhu-soft: rgba(168, 58, 44, .065);  --zhu-line: rgba(168, 58, 44, .26);
+  --dai: #3e5c5e;  --dai-soft: rgba(62, 92, 94, .075);   --dai-line: rgba(62, 92, 94, .28);
+  --zhe: #8d6a3c;  --zhe-soft: rgba(141, 106, 60, .085); --zhe-line: rgba(141, 106, 60, .3);
+  --jin: #b39256;
+  --tc: var(--zhu); --tc-soft: var(--zhu-soft); --tc-line: var(--zhu-line);
+  --serif: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  --sans: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --kai: 'KaiTi', 'STKaiti', 'Kaiti SC', 'BiauKai', 'Noto Serif SC', serif;
+  --mono: 'Cascadia Mono', Consolas, 'Noto Sans SC', monospace;
+  --shadow: 0 1px 2px rgba(60, 45, 30, .05), 0 10px 32px -14px rgba(60, 45, 30, .2);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; overflow: hidden;
+  display: grid; grid-template-columns: 236px minmax(0, 1fr);
+  color: var(--ink); font: 14px/1.7 var(--sans);
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .42  0 0 0 0 .34  0 0 0 0 .24  0 0 0 .055 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+button { font: inherit; color: inherit; }
+input, textarea { font: inherit; color: inherit; }
+::selection { background: rgba(168, 58, 44, .16); }
+:focus-visible { outline: 2px solid rgba(62, 92, 94, .4); outline-offset: 2px; }
+input:focus-visible, textarea:focus-visible { outline: none; }
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-thumb { background: rgba(140, 118, 92, .22); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background-color: rgba(140, 118, 92, .38); }
+::-webkit-scrollbar-track { background: transparent; }
+.ic { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.faint { color: var(--ink-3); }
+.small { font-size: 12.5px; }
+p { margin: 0; }
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 16px; border-radius: 6px; cursor: pointer; white-space: nowrap;
+  font: 13.5px/1.2 var(--sans); letter-spacing: .08em;
+  color: var(--ink); background: var(--sheet); border: 1px solid var(--line-2);
+  transition: background .15s, border-color .15s, color .15s, box-shadow .15s;
+}
+.btn:hover { background: #fff; border-color: var(--ink-4); }
+.btn.ink { background: var(--ink); border-color: var(--ink); color: #f7f1e6; }
+.btn.ink:hover { background: #3c3630; border-color: #3c3630; }
+.btn.zhu { background: var(--zhu); border-color: var(--zhu); color: #fff8f2; }
+.btn.zhu:hover { background: #95301f; }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
+.btn.ghost:hover { background: rgba(80, 60, 40, .06); }
+.btn.sm { padding: 5px 11px; font-size: 12.5px; }
+.btn.lg { padding: 12px 28px; font-size: 15px; letter-spacing: .14em; }
+.btn.save.dirty { background: var(--zhu); border-color: var(--zhu); box-shadow: 0 4px 14px -6px rgba(168, 58, 44, .7); }
+.btn:disabled { opacity: .5; cursor: default; }
+
+/* ---------- 印章 ---------- */
+.seal {
+  width: 38px; height: 38px; flex: none; display: grid; place-items: center;
+  background: var(--zhu); color: #fbf1e6; border-radius: 5px;
+  font: 22px/1 var(--kai);
+  box-shadow: inset 0 0 0 2px var(--zhu), inset 0 0 0 3px rgba(255, 238, 225, .38);
+  transform: rotate(-2.5deg);
+}
+.seal.sm { width: 32px; height: 32px; font-size: 18px; }
+.seal.w-seal { width: 66px; height: 66px; font-size: 38px; border-radius: 8px; box-shadow: inset 0 0 0 3px var(--zhu), inset 0 0 0 4.5px rgba(255, 238, 225, .4); }
+
+/* ---------- 侧栏 ---------- */
+#side {
+  min-height: 0; display: flex; flex-direction: column;
+  padding: 22px 14px 14px; background: rgba(232, 224, 209, .72);
+  border-right: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 13px; padding: 2px 8px 24px; cursor: pointer; user-select: none; }
+.brand-name { font: 600 19px/1.2 var(--serif); letter-spacing: .32em; }
+.brand-sub { margin-top: 3px; font: 11px/1.2 var(--sans); color: var(--ink-3); letter-spacing: .24em; }
+.side-label { padding: 0 10px 8px; font: 12px var(--kai); color: var(--ink-3); letter-spacing: .4em; }
+.side-empty { padding: 8px 10px; font: 13.5px var(--kai); color: var(--ink-3); }
+.plist { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 2px; margin: 0 -4px; padding: 0 4px; }
+.pitem { position: relative; padding: 9px 12px 9px 14px; border-radius: 7px; cursor: pointer; transition: background .15s; }
+.pitem:hover { background: rgba(255, 253, 249, .5); }
+.pitem.on { background: var(--sheet); box-shadow: 0 1px 2px rgba(60, 45, 30, .06), 0 4px 14px -8px rgba(60, 45, 30, .18); }
+.pitem.on::before { content: ''; position: absolute; left: 0; top: 12px; bottom: 12px; width: 2.5px; border-radius: 2px; background: var(--zhu); }
+.pname { font: 14.5px/1.45 var(--serif); letter-spacing: .03em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pitem.on .pname { font-weight: 600; }
+.pmeta { font-size: 11.5px; color: var(--ink-3); letter-spacing: .04em; min-height: 1.2em; }
+.pnew {
+  margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 12px; border-radius: 7px; cursor: pointer;
+  background: transparent; border: 1px dashed var(--line-2); color: var(--ink-3);
+  font-size: 13px; letter-spacing: .12em; transition: color .15s, border-color .15s, background .15s;
+}
+.pnew:hover { color: var(--ink); border-color: var(--ink-4); background: rgba(255, 253, 249, .4); }
+.side-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 1px; }
+.linkbtn {
+  display: inline-flex; align-items: center; gap: 7px; max-width: 100%;
+  padding: 5px 10px; border: 0; border-radius: 5px; background: none; cursor: pointer;
+  font-size: 13px; color: var(--ink-2); text-align: left;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.linkbtn:hover { background: rgba(255, 253, 249, .55); color: var(--ink); }
+.linkbtn.on { color: var(--zhu); }
+.files-ul .linkbtn, .cards .linkbtn { padding: 0; color: var(--dai); text-decoration: underline; text-decoration-color: var(--dai-line); text-underline-offset: 3px; }
+.files-ul .linkbtn:hover, .cards .linkbtn:hover { background: none; }
+
+/* ---------- 欢迎页 ---------- */
+#main { min-width: 0; min-height: 0; height: 100vh; display: flex; flex-direction: column; }
+.welcome { flex: 1; display: grid; place-items: center; padding: 40px; }
+.w-inner { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; animation: rise .5s ease both; }
+.w-seal { margin-bottom: 10px; }
+.w-title { font: 600 46px/1.2 var(--serif); letter-spacing: .5em; margin-right: -.5em; }
+.w-title.sm { font-size: 26px; letter-spacing: .16em; margin-right: -.16em; }
+.w-sub { font: 15px var(--kai); color: var(--ink-3); letter-spacing: .42em; margin-right: -.42em; }
+.w-verse {
+  writing-mode: vertical-rl; height: 8.2em; margin: 22px 0 18px; white-space: nowrap;
+  font: 19px/2.3 var(--kai); color: var(--ink-2); letter-spacing: .5em;
+}
+.w-verse span { display: block; }
+.w-verse span + span { margin-top: 1.4em; color: var(--ink-3); }
+.w-note { margin-top: 14px; max-width: 430px; font-size: 12.5px; line-height: 1.95; color: var(--ink-3); }
+
+/* ---------- 顶栏 ---------- */
+.top {
+  flex: none; height: 60px; display: flex; align-items: center; gap: 20px;
+  padding: 0 22px 0 30px; border-bottom: 1px solid var(--line);
+  background: rgba(250, 246, 239, .6); backdrop-filter: blur(6px);
+}
+.crumb { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 12px; }
+.ptitle { padding: 0; border: 0; background: none; cursor: pointer; font: 600 18px/1.3 var(--serif); letter-spacing: .08em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ptitle:hover { color: var(--zhu); }
+.crumb-seg { font: 14.5px var(--kai); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crumb-seg::before { content: '／'; margin-right: 10px; color: var(--ink-4); }
+.tabs { flex: none; display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: rgba(228, 219, 202, .55); border: 1px solid var(--line); }
+.tab {
+  padding: 5px 17px 5px 15px; border: 0; border-radius: 999px; background: transparent; cursor: pointer;
+  font-size: 13.5px; letter-spacing: .16em; color: var(--ink-2); transition: background .15s, color .15s;
+}
+.tab::before { content: ''; display: inline-block; width: 6px; height: 6px; margin: 0 8px 1px 0; border-radius: 50%; background: var(--c); opacity: .5; vertical-align: middle; }
+.tab:hover { color: var(--ink); }
+.tab.on { background: var(--sheet); color: var(--c); font-weight: 600; box-shadow: 0 1px 2px rgba(60, 45, 30, .1); }
+.tab.on::before { opacity: 1; }
+.top-right { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.status { display: flex; align-items: center; gap: 7px; margin-right: 6px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #9db39b; }
+.status.dirty { color: var(--ink-2); }
+.status.dirty .dot { background: var(--zhu); animation: pulse 1.8s ease-in-out infinite; }
+
+/* ---------- 段落条 ---------- */
+.segbar {
+  flex: none; display: flex; align-items: stretch; gap: 4px;
+  padding: 8px 22px 8px 26px; overflow-x: auto; scrollbar-width: thin;
+  border-bottom: 1px solid var(--line); background: rgba(250, 246, 239, .35);
+}
+.seg {
+  flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  padding: 5px 14px 6px; border-radius: 8px; border: 1px solid transparent; background: transparent; cursor: pointer;
+  color: var(--ink-2); transition: background .15s, border-color .15s;
+}
+.seg:hover { background: rgba(255, 253, 249, .6); }
+.seg.on { background: var(--sheet); border-color: var(--line); box-shadow: 0 1px 2px rgba(60, 45, 30, .07); color: var(--ink); }
+.seg-no { font: 14px/1.3 var(--kai); letter-spacing: .04em; white-space: nowrap; }
+.seg.on .seg-no { font-weight: 600; }
+.seg-dots { display: flex; align-items: center; gap: 4px; height: 7px; }
+.seg-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--line-2); }
+.seg-dots i.script.has { background: var(--zhu); }
+.seg-dots i.shots.has { background: var(--dai); }
+.seg-dots i.prompt.has { background: var(--zhe); }
+.seg-dots em { font: normal 10.5px/1 var(--sans); color: var(--ink-3); }
+.seg-dots .ic { width: 10px; height: 10px; stroke-width: 1.6; color: var(--ink-3); }
+.seg.toc .seg-no { letter-spacing: .3em; margin-right: -.3em; }
+.seg.seg-new { border: 1px dashed var(--line-2); color: var(--ink-3); margin-left: 6px; }
+.seg.seg-new .seg-no { font: 12.5px var(--sans); letter-spacing: .08em; }
+.seg.seg-new:hover { color: var(--ink); border-color: var(--ink-4); }
+.seg-sep { flex: none; width: 1px; margin: 6px 8px; background: var(--line); }
+.seg.asset .seg-no { color: var(--zhe); }
+
+/* ---------- 工作区 ---------- */
+.stage { flex: 1; min-height: 0; display: flex; }
+.canvas { flex: 1; min-width: 0; overflow: auto; padding: 34px 40px 140px; }
+
+/* ---------- 纸面 ---------- */
+.sheet {
+  position: relative; max-width: 780px; margin: 0 auto;
+  padding: 58px 76px 40px; border-radius: 3px;
+  background: var(--sheet); border: 1px solid rgba(214, 202, 182, .7); box-shadow: var(--shadow);
+  animation: rise .28s ease both;
+}
+.sheet::after { content: ''; position: absolute; inset: 11px; border: 1px solid var(--tc-line); border-radius: 2px; pointer-events: none; opacity: .55; }
+.sheet.k-script { --tc: var(--zhu); --tc-soft: var(--zhu-soft); --tc-line: var(--zhu-line); }
+.sheet.k-shots { --tc: var(--dai); --tc-soft: var(--dai-soft); --tc-line: var(--dai-line); }
+.sheet.k-prompt { --tc: var(--zhe); --tc-soft: var(--zhe-soft); --tc-line: var(--zhe-line); }
+.sheet.k-asset { padding-top: 50px; }
+.sheet.mini { max-width: none; padding: 30px 26px 22px; box-shadow: none; font-size: 13px; animation: none; }
+.sheet.mini::after { inset: 6px; }
+.sheet.guide-sheet { max-width: none; margin: 0; padding: 40px 46px 30px; animation: none; }
+.sheet.empty-sheet { text-align: center; padding: 70px 60px 60px; }
+.stamp {
+  position: absolute; top: 30px; right: 34px; writing-mode: vertical-rl;
+  padding: 7px 4px; border: 1.5px solid var(--zhu); border-radius: 3px; color: var(--zhu);
+  font: 13px/1 var(--kai); letter-spacing: .25em; opacity: .7; transform: rotate(6deg);
+}
+.doc-title { text-align: center; margin-bottom: 36px; }
+.doc-kicker { font: 13px var(--kai); color: var(--tc); letter-spacing: .4em; margin-right: -.4em; margin-bottom: 12px; }
+.doc-seg { font: 600 30px/1.3 var(--serif); letter-spacing: .12em; margin-right: -.12em; }
+.doc-name { margin-top: 8px; font: 17px/1.5 var(--serif); color: var(--ink-2); letter-spacing: .1em; }
+.doc-name-in {
+  width: min(70%, 380px); padding: 3px 6px; text-align: center; letter-spacing: .1em;
+  border: 0; border-bottom: 1px dashed transparent; background: transparent; outline: 0;
+  transition: border-color .15s;
+}
+.doc-name-in:hover { border-bottom-color: var(--line-2); }
+.doc-name-in:focus { border-bottom-color: var(--tc); }
+.doc-name-in::placeholder { color: var(--ink-4); font-family: var(--kai); letter-spacing: .2em; }
+.ornament { width: 180px; height: 9px; margin: 18px auto 0; display: flex; align-items: center; }
+.ornament::before, .ornament::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, transparent, var(--line-2)); }
+.ornament::after { background: linear-gradient(to left, transparent, var(--line-2)); }
+.ornament span { width: 6px; height: 6px; margin: 0 10px; border: 1px solid var(--tc); transform: rotate(45deg); opacity: .75; }
+.sheet-foot { margin-top: 44px; padding-top: 14px; border-top: 1px solid var(--line); text-align: center; font-size: 11.5px; color: var(--ink-4); letter-spacing: .05em; word-break: break-all; }
+.empty-say { margin: 34px 0 24px; font: 17px var(--kai); color: var(--ink-2); letter-spacing: .12em; }
+.empty-acts { display: flex; justify-content: center; gap: 10px; margin-bottom: 18px; }
+
+/* ---------- 横幅、文件条 ---------- */
+.banner {
+  max-width: 780px; margin: 0 auto 14px; display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; border-radius: 7px; font-size: 13px; color: var(--ink-2);
+  background: #fbf2e1; border: 1px solid #ecd8b2;
+}
+.banner span { flex: 1; }
+.banner.soft { background: rgba(236, 229, 216, .7); border-color: var(--line); }
+.files { max-width: 780px; margin: 0 auto 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.files-cat { margin-right: 6px; font: 15px var(--kai); color: var(--zhe); letter-spacing: .25em; }
+.fchip {
+  padding: 4px 12px; border-radius: 999px; cursor: pointer; font-size: 12.5px; letter-spacing: .04em;
+  border: 1px solid var(--line); background: rgba(255, 253, 249, .65); color: var(--ink-2); transition: all .15s;
+}
+.fchip:hover { border-color: var(--line-2); color: var(--ink); }
+.fchip.on { background: var(--ink); border-color: var(--ink); color: #f7f1e6; }
+.fchip.fchip-new { border-style: dashed; background: transparent; color: var(--ink-3); }
+
+/* ---------- 分区 ---------- */
+.sec { position: relative; margin-top: 32px; }
+.sec-head { margin-top: 0; padding: 12px 20px 10px; border-radius: 4px; background: var(--tc-soft); }
+.sec-h { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; font: 15px var(--kai); color: var(--tc); letter-spacing: .3em; }
+.sec-h::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, var(--line-2), transparent); }
+.sec-no { width: 23px; height: 23px; flex: none; display: grid; place-items: center; border: 1px solid var(--tc-line); border-radius: 50%; font: 12px/1 var(--serif); letter-spacing: 0; }
+.sec-name { white-space: nowrap; }
+.sec-empty { margin: 4px 0 8px; font: 13.5px var(--kai); color: var(--ink-4); letter-spacing: .04em; }
+.sec-missing {
+  margin-top: 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 16px; border: 1px dashed var(--line-2); border-radius: 7px;
+  font: 14px var(--kai); color: var(--ink-3); letter-spacing: .06em;
+}
+
+/* ---------- 一行 ---------- */
+.blist { display: flex; flex-direction: column; }
+.blk { position: relative; margin: 0 -12px; padding: 4px 12px; border-radius: 6px; cursor: text; transition: background .15s, box-shadow .2s; }
+.blk:hover { background: rgba(120, 98, 70, .045); }
+.blk.edge:not(.editing) { display: none; }
+/* 工具条只在正在改的那一行出现：放在说明那一行的右边，不压字 */
+.blk .tools {
+  display: none; align-items: center; gap: 1px; padding: 2px;
+  background: var(--sheet); border: 1px solid var(--line); border-radius: 7px; box-shadow: 0 3px 10px -4px rgba(60, 45, 30, .2);
+}
+.blk.editing {
+  z-index: 4; margin: 6px -14px; padding: 8px 14px 9px; cursor: default;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center;
+  background: var(--sheet); box-shadow: 0 0 0 1px var(--tc-line), 0 10px 26px -12px rgba(60, 40, 20, .3);
+}
+.blk.editing .tools { display: flex; grid-column: 2; grid-row: 1; }
+.blk.editing .ta, .blk.editing .ed-tips { grid-column: 1 / -1; }
+.flash { animation: flash 1.1s ease; }
+.ed-cap { grid-column: 1; grid-row: 1; margin-bottom: 5px; font-size: 11.5px; letter-spacing: .04em; color: var(--tc); min-height: 1.4em; }
+.ta {
+  display: block; width: 100%; padding: 0; border: 0; outline: 0; resize: none; overflow: hidden;
+  background: transparent; font: 15.5px/1.85 var(--serif); color: var(--ink); white-space: pre-wrap;
+}
+.k-prompt .ta { font-size: 14.5px; }
+.ed-tips { margin-top: 5px; font-size: 11px; color: var(--ink-4); letter-spacing: .04em; }
+.tb {
+  width: 26px; height: 26px; padding: 0; display: grid; place-items: center;
+  border: 0; border-radius: 5px; background: transparent; color: var(--ink-3); cursor: pointer;
+}
+.tb:hover { background: var(--paper); color: var(--ink); }
+.tb .ic { width: 14px; height: 14px; }
+.tb.role { width: auto; padding: 0 7px; font-size: 12px; letter-spacing: .04em; }
+.tb.role.on { color: var(--tc); background: var(--tc-soft); }
+.tsep { width: 1px; height: 16px; margin: 0 3px; background: var(--line); }
+
+.view { display: flex; align-items: baseline; gap: 14px; min-width: 0; font: 15.5px/1.85 var(--serif); }
+.k-prompt .view { font-size: 14.5px; }
+.val { flex: 1; min-width: 0; white-space: pre-wrap; word-break: break-word; }
+.lab { flex: none; font: 14px/1.85 var(--kai); color: var(--tc); letter-spacing: .1em; }
+.r-scene .lab, .r-cast .lab, .r-meta .lab { width: 3.1em; text-align-last: justify; letter-spacing: 0; }
+.r-meta .lab { width: auto; min-width: 3.1em; }
+.val.scene { display: flex; flex-wrap: wrap; align-items: center; }
+.sep { display: inline-block; width: 1px; height: .95em; margin: 0 13px; background: var(--line-2); }
+.val.cast { display: flex; flex-wrap: wrap; gap: 6px 8px; }
+.cast-i { display: inline-flex; align-items: baseline; gap: 6px; padding: 0 11px; border-radius: 999px; background: rgba(255, 253, 249, .9); border: 1px solid var(--line); font-size: 14.5px; line-height: 1.85; }
+.cast-i b { font-weight: 600; }
+.cast-i span { font: 12.5px var(--sans); color: var(--ink-3); }
+.mk { flex: none; width: 1em; color: var(--tc); font-size: 13px; }
+.r-action .view { gap: 10px; }
+.r-line .view { display: grid; grid-template-columns: 6.6em minmax(0, 1fr); gap: 18px; }
+.who { text-align: right; font-weight: 600; letter-spacing: .1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.say-wrap { min-width: 0; }
+.how { font: 13px/1.6 var(--kai); color: var(--ink-3); }
+.how::before { content: '（'; } .how::after { content: '）'; }
+.say { white-space: pre-wrap; word-break: break-word; }
+.pill { flex: none; padding: 0 9px; border: 1px solid var(--line-2); border-radius: 999px; font: 11.5px/1.75 var(--sans); letter-spacing: .12em; color: var(--ink-2); transform: translateY(-1px); }
+.r-sub .pill { color: var(--dai); border-color: var(--dai-line); }
+.r-sfx .pill { color: var(--zhe); border-color: var(--zhe-line); }
+.r-plain .view { color: var(--ink-2); }
+.k-script .r-plain .view::before { content: '·'; flex: none; width: 1em; font: 700 15px var(--serif); color: var(--jin); }
+.r-note .view { font-family: var(--kai); font-size: 14.5px; color: var(--ink-2); }
+.hint { color: var(--ink-4); font-family: var(--kai); font-size: .93em; letter-spacing: .03em; }
+.r-blank { padding-top: 0; padding-bottom: 0; }
+.r-blank .view { height: 14px; align-items: center; }
+.blank-mark { font: 10.5px/1 var(--sans); color: var(--ink-4); letter-spacing: .3em; opacity: 0; transition: opacity .15s; }
+.r-blank:hover .blank-mark { opacity: 1; }
+/* 提示词里的行 */
+.r-pfield .view { display: block; }
+.r-pfield .lab { display: inline; margin-right: .2em; font: 13px/1 var(--sans); letter-spacing: .02em; }
+.r-pfield .lab::after { content: '：'; }
+.r-pfield .val { display: inline; }
+.k-prompt .r-sub .view { margin-top: 6px; font: 13.5px var(--kai); color: var(--tc); letter-spacing: .3em; }
+.k-prompt .r-sub .view::before { content: ''; width: 14px; height: 1px; background: var(--tc-line); align-self: center; }
+/* 镜头表旧格式里的行 */
+.k-shots .r-field .lab { font: 13px/2 var(--sans); }
+.k-shots .oldbody .view { font-size: 13.5px; color: var(--ink-2); }
+
+/* 高亮 */
+.tk-say { color: #8a3324; background: rgba(168, 58, 44, .055); border-radius: 3px; }
+.tk-sfx { color: var(--dai); background: var(--dai-soft); border-radius: 3px; }
+.tk-ref { color: var(--zhe); font: 600 .9em var(--sans); letter-spacing: .02em; }
+.tk-br { color: var(--ink-3); }
+.tk-ph { color: #7a5b2b; background: rgba(179, 146, 86, .14); border-bottom: 1px dashed var(--jin); }
+.tk-q { color: var(--dai); }
+
+/* ---------- 加一行 ---------- */
+.addbar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; opacity: .7; transition: opacity .2s; }
+.sec:hover > .addbar, .p-shot:hover > .addbar, .addbar:focus-within { opacity: 1; }
+.add {
+  padding: 3px 12px; border-radius: 999px; cursor: pointer;
+  background: transparent; border: 1px dashed var(--line-2); color: var(--ink-3);
+  font-size: 12.5px; letter-spacing: .05em; transition: all .15s;
+}
+.add:hover { color: var(--tc); border-color: var(--tc-line); border-style: solid; background: var(--tc-soft); }
+.add.strong { color: var(--tc); border-color: var(--tc-line); border-style: solid; }
+.menu {
+  position: fixed; z-index: 60; min-width: 150px; max-height: 50vh; overflow: auto;
+  display: flex; flex-direction: column; padding: 4px;
+  background: var(--sheet); border: 1px solid var(--line); border-radius: 9px; box-shadow: var(--shadow);
+  animation: rise .15s ease both;
+}
+.menu-i { padding: 7px 14px; border: 0; border-radius: 6px; background: none; text-align: left; cursor: pointer; font: 14px var(--serif); }
+.menu-i:hover { background: var(--paper); }
+
+/* ---------- 镜头表 ---------- */
+.oldnote {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  margin-bottom: 24px; padding: 12px 16px; border-radius: 7px;
+  background: var(--tc-soft); border: 1px solid var(--tc-line); font-size: 13px; color: var(--ink-2);
+}
+.oldnote b { color: var(--ink); margin-right: 4px; }
+.oldbox { margin: 8px 0; padding-left: 12px; border-left: 2px solid var(--line); }
+.oldtog { display: inline-flex; align-items: center; gap: 6px; padding: 3px 0; border: 0; background: none; cursor: pointer; font-size: 12.5px; color: var(--ink-3); letter-spacing: .04em; }
+.oldtog:hover { color: var(--ink); }
+.oldtog em { font-style: normal; color: var(--ink-4); }
+.oldtog .ic { width: 12px; height: 12px; transition: transform .2s; }
+.oldbox.open .oldtog .ic { transform: rotate(90deg); }
+.oldbody:empty { display: none; }
+.oldbody { padding: 4px 0 2px; }
+.sec-shots { margin-top: 4px; }
+.shotlist { list-style: none; margin: 0; padding: 0; }
+.srow {
+  display: grid; grid-template-columns: 4.4em 1.1em minmax(0, 1fr) auto auto; align-items: center; column-gap: 6px;
+  margin: 0 -14px; padding: 9px 14px; border-radius: 7px; border-bottom: 1px dotted var(--line-2);
+  transition: background .15s;
+}
+.srow:hover { background: rgba(120, 98, 70, .04); }
+.srow.focus { background: var(--tc-soft); border-bottom-color: transparent; }
+.sno { font: 15px/1.5 var(--kai); color: var(--tc); letter-spacing: .06em; white-space: nowrap; }
+.sbar { color: var(--ink-4); text-align: center; }
+.sin {
+  width: 100%; min-width: 0; padding: 2px 0; border: 0; border-bottom: 1px solid transparent; outline: 0; background: transparent;
+  font: 18px/1.5 var(--serif); letter-spacing: .08em; transition: border-color .15s;
+}
+.sin:focus { border-bottom-color: var(--tc-line); }
+.sin::placeholder { color: var(--ink-4); font: 15px var(--kai); letter-spacing: .2em; }
+.stitle { font: 16px/1.6 var(--serif); letter-spacing: .06em; }
+.scount { min-width: 3.8em; text-align: right; font: 11.5px var(--sans); font-variant-numeric: tabular-nums; color: var(--ink-4); opacity: 0; transition: opacity .15s; }
+.srow:hover .scount, .srow.focus .scount, .scount.over { opacity: 1; }
+.scount.over { color: var(--zhu); font-weight: 600; }
+.scount.zero { opacity: 0 !important; }
+.stools { display: flex; gap: 1px; opacity: 0; transition: opacity .15s; }
+.srow:hover .stools, .srow.focus .stools { opacity: 1; }
+.srow .oldbox { grid-column: 3 / -1; margin: 6px 0 2px; }
+.shotlist.ro .srow { grid-template-columns: 4.4em 1.1em minmax(0, 1fr); margin: 0; padding: 7px 0; }
+.shotlist.ro .srow:hover { background: none; }
+.mini .sno, .guide-sheet .sno { font-size: 14px; }
+.mini .stitle { font-size: 14.5px; }
+
+/* ---------- 提示词的分镜 ---------- */
+.pshots { display: flex; flex-direction: column; gap: 18px; margin-top: 14px; }
+.p-shot {
+  position: relative; padding: 12px 22px 14px; border: 1px solid var(--line); border-radius: 9px;
+  background: linear-gradient(to bottom, rgba(244, 239, 230, .55), rgba(255, 253, 249, 0) 70px);
+}
+.shot-h { display: flex; align-items: center; gap: 12px; margin: 0 -4px 8px; padding: 0 0 10px; border-bottom: 1px solid var(--line); }
+.shot-no { flex: none; padding: 1px 10px; border-radius: 4px; background: var(--tc); color: #fff9f1; font: 13.5px/1.6 var(--kai); letter-spacing: .15em; }
+.shot-title { flex: 1; min-width: 0; font: 600 16px/1.5 var(--serif); letter-spacing: .05em; }
+.shot-title-in { width: 100%; padding: 2px 0; border: 0; border-bottom: 1px dashed transparent; outline: 0; background: transparent; font: inherit; letter-spacing: inherit; }
+.shot-title-in:hover { border-bottom-color: var(--line-2); }
+.shot-title-in:focus { border-bottom-color: var(--tc); }
+.shot-tools { display: flex; gap: 1px; opacity: 0; transition: opacity .15s; }
+.p-shot:hover .shot-tools, .shot-h:focus-within .shot-tools { opacity: 1; }
+
+/* ---------- 右栏 ---------- */
+.rail { flex: none; width: 300px; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: rgba(246, 241, 233, .6); transition: width .25s ease; }
+.wide-rail .rail { width: 440px; }
+.rail-tabs { flex: none; display: flex; gap: 2px; padding: 10px 14px 0; border-bottom: 1px solid var(--line); }
+.rail-tab {
+  flex: 1; margin-bottom: -1px; padding: 8px 0 9px; border: 0; border-bottom: 2px solid transparent; background: none; cursor: pointer;
+  font-size: 13px; color: var(--ink-3); letter-spacing: .2em; white-space: nowrap; transition: color .15s, border-color .15s;
+}
+.rail-tab:hover { color: var(--ink); }
+.rail-tab.on { color: var(--ink); border-bottom-color: var(--tc); }
+.rail-tab.has { color: var(--zhu); }
+.rail-body { flex: 1; min-height: 0; overflow: auto; padding: 14px 16px 48px; }
+.outline { display: flex; flex-direction: column; gap: 1px; }
+.ol-i {
+  width: 100%; min-width: 0; display: flex; align-items: baseline; gap: 8px;
+  padding: 4px 8px; border: 0; border-radius: 5px; background: none; cursor: pointer; text-align: left;
+  font-size: 12.5px; color: var(--ink-2);
+}
+.ol-i:hover { background: rgba(255, 253, 249, .85); }
+.ol-l { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ol-s { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-3); }
+.ol-i.ol-sec { margin-top: 10px; font: 14px var(--kai); color: var(--tc); letter-spacing: .08em; }
+.ol-i.ol-sec:first-child { margin-top: 0; }
+.ol-i.ol-sec .ol-s { margin-left: auto; flex: none; font: 11px var(--sans); color: var(--ink-4); letter-spacing: 0; }
+.ol-i.ol-beat, .ol-i.ol-shot { padding-left: 18px; }
+.ol-i.ol-beat .ol-l { flex: none; min-width: 2.6em; max-width: 5em; color: var(--ink-3); font-size: 11.5px; }
+.ol-i.ol-beat.r-line .ol-l { color: var(--ink); font-weight: 600; }
+.ol-i.ol-shot .ol-l { flex: 1; font-family: var(--serif); font-size: 13px; }
+.ol-i.over .ol-l, .ol-i.over .ol-s { color: var(--zhu); }
+.lint-ok { padding: 44px 10px; text-align: center; font: 14px var(--kai); color: var(--ink-3); letter-spacing: .06em; }
+.lint-ok .seal { margin: 0 auto 16px; }
+.lint { display: flex; flex-direction: column; gap: 6px; }
+.lint-h { margin: 8px 0 2px; padding: 0; border: 0; background: none; text-align: left; font-size: 12px; color: var(--ink-3); letter-spacing: .2em; }
+.lint-h:first-child { margin-top: 0; }
+.lint-h.tog { cursor: pointer; }
+.lint-h.tog::after { content: ' ▾'; }
+.lint-more { display: none; flex-direction: column; gap: 6px; }
+.lint-more.open { display: flex; }
+.lint > p { margin-top: 12px; }
+.issue {
+  display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; cursor: pointer; text-align: left;
+  border: 1px solid var(--line); border-radius: 7px; background: var(--sheet);
+  font-size: 12.5px; line-height: 1.65; color: var(--ink-2); transition: border-color .15s;
+}
+.issue:hover { border-color: var(--line-2); color: var(--ink); }
+.lv { flex: none; width: 6px; height: 6px; margin-top: 7px; border-radius: 50%; background: var(--ink-4); }
+.issue.warn .lv { background: var(--zhu); }
+.issue.info .lv { background: var(--jin); }
+.compare { display: flex; flex-direction: column; gap: 12px; }
+.cmp-h { font: 13px var(--kai); color: var(--ink-3); letter-spacing: .3em; }
+.cmp-img { display: block; width: 100%; border-radius: 7px; box-shadow: var(--shadow); }
+.cmp-imgbtn { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.cmp-imgs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.cmp-imgs img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 5px; border: 1px solid var(--line); }
+.history { display: flex; flex-direction: column; gap: 8px; }
+.history > p { margin-bottom: 4px; line-height: 1.7; }
+.hist-i {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 7px 8px 7px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--sheet);
+  font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--ink-2);
+}
+.hist-empty { padding: 28px 0; text-align: center; font: 14px var(--kai); color: var(--ink-4); }
+
+/* ---------- 目录 ---------- */
+.ov { max-width: 1000px; margin: 0 auto; animation: rise .3s ease both; }
+.ov-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 22px; border-bottom: 1px solid var(--line-2); }
+.ov-kicker { margin-bottom: 10px; font: 13px var(--kai); color: var(--zhu); letter-spacing: .5em; }
+.ov-title { font: 600 32px/1.3 var(--serif); letter-spacing: .1em; }
+.ov-stats { margin-top: 8px; font-size: 13px; color: var(--ink-3); letter-spacing: .06em; word-spacing: .4em; }
+.toc { display: flex; flex-direction: column; }
+.toc-row {
+  display: grid; grid-template-columns: 7.2em minmax(0, 1fr) auto; align-items: center; gap: 24px;
+  margin: 0 -14px; padding: 17px 14px; border-radius: 8px; border-bottom: 1px dotted var(--line-2); cursor: pointer;
+  transition: background .15s;
+}
+.toc-row:hover { background: rgba(255, 253, 249, .75); }
+.toc-seg { font: 18px var(--kai); color: var(--zhu); letter-spacing: .06em; white-space: nowrap; }
+.toc-desc { min-width: 0; }
+.toc-name { display: flex; align-items: baseline; gap: 10px; font: 17px/1.5 var(--serif); letter-spacing: .05em; }
+.toc-n { flex: none; padding: 0 8px; border: 1px solid var(--line); border-radius: 999px; font: 11px/1.7 var(--sans); color: var(--ink-3); letter-spacing: .04em; }
+.toc-desc small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--ink-3); }
+.toc-desc small.syn { font: 13.5px/1.7 var(--kai); color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.toc-docs { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.dchip {
+  padding: 2px 11px; border-radius: 999px; border: 1px solid; background: var(--sheet); cursor: pointer;
+  font-size: 12px; letter-spacing: .06em; white-space: nowrap; transition: background .15s;
+}
+.dchip.script { color: var(--zhu); border-color: var(--zhu-line); }
+.dchip.shots { color: var(--dai); border-color: var(--dai-line); }
+.dchip.prompt { color: var(--zhe); border-color: var(--zhe-line); }
+.dchip.script:hover { background: var(--zhu-soft); }
+.dchip.shots:hover { background: var(--dai-soft); }
+.dchip.prompt:hover { background: var(--zhe-soft); }
+.dchip.combined { border-style: dashed; background: transparent; }
+.dchip.none { color: var(--ink-4); border-color: var(--line); border-style: dashed; background: transparent; }
+.toc-empty { padding: 64px 0 40px; text-align: center; color: var(--ink-3); }
+.big { margin-bottom: 10px; font: 22px var(--serif); color: var(--ink-2); letter-spacing: .2em; }
+.gallery { margin-top: 40px; }
+.gal-h { display: flex; align-items: baseline; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line-2); }
+.gal-t { font: 17px var(--kai); color: var(--zhe); letter-spacing: .3em; }
+.gal-h .btn { margin-left: auto; }
+.gal-cat { display: grid; grid-template-columns: 5.4em minmax(0, 1fr); gap: 16px; padding: 16px 0; border-bottom: 1px dotted var(--line-2); }
+.gal-cn { padding-top: 4px; font: 15px var(--kai); color: var(--ink-2); letter-spacing: .2em; }
+.gal-cn em { display: block; margin-top: 2px; font: normal 11px var(--sans); color: var(--ink-4); letter-spacing: 0; }
+.gal-row { display: flex; flex-wrap: wrap; gap: 14px; }
+.acard { width: 98px; padding: 0; border: 0; background: none; cursor: pointer; text-align: center; }
+.athumb {
+  width: 98px; height: 98px; display: grid; place-items: center; overflow: hidden;
+  border-radius: 7px; border: 1px solid var(--line); background: var(--paper-2);
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+}
+.athumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.athumb.none span { font: 30px var(--serif); color: var(--ink-4); }
+.acard:hover .athumb { transform: translateY(-2px); border-color: var(--line-2); box-shadow: var(--shadow); }
+.aname { margin-top: 7px; font-size: 12px; line-height: 1.45; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-all; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; margin-top: 40px; }
+.card { padding: 16px 20px 18px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255, 253, 249, .78); }
+.card h4 { margin: 0 0 12px; font: normal 15px var(--kai); color: var(--ink-2); letter-spacing: .3em; }
+.card.warn h4 { color: var(--zhu); }
+.card .btn { margin-top: 4px; }
+.dirs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.dir { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px 2px 8px; border-radius: 999px; font-size: 12.5px; background: var(--paper); }
+.dir .ic { width: 12px; height: 12px; }
+.dir.ok { color: var(--dai); }
+.dir.miss { color: var(--zhu); background: var(--zhu-soft); }
+.warns { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.75; color: var(--ink-2); }
+.warns li { margin: 3px 0; }
+.files-ul { margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.files-ul li { margin: 5px 0; }
+
+/* ---------- 固定格式说明 ---------- */
+.guide { max-width: 1100px; margin: 0 auto; animation: rise .3s ease both; }
+.g-lead { max-width: 780px; margin: 14px 0 30px; font-size: 14px; line-height: 1.95; color: var(--ink-2); }
+code { padding: 1px 6px; border-radius: 4px; background: var(--paper-2); font: 12.5px var(--mono); color: var(--ink); }
+.g-row { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 36px; align-items: start; padding: 30px 0; border-top: 1px solid var(--line-2); }
+.g-rules h4 { margin: 4px 0 12px; font: normal 19px var(--kai); color: var(--zhu); letter-spacing: .3em; }
+.g-rules ol { margin: 0; padding-left: 20px; font-size: 13.5px; line-height: 1.9; color: var(--ink-2); }
+.g-rules li { margin: 4px 0; }
+.g-rules li::marker { color: var(--ink-4); font-size: 12px; }
+.g-skel { padding: 24px 28px; border: 1px solid var(--line); border-radius: 7px; background: var(--sheet); box-shadow: var(--shadow); }
+.g-seven { margin: 12px 0 0; padding-left: 2.4em; list-style: cjk-ideographic; font: 15.5px/2.15 var(--serif); }
+.g-seven li::marker { color: var(--zhe); font-family: var(--kai); }
+.g-note { margin-top: 10px; font: 15px var(--kai); color: var(--ink-2); letter-spacing: .06em; }
+
+/* ---------- 对话框 ---------- */
+.mask {
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px;
+  background: rgba(42, 36, 30, .3); backdrop-filter: blur(2px); animation: fade .18s ease both; transition: opacity .18s;
+}
+.mask.out { opacity: 0; pointer-events: none; }
+.dlg {
+  width: min(470px, 100%); max-height: 88vh; overflow: auto; padding: 26px 28px 20px;
+  border-radius: 11px; background: var(--sheet);
+  box-shadow: 0 0 0 1px rgba(214, 202, 182, .8), 0 30px 70px -24px rgba(40, 28, 16, .5);
+  animation: rise .22s ease both;
+}
+.dlg.wide { width: min(840px, 100%); }
+.dlg h3 { margin: 0 0 8px; font: 600 19px/1.4 var(--serif); letter-spacing: .12em; }
+.dlg-sub { margin-bottom: 12px; font-size: 13px; line-height: 1.85; color: var(--ink-2); }
+.dlg-body { display: flex; flex-direction: column; gap: 15px; margin: 10px 0 4px; }
+.acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.fld { display: flex; flex-direction: column; gap: 6px; }
+.fld > span { font-size: 12px; color: var(--ink-3); letter-spacing: .24em; }
+.fld > em { font-style: normal; font-size: 11.5px; color: var(--ink-4); }
+.inp {
+  padding: 9px 12px; border: 1px solid var(--line-2); border-radius: 7px; outline: 0; background: #fff;
+  font: 15px var(--serif); letter-spacing: .04em; transition: border-color .15s, box-shadow .15s;
+}
+.inp:focus { border-color: var(--ink-3); box-shadow: 0 0 0 3px rgba(42, 38, 34, .06); }
+.inp::placeholder { color: var(--ink-4); font-family: var(--kai); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  padding: 4px 13px; border-radius: 999px; border: 1px solid var(--line-2); background: #fff; cursor: pointer;
+  font-size: 13px; color: var(--ink-2); transition: all .15s;
+}
+.chip:hover { border-color: var(--ink-4); color: var(--ink); }
+.chip.on { background: var(--ink); border-color: var(--ink); color: #f7f1e6; }
+.fld-err { font-size: 12.5px; color: var(--zhu); }
+.fld-err:empty { display: none; }
+.fname-prev { padding: 8px 12px; border-radius: 7px; background: var(--paper); font: 12.5px/1.6 var(--sans); color: var(--ink-2); word-break: break-all; }
+.mdview { max-height: 62vh; overflow: auto; margin: 0; padding: 14px 18px; border-radius: 7px; background: var(--paper); font: 13px/1.85 var(--sans); white-space: pre-wrap; word-break: break-word; }
+.lightbox { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: zoom-out; }
+.lightbox img { max-width: 92vw; max-height: 84vh; border-radius: 6px; box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .5); }
+.lb-cap { font-size: 12.5px; color: #f5eee3; letter-spacing: .04em; text-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
+
+/* ---------- 提示条 ---------- */
+#layer { position: fixed; z-index: 50; }
+#toasts { position: fixed; left: 50%; bottom: 28px; z-index: 70; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+.toast {
+  max-width: min(70vw, 720px); display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px; border-radius: 999px; background: rgba(40, 35, 30, .93); color: #f6efe3;
+  font-size: 13px; letter-spacing: .04em; box-shadow: 0 12px 30px -12px rgba(30, 20, 10, .5);
+  animation: rise .25s ease both; transition: opacity .4s, transform .4s;
+}
+.toast .s { width: 6px; height: 6px; flex: none; border-radius: 50%; background: #cdb27a; }
+.toast.err { background: rgba(92, 33, 24, .95); }
+.toast.err .s { background: #f08a74; }
+.toast.out { opacity: 0; transform: translateY(6px); }
+
+/* ---------- 动效 ---------- */
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes flash { 0% { background: var(--tc-soft); box-shadow: 0 0 0 1px var(--tc-line); } 100% { background: transparent; box-shadow: 0 0 0 1px transparent; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* ---------- 窄屏 ---------- */
+@media (max-width: 1240px) {
+  .rail { width: 264px; }
+  .wide-rail .rail { width: 360px; }
+  .sheet { padding: 50px 52px 36px; }
+  .canvas { padding: 28px 28px 120px; }
+}
+@media (max-width: 980px) {
+  body { grid-template-columns: 200px minmax(0, 1fr); }
+  .rail { display: none; }
+  .g-row { grid-template-columns: minmax(0, 1fr); }
+}
+.toc-desc small.syn.only { margin-top: 0; font: 15px/1.75 var(--kai); color: var(--ink); }
+</style>
+</head>
+<body>
+<aside id="side"></aside>
+<main id="main"></main>
+<div id="layer"></div>
+<div id="toasts" aria-live="polite"></div>
+<script>
+/* ============================================================
+   案头 · 核心逻辑（不碰界面）
+   ZIP 读写 · DOCX 读写 · 剧本 / 镜头表 / 提示词 的解析、生成与校对
+   ============================================================ */
+(function (G) {
+'use strict';
+
+const TE = new TextEncoder();
+const TD = new TextDecoder('utf-8');
+
+/* ---------- 小工具 ---------- */
+const toHalf = s => String(s).replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+const normSeg = s => toHalf(s).replace(/\s+/g, '').replace(/[－—–]/g, '-');
+const SEG_NUM = '[0-9０-９]+(?:\\s*[-－—–]\\s*[0-9０-９]+)*';
+const RE_SEG_IN_NAME = new RegExp('第\\s*(' + SEG_NUM + ')\\s*段');
+const RE_SEG_RANGE = new RegExp('第\\s*(' + SEG_NUM + ')\\s*[至到~～]\\s*(' + SEG_NUM + ')\\s*段');
+
+function segFromName(name) {
+  if (RE_SEG_RANGE.test(name)) return null;
+  const m = RE_SEG_IN_NAME.exec(name);
+  return m ? normSeg(m[1]) : null;
+}
+function isRangeName(name) { return RE_SEG_RANGE.test(name); }
+function segCompare(a, b) {
+  const pa = String(a).split(/[^0-9]+/).filter(Boolean).map(Number);
+  const pb = String(b).split(/[^0-9]+/).filter(Boolean).map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] ?? -1, y = pb[i] ?? -1;
+    if (x !== y) return x - y;
+  }
+  return String(a).localeCompare(String(b));
+}
+function nextSeg(segs) {
+  const list = [...segs].filter(Boolean).sort(segCompare);
+  if (!list.length) return '1-1';
+  const parts = list[list.length - 1].split('-');
+  parts[parts.length - 1] = String(Number(parts[parts.length - 1]) + 1);
+  return parts.join('-');
+}
+let _uid = 0;
+const uid = () => 'k' + (++_uid).toString(36);
+const blk = text => ({ id: uid(), text: String(text) });
+const CN_NUM = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+const cleanPara = s => String(s || '').replace(/\u00A0/g, ' ').replace(/^[\s\u3000]+|[\s\u3000]+$/g, '');
+
+/* 「标签：内容」——标签 1–10 个字，只能是汉字、字母、/、｜、· */
+const RE_LABEL_HEAD = /^([^：:\n]{1,10})[：:]/;
+const RE_LABEL_OK = /^[\u3400-\u9fff\uf900-\ufaffA-Za-z\/｜·]{1,10}$/;
+function splitLabel(line) {
+  const m = RE_LABEL_HEAD.exec(line);
+  if (!m) return null;
+  const label = m[1].trim();
+  if (!RE_LABEL_OK.test(label)) return null;
+  return { label, value: line.slice(m[0].length) };
+}
+function labelOf(text) { const f = splitLabel(text); return f ? f.label : ''; }
+
+/* ---------- CRC32 / 压缩流 ---------- */
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(u8) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+async function pipe(u8, ts) {
+  const out = await new Response(new Blob([u8]).stream().pipeThrough(ts)).arrayBuffer();
+  return new Uint8Array(out);
+}
+const inflateRaw = u8 => pipe(u8, new DecompressionStream('deflate-raw'));
+const deflateRaw = u8 => pipe(u8, new CompressionStream('deflate-raw'));
+function concat(chunks) {
+  const len = chunks.reduce((a, c) => a + c.length, 0);
+  const out = new Uint8Array(len);
+  let p = 0;
+  for (const c of chunks) { out.set(c, p); p += c.length; }
+  return out;
+}
+
+/* ---------- ZIP 读 ---------- */
+async function unzip(buf) {
+  const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  if (u8.length < 22) throw new Error('文件是空的，或者不是 DOCX');
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 22 - 65535); i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('不是有效的 DOCX 文件');
+  const count = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  const entries = new Map();
+  for (let i = 0; i < count; i++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) throw new Error('DOCX 内部目录损坏');
+    const method = dv.getUint16(p + 10, true);
+    const csize = dv.getUint32(p + 20, true);
+    const nlen = dv.getUint16(p + 28, true), xlen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true);
+    const off = dv.getUint32(p + 42, true);
+    const name = TD.decode(u8.subarray(p + 46, p + 46 + nlen));
+    entries.set(name, { method, csize, off });
+    p += 46 + nlen + xlen + clen;
+  }
+  return {
+    names: [...entries.keys()],
+    async read(name) {
+      const e = entries.get(name);
+      if (!e) return null;
+      if (dv.getUint32(e.off, true) !== 0x04034b50) throw new Error('DOCX 内部文件损坏：' + name);
+      const ln = dv.getUint16(e.off + 26, true), lx = dv.getUint16(e.off + 28, true);
+      const start = e.off + 30 + ln + lx;
+      const data = u8.subarray(start, start + e.csize);
+      if (e.method === 0) return data.slice();
+      if (e.method === 8) return inflateRaw(data);
+      throw new Error('不支持的压缩方式：' + e.method);
+    },
+    async text(name) { const b = await this.read(name); return b ? TD.decode(b) : null; },
+  };
+}
+
+/* ---------- ZIP 写 ---------- */
+async function zip(files) {
+  const parts = [], central = [];
+  let offset = 0;
+  const d = new Date();
+  const dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  const canDeflate = typeof CompressionStream !== 'undefined';
+  for (const f of files) {
+    const nameU8 = TE.encode(f.name);
+    const raw = typeof f.data === 'string' ? TE.encode(f.data) : f.data;
+    const crc = crc32(raw);
+    let method = 0, body = raw;
+    if (canDeflate && raw.length > 128) {
+      try { const z = await deflateRaw(raw); if (z.length < raw.length) { body = z; method = 8; } } catch (e) { /* 退回不压缩 */ }
+    }
+    const lh = new Uint8Array(30 + nameU8.length), lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true);
+    lv.setUint16(8, method, true); lv.setUint16(10, dosTime, true); lv.setUint16(12, dosDate, true);
+    lv.setUint32(14, crc, true); lv.setUint32(18, body.length, true); lv.setUint32(22, raw.length, true);
+    lv.setUint16(26, nameU8.length, true); lv.setUint16(28, 0, true);
+    lh.set(nameU8, 30);
+    parts.push(lh, body);
+    const ch = new Uint8Array(46 + nameU8.length), cv = new DataView(ch.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true); cv.setUint16(10, method, true); cv.setUint16(12, dosTime, true);
+    cv.setUint16(14, dosDate, true); cv.setUint32(16, crc, true); cv.setUint32(20, body.length, true);
+    cv.setUint32(24, raw.length, true); cv.setUint16(28, nameU8.length, true);
+    cv.setUint32(42, offset, true);
+    ch.set(nameU8, 46);
+    central.push(ch);
+    offset += lh.length + body.length;
+  }
+  const cdSize = central.reduce((a, c) => a + c.length, 0);
+  const eocd = new Uint8Array(22), ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true); ev.setUint32(16, offset, true);
+  return concat([...parts, ...central, eocd]);
+}
+
+/* ---------- XML ---------- */
+const BAD_XML = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g;
+const xmlEsc = s => String(s).replace(BAD_XML, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const xmlUnesc = s => s.replace(/&(#x[0-9a-fA-F]+|#\d+|lt|gt|amp|quot|apos);/g, (m, e) =>
+  e === 'lt' ? '<' : e === 'gt' ? '>' : e === 'amp' ? '&' : e === 'quot' ? '"' : e === 'apos' ? "'" :
+  e[1] === 'x' ? String.fromCodePoint(parseInt(e.slice(2), 16)) : String.fromCodePoint(parseInt(e.slice(1), 10)));
+
+function* xmlTokens(xml) {
+  let i = 0;
+  const n = xml.length;
+  while (i < n) {
+    const lt = xml.indexOf('<', i);
+    if (lt < 0) { yield { t: 'text', v: xml.slice(i) }; return; }
+    if (lt > i) yield { t: 'text', v: xml.slice(i, lt) };
+    if (xml.startsWith('<' + '!--', lt)) { const e = xml.indexOf('--' + '>', lt + 4); i = e < 0 ? n : e + 3; continue; }
+    if (xml.startsWith('<?', lt)) { const e = xml.indexOf('?>', lt + 2); i = e < 0 ? n : e + 2; continue; }
+    if (xml.startsWith('<![CDATA[', lt)) {
+      const e = xml.indexOf(']]>', lt + 9);
+      yield { t: 'cdata', v: xml.slice(lt + 9, e < 0 ? n : e) };
+      i = e < 0 ? n : e + 3; continue;
+    }
+    if (xml.startsWith('<!', lt)) { const e = xml.indexOf('>', lt + 2); i = e < 0 ? n : e + 1; continue; }
+    let j = lt + 1, q = 0;
+    while (j < n) {
+      const c = xml.charCodeAt(j);
+      if (q) { if (c === q) q = 0; } else if (c === 34 || c === 39) q = c; else if (c === 62) break;
+      j++;
+    }
+    const raw = xml.slice(lt + 1, j);
+    i = j + 1;
+    const close = raw[0] === '/';
+    const self = !close && raw[raw.length - 1] === '/';
+    const body = raw.slice(close ? 1 : 0, self ? -1 : undefined).trim();
+    const sp = body.search(/\s/);
+    yield { t: close ? 'close' : self ? 'self' : 'open', name: sp < 0 ? body : body.slice(0, sp), attrs: sp < 0 ? '' : body.slice(sp) };
+  }
+}
+function xmlAttr(attrs, key) {
+  const re = new RegExp('(?:^|\\s)' + key.replace(/[:.]/g, '\\$&') + '\\s*=\\s*(?:"([^"]*)"|\'([^\']*)\')');
+  const m = re.exec(attrs);
+  return m ? xmlUnesc(m[1] != null ? m[1] : m[2]) : null;
+}
+
+/* ---------- DOCX 读：段落 + 样式名 ---------- */
+function styleNames(stylesXml) {
+  const names = {};
+  if (!stylesXml) return names;
+  let cur = null;
+  for (const tk of xmlTokens(stylesXml)) {
+    if ((tk.t === 'open' || tk.t === 'self') && tk.name === 'w:style') cur = xmlAttr(tk.attrs, 'w:styleId');
+    else if (tk.t === 'close' && tk.name === 'w:style') cur = null;
+    else if (cur && (tk.t === 'self' || tk.t === 'open') && tk.name === 'w:name') names[cur] = xmlAttr(tk.attrs, 'w:val') || cur;
+  }
+  return names;
+}
+function docxXmlParagraphs(docXml, stylesXml) {
+  const names = styleNames(stylesXml);
+  const out = [];
+  const stack = [];
+  let cur = null, pDepth = 0, inT = 0, skip = 0;
+  for (const tk of xmlTokens(docXml)) {
+    if (tk.t === 'text' || tk.t === 'cdata') {
+      if (cur && inT && !skip) cur.text += tk.t === 'text' ? xmlUnesc(tk.v) : tk.v;
+      continue;
+    }
+    const nm = tk.name;
+    if (tk.t === 'open') {
+      const parent = stack[stack.length - 1];
+      stack.push(nm);
+      if (nm === 'mc:Fallback' || nm === 'w:txbxContent') skip++;
+      else if (nm === 'w:p') { pDepth++; if (pDepth === 1) cur = { text: '', styleId: '' }; }
+      else if (nm === 'w:t') inT++;
+      void parent;
+      continue;
+    }
+    if (tk.t === 'close') {
+      for (let k = stack.length - 1; k >= 0; k--) { if (stack[k] === nm) { stack.length = k; break; } }
+      if (nm === 'mc:Fallback' || nm === 'w:txbxContent') skip = Math.max(0, skip - 1);
+      else if (nm === 'w:t') inT = Math.max(0, inT - 1);
+      else if (nm === 'w:p') {
+        pDepth = Math.max(0, pDepth - 1);
+        if (pDepth === 0 && cur) { cur.style = names[cur.styleId] || cur.styleId; out.push(cur); cur = null; }
+      }
+      continue;
+    }
+    // self-closing
+    const parent = stack[stack.length - 1];
+    if (!cur || skip) continue;
+    if (nm === 'w:pStyle' && parent === 'w:pPr') cur.styleId = xmlAttr(tk.attrs, 'w:val') || '';
+    else if (parent === 'w:r') {
+      if (nm === 'w:tab') cur.text += '\t';
+      else if (nm === 'w:br' || nm === 'w:cr') { const ty = xmlAttr(tk.attrs, 'w:type'); if (!ty || ty === 'textWrapping') cur.text += '\n'; }
+      else if (nm === 'w:noBreakHyphen') cur.text += '-';
+    }
+  }
+  return out;
+}
+async function readDocx(buf) {
+  const z = await unzip(buf);
+  const docXml = await z.text('word/document.xml');
+  if (!docXml) throw new Error('DOCX 里没有正文（word/document.xml）');
+  const stylesXml = await z.text('word/styles.xml');
+  return docxXmlParagraphs(docXml, stylesXml);
+}
+
+/* ---------- DOCX 写 ---------- */
+const NS_W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const NS_R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const FONT_CN = 'Noto Serif SC', FONT_LATIN = 'Georgia';
+
+const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="${NS_W}">
+<w:docDefaults>
+<w:rPrDefault><w:rPr><w:rFonts w:ascii="${FONT_LATIN}" w:hAnsi="${FONT_LATIN}" w:eastAsia="${FONT_CN}" w:cs="Times New Roman"/><w:color w:val="2A2622"/><w:sz w:val="22"/><w:szCs w:val="22"/><w:lang w:val="en-US" w:eastAsia="zh-CN" w:bidi="ar-SA"/></w:rPr></w:rPrDefault>
+<w:pPrDefault><w:pPr><w:spacing w:after="80" w:line="380" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr></w:pPrDefault>
+</w:docDefaults>
+<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>
+<w:style w:type="character" w:default="1" w:styleId="DefaultParagraphFont"><w:name w:val="Default Paragraph Font"/><w:uiPriority w:val="1"/><w:semiHidden/><w:unhideWhenUsed/></w:style>
+<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="200" w:after="360" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr><w:rPr><w:b/><w:color w:val="1F1B17"/><w:spacing w:val="30"/><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:keepLines/><w:pBdr><w:bottom w:val="single" w:sz="4" w:space="4" w:color="CDBFA9"/></w:pBdr><w:spacing w:before="420" w:after="160" w:line="240" w:lineRule="auto"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:color w:val="3A332C"/><w:spacing w:val="20"/><w:sz w:val="26"/><w:szCs w:val="26"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:keepLines/><w:spacing w:before="320" w:after="100" w:line="240" w:lineRule="auto"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:color w:val="9E3B2E"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="ajMeta"><w:name w:val="案头·段头"/><w:basedOn w:val="Normal"/><w:qFormat/><w:pPr><w:spacing w:after="60"/></w:pPr><w:rPr><w:color w:val="4A433B"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="ajField"><w:name w:val="案头·字段"/><w:basedOn w:val="Normal"/><w:qFormat/><w:pPr><w:spacing w:after="90"/></w:pPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="ajAction"><w:name w:val="案头·动作"/><w:basedOn w:val="Normal"/><w:qFormat/><w:pPr><w:spacing w:before="40" w:after="120"/></w:pPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="ajLine"><w:name w:val="案头·台词"/><w:basedOn w:val="Normal"/><w:qFormat/><w:pPr><w:spacing w:after="120"/><w:ind w:leftChars="200" w:left="440"/></w:pPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="ajShot"><w:name w:val="案头·镜头"/><w:basedOn w:val="Normal"/><w:qFormat/><w:pPr><w:spacing w:before="40" w:after="140"/></w:pPr><w:rPr><w:sz w:val="23"/><w:szCs w:val="23"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="ajCue"><w:name w:val="案头·字幕音效"/><w:basedOn w:val="Normal"/><w:qFormat/><w:pPr><w:spacing w:after="100"/></w:pPr><w:rPr><w:color w:val="6B6156"/><w:sz w:val="21"/><w:szCs w:val="21"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="ajNote"><w:name w:val="案头·备注"/><w:basedOn w:val="Normal"/><w:qFormat/><w:pPr><w:spacing w:after="80"/></w:pPr><w:rPr><w:color w:val="7A7064"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr></w:style>
+<w:style w:type="character" w:customStyle="1" w:styleId="ajLabel"><w:name w:val="案头·标签"/><w:basedOn w:val="DefaultParagraphFont"/><w:rPr><w:b/><w:color w:val="5A4A3A"/></w:rPr></w:style>
+<w:style w:type="character" w:customStyle="1" w:styleId="ajSpeaker"><w:name w:val="案头·角色"/><w:basedOn w:val="DefaultParagraphFont"/><w:rPr><w:b/><w:color w:val="2A2622"/></w:rPr></w:style>
+<w:style w:type="character" w:customStyle="1" w:styleId="ajParen"><w:name w:val="案头·表演提示"/><w:basedOn w:val="DefaultParagraphFont"/><w:rPr><w:color w:val="8A7F72"/></w:rPr></w:style>
+<w:style w:type="character" w:customStyle="1" w:styleId="ajMark"><w:name w:val="案头·记号"/><w:basedOn w:val="DefaultParagraphFont"/><w:rPr><w:color w:val="A8382A"/></w:rPr></w:style>
+</w:styles>`;
+
+const SETTINGS_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:settings xmlns:w="${NS_W}"><w:zoom w:percent="100"/><w:defaultTabStop w:val="420"/><w:characterSpacingControl w:val="compressPunctuation"/><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>`;
+
+const FONTS_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:fonts xmlns:w="${NS_W}"><w:font w:name="${FONT_CN}"><w:altName w:val="宋体"/><w:charset w:val="86"/><w:family w:val="roman"/><w:pitch w:val="variable"/></w:font><w:font w:name="宋体"><w:altName w:val="SimSun"/><w:charset w:val="86"/><w:family w:val="auto"/><w:pitch w:val="variable"/></w:font><w:font w:name="${FONT_LATIN}"><w:charset w:val="00"/><w:family w:val="roman"/><w:pitch w:val="variable"/></w:font><w:font w:name="Times New Roman"><w:charset w:val="00"/><w:family w:val="roman"/><w:pitch w:val="variable"/></w:font></w:fonts>`;
+
+function runXml(text, rs) {
+  const rPr = rs ? `<w:rPr><w:rStyle w:val="${rs}"/></w:rPr>` : '';
+  let x = '';
+  String(text).replace(BAD_XML, '').split('\n').forEach((line, i) => {
+    if (i > 0) x += `<w:r>${rPr}<w:br/></w:r>`;
+    line.split('\t').forEach((t, j) => {
+      if (j > 0) x += `<w:r>${rPr}<w:tab/></w:r>`;
+      if (t) x += `<w:r>${rPr}<w:t xml:space="preserve">${xmlEsc(t)}</w:t></w:r>`;
+    });
+  });
+  return x;
+}
+const paraXml = p => `<w:p><w:pPr><w:pStyle w:val="${p.s}"/></w:pPr>${p.r.map(([t, rs]) => runXml(t, rs)).join('')}</w:p>`;
+
+function headerXml(text) {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:hdr xmlns:w="${NS_W}" xmlns:r="${NS_R}"><w:p><w:pPr><w:spacing w:after="0"/><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:color w:val="A1968A"/><w:spacing w:val="20"/><w:sz w:val="17"/><w:szCs w:val="17"/></w:rPr><w:t xml:space="preserve">${xmlEsc(text)}</w:t></w:r></w:p></w:hdr>`;
+}
+function footerXml() {
+  const rp = '<w:rPr><w:color w:val="A1968A"/><w:sz w:val="17"/><w:szCs w:val="17"/></w:rPr>';
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:ftr xmlns:w="${NS_W}" xmlns:r="${NS_R}"><w:p><w:pPr><w:spacing w:after="0"/><w:jc w:val="center"/></w:pPr><w:r>${rp}<w:t xml:space="preserve">— </w:t></w:r><w:r>${rp}<w:fldChar w:fldCharType="begin"/></w:r><w:r>${rp}<w:instrText xml:space="preserve"> PAGE </w:instrText></w:r><w:r>${rp}<w:fldChar w:fldCharType="separate"/></w:r><w:r>${rp}<w:t>1</w:t></w:r><w:r>${rp}<w:fldChar w:fldCharType="end"/></w:r><w:r>${rp}<w:t xml:space="preserve"> —</w:t></w:r></w:p></w:ftr>`;
+}
+
+async function writeDocx(paras, opt = {}) {
+  const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  const body = paras.map(paraXml).join('\n');
+  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="${NS_W}" xmlns:r="${NS_R}"><w:body>
+${body}
+<w:sectPr><w:headerReference w:type="default" r:id="rId4"/><w:footerReference w:type="default" r:id="rId5"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1531" w:right="1474" w:bottom="1417" w:left="1474" w:header="794" w:footer="737" w:gutter="0"/><w:cols w:space="425"/></w:sectPr>
+</w:body></w:document>`;
+  const files = [
+    { name: '[Content_Types].xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/><Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/><Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>` },
+    { name: '_rels/.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>` },
+    { name: 'word/document.xml', data: doc },
+    { name: 'word/_rels/document.xml.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>` },
+    { name: 'word/styles.xml', data: STYLES_XML },
+    { name: 'word/settings.xml', data: SETTINGS_XML },
+    { name: 'word/fontTable.xml', data: FONTS_XML },
+    { name: 'word/header1.xml', data: headerXml(opt.header || '') },
+    { name: 'word/footer1.xml', data: footerXml() },
+    { name: 'docProps/core.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${xmlEsc(opt.title || '')}</dc:title><dc:creator>案头</dc:creator><cp:lastModifiedBy>案头</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified></cp:coreProperties>` },
+    { name: 'docProps/app.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>案头</Application></Properties>` },
+  ];
+  return zip(files);
+}
+
+/* ============================================================
+   剧本
+   ============================================================ */
+const SCRIPT_HEAD = ['场景', '人物', '梗概'];
+const SCRIPT_HEAD_SET = new Set(SCRIPT_HEAD);
+const NOT_SPEAKER = /(特写|近景|中景|全景|远景|空镜|镜头|画面|转场|闪回|叠化|切至|切到|黑场|字幕|音效|场景|人物|时长|梗概|备注|时间|地点|注|定稿|审稿|草稿|说明|记录|提示)$/;
+const NOTE_LABEL = /^(已定稿|定稿|待审稿?|草稿|审稿中|修改中|修改记录|备注|附注|注|说明)$/;
+const RE_LINE = /^([^\s：:（(△▲，。；、！？,.;!?「」“”‘’"'…—]{1,12})\s*(?:[（(]([^）)]*)[）)])?\s*[：:]\s*([\s\S]*)$/;
+
+function parseLine(text) {
+  const m = RE_LINE.exec(text);
+  if (!m || NOT_SPEAKER.test(m[1])) return null;
+  return { who: m[1], how: (m[2] || '').trim(), say: m[3] };
+}
+function scriptRole(text, sec) {
+  if (sec === 'head') {
+    const f = splitLabel(text);
+    if (!f) return 'plain';
+    return f.label === '场景' ? 'scene' : f.label === '人物' ? 'cast' : 'meta';
+  }
+  if (sec === 'body') {
+    if (/^[△▲]/.test(text)) return 'action';
+    if (/^字幕[：:]/.test(text)) return 'sub';
+    if (/^音效[：:]/.test(text)) return 'sfx';
+    if (parseLine(text)) return 'line';
+    return 'plain';
+  }
+  return 'note';
+}
+function parseCast(v) {
+  const out = [];
+  let depth = 0, cur = '';
+  for (const ch of String(v)) {
+    if (ch === '（' || ch === '(') depth++;
+    else if (ch === '）' || ch === ')') depth = Math.max(0, depth - 1);
+    if (ch === '、' && depth === 0) { out.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  if (cur.trim()) out.push(cur);
+  return out.map(s => {
+    const m = /^\s*([^（(]+?)\s*(?:[（(]([\s\S]*)[）)])?\s*$/.exec(s);
+    return m ? { name: m[1].trim(), desc: (m[2] || '').trim() } : { name: s.trim(), desc: '' };
+  }).filter(c => c.name);
+}
+function newScriptDoc(seg, name) {
+  return {
+    kind: 'script', seg: seg || '', name: name || '', status: '',
+    sections: [
+      { key: 'head', head: '', blocks: [] },
+      { key: 'body', head: '正文', blocks: [] },
+      { key: 'notes', head: '备注', blocks: [] },
+    ],
+  };
+}
+function scriptTitle(doc) { return '第' + (doc.seg || '?') + '段' + (doc.name ? '｜' + doc.name : ''); }
+
+function matchScriptHead(t) {
+  let m = new RegExp('^第\\s*(' + SEG_NUM + ')\\s*段\\s*(?:[｜|]\\s*(.*))?$').exec(t);
+  if (m && !/镜头表/.test(m[2] || '')) return { fixed: true, seg: normSeg(m[1]), name: (m[2] || '').trim() };
+  m = /^([0-9０-９]+(?:[-－—–][0-9０-９]+)+)[\s\u3000]+(\S+)[\s\u3000]+(内外|外内|内|外|室内|室外)[\s\u3000]+(.+)$/.exec(t);
+  if (m) {
+    let place = m[4].trim(), status = '';
+    const sm = /[（(]\s*((?:已)?定稿|待审稿?|草稿|审稿中|修改中)\s*[）)]\s*$/.exec(place);
+    if (sm) { status = sm[1]; place = place.slice(0, sm.index).trim(); }
+    return { fixed: false, seg: normSeg(m[1]), time: m[2], io: m[3], place, status };
+  }
+  return null;
+}
+function isScriptBodyLine(t) { return /^[△▲]/.test(t) || /^(字幕|音效)[：:]/.test(t) || !!parseLine(t); }
+
+function buildScript(head, lines, fileSeg) {
+  const doc = newScriptDoc((head && head.seg) || fileSeg || '', (head && head.name) || '');
+  doc.status = (head && head.status) || '';
+  const [H, B, N] = doc.sections.map(s => s.blocks);
+  if (head && !head.fixed) H.push(blk(`场景：${head.time}｜${head.io}｜${head.place}`));
+  let mode = 'head';
+  for (const p of lines) {
+    const t = p.text;
+    if (!t) continue;
+    if (/^正\s*文$/.test(t)) { mode = 'body'; continue; }
+    if (/^(备注|修改记录|附注)$/.test(t)) { mode = 'notes'; continue; }
+    if (mode === 'head') {
+      const f = splitLabel(t);
+      if (f && SCRIPT_HEAD_SET.has(f.label)) { H.push(blk(t)); continue; }
+      if (f && NOTE_LABEL.test(f.label)) { N.push(blk(t)); continue; }
+      if (isScriptBodyLine(t)) { mode = 'body'; B.push(blk(t)); continue; }
+      if (f) { H.push(blk(t)); continue; }
+      N.push(blk(t));
+      continue;
+    }
+    (mode === 'body' ? B : N).push(blk(t));
+  }
+  const order = l => { const i = SCRIPT_HEAD.indexOf(labelOf(l.text)); return i < 0 ? 99 : i; };
+  doc.sections[0].blocks = H.map((b, i) => [b, i]).sort((a, b) => order(a[0]) - order(b[0]) || a[1] - b[1]).map(x => x[0]);
+  return doc;
+}
+
+/* 一份剧本 DOCX 可能是单段，也可能是好几段的汇总稿 */
+function parseScripts(paras, fileSeg) {
+  const P = paras.map(p => ({ text: cleanPara(p.text), style: String(p.style || '').toLowerCase() }));
+  const heads = [];
+  P.forEach((p, i) => { const h = p.text && matchScriptHead(p.text); if (h) heads.push({ i, h }); });
+  if (!heads.length) {
+    let start = 0;
+    while (start < P.length && !P[start].text) start++;
+    // 第一段是标题样式且不像正文时，当作文件标题略过
+    const preface = [];
+    if (start < P.length && /title|标题/.test(P[start].style) && !isScriptBodyLine(P[start].text) && !splitLabel(P[start].text)) { preface.push(P[start].text); start++; }
+    return { preface, segs: [buildScript(null, P.slice(start), fileSeg)] };
+  }
+  const preface = P.slice(0, heads[0].i).map(p => p.text).filter(Boolean);
+  const segs = heads.map((hd, k) => buildScript(hd.h, P.slice(hd.i + 1, k + 1 < heads.length ? heads[k + 1].i : P.length), fileSeg));
+  return { preface, segs };
+}
+function scriptToParas(doc) {
+  const out = [{ s: 'Title', r: [[scriptTitle(doc)]] }];
+  const [H, B, N] = doc.sections.map(s => s.blocks);
+  for (const b of H) {
+    const f = splitLabel(b.text);
+    out.push({ s: 'ajMeta', r: f ? [[f.label + '：', 'ajLabel'], [f.value]] : [[b.text]] });
+  }
+  out.push({ s: 'Heading1', r: [['正文']] });
+  for (const b of B) {
+    const t = b.text, role = scriptRole(t, 'body');
+    if (role === 'action') out.push({ s: 'ajAction', r: [['△ ', 'ajMark'], [t.replace(/^[△▲]\s*/, '')]] });
+    else if (role === 'line') {
+      const L = parseLine(t);
+      out.push({ s: 'ajLine', r: [[L.who, 'ajSpeaker'], ...(L.how ? [['（' + L.how + '）', 'ajParen']] : []), ['：' + L.say]] });
+    } else if (role === 'sub' || role === 'sfx') {
+      const f = splitLabel(t);
+      out.push({ s: 'ajCue', r: [[f.label + '：', 'ajLabel'], [f.value]] });
+    } else out.push({ s: 'Normal', r: [[t]] });
+  }
+  if (N.length) {
+    out.push({ s: 'Heading1', r: [['备注']] });
+    for (const b of N) out.push({ s: 'ajNote', r: [[b.text]] });
+  }
+  return out;
+}
+function scriptTemplate(seg, name) {
+  const d = newScriptDoc(seg, name);
+  d.sections[0].blocks = ['场景：', '人物：', '梗概：'].map(blk);
+  d.sections[1].blocks = ['△ '].map(blk);
+  return d;
+}
+
+/* ============================================================
+   镜头表：标题下面一镜一行「镜头N｜概述」，概述不超过十个字
+   旧格式里的其他内容原样留着（pre / 每镜的 blocks / post），不丢
+   ============================================================ */
+const SHOT_MAX = 10;
+const countChars = s => [...String(s || '').replace(/\s/g, '')].length;
+const RE_SHOT_HEAD = /^镜头\s*([0-9０-９]+[A-Za-z]?)\s*(?:[｜|：:]\s*|\s+|$)(.*)$/;
+const RE_OLD_SECTION = /^[一二三四五六七八九十]+\s*[、.．]\s*\S/;
+
+function newShotDoc(seg, name) { return { kind: 'shots', seg: seg || '', name: name || '', pre: [], shots: [], post: [] }; }
+function shotTitle(doc) { return '第' + (doc.seg || '?') + '段｜镜头表' + (doc.name ? '｜' + doc.name : ''); }
+function matchShotTitle(t) {
+  let m = new RegExp('^第\\s*(' + SEG_NUM + ')\\s*段\\s*[｜|]\\s*镜头表\\s*(?:[｜|]\\s*(.*))?$').exec(t);
+  if (m) return { seg: normSeg(m[1]), name: (m[2] || '').trim() };
+  m = new RegExp('^第\\s*(' + SEG_NUM + ')\\s*段\\s*(?:[｜|]|\\s)\\s*(.*)$').exec(t);
+  if (m && /镜头表|分镜/.test(m[2])) {
+    const rest = m[2].trim();
+    const pm = /[（(]([^）)]+)[）)]\s*$/.exec(rest);
+    const name = pm ? pm[1].trim() : rest.replace(/\d*\s*镜?\s*(镜头表|分镜表?)/, '').replace(/^[｜|\s]+|[｜|\s]+$/g, '').trim();
+    return { seg: normSeg(m[1]), name };
+  }
+  if (/镜头表/.test(t) && t.length < 40 && !splitLabel(t)) return { seg: null, name: t.replace(/镜头表/, '').replace(/^[｜|\s]+|[｜|\s]+$/g, '').trim() };
+  return null;
+}
+function parseShotList(paras, fileSeg) {
+  const P = paras.map(p => cleanPara(p.text));
+  const doc = newShotDoc(fileSeg || '', '');
+  let i = 0;
+  while (i < P.length && !P[i]) i++;
+  if (i < P.length) {
+    const t = matchShotTitle(P[i]);
+    if (t) { if (t.seg) doc.seg = t.seg; doc.name = t.name; i++; }
+  }
+  let shot = null, after = false;
+  for (; i < P.length; i++) {
+    const t = P[i];
+    if (!t) continue;
+    const m = !after && RE_SHOT_HEAD.exec(t);
+    if (m) { shot = { id: uid(), title: m[2].trim(), blocks: [] }; doc.shots.push(shot); continue; }
+    if (shot && RE_OLD_SECTION.test(t)) after = true;
+    (after ? doc.post : shot ? shot.blocks : doc.pre).push(blk(t));
+  }
+  return doc;
+}
+function fieldPara(text, style) {
+  const f = splitLabel(text);
+  return f ? { s: style, r: [[f.label + '：', 'ajLabel'], [f.value]] } : { s: style, r: [[text]] };
+}
+const oldPara = t => RE_OLD_SECTION.test(t) && t.length <= 20 ? { s: 'Heading1', r: [[t]] } : fieldPara(t, 'ajField');
+function shotsToParas(doc) {
+  const out = [{ s: 'Title', r: [[shotTitle(doc)]] }];
+  doc.pre.forEach(b => out.push(oldPara(b.text)));
+  doc.shots.forEach((sh, k) => {
+    out.push({ s: 'ajShot', r: [['镜头' + (k + 1), 'ajLabel'], ['｜' + sh.title.trim()]] });
+    sh.blocks.forEach(b => out.push(fieldPara(b.text, 'ajNote')));
+  });
+  doc.post.forEach(b => out.push(oldPara(b.text)));
+  return out;
+}
+function newShot(title) { return { id: uid(), title: title || '', blocks: [] }; }
+function shotsTemplate(seg, name) { const d = newShotDoc(seg, name); d.shots = [newShot('')]; return d; }
+/* 旧格式留下来的行数 */
+function shotOldCount(doc) { return doc.pre.length + doc.post.length + doc.shots.reduce((a, s) => a + s.blocks.length, 0); }
+function shotsOverLimit(doc) { return doc.shots.map((sh, k) => ({ sh, k, n: countChars(sh.title) })).filter(x => x.n > SHOT_MAX); }
+
+
+/* ============================================================
+   提示词（七分区）
+   ============================================================ */
+const PROMPT_SECTIONS = [
+  { key: 'basic', name: '说明｜基础设定', alias: ['说明｜基础设定', '基础设定'] },
+  { key: 'cast', name: '人物与参考图对应', alias: ['人物与参考图对应', '人物与参考图'] },
+  { key: 'sound', name: '声音', alias: ['声音'] },
+  { key: 'scene', name: '场景', alias: ['场景'] },
+  { key: 'rules', name: '规则｜镜头原则', alias: ['规则｜镜头原则', '镜头原则'] },
+  { key: 'shots', name: '分镜', alias: ['分镜'] },
+  { key: 'keep', name: '保持一致', alias: ['保持一致'] },
+];
+const PROMPT_BASIC = ['影像风格', '摄影与镜头', '光色基调', '核心氛围', '本段事件'];
+const PROMPT_RULES = ['运镜', '构图', '轴线'];
+const PROMPT_SHOT_HEAD = ['机位/景别/角度', '本镜调用', '画面构图', '环境音', '进入状态'];
+const PROMPT_SUB = ['动作/表情', '音效', '镜头', '台词'];
+const PROMPT_SHOT_TAIL = ['退出状态', '切点'];
+const RE_PROMPT_SHOT = /^镜头\s*[0-9０-９]+/;
+const RE_SUB = /^小节[一二三四五六七八九十0-9]+$/;
+
+function promptSectionKey(line) {
+  const t = String(line).trim().replace(/\s+/g, '').replace(/\|/g, '｜');
+  for (const s of PROMPT_SECTIONS) if (s.alias.includes(t)) return s.key;
+  return null;
+}
+/* 每一行连同自己的换行符一起记下来，空行也留着：没动过的行原样写回 */
+function splitWithEol(text) {
+  const out = [];
+  let i = 0;
+  for (;;) {
+    let j = i;
+    while (j < text.length && text[j] !== '\r' && text[j] !== '\n') j++;
+    const e = j >= text.length ? '' : text[j] === '\r' && text[j + 1] === '\n' ? '\r\n' : text[j];
+    out.push({ t: text.slice(i, j), e });
+    if (!e) break;
+    i = j + e.length;
+    if (i >= text.length) break;
+  }
+  return out;
+}
+function parsePrompt(text) {
+  const doc = { kind: 'prompt', bom: false, eol: '\r\n', finalNewline: false, finalEol: '', pre: [], sections: [] };
+  text = String(text);
+  if (text.charCodeAt(0) === 0xFEFF) { doc.bom = true; text = text.slice(1); }
+  const lines = splitWithEol(text);
+  const cnt = {};
+  lines.forEach(l => { if (l.e) cnt[l.e] = (cnt[l.e] || 0) + 1; });
+  const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+  if (top) doc.eol = top;
+  const last = lines[lines.length - 1];
+  doc.finalNewline = !!last.e; doc.finalEol = last.e;
+  let sec = null, shot = null;
+  for (const { t, e } of lines) {
+    const key = promptSectionKey(t);
+    if (key) {
+      sec = { key, head: t, headEol: e, blocks: [] };
+      if (key === 'shots') sec.shots = [];
+      doc.sections.push(sec); shot = null; continue;
+    }
+    const b = blk(t); b.eol = e;
+    if (!sec) { doc.pre.push(b); continue; }
+    if (sec.key === 'shots' && RE_PROMPT_SHOT.test(t.trim())) { shot = { id: uid(), head: t, headEol: e, blocks: [] }; sec.shots.push(shot); continue; }
+    (shot ? shot.blocks : sec.blocks).push(b);
+  }
+  return doc;
+}
+function serializePrompt(doc) {
+  const out = [];
+  const lines = bs => bs.forEach(b => { const ls = String(b.text).split(/\r\n|\n|\r/); ls.forEach((l, k) => out.push([l, k === ls.length - 1 ? b.eol : ''])); });
+  lines(doc.pre);
+  for (const s of doc.sections) {
+    out.push([s.head, s.headEol]);
+    lines(s.blocks);
+    if (s.shots) for (const sh of s.shots) { out.push([sh.head, sh.headEol]); lines(sh.blocks); }
+  }
+  let text = '';
+  out.forEach(([t, e], i) => {
+    text += t;
+    if (i < out.length - 1) text += e || doc.eol;
+    else if (doc.finalNewline) text += e || doc.finalEol || doc.eol;
+  });
+  return (doc.bom ? '\uFEFF' : '') + text;
+}
+/* 界面上不显示一段开头、结尾的空行（它们只是分区之间的间隔） */
+const isBlank = b => !String(b.text).trim();
+function edgeRange(arr) {
+  let a = 0, z = arr.length;
+  while (a < z && isBlank(arr[a])) a++;
+  while (z > a && isBlank(arr[z - 1])) z--;
+  return [a, z];
+}
+/* 保证容器以一个空行结尾：新加的分区、镜头前后要隔开 */
+function ensureTrailingBlank(arr) { if (!arr.length || !isBlank(arr[arr.length - 1])) arr.push(blk('')); }
+function promptShotTitle(sh) { const m = /^镜头\s*[0-9０-９]+\s*[｜|：:]?\s*(.*)$/.exec(sh.head.trim()); return m ? m[1] : sh.head; }
+function renumberPromptShots(sec) {
+  sec.shots.forEach((sh, k) => { sh.head = sh.head.replace(/^(\s*)镜头\s*[0-9０-９]+/, '$1镜头' + (k + 1)); });
+}
+function newPromptShot(n, title) {
+  return {
+    id: uid(), head: '镜头' + n + '｜' + (title || ''),
+    blocks: ['机位/景别/角度：', '本镜调用：', '画面构图：', '环境音：', '进入状态：', '小节一', '动作/表情：', '音效：', '镜头：', '台词：无', '退出状态：', '切点：', ''].map(blk),
+  };
+}
+const PROMPT_SKELETON = `说明｜基础设定
+影像风格：〔片种和题材〕，〔写实电影摄影 / 其他风格〕，〔胶片或画面质感〕；〔保留哪些真实质感〕，不美颜磨皮。人物表演自然，情绪靠动作和表情带出来，不做夸张表演。
+摄影与镜头：〔宏观镜头语言：焦段倾向、透视、景深、手持呼吸感〕。
+光色基调：〔时间段的整体明暗冷暖〕；〔主光来源〕，〔对比度和饱和度〕，〔肤色〕，〔暗部〕，〔关键物件的颜色真实〕。
+核心氛围：〔时间和地点的一句画面〕。〔人物在做什么，相处的感觉〕；整体〔真实、温暖……〕，不煽情。
+本段事件：〔本段从头到尾发生了什么，几句话讲完，写到结束时的状态〕。
+
+人物与参考图对应
+〔角色〕对应@图片1，本段外貌、发型和服装以@图片1为准。〔全局人物特征句，只写看得见的表现〕
+@图片2是〔场景名〕从〔哪〕往〔哪〕看的样子，只采用空间布局、陈设、材质和灯光。
+@图片3作为首帧。
+该首帧定义〔开场的构图、人物位置、姿态、道具状态、镜头朝向〕。
+本段画面里只有〔几个人：谁、谁〕。
+
+声音
+环境音全程铺底，不出现干净的静音。〔外景环境声〕。〔内景环境声〕。
+人声近距离收音，自然、生活化，带真实的呼吸和口腔细节；说话的人口型与台词同步，不说话的人自然闭口；有台词时人声在前、听得清，环境音不断。
+动作拟音清晰、贴近画面，只跟着画面里的动作出现：〔<音效1>、<音效2>、手上动作的声音〕都要听得清。
+全片无旁白，画面不显示字幕。
+
+场景
+〔场景A〕：〔位置、外观、招牌、门窗、周边环境〕。
+时间：〔具体时间〕。
+配乐：无配乐，后期统一加。
+
+规则｜镜头原则
+运镜：全片不使用完全固定的机位。以轻微手持呼吸感、缓推、缓拉、横移和跟随为主；人物说台词时运动放缓，幅度小而平稳；不做快速甩镜和炫技运镜。
+构图：〔内景保留纵深，哪些背景元素要清楚可辨〕。〔关键道具和人物的手〕出现时必须清楚可辨。主体清晰，背景适度虚化。
+轴线：〔以什么为轴，两侧各是什么〕。同一场戏里人物的左右位置保持不变，不越轴。
+
+分镜
+
+镜头1｜〔标题〕
+机位/景别/角度：〔景别，角度，机位在哪，朝哪个方向拍〕
+本镜调用：〔画面里的每个人带编号〕；〔本镜出现的关键道具〕。
+画面构图：〔谁在画面哪一侧，隔着什么；背景是什么；不拍反打〕。
+环境音：〔本镜的环境声由哪些声源组成，哪个离机位近、哪个在远处〕。
+进入状态：〔镜头开始时每个人在哪、手里拿着什么、在做什么〕
+小节一
+动作/表情：〔动作和表情，台词和手上的事叠着走〕。
+音效：〔发声的物件和接触〕<〔音效〕>。
+镜头：〔怎么动〕。〔环境声〕从第一帧就有。
+台词：〔说话人〕，〔语气〕：{〔台词〕}画内发声，口型与台词同步，看着〔谁〕说；其他人自然闭口。
+退出状态：〔镜头结束时的画面〕。
+切点：〔跟着哪个动作切到哪里〕。
+
+保持一致
+〔角色〕始终对应@图片1，脸、发型和服装不互换。
+本段画面里最多〔几〕个人；〔道具〕全程只有一个，最后在〔谁〕手里。
+〔轴线口诀〕，全段不越轴。
+环境音全段不断。
+`;
+function promptTemplate() { const d = parsePrompt(PROMPT_SKELETON.replace(/\n/g, '\r\n')); return d; }
+
+/* ============================================================
+   校对
+   ============================================================ */
+function issue(level, msg, loc) { return { level, msg, loc: loc || null }; }
+
+function lintPrompt(doc, fileName) {
+  const out = [];
+  if (!doc.sections.length) {
+    doc.pre.forEach(b => { if (/〔[^〕]*〕/.test(b.text)) out.push(issue('warn', '还有没填的〔 〕：' + b.text.slice(0, 18) + (b.text.length > 18 ? '…' : ''), { sec: 'pre', block: b.id })); });
+    if (/视频提示词/.test(fileName || '') || segFromName(fileName || '')) out.push(issue('info', '没有认出七个分区；这份提示词按自由格式编辑（延长、编辑类提示词本来就不分区）。'));
+    return out;
+  }
+  const keys = doc.sections.map(s => s.key);
+  for (const s of PROMPT_SECTIONS) if (!keys.includes(s.key)) out.push(issue('warn', '缺少分区：' + s.name, { sec: s.key, missing: true }));
+  const idx = keys.map(k => PROMPT_SECTIONS.findIndex(s => s.key === k));
+  if (idx.some((v, i) => i && v < idx[i - 1])) out.push(issue('warn', '分区顺序和固定格式不一致（说明｜基础设定 → 人物与参考图对应 → 声音 → 场景 → 规则｜镜头原则 → 分镜 → 保持一致）。'));
+  const each = (fn) => doc.sections.forEach(s => {
+    s.blocks.forEach(b => fn(b, s, null));
+    if (s.shots) s.shots.forEach(sh => sh.blocks.forEach(b => fn(b, s, sh)));
+  });
+  let ph = 0;
+  each((b, s, sh) => {
+    const t = b.text;
+    if (!t.trim()) return;
+    const loc = { sec: s.key, shot: sh && sh.id, block: b.id };
+    if (/〔[^〕]*〕/.test(t)) { ph++; if (ph <= 6) out.push(issue('warn', '还有没填的〔 〕：' + t.slice(0, 18) + (t.length > 18 ? '…' : ''), loc)); }
+    if (/[（）()“”"‘’「」『』]/.test(t)) out.push(issue('warn', '提示词里不用括号和引号', loc));
+    const br = t.match(/【[^】]*】/g);
+    if (br && br.some(x => x !== '【未采用素材】')) out.push(issue('warn', '【】只用在「【未采用素材】」这一处', loc));
+    if (/[0-9０-９]+(?:\.[0-9]+)?\s*秒|[0-9]{1,2}:[0-9]{2}(?![0-9])/.test(t) && !/16:9|9:16/.test(t)) out.push(issue('info', '提示词里不写时间码和秒数（时长在生成参数里设）', loc));
+    if (/横屏|竖屏|16\s*[:：]\s*9|9\s*[:：]\s*16|720p|1080p|分辨率|画幅/i.test(t)) out.push(issue('warn', '画幅、分辨率这类生成参数不写进提示词', loc));
+    const refAllowed = s.key === 'cast' || s.key === 'keep' || (sh && /^本镜调用[：:]/.test(t));
+    if (/@(图片|视频|音频)\s*[0-9]+/.test(t) && !refAllowed) out.push(issue('info', '@编号只写在人物与参考图对应、本镜调用、保持一致三处', loc));
+    const bad = t.match(/语速快|停一拍|拖一拍|没出声|没催|店里很安静|表演克制|寂静/g);
+    if (bad) out.push(issue('warn', '避开「' + [...new Set(bad)].join('、') + '」这类写法', loc));
+    if (sh && /^环境音[：:]/.test(t) && /安静/.test(t)) out.push(issue('warn', '环境音里写声源，不写「安静」', loc));
+    if (sh && /^台词[：:]/.test(t) && !/^台词[：:]\s*无\s*$/.test(t) && !/\{[^}]*\}/.test(t)) out.push(issue('warn', '台词原文要放在 {} 里', loc));
+    if (sh && /(?<!其)[她他](?!们)/.test(t.replace(/吉他/g, ''))) out.push(issue('info', '分镜里用称谓指人，不用她、他', loc));
+  });
+  if (ph > 6) out.push(issue('warn', '另外还有 ' + (ph - 6) + ' 处没填的〔 〕'));
+  const shotsSec = doc.sections.find(s => s.key === 'shots');
+  if (shotsSec) {
+    if (!shotsSec.shots.length) out.push(issue('warn', '分镜里还没有镜头', { sec: 'shots' }));
+    shotsSec.shots.forEach((sh, k) => {
+      const has = l => sh.blocks.some(b => new RegExp('^' + l + '[：:]').test(b.text));
+      const loc = { sec: 'shots', shot: sh.id };
+      if (!has('本镜调用')) out.push(issue('warn', `镜头${k + 1} 缺「本镜调用」`, loc));
+      if (!has('环境音')) out.push(issue('warn', `镜头${k + 1} 缺「环境音」`, loc));
+      if (!has('切点')) out.push(issue('info', `镜头${k + 1} 缺「切点」`, loc));
+    });
+  }
+  return out;
+}
+
+function lintScript(doc) {
+  const out = [];
+  const [H, B] = doc.sections.map(s => s.blocks);
+  const get = l => H.find(b => labelOf(b.text) === l);
+  const scene = get('场景'), cast = get('人物');
+  if (!scene || !splitLabel(scene.text).value.trim()) out.push(issue('warn', '段头缺「场景：时间｜内/外｜地点」', scene ? { sec: 'head', block: scene.id } : { sec: 'head' }));
+  else if (splitLabel(scene.text).value.split('｜').length < 3) out.push(issue('info', '场景按「时间｜内/外｜地点」三项写', { sec: 'head', block: scene.id }));
+  if (!cast || !splitLabel(cast.text).value.trim()) out.push(issue('warn', '段头缺「人物」', cast ? { sec: 'head', block: cast.id } : { sec: 'head' }));
+  const dur = get('时长');
+  if (dur) out.push(issue('warn', '固定格式不写时长，这一行删掉', { sec: 'head', block: dur.id }));
+  if (!B.some(b => b.text.replace(/^[△▲]\s*/, '').trim())) out.push(issue('warn', '正文还是空的', { sec: 'body' }));
+  const names = cast ? parseCast(splitLabel(cast.text).value).map(c => c.name) : [];
+  for (const b of B) {
+    const role = scriptRole(b.text, 'body');
+    const loc = { sec: 'body', block: b.id };
+    if (role === 'plain' && b.text.trim()) out.push(issue('info', '这一行不是 △ 动作、台词、字幕、音效中的任何一种', loc));
+    if (/[0-9０-９](?:\.[0-9]+)?\s*秒/.test(b.text)) out.push(issue('info', '剧本里不写秒数', loc));
+    if (role === 'action' && !b.text.replace(/^[△▲]\s*/, '').trim()) out.push(issue('info', '空的 △ 动作行', loc));
+    if (role === 'line' && names.length) {
+      const who = parseLine(b.text).who;
+      if (!names.some(n => n.includes(who) || who.includes(n.replace(/若干$/, '')))) out.push(issue('info', '台词角色「' + who + '」不在人物表里', loc));
+    }
+  }
+  return out;
+}
+
+function lintShots(doc) {
+  const out = [];
+  if (!doc.shots.length) out.push(issue('warn', '还没有镜头', { sec: 'shots' }));
+  doc.shots.forEach((sh, k) => {
+    const loc = { shot: sh.id }, n = countChars(sh.title);
+    if (!n) out.push(issue('warn', `镜头${k + 1} 还没写概述`, loc));
+    else if (n > SHOT_MAX) out.push(issue('warn', `镜头${k + 1} 的概述有 ${n} 个字，不能超过十个字`, loc));
+    if (/[0-9０-９]\s*秒/.test(sh.title)) out.push(issue('warn', `镜头${k + 1} 的概述里不写秒数`, loc));
+  });
+  const old = shotOldCount(doc);
+  if (old) out.push(issue('warn', `还留着 ${old} 行旧格式的内容；固定格式只写每一镜的概述`, { sec: 'old' }));
+  return out;
+}
+
+/* ---------- 文本编码 ---------- */
+function decodeText(buf) {
+  const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  try { return { text: new TextDecoder('utf-8', { fatal: true }).decode(u8), encoding: 'utf-8' }; }
+  catch (e) {
+    try { return { text: new TextDecoder('gb18030').decode(u8), encoding: 'gb18030' }; }
+    catch (e2) { return { text: TD.decode(u8), encoding: 'utf-8' }; }
+  }
+}
+/* TextDecoder 会吃掉开头的 BOM：先看原始字节 */
+function hasBom(buf) { const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf); return u8[0] === 0xEF && u8[1] === 0xBB && u8[2] === 0xBF; }
+const encodeText = s => TE.encode(s);
+
+/* ---------- 深拷贝 / 复制 ---------- */
+function cloneDoc(doc) {
+  const d = JSON.parse(JSON.stringify(doc));
+  const re = o => { if (Array.isArray(o)) o.forEach(re); else if (o && typeof o === 'object') { if ('id' in o) o.id = uid(); Object.values(o).forEach(re); } };
+  re(d);
+  return d;
+}
+
+const Core = {
+  version: '1.0',
+  uid, blk, toHalf, normSeg, segFromName, isRangeName, segCompare, nextSeg, splitLabel, labelOf, cleanPara, CN_NUM,
+  crc32, unzip, zip, readDocx, writeDocx, docxXmlParagraphs,
+  SCRIPT_HEAD, parseScripts, scriptToParas, scriptTemplate, scriptRole, parseLine, parseCast, scriptTitle, newScriptDoc,
+  SHOT_MAX, countChars, parseShotList, shotsToParas, shotsTemplate, shotTitle, newShot, newShotDoc, shotOldCount, shotsOverLimit,
+  PROMPT_SECTIONS, PROMPT_BASIC, PROMPT_RULES, PROMPT_SHOT_HEAD, PROMPT_SUB, PROMPT_SHOT_TAIL, RE_SUB,
+  parsePrompt, serializePrompt, splitWithEol, isBlank, edgeRange, ensureTrailingBlank, promptTemplate, promptSectionKey, promptShotTitle, renumberPromptShots, newPromptShot, PROMPT_SKELETON,
+  lintPrompt, lintScript, lintShots, decodeText, hasBom, encodeText, cloneDoc,
+};
+if (typeof module !== 'undefined' && module.exports) module.exports = Core;
+G.Core = Core;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>
+/* ============================================================
+   案头 · 界面
+   ============================================================ */
+(function () {
+'use strict';
+const C = window.Core;
+const STD_DIRS = ['定稿的剧本', '提示词', '资产', '成片', '历史记录'];
+const KINDS = ['script', 'shots', 'prompt'];
+const KN = { script: '剧本', shots: '镜头表', prompt: '提示词' };
+const KSPACED = { script: '剧　本', shots: '镜 头 表', prompt: '提 示 词' };
+const KCOLOR = { script: '--zhu', shots: '--dai', prompt: '--zhe' };
+const IMG_RE = /\.(png|jpe?g|webp|gif|avif)$/i;
+const CAT_ORDER = ['人物', '场景', '道具'];
+
+const S = {
+  rootName: '', saved: null, projects: [], cache: {}, pj: null,
+  view: 'boot', tab: 'script', seg: null, ed: null, rail: 'outline', open: new Set(),
+};
+let EDIT = null;        // 正在改的那一行
+let INPUT_EDIT = null;  // 正在改的标题、镜头概述
+
+/* ---------- DOM 小工具 ---------- */
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  if (attrs) for (const k in attrs) {
+    const v = attrs[k];
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'style') el.style.cssText = v;
+    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
+    else if (k === 'value') el.value = v;
+    else if (k === 'checked' || k === 'disabled') el[k] = !!v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  return add(el, kids);
+}
+function add(el, kids) {
+  for (const c of [kids].flat(Infinity)) {
+    if (c == null || c === false || c === '') continue;
+    el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return el;
+}
+const ICON = {
+  up: '<path d="M8 12.5v-9M4.6 6.9 8 3.5l3.4 3.4"/>',
+  down: '<path d="M8 3.5v9M4.6 9.1 8 12.5l3.4-3.4"/>',
+  plus: '<path d="M8 3.5v9M3.5 8h9"/>',
+  x: '<path d="M4.7 4.7l6.6 6.6M11.3 4.7l-6.6 6.6"/>',
+  dup: '<rect x="5.5" y="5.5" width="7" height="7" rx="1.2"/><path d="M10.5 3.5h-6a1 1 0 0 0-1 1v6"/>',
+  folder: '<path d="M2.5 4.6a1 1 0 0 1 1-1h2.9l1.4 1.4h4.7a1 1 0 0 1 1 1v5.9a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1z"/>',
+  book: '<path d="M2.8 3.6h3.6c.7 0 1.3.3 1.6.8.3-.5.9-.8 1.6-.8h3.6v8.6H9.6c-.7 0-1.3.3-1.6.8-.3-.5-.9-.8-1.6-.8H2.8z"/><path d="M8 4.4v8.4"/>',
+  copy: '<rect x="5.5" y="2.8" width="7.7" height="9.2" rx="1.2"/><path d="M3.2 5.6v6.6a1 1 0 0 0 1 1h5.6"/>',
+  check: '<path d="M3.6 8.4 6.5 11.3 12.4 4.7"/>',
+  grid: '<rect x="2.8" y="2.8" width="4.2" height="4.2" rx=".6"/><rect x="9" y="2.8" width="4.2" height="4.2" rx=".6"/><rect x="2.8" y="9" width="4.2" height="4.2" rx=".6"/><rect x="9" y="9" width="4.2" height="4.2" rx=".6"/>',
+  chev: '<path d="M6 4l4 4-4 4"/>',
+};
+function icon(n) {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('viewBox', '0 0 16 16'); s.setAttribute('class', 'ic'); s.setAttribute('aria-hidden', 'true');
+  s.innerHTML = ICON[n] || '';
+  return s;
+}
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const pad = n => String(n).padStart(2, '0');
+const fmtTime = ms => { const d = new Date(ms); return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const stamp = (d = new Date()) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+const fmtStamp = s => /^\d{8}-\d{6}$/.test(s) ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)} ${s.slice(9, 11)}:${s.slice(11, 13)}:${s.slice(13, 15)}` : s;
+const pathEq = (a, b) => !!a && !!b && a.length === b.length && a.every((x, i) => x === b[i]);
+const rel = p => p.slice(1).join(' / ');
+const isComposing = e => e.isComposing || e.keyCode === 229;
+const sameBytes = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+
+/* ---------- 提示、对话框 ---------- */
+function toast(msg, kind) {
+  const t = h('div', { class: 'toast' + (kind ? ' ' + kind : '') }, h('i', { class: 's' }), h('span', null, msg));
+  document.getElementById('toasts').append(t);
+  setTimeout(() => t.classList.add('out'), kind === 'err' ? 6000 : 3600);
+  setTimeout(() => t.remove(), kind === 'err' ? 6500 : 4100);
+}
+function dialog(build) {
+  return new Promise(resolve => {
+    const mask = h('div', { class: 'mask' });
+    let done = false;
+    const close = v => {
+      if (done) return; done = true;
+      mask.classList.add('out');
+      document.removeEventListener('keydown', onKey, true);
+      setTimeout(() => mask.remove(), 180);
+      resolve(v);
+    };
+    const onKey = e => { if (e.key === 'Escape' && !isComposing(e)) { e.preventDefault(); e.stopPropagation(); close(null); } };
+    mask.append(build(close));
+    mask.addEventListener('mousedown', e => { if (e.target === mask) close(null); });
+    document.addEventListener('keydown', onKey, true);
+    document.getElementById('layer').append(mask);
+    setTimeout(() => { const f = mask.querySelector('[data-focus]') || mask.querySelector('input,select,textarea'); f && f.focus(); }, 40);
+  });
+}
+function dlgShell(title, sub, body, acts) {
+  return h('div', { class: 'dlg' }, h('h3', null, title), sub ? h('div', { class: 'dlg-sub' }, sub) : null, body ? h('div', { class: 'dlg-body' }, body) : null, h('div', { class: 'acts' }, acts));
+}
+function confirmDlg({ title, body, ok = '确定', cancel = '取消', danger }) {
+  return dialog(close => dlgShell(title, body, null, [
+    h('button', { class: 'btn ghost', onclick: () => close(false) }, cancel),
+    h('button', { class: 'btn ' + (danger ? 'zhu' : 'ink'), 'data-focus': '', onclick: () => close(true) }, ok),
+  ]));
+}
+function choiceDlg({ title, body, buttons }) {
+  return dialog(close => dlgShell(title, body, null, buttons.map(b => h('button', { class: 'btn ' + (b.cls || ''), 'data-focus': b.focus ? '' : null, onclick: () => close(b.value) }, b.label))));
+}
+function chips(options, value, onChange) {
+  const wrap = h('div', { class: 'chips' });
+  let cur = value;
+  const paint = () => [...wrap.children].forEach(c => c.classList.toggle('on', cur === c.dataset.v));
+  for (const [v, label] of options) {
+    wrap.append(h('button', { class: 'chip', type: 'button', 'data-v': v, onclick: () => { cur = v; paint(); onChange && onChange(cur); } }, label));
+  }
+  paint();
+  wrap.get = () => cur;
+  return wrap;
+}
+const field = (label, input, hint) => h('label', { class: 'fld' }, h('span', null, label), input, hint ? h('em', null, hint) : null);
+
+/* ---------- IndexedDB：记住上次的文件夹 ---------- */
+const IDB = {
+  open() { return new Promise((res, rej) => { const r = indexedDB.open('antou', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+  async get(k) { try { const db = await this.open(); return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } catch (e) { return undefined; } },
+  async set(k, v) { try { const db = await this.open(); await new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = res; }); } catch (e) { /* 存不下就算了 */ } },
+};
+
+/* ---------- 文件系统 ---------- */
+const FS = {
+  root: null,
+  async dir(parts, create) { let d = this.root; for (const p of parts) d = await d.getDirectoryHandle(p, { create: !!create }); return d; },
+  async fh(parts, create) { const d = await this.dir(parts.slice(0, -1), create); return d.getFileHandle(parts[parts.length - 1], { create: !!create }); },
+  async read(parts) { const f = await (await this.fh(parts)).getFile(); return { buf: new Uint8Array(await f.arrayBuffer()), mtime: f.lastModified, size: f.size }; },
+  async stat(parts) { try { const f = await (await this.fh(parts)).getFile(); return { mtime: f.lastModified, size: f.size }; } catch (e) { return null; } },
+  async write(parts, data) {
+    const w = await (await this.fh(parts, true)).createWritable();
+    await w.write(data); await w.close();
+    return this.stat(parts);
+  },
+  async list(parts) { const d = await this.dir(parts); const out = []; for await (const [name, hd] of d.entries()) out.push({ name, kind: hd.kind, handle: hd }); return out; },
+};
+
+/* ---------- 路径 ---------- */
+function canonical(kind, seg) {
+  return [S.pj.name, '定稿的剧本', `第${seg}段`, `第${seg}段_${kind === 'script' ? '剧本' : '镜头表'}.docx`];
+}
+/* 改版前的原文件放进 历史记录 下面同样的路径：原名__日期-时间.后缀 */
+function archiveOf(p) {
+  const name = p[p.length - 1], dot = name.lastIndexOf('.');
+  return { dir: [p[0], '历史记录', ...p.slice(1, -1)], base: dot > 0 ? name.slice(0, dot) : name, ext: dot > 0 ? name.slice(dot) : '' };
+}
+
+/* ---------- 扫描项目 ---------- */
+async function walk(parts, depth, fn) {
+  let ents;
+  try { ents = await FS.list(parts); } catch (e) { return; }
+  ents.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+  for (const e of ents) {
+    if (e.name.startsWith('.') || e.name.startsWith('~$')) continue;
+    const p = [...parts, e.name];
+    if (e.kind === 'directory') { if (depth > 0) await walk(p, depth - 1, fn); }
+    else await fn(p, e);
+  }
+}
+function headVal(doc, label) {
+  const b = doc.sections[0].blocks.find(x => C.labelOf(x.text) === label);
+  return b ? C.splitLabel(b.text).value.trim() : '';
+}
+const sceneOf = doc => headVal(doc, '场景').split('｜').map(s => s.trim()).filter(Boolean).join(' · ');
+function promptLabel(fname, pjName, seg) {
+  let s = fname.replace(/\.txt$/i, '');
+  if (s.startsWith(pjName + '_')) s = s.slice(pjName.length + 1);
+  s = s.replace(new RegExp('第\\s*' + seg.replace(/-/g, '\\s*[-－—–]\\s*') + '\\s*段'), '');
+  s = s.replace(/_?视频提示词$/, '').replace(/_?提示词$/, '');
+  return s.replace(/^[_\s]+|[_\s]+$/g, '').replace(/_/g, ' ') || '本段';
+}
+function assetInfo(p, fname, pjName) {
+  const dirs = p.slice(2, -1);
+  const key = fname.replace(/\.txt$/i, '').replace(/_?(资产)?提示词$/, '');
+  const s = key.startsWith(pjName + '_') ? key.slice(pjName.length + 1) : key;
+  const toks = s.split('_').filter(Boolean);
+  const cat = dirs[0] && dirs[0] !== '视频' ? dirs[0] : toks.length > 1 ? toks[0] : '其他';
+  const label = (toks[0] === cat ? toks.slice(1) : toks).join(' ') || s;
+  return { cat, label, key };
+}
+async function scanProject(name) {
+  const pj = { name, dirs: {}, extra: [], segs: new Map(), loose: [], aprompts: [], images: [], notes: [], docsMd: [] };
+  for (const e of await FS.list([name])) {
+    if (e.kind === 'directory' && STD_DIRS.includes(e.name)) pj.dirs[e.name] = true;
+    else if (!e.name.startsWith('.') && !/^(AGENTS|CLAUDE)\.md$/i.test(e.name)) pj.extra.push({ name: e.name, kind: e.kind });
+  }
+  const slot = seg => { if (!pj.segs.has(seg)) pj.segs.set(seg, { seg, script: [], shots: [], prompt: [] }); return pj.segs.get(seg); };
+  const docx = async (p, e) => {
+    if (/\.md$/i.test(e.name)) { pj.docsMd.push({ path: p, name: e.name }); return; }
+    if (!/\.docx$/i.test(e.name)) return;
+    const f = await e.handle.getFile();
+    const base = { path: p, name: e.name, size: f.size, mtime: f.lastModified };
+    if (!f.size) { pj.notes.push(`「${rel(p)}」是空文件（0 字节）`); return; }
+    let paras;
+    try { paras = await C.readDocx(await f.arrayBuffer()); } catch (err) { pj.notes.push(`「${rel(p)}」打不开：${err.message}`); return; }
+    const fseg = C.segFromName(e.name);
+    const isShots = /镜头表|分镜表/.test(e.name) || (!/剧本/.test(e.name) && paras.some(x => /^镜头\s*[0-9]+\s*[｜|]/.test(C.cleanPara(x.text))));
+    if (isShots) {
+      const doc = C.parseShotList(paras, fseg);
+      const ent = { ...base, kind: 'shots', seg: doc.seg || fseg, title: doc.name, doc };
+      ent.seg ? slot(ent.seg).shots.push(ent) : pj.loose.push(ent);
+    } else {
+      const r = C.parseScripts(paras, fseg);
+      const combined = r.segs.length > 1 || C.isRangeName(e.name);
+      for (const doc of r.segs) {
+        const ent = { ...base, kind: 'script', seg: doc.seg || fseg, combined, title: doc.name, scene: sceneOf(doc), synopsis: headVal(doc, '梗概'), doc };
+        ent.seg ? slot(ent.seg).script.push(ent) : pj.loose.push(ent);
+      }
+    }
+  };
+  const txt = async (p, e) => {
+    if (!/\.txt$/i.test(e.name)) return;
+    const f = await e.handle.getFile();
+    const base = { path: p, name: e.name, size: f.size, mtime: f.lastModified, kind: 'prompt' };
+    const seg = C.segFromName(e.name);
+    if (seg) {
+      const label = promptLabel(e.name, name, seg), ent = { ...base, seg, label, main: label === '本段' };
+      if (ent.main) {   // 目录里用「本段事件」当这一段的简介
+        const m = /^[ \t　]*本段事件[：:][ \t　]*(.+)$/m.exec(C.decodeText(await f.arrayBuffer()).text);
+        if (m) ent.event = m[1].trim();
+      }
+      slot(seg).prompt.push(ent);
+    }
+    else pj.aprompts.push({ ...base, seg: null, ...assetInfo(p, e.name, name) });
+  };
+  if (pj.dirs['定稿的剧本']) await walk([name, '定稿的剧本'], 4, docx);
+  if (pj.dirs['提示词']) await walk([name, '提示词'], 4, txt);
+  if (pj.dirs['资产']) await walk([name, '资产'], 4, async (p, e) => {
+    if (IMG_RE.test(e.name)) pj.images.push({ path: p, name: e.name, handle: e.handle, stem: e.name.replace(/\.[^.]+$/, '') });
+  });
+  for (const s of pj.segs.values()) {
+    s.script.sort((a, b) => (a.combined - b.combined) || a.name.localeCompare(b.name, 'zh'));
+    s.shots.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+    s.prompt.sort((a, b) => (b.main - a.main) || a.name.localeCompare(b.name, 'zh'));
+  }
+  const co = c => { const i = CAT_ORDER.indexOf(c); return i < 0 ? 99 : i; };
+  pj.aprompts.sort((a, b) => co(a.cat) - co(b.cat) || a.cat.localeCompare(b.cat, 'zh') || a.label.localeCompare(b.label, 'zh'));
+  pj.order = [...pj.segs.keys()].sort(C.segCompare);
+  return pj;
+}
+function statsOf(pj) {
+  let script = 0, shots = 0, prompt = 0;
+  for (const s of pj.segs.values()) { if (s.script.length) script++; if (s.shots.length) shots++; prompt += s.prompt.length; }
+  return { segs: pj.segs.size, script, shots, prompt: prompt + pj.aprompts.length };
+}
+async function refreshStats() {
+  for (const p of S.projects) {
+    if (S.cache[p.name]) continue;
+    try { S.cache[p.name] = await scanProject(p.name); p.stats = statsOf(S.cache[p.name]); } catch (e) { p.stats = null; }
+    renderSide();
+  }
+}
+async function rescan() {
+  S.pj = await scanProject(S.pj.name); S.cache[S.pj.name] = S.pj;
+  const p = S.projects.find(x => x.name === S.pj.name); if (p) p.stats = statsOf(S.pj);
+}
+function imageFor(key) {
+  const imgs = S.pj.images;
+  return imgs.find(i => i.stem.replace(/_资产$/, '') === key) || imgs.find(i => i.stem.startsWith(key + '_')) || null;
+}
+const segImages = seg => S.pj.images.filter(i => C.segFromName(i.name) === seg);
+/* 图片只读一次：同一张图在目录、对照里反复出现，共用一个地址 */
+const IMG_URL = new Map();
+function imgEl(a, cls) {
+  const img = h('img', { alt: a.name, loading: 'lazy', decoding: 'async', class: cls || null });
+  const k = a.path.join('/');
+  if (!IMG_URL.has(k)) IMG_URL.set(k, a.handle.getFile().then(f => URL.createObjectURL(f)));
+  IMG_URL.get(k).then(u => { img.src = u; }).catch(() => IMG_URL.delete(k));
+  return img;
+}
+function showImage(a, src) {
+  dialog(close => h('div', { class: 'lightbox', onclick: () => close() }, h('img', { src }), h('div', { class: 'lb-cap' }, rel(a.path))));
+}
+
+/* ---------- 启动 ---------- */
+async function boot() {
+  if (!('showDirectoryPicker' in window)) { S.view = 'nosupport'; render(); return; }
+  const saved = await IDB.get('root');
+  if (saved && typeof saved.queryPermission === 'function') {
+    S.saved = saved;
+    try { if (await saved.queryPermission({ mode: 'readwrite' }) === 'granted') { await useRoot(saved); return; } } catch (e) { /* 需要重新授权 */ }
+  }
+  S.view = 'welcome'; render();
+}
+async function pickRoot() {
+  if (!(await guardDirty())) return;
+  try {
+    const hd = await window.showDirectoryPicker({ id: 'antou-root', mode: 'readwrite' });
+    await IDB.set('root', hd);
+    S.saved = hd;
+    await useRoot(hd);
+  } catch (e) { if (e.name !== 'AbortError') toast('没能打开文件夹：' + e.message, 'err'); }
+}
+async function resumeRoot() {
+  try {
+    if (await S.saved.requestPermission({ mode: 'readwrite' }) === 'granted') await useRoot(S.saved);
+    else toast('需要允许读写这个文件夹，才能修改里面的文件', 'err');
+  } catch (e) { toast('授权没有成功：' + e.message, 'err'); }
+}
+async function useRoot(hd) {
+  FS.root = hd; S.rootName = hd.name; S.cache = {}; S.pj = null; S.ed = null;
+  for (const u of IMG_URL.values()) u.then(URL.revokeObjectURL).catch(() => {});
+  IMG_URL.clear();
+  await loadProjects();
+  if (!S.projects.length) { S.view = 'noprojects'; render(); return; }
+  const last = localStorage.getItem('antou:last:' + S.rootName);
+  const p = S.projects.find(x => x.name === last) || S.projects[0];
+  await openProject(p.name);
+  refreshStats();
+}
+async function loadProjects() {
+  const ents = (await FS.list([])).filter(e => e.kind === 'directory' && !/^[.$]|^(node_modules|System Volume Information)$/.test(e.name));
+  ents.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+  S.projects = ents.map(e => ({ name: e.name, stats: S.projects.find(p => p.name === e.name)?.stats || null }));
+}
+
+/* ---------- 导航 ---------- */
+async function openProject(name, keepView) {
+  if (S.pj && S.pj.name !== name && !(await guardDirty())) return;
+  try { S.pj = await scanProject(name); }
+  catch (e) { toast('读不了这个项目：' + e.message, 'err'); return; }
+  S.cache[name] = S.pj;
+  const p = S.projects.find(x => x.name === name); if (p) p.stats = statsOf(S.pj);
+  localStorage.setItem('antou:last:' + S.rootName, name);
+  if (!keepView) { S.view = 'overview'; S.ed = null; S.seg = null; }
+  render();
+}
+async function openOverview() {
+  if (!(await guardDirty())) return;
+  S.view = 'overview'; S.ed = null; S.seg = null;
+  render();
+}
+async function openGuide() {
+  if (!(await guardDirty())) return;
+  S.view = 'guide'; S.ed = null;
+  render();
+}
+async function openSlot(seg, kind, entry) {
+  if (!(await guardDirty())) return;
+  S.seg = seg; S.tab = kind || S.tab; S.view = 'editor';
+  const slot = S.pj.segs.get(seg);
+  const list = slot ? slot[S.tab] : [];
+  entry = entry || list.find(e => !e.combined) || list[0] || null;
+  S.ed = null;
+  if (entry) await loadEntry(entry); else render();
+}
+async function openAsset(entry) {
+  if (!(await guardDirty())) return;
+  S.seg = null; S.tab = 'prompt';
+  await loadEntry(entry);
+}
+async function parseEntry(entry, buf) {
+  let doc, enc = 'utf-8';
+  if (entry.kind === 'prompt') {
+    const d = C.decodeText(buf); enc = d.encoding;
+    doc = C.parsePrompt(d.text); doc.bom = C.hasBom(buf);
+  } else {
+    const paras = await C.readDocx(buf);
+    if (entry.kind === 'shots') doc = C.parseShotList(paras, entry.seg);
+    else { const r = C.parseScripts(paras, entry.seg); doc = entry.combined ? (r.segs.find(d => d.seg === entry.seg) || r.segs[0]) : r.segs[0]; }
+  }
+  return { doc, enc };
+}
+async function loadEntry(entry, opts = {}) {
+  try {
+    const { buf, mtime } = await FS.read(entry.path);
+    const { doc, enc } = await parseEntry(entry, buf);
+    const target = entry.combined ? canonical(entry.kind, entry.seg) : entry.path;
+    S.ed = { entry, doc, kind: entry.kind, dirty: false, mtime, enc, undo: [], redo: [], target, notice: null, savedAt: opts.savedAt || null };
+    if (enc !== 'utf-8') S.ed.notice = '这份文件是 GBK 编码，保存时会改存成 UTF-8。';
+    if (entry.combined) S.ed.notice = `这一段来自汇总稿「${entry.name}」。保存时另存成分段文件「${rel(target)}」，汇总稿不动。`;
+    S.ed.recovery = readRecovery();
+    S.tab = entry.kind; S.seg = entry.seg; S.view = 'editor';
+  } catch (e) { toast('打不开「' + entry.name + '」：' + e.message, 'err'); S.ed = null; }
+  render(opts.keepScroll);
+}
+async function guardDirty() {
+  commitEditing();
+  if (!S.ed || !S.ed.dirty) return true;
+  const r = await choiceDlg({
+    title: '还没保存', body: `「${rel(S.ed.target)}」有改动没保存。`,
+    buttons: [{ label: '取消', value: 'cancel', cls: 'ghost' }, { label: '不保存', value: 'drop' }, { label: '保存', value: 'save', cls: 'ink', focus: true }],
+  });
+  if (r === 'save') return await save();
+  if (r === 'drop') { clearRecovery(); S.ed.dirty = false; return true; }
+  return false;
+}
+
+/* ---------- 编辑状态 ---------- */
+function markDirty() {
+  if (!S.ed) return;
+  S.ed.dirty = true;
+  paintStatus();
+  saveRecoveryLater();
+}
+function snapshot() { return JSON.stringify(S.ed.doc); }
+function pushSnap(snap) {
+  const ed = S.ed; if (!ed) return;
+  ed.undo.push(snap);
+  if (ed.undo.length > 200) ed.undo.shift();
+  ed.redo.length = 0;
+}
+function pushUndo() { if (S.ed) pushSnap(snapshot()); }
+function undo() {
+  commitEditing();
+  const ed = S.ed; if (!ed || !ed.undo.length) return;
+  ed.redo.push(snapshot()); ed.doc = JSON.parse(ed.undo.pop());
+  markDirty(); rerender(); toast('撤销了一步');
+}
+function redo() {
+  commitEditing();
+  const ed = S.ed; if (!ed || !ed.redo.length) return;
+  ed.undo.push(snapshot()); ed.doc = JSON.parse(ed.redo.pop());
+  markDirty(); rerender(); toast('重做了一步');
+}
+const recKey = () => 'antou:rec:' + S.rootName + '/' + S.ed.target.join('/');
+const saveRecoveryLater = debounce(() => {
+  if (!S.ed || !S.ed.dirty) return;
+  try { localStorage.setItem(recKey(), JSON.stringify({ t: Date.now(), doc: S.ed.doc })); } catch (e) { /* 存满了就不存 */ }
+}, 700);
+function readRecovery() { try { const r = JSON.parse(localStorage.getItem(recKey()) || 'null'); return r && r.doc ? r : null; } catch (e) { return null; } }
+function clearRecovery() { try { if (S.ed) localStorage.removeItem(recKey()); } catch (e) { /* 无所谓 */ } }
+
+/* 输入框（段名、镜头概述）：边打字边写进文档，离开时记一步撤销 */
+function bindInput(inp, apply, after) {
+  const update = () => { apply(inp.value); markDirty(); after && after(); scheduleRail(); };
+  inp.addEventListener('focus', () => { commitEditing(); INPUT_EDIT = { snap: snapshot(), inp, apply }; });
+  inp.addEventListener('input', e => { if (!e.isComposing) update(); });
+  inp.addEventListener('compositionend', update);
+  inp.addEventListener('blur', () => { if (INPUT_EDIT && INPUT_EDIT.inp === inp) flushInputEdit(); });
+}
+function flushInputEdit() {
+  const x = INPUT_EDIT; INPUT_EDIT = null;
+  if (!x || !S.ed) return;
+  const v = x.inp.value.trim();
+  if (v !== x.inp.value) x.inp.value = v;
+  x.apply(v);
+  if (x.snap !== snapshot()) pushSnap(x.snap);
+}
+
+/* ---------- 保存 ---------- */
+async function docBytes(doc) {
+  const pj = S.pj.name;
+  if (doc.kind === 'prompt') return C.encodeText(C.serializePrompt(doc));
+  if (doc.kind === 'script') return C.writeDocx(C.scriptToParas(doc), { title: C.scriptTitle(doc), header: `${pj} · 第${doc.seg}段 · 剧本` });
+  return C.writeDocx(C.shotsToParas(doc), { title: C.shotTitle(doc), header: `${pj} · 第${doc.seg}段 · 镜头表` });
+}
+async function archiveFile(p, newBytes) {
+  const { buf } = await FS.read(p);
+  if (newBytes && sameBytes(buf, newBytes)) return null;
+  const a = archiveOf(p);
+  const dst = [...a.dir, `${a.base}__${stamp()}${a.ext}`];
+  await FS.write(dst, buf);
+  return dst;
+}
+let saving = false;
+async function save() {
+  commitEditing();
+  const ed = S.ed;
+  if (!ed || saving) return false;
+  if (!ed.dirty && !ed.entry.combined) { toast('没有改动'); return true; }
+  if (ed.kind === 'shots') {
+    const bad = C.shotsOverLimit(ed.doc);
+    if (bad.length) {
+      await dialog(close => dlgShell('镜头概述超过十个字', `镜头${bad.map(x => x.k + 1).join('、')} 的概述超过十个字。固定格式不允许超过十个字，改短了再保存。`, null,
+        [h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close() }, '去改')]));
+      focusShot(bad[0].sh.id);
+      return false;
+    }
+  }
+  const target = ed.target;
+  saving = true; paintStatus('正在保存…');
+  try {
+    const cur = await FS.stat(target);
+    if (cur && pathEq(target, ed.entry.path) && cur.mtime !== ed.mtime) {
+      const ok = await confirmDlg({ title: '文件在外面被改过', body: `「${rel(target)}」在你打开以后被改过（${fmtTime(cur.mtime)}），可能是 Codex 或别的程序改的。继续保存会换掉那一版；换掉之前，它会先移进 历史记录。`, ok: '仍然保存', danger: true });
+      if (!ok) return false;
+    }
+    const bytes = await docBytes(ed.doc);
+    const moved = cur ? await archiveFile(target, bytes) : null;
+    await FS.write(target, bytes);
+    clearRecovery();
+    ed.dirty = false;
+    toast(moved ? `已保存。原文件移进了 ${rel(moved.slice(0, -1))}` : `已保存：${rel(target)}`);
+    const seg = ed.entry.seg;
+    await rescan();
+    const ent = findEntry(target, seg);
+    if (ent) await loadEntry(ent, { keepScroll: true, savedAt: Date.now() });
+    else render(true);
+    return true;
+  } catch (e) {
+    toast('保存失败：' + e.message, 'err');
+    return false;
+  } finally { saving = false; paintStatus(); }
+}
+function findEntry(path, seg) {
+  for (const s of S.pj.segs.values()) for (const k of KINDS) for (const e of s[k]) if (pathEq(e.path, path) && !e.combined && (!seg || e.seg === seg)) return e;
+  return S.pj.aprompts.find(e => pathEq(e.path, path)) || S.pj.loose.find(e => pathEq(e.path, path)) || null;
+}
+async function copyPrompt() {
+  commitEditing();
+  if (!S.ed || S.ed.kind !== 'prompt') return;
+  const text = C.serializePrompt(S.ed.doc).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+  try { await navigator.clipboard.writeText(text); toast('全文已复制'); }
+  catch (e) { toast('复制没成功：' + e.message, 'err'); }
+}
+
+/* ============================================================
+   渲染
+   ============================================================ */
+function render(keepScroll) {
+  const sc = keepScroll ? (document.getElementById('canvas') || {}).scrollTop : 0;
+  EDIT = null; INPUT_EDIT = null;
+  renderSide();
+  renderMain();
+  if (keepScroll && sc) { const c = document.getElementById('canvas'); if (c) c.scrollTop = sc; }
+}
+function rerender() {
+  const c = document.getElementById('canvas');
+  const sc = c ? c.scrollTop : 0;
+  EDIT = null; INPUT_EDIT = null;
+  renderMain();
+  const c2 = document.getElementById('canvas'); if (c2) c2.scrollTop = sc;
+}
+
+/* ---------- 侧栏 ---------- */
+function renderSide() {
+  const side = document.getElementById('side');
+  const brand = h('div', { class: 'brand', onclick: () => S.pj && openOverview() },
+    h('div', { class: 'seal' }, '案'),
+    h('div', null, h('div', { class: 'brand-name' }, '案头'), h('div', { class: 'brand-sub' }, '短视频项目')));
+  side.replaceChildren(brand);
+  if (!FS.root) { side.append(h('div', { class: 'side-empty' }, '还没打开项目文件夹')); return; }
+  side.append(h('div', { class: 'side-label' }, '项　目'));
+  const list = h('div', { class: 'plist' });
+  for (const p of S.projects) {
+    const st = p.stats;
+    const meta = st ? [st.segs ? st.segs + ' 段' : '', st.prompt ? '提示词 ' + st.prompt : ''].filter(Boolean).join(' · ') || '还空着' : '　';
+    list.append(h('div', { class: 'pitem' + (S.pj && S.pj.name === p.name ? ' on' : ''), title: p.name, onclick: () => openProject(p.name) },
+      h('div', { class: 'pname' }, p.name), h('div', { class: 'pmeta' }, meta)));
+  }
+  list.append(h('button', { class: 'pnew', onclick: newProjectDlg }, icon('plus'), '新建项目'));
+  side.append(list);
+  side.append(h('div', { class: 'side-foot' },
+    h('button', { class: 'linkbtn' + (S.view === 'guide' ? ' on' : ''), onclick: openGuide }, icon('book'), '固定格式'),
+    h('button', { class: 'linkbtn', onclick: pickRoot, title: '换一个总文件夹' }, icon('folder'), S.rootName)));
+}
+
+/* ---------- 主区 ---------- */
+function renderMain() {
+  const main = document.getElementById('main');
+  main.style.setProperty('--tc', `var(${KCOLOR[S.tab]})`);
+  main.style.setProperty('--tc-soft', `var(${KCOLOR[S.tab]}-soft)`);
+  main.style.setProperty('--tc-line', `var(${KCOLOR[S.tab]}-line)`);
+  if (S.view === 'boot') { main.replaceChildren(); return; }
+  if (S.view === 'nosupport') { main.replaceChildren(renderNoSupport()); return; }
+  if (S.view === 'welcome') { main.replaceChildren(renderWelcome()); return; }
+  if (S.view === 'noprojects') { main.replaceChildren(renderNoProjects()); return; }
+  if (S.view === 'guide') { main.replaceChildren(renderGuide()); return; }
+  const parts = [renderTop(), renderSegbar()];
+  if (S.view === 'overview') parts.push(h('div', { class: 'stage' }, h('div', { class: 'canvas', id: 'canvas' }, renderOverview())));
+  else parts.push(renderEditor());
+  main.replaceChildren(...parts);
+}
+
+function renderWelcome() {
+  return h('div', { class: 'welcome' },
+    h('div', { class: 'w-inner' },
+      h('div', { class: 'seal w-seal' }, '案'),
+      h('div', { class: 'w-title' }, '案头'),
+      h('div', { class: 'w-sub' }, '剧本 · 镜头表 · 提示词'),
+      h('div', { class: 'w-verse' }, h('span', null, '一段一段'), h('span', null, '慢慢改好')),
+      S.saved ? h('button', { class: 'btn ink lg', onclick: resumeRoot }, '继续打开「' + S.saved.name + '」') : null,
+      h('button', { class: 'btn ' + (S.saved ? 'ghost' : 'ink lg'), onclick: pickRoot }, S.saved ? '换一个文件夹' : '选择项目总文件夹'),
+      h('p', { class: 'w-note' }, '选 E:\\AI短视频项目 这一层。浏览器会问一次能不能修改，选「允许」；', h('br'), '以后打开这页，点一下「继续打开」就行。')));
+}
+function renderNoSupport() {
+  return h('div', { class: 'welcome' }, h('div', { class: 'w-inner' },
+    h('div', { class: 'seal w-seal' }, '案'), h('div', { class: 'w-title' }, '案头'),
+    h('p', { class: 'w-note' }, '这个浏览器不能直接读写电脑上的文件夹。', h('br'), '请用 Chrome 或 Edge 打开这个文件。')));
+}
+function renderNoProjects() {
+  return h('div', { class: 'welcome' }, h('div', { class: 'w-inner' },
+    h('div', { class: 'w-title sm' }, S.rootName),
+    h('p', { class: 'w-note' }, '这个文件夹里还没有项目。每个项目是一个一级文件夹。'),
+    h('button', { class: 'btn ink lg', onclick: newProjectDlg }, '新建项目'),
+    h('button', { class: 'btn ghost', onclick: pickRoot }, '换一个文件夹')));
+}
+
+function renderTop() {
+  const ed = S.ed;
+  const tabs = h('nav', { class: 'tabs' }, KINDS.map(k => h('button', {
+    class: 'tab' + (S.view === 'editor' && S.tab === k ? ' on' : ''), style: `--c: var(${KCOLOR[k]})`,
+    onclick: () => { const seg = S.seg || S.pj.order[0]; if (seg) openSlot(seg, k); else { S.tab = k; newSegmentDlg(); } },
+  }, KN[k])));
+  const right = h('div', { class: 'top-right' });
+  if (S.view === 'editor' && ed) {
+    right.append(h('div', { class: 'status', id: 'status' }));
+    if (ed.kind === 'prompt') right.append(h('button', { class: 'btn', onclick: copyPrompt, title: '复制全文，贴进生成页面' }, icon('copy'), '复制全文'));
+    right.append(h('button', { class: 'btn ink save', id: 'save-btn', onclick: () => save(), title: 'Ctrl+S　保存前，原文件自动移进 历史记录' }, '保存'));
+  }
+  const tail = S.view !== 'editor' ? '目录' : S.seg ? '第' + S.seg + '段' : ed && ed.entry.cat ? '资产提示词 · ' + ed.entry.cat : ed ? ed.entry.name : '';
+  const top = h('header', { class: 'top' },
+    h('div', { class: 'crumb' },
+      h('button', { class: 'ptitle', onclick: openOverview, title: '回到目录' }, S.pj.name),
+      h('span', { class: 'crumb-seg' }, tail)),
+    tabs, right);
+  setTimeout(paintStatus, 0);
+  return top;
+}
+function paintStatus(msg) {
+  const el = document.getElementById('status');
+  if (!el || !S.ed) return;
+  const ed = S.ed;
+  el.className = 'status' + (ed.dirty ? ' dirty' : '');
+  const sb = document.getElementById('save-btn'); if (sb) sb.classList.toggle('dirty', ed.dirty);
+  el.replaceChildren(h('i', { class: 'dot' }), msg || (ed.dirty ? '有改动，还没保存' : ed.savedAt ? '已保存 ' + fmtTime(ed.savedAt).slice(6) : '未改动'));
+}
+
+function renderSegbar() {
+  const bar = h('nav', { class: 'segbar' });
+  bar.append(h('button', { class: 'seg toc' + (S.view === 'overview' ? ' on' : ''), onclick: openOverview }, h('span', { class: 'seg-no' }, '目录'), h('span', { class: 'seg-dots' }, icon('grid'))));
+  for (const seg of S.pj.order) {
+    const s = S.pj.segs.get(seg);
+    bar.append(h('button', { class: 'seg' + (S.view === 'editor' && S.seg === seg ? ' on' : ''), onclick: () => openSlot(seg, S.tab), title: `第${seg}段` },
+      h('span', { class: 'seg-no' }, '第' + seg + '段'),
+      h('span', { class: 'seg-dots' }, KINDS.map(k => h('i', { class: k + (s[k].length ? ' has' : ''), title: KN[k] + (s[k].length ? '' : '：没有') })))));
+  }
+  bar.append(h('button', { class: 'seg seg-new', onclick: newSegmentDlg }, h('span', { class: 'seg-no' }, '＋ 新建一段')));
+  if (S.pj.aprompts.length) {
+    const on = S.view === 'editor' && S.ed && S.ed.entry.cat;
+    bar.append(h('i', { class: 'seg-sep' }), h('button', { class: 'seg asset' + (on ? ' on' : ''), onclick: () => openAsset(on ? S.ed.entry : S.pj.aprompts[0]) },
+      h('span', { class: 'seg-no' }, '资产提示词'), h('span', { class: 'seg-dots' }, h('em', null, S.pj.aprompts.length))));
+  }
+  return bar;
+}
+
+/* ---------- 目录（项目总览） ---------- */
+function docChip(seg, kind, list) {
+  const own = list.filter(e => !e.combined);
+  let label = KN[kind], cls = 'dchip ' + kind;
+  if (!list.length) { cls += ' none'; label += ' 无'; }
+  else if (kind === 'prompt' && list.length > 1) label += ' ' + list.length;
+  else if (!own.length) { cls += ' combined'; label += ' · 汇总稿'; }
+  return h('button', { class: cls, onclick: e => { e.stopPropagation(); openSlot(seg, kind); } }, label);
+}
+function renderOverview() {
+  const pj = S.pj, st = statsOf(pj);
+  const wrap = h('div', { class: 'ov' });
+  wrap.append(h('div', { class: 'ov-head' },
+    h('div', null, h('div', { class: 'ov-kicker' }, '项 目 目 录'), h('div', { class: 'ov-title' }, pj.name),
+      h('div', { class: 'ov-stats' }, st.segs || st.prompt ? `共 ${st.segs} 段　剧本 ${st.script}　镜头表 ${st.shots}　提示词 ${st.prompt}` : '还没有剧本、镜头表或提示词')),
+    h('button', { class: 'btn ink', onclick: newSegmentDlg }, icon('plus'), '新建一段')));
+
+  const toc = h('div', { class: 'toc' });
+  if (!pj.order.length) toc.append(h('div', { class: 'toc-empty' }, h('div', { class: 'big' }, '这里还空着'), h('p', null, '点「新建一段」，按固定格式建好剧本和镜头表。')));
+  for (const seg of pj.order) {
+    const s = pj.segs.get(seg);
+    const sc = s.script.find(e => !e.combined) || s.script[0];
+    const sh = s.shots[0];
+    const name = (sc && sc.title) || (sh && sh.title) || '';
+    const desc = sc ? sc.scene : '';
+    const mp = s.prompt.find(e => e.main);
+    const syn = (sc && sc.synopsis) || (mp && mp.event) || '';
+    const nshots = sh ? sh.doc.shots.length : 0;
+    const title = name || desc;
+    toc.append(h('div', { class: 'toc-row', onclick: () => openSlot(seg, s.script.length ? 'script' : s.shots.length ? 'shots' : 'prompt') },
+      h('div', { class: 'toc-seg' }, '第' + seg + '段'),
+      h('div', { class: 'toc-desc' },
+        title || !syn ? h('div', { class: 'toc-name' }, title || h('span', { class: 'faint' }, '未命名'), nshots ? h('span', { class: 'toc-n' }, nshots + ' 镜') : null) : null,
+        name && desc ? h('small', null, desc) : null, syn ? h('small', { class: 'syn' + (title ? '' : ' only') }, syn) : null),
+      h('div', { class: 'toc-docs' }, KINDS.map(k => docChip(seg, k, s[k])))));
+  }
+  wrap.append(toc);
+
+  if (pj.aprompts.length) wrap.append(assetGallery(pj));
+
+  const warns = [];
+  const missingDirs = STD_DIRS.filter(d => !pj.dirs[d]);
+  for (const seg of pj.order) {
+    const s = pj.segs.get(seg);
+    if (s.script.length && !s.shots.length) warns.push(`第${seg}段有剧本，还缺镜头表（每段剧本和镜头表都要有）`);
+    if (!s.script.length && s.shots.length) warns.push(`第${seg}段有镜头表，还缺剧本`);
+    const sh = s.shots[0];
+    if (sh && C.shotOldCount(sh.doc)) warns.push(`第${seg}段的镜头表还是旧格式（带着细节）；打开后可以一键只留概述`);
+    if (sh && C.shotsOverLimit(sh.doc).length) warns.push(`第${seg}段的镜头表有概述超过十个字`);
+  }
+  pj.notes.forEach(n => warns.push(n));
+  const cards = h('div', { class: 'cards' });
+  cards.append(h('div', { class: 'card' }, h('h4', null, '目录结构'),
+    h('div', { class: 'dirs' }, STD_DIRS.map(d => h('span', { class: 'dir' + (pj.dirs[d] ? ' ok' : ' miss') }, pj.dirs[d] ? icon('check') : icon('x'), d))),
+    pj.extra.length ? h('p', { class: 'faint small' }, '其他：' + pj.extra.map(e => e.name).join('、')) : null,
+    missingDirs.length ? h('button', { class: 'btn sm', onclick: fixDirs }, '补齐 ' + missingDirs.join('、')) : h('p', { class: 'faint small' }, '五个标准文件夹都在。')));
+  cards.append(h('div', { class: 'card' + (warns.length ? ' warn' : '') }, h('h4', null, '提醒'),
+    warns.length ? h('ul', { class: 'warns' }, warns.map(w => h('li', null, w))) : h('p', { class: 'faint small' }, '没有要处理的事。')));
+  if (pj.docsMd.length || pj.loose.length) {
+    cards.append(h('div', { class: 'card' }, h('h4', null, '其他文件'),
+      h('ul', { class: 'files-ul' },
+        pj.docsMd.map(f => h('li', null, h('button', { class: 'linkbtn', onclick: () => showText(f) }, f.name), h('span', { class: 'faint small' }, ' ' + rel(f.path)))),
+        pj.loose.map(e => h('li', null, h('button', { class: 'linkbtn', onclick: () => loadEntry(e) }, e.name), h('span', { class: 'faint small' }, ' ' + KN[e.kind] + ' · 文件名里没有段号'))))));
+  }
+  wrap.append(cards);
+  return wrap;
+}
+function groupByCat(list) {
+  const m = new Map();
+  for (const e of list) { if (!m.has(e.cat)) m.set(e.cat, []); m.get(e.cat).push(e); }
+  return m;
+}
+function assetGallery(pj) {
+  const box = h('div', { class: 'gallery' }, h('div', { class: 'gal-h' }, h('span', { class: 'gal-t' }, '资产提示词'), h('span', { class: 'faint small' }, pj.aprompts.length + ' 份'),
+    h('button', { class: 'btn sm', onclick: () => newAssetPromptDlg() }, icon('plus'), '新建')));
+  for (const [cat, list] of groupByCat(pj.aprompts)) {
+    const row = h('div', { class: 'gal-row' });
+    for (const e of list) {
+      const im = imageFor(e.key);
+      row.append(h('button', { class: 'acard', onclick: () => openAsset(e), title: rel(e.path) },
+        h('div', { class: 'athumb' + (im ? '' : ' none') }, im ? imgEl(im) : h('span', null, e.label.slice(0, 1))),
+        h('div', { class: 'aname' }, e.label)));
+    }
+    box.append(h('div', { class: 'gal-cat' }, h('div', { class: 'gal-cn' }, cat, h('em', null, list.length)), row));
+  }
+  return box;
+}
+async function showText(f) {
+  const { buf } = await FS.read(f.path);
+  const text = C.decodeText(buf).text;
+  dialog(close => h('div', { class: 'dlg wide' }, h('h3', null, f.name), h('div', { class: 'dlg-sub' }, rel(f.path)), h('pre', { class: 'mdview' }, text), h('div', { class: 'acts' }, h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close() }, '关闭'))));
+}
+async function fixDirs() {
+  const miss = STD_DIRS.filter(d => !S.pj.dirs[d]);
+  const ok = await confirmDlg({ title: '补齐目录', body: `在「${S.pj.name}」里新建：${miss.join('、')}。不动已有的文件。`, ok: '新建' });
+  if (!ok) return;
+  for (const d of miss) await FS.dir([S.pj.name, d], true);
+  toast('已补齐：' + miss.join('、'));
+  await openProject(S.pj.name, true);
+}
+
+/* ---------- 编辑区 ---------- */
+function renderEditor() {
+  const ed = S.ed;
+  const canvas = h('div', { class: 'canvas', id: 'canvas' });
+  if (ed && ed.entry.cat) canvas.append(renderAssetRow(ed.entry));
+  else if (S.seg) { const slot = S.pj.segs.get(S.seg); const list = slot ? slot[S.tab] : []; if (list.length > 1) canvas.append(renderFileRow(list)); }
+  if (ed && ed.recovery) {
+    canvas.append(h('div', { class: 'banner' }, h('span', null, `有一份 ${fmtTime(ed.recovery.t)} 没保存的修改。`),
+      h('button', { class: 'btn sm ink', onclick: () => { pushUndo(); ed.doc = C.cloneDoc(ed.recovery.doc); ed.recovery = null; markDirty(); rerender(); toast('已恢复，记得保存'); } }, '恢复'),
+      h('button', { class: 'btn sm ghost', onclick: () => { clearRecovery(); ed.recovery = null; rerender(); } }, '丢弃')));
+  }
+  if (ed && ed.notice) canvas.append(h('div', { class: 'banner soft' }, h('span', null, ed.notice)));
+  canvas.append(ed ? renderSheet(ed) : renderEmptyDoc());
+  const stage = h('div', { class: 'stage' + (S.rail === 'compare' ? ' wide-rail' : '') }, canvas);
+  if (ed) stage.append(renderRail());
+  return stage;
+}
+function renderFileRow(list) {
+  const row = h('div', { class: 'files' });
+  for (const e of list) {
+    const on = S.ed && pathEq(S.ed.entry.path, e.path) && S.ed.entry.seg === e.seg;
+    const label = e.kind === 'prompt' ? (e.main ? '本段' : e.label) : e.combined ? '汇总稿 · ' + e.name : e.name;
+    row.append(h('button', { class: 'fchip' + (on ? ' on' : ''), title: rel(e.path), onclick: () => !on && openSlot(S.seg, S.tab, e) }, label));
+  }
+  return row;
+}
+function renderAssetRow(entry) {
+  const row = h('div', { class: 'files' }, h('span', { class: 'files-cat' }, entry.cat));
+  for (const e of S.pj.aprompts.filter(x => x.cat === entry.cat)) {
+    const on = pathEq(e.path, entry.path);
+    row.append(h('button', { class: 'fchip' + (on ? ' on' : ''), title: rel(e.path), onclick: () => !on && openAsset(e) }, e.label));
+  }
+  row.append(h('button', { class: 'fchip fchip-new', onclick: () => newAssetPromptDlg(entry.cat) }, '＋ 新建'));
+  return row;
+}
+function renderEmptyDoc() {
+  const seg = S.seg, kind = S.tab;
+  const others = S.pj.order.filter(s => s !== seg && S.pj.segs.get(s).script.some(e => !e.combined));
+  return h('div', { class: 'sheet empty-sheet' },
+    h('div', { class: 'doc-kicker' }, KSPACED[kind]),
+    h('div', { class: 'doc-seg' }, '第' + seg + '段'),
+    h('div', { class: 'ornament' }, h('span')),
+    h('p', { class: 'empty-say' }, kind === 'prompt' ? '这一段还没有视频提示词。' : `这一段还没有${KN[kind]}。`),
+    kind === 'prompt'
+      ? h('div', { class: 'empty-acts' }, h('button', { class: 'btn ink', onclick: newPromptDlg }, '新建视频提示词'))
+      : h('div', { class: 'empty-acts' },
+        h('button', { class: 'btn ink', onclick: () => createDoc(kind, seg, null) }, '按固定格式新建'),
+        kind === 'script' && others.length ? h('button', { class: 'btn', onclick: () => copyFromDlg(seg, others) }, '照别的段复制') : null),
+    kind === 'shots' ? h('p', { class: 'faint small' }, '镜头表一镜一行，每行不超过十个字。') : null);
+}
+
+function renderSheet(ed) {
+  const doc = ed.doc;
+  const sheet = h('article', { class: 'sheet k-' + doc.kind + (ed.entry.cat ? ' k-asset' : '') });
+  if (ed.entry.combined) sheet.append(h('div', { class: 'stamp' }, '汇总'));
+  sheet.append(renderTitle(doc, ed));
+  if (doc.kind === 'script') renderScript(sheet, doc);
+  else if (doc.kind === 'shots') renderShots(sheet, doc);
+  else renderPrompt(sheet, doc, false, ed);
+  sheet.append(h('div', { class: 'sheet-foot' }, rel(ed.target)));
+  return sheet;
+}
+function renderTitle(doc, ed, ro) {
+  const asset = ed && ed.entry.cat;
+  const segText = asset ? ed.entry.cat : (doc.seg || S.seg) ? '第' + (doc.seg || S.seg) + '段' : '';
+  const t = h('header', { class: 'doc-title' }, h('div', { class: 'doc-kicker' }, asset ? '资 产 提 示 词' : KSPACED[doc.kind]), segText ? h('div', { class: 'doc-seg' }, segText) : null);
+  if (doc.kind === 'prompt') t.append(h('div', { class: 'doc-name fixed' }, ed ? (asset ? ed.entry.label : ed.entry.main ? '视频提示词' : ed.entry.label) : ''));
+  else if (ro) { if (doc.name) t.append(h('div', { class: 'doc-name fixed' }, doc.name)); }
+  else {
+    const inp = h('input', { class: 'doc-name-in', value: doc.name, placeholder: '添一个段名', spellcheck: 'false', maxlength: '24' });
+    bindInput(inp, v => { doc.name = v; });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !isComposing(e)) inp.blur(); });
+    t.append(h('div', { class: 'doc-name' }, inp));
+  }
+  t.append(h('div', { class: 'ornament' }, h('span')));
+  return t;
+}
+
+/* ---------- 文本高亮 ---------- */
+function tokenize(text, kind) {
+  const re = kind === 'prompt'
+    ? /(\{[^{}\n]*\})|(<[^<>\n]*>)|(@(?:图片|视频|音频)\s*[0-9]+)|(【[^】\n]*】)|(〔[^〕\n]*〕)/g
+    : /(「[^」\n]*」)|([（(]音效[：:][^）)\n]*[）)])|(“[^”\n]*”)|(〔[^〕\n]*〕)/g;
+  const out = [];
+  let last = 0, m;
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push({ t: text.slice(last, m.index), c: '', o: last });
+    let c;
+    if (kind === 'prompt') c = m[1] ? 'tk-say' : m[2] ? 'tk-sfx' : m[3] ? 'tk-ref' : m[4] ? 'tk-br' : 'tk-ph';
+    else c = m[1] ? 'tk-q' : m[2] ? 'tk-sfx' : m[3] ? 'tk-q' : 'tk-ph';
+    out.push({ t: m[0], c, o: m.index });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push({ t: text.slice(last), c: '', o: last });
+  return out;
+}
+const spans = (text, base, kind) => tokenize(text, kind).map(x => h('span', { class: x.c || null, 'data-o': base + x.o }, x.t));
+
+/* ---------- 一行：显示 ---------- */
+const HINT = {
+  场景: '时间｜内/外｜地点', 人物: '角色（年龄、外形、服装）、角色（……）', 梗概: '一两句话讲完本段，写到结束时的状态',
+  影像风格: '片种和题材，写实电影摄影，胶片或画面质感……', 摄影与镜头: '焦段倾向、透视、景深、手持呼吸感', 光色基调: '整体明暗冷暖；主光来源；对比度和饱和度……', 核心氛围: '几点、在哪、谁在干什么，再落一句整体感觉', 本段事件: '本段从头到尾发生了什么，写到结束时的状态',
+  运镜: '运镜的总规则', 构图: '纵深、要看清的背景元素、关键道具', 轴线: '以什么为轴，两侧各是什么，不越轴',
+  '机位/景别/角度': '景别，角度，机位在哪，朝哪个方向拍', 本镜调用: '画面里的每个人带编号；本镜的关键道具', 画面构图: '谁在画面哪一侧，背景是什么；不拍反打', 环境音: '这一镜的声源，哪个近、哪个远', 进入状态: '镜头开始时每个人在哪、在做什么',
+  '动作/表情': '动作和表情，台词和手上的事叠着走', 音效: '发声的物件和接触<音效>', 镜头: '怎么动，带一笔环境声', 台词: '说话人，语气：{台词}画内发声……；没有写 无', 退出状态: '镜头结束时的画面', 切点: '跟着哪个动作切到哪里',
+};
+function roleOf(b, ctx) {
+  const t = b.text;
+  if (ctx.kind === 'script') return C.scriptRole(t, ctx.sec);
+  if (!t.trim()) return 'blank';
+  if (ctx.kind === 'shots') return C.splitLabel(t) ? 'field' : 'plain';
+  if (C.RE_SUB.test(t.trim())) return 'sub';
+  return C.splitLabel(t) ? 'pfield' : 'pline';
+}
+function viewOf(b, role, ctx) {
+  const t = b.text;
+  const v = h('div', { class: 'view' });
+  const hint = s => h('span', { class: 'hint' }, s || '　');
+  const kind = ctx.kind;
+  const labVal = cls => {
+    const f = C.splitLabel(t), off = t.length - f.value.length;
+    v.append(h('span', { class: 'lab', 'data-o': 0 }, f.label), h('div', { class: 'val ' + (cls || ''), 'data-o': off }, f.value.trim() ? spans(f.value, off, kind) : hint(HINT[f.label])));
+  };
+  switch (role) {
+    case 'scene': {
+      const f = C.splitLabel(t), off = t.length - f.value.length;
+      const val = h('div', { class: 'val scene' });
+      if (!f.value.trim()) val.append(hint(HINT.场景));
+      else {
+        let o = off;
+        f.value.split('｜').forEach((p, i) => { if (i) val.append(h('i', { class: 'sep' })); val.append(h('span', { 'data-o': o }, p)); o += p.length + 1; });
+      }
+      v.append(h('span', { class: 'lab', 'data-o': 0 }, f.label), val);
+      break;
+    }
+    case 'cast': {
+      const f = C.splitLabel(t), off = t.length - f.value.length;
+      const val = h('div', { class: 'val cast', 'data-o': off });
+      const list = C.parseCast(f.value);
+      if (!list.length) val.append(hint(HINT.人物));
+      let o = off;
+      for (const c of list) {
+        const at = t.indexOf(c.name, o);
+        val.append(h('span', { class: 'cast-i' }, h('b', { 'data-o': at }, c.name), c.desc ? h('span', { 'data-o': at + c.name.length + 1 }, c.desc) : null));
+        o = at + c.name.length;
+      }
+      v.append(h('span', { class: 'lab', 'data-o': 0 }, f.label), val);
+      break;
+    }
+    case 'meta': case 'field': case 'pfield': labVal(role === 'pfield' ? 'pv' : ''); break;
+    case 'action': {
+      const m = /^[△▲]\s*/.exec(t), body = t.slice(m[0].length);
+      v.append(h('span', { class: 'mk' }, '△'), h('div', { class: 'val', 'data-o': m[0].length }, body.trim() ? spans(body, m[0].length, kind) : hint('看得见的动作和画面')));
+      break;
+    }
+    case 'line': {
+      const L = C.parseLine(t);
+      const howAt = L.how ? t.indexOf(L.how) : -1, sayAt = t.length - L.say.length;
+      v.append(h('div', { class: 'who', 'data-o': 0 }, L.who),
+        h('div', { class: 'say-wrap' }, L.how ? h('div', { class: 'how', 'data-o': howAt }, L.how) : null,
+          h('div', { class: 'say', 'data-o': sayAt }, L.say.trim() ? spans(L.say, sayAt, kind) : hint('台词'))));
+      break;
+    }
+    case 'sub': case 'sfx': {
+      if (kind === 'prompt') { v.append(h('span', { 'data-o': 0 }, t.trim())); break; }
+      const f = C.splitLabel(t), off = t.length - f.value.length;
+      v.append(h('span', { class: 'pill', 'data-o': 0 }, f.label), h('div', { class: 'val', 'data-o': off }, f.value.trim() ? spans(f.value, off, kind) : hint(role === 'sub' ? '后期加的字幕' : '声音')));
+      break;
+    }
+    case 'blank': v.append(h('span', { class: 'blank-mark' }, '空行')); break;
+    default: v.append(h('div', { class: 'val', 'data-o': 0 }, t.trim() ? spans(t, 0, kind) : hint('　')));
+  }
+  return v;
+}
+function captionOf(role, ctx, b) {
+  if (ctx.kind === 'script') return ({
+    scene: '场景：时间｜内/外｜地点', cast: '人物：角色（年龄、外形、服装）、角色（……）', meta: '标签：内容',
+    action: '△ 看得见的动作和画面　·　景别提示写成 △ 特写：……', line: '角色（表演提示）：台词　·　画外、旁白、内心写在括号里',
+    sub: '字幕：后期加的字', sfx: '音效：声音', plain: '还没归类：△ 动作 ／ 角色：台词 ／ 字幕：／ 音效：', note: '修改记录、待定事项',
+  })[role] || '';
+  if (ctx.kind === 'shots') return '旧格式的内容，原样保留；用不上了就删掉';
+  if (role === 'sub') return '小节一、小节二……';
+  if (role === 'blank') return '空行　·　不要了按退格删掉';
+  const l = C.labelOf(b.text);
+  return (l && HINT[l] ? `${l}：${HINT[l]}　·　` : '') + '一行一句　·　台词 {}　·　音效 <>';
+}
+
+/* ---------- 一组行 ---------- */
+/* 提示词「加一行」加在最后一个非空行后面：分区末尾的空行是分区之间的间隔 */
+const tailIndex = arr => { let z = arr.length; while (z > 0 && !String(arr[z - 1].text).trim()) z--; return z; };
+function blockList(arr, ctx) {
+  const el = h('div', { class: 'blist' });
+  const api = {
+    el, arr, ctx,
+    render() {
+      // 提示词分区首尾的空行只是间隔：留在文件里，界面上不显示
+      const [a, z] = ctx.kind === 'prompt' ? C.edgeRange(arr) : [0, arr.length];
+      el.replaceChildren(...arr.map((b, i) => { const n = blockEl(b, api); if (i < a || i >= z) n.classList.add('edge'); return n; }));
+    },
+    shown(j) { const n = arr[j] && api.nodeOf(arr[j]); return !!n && !n.classList.contains('edge'); },
+    nodeOf(b) { return b ? el.querySelector(`:scope > [data-id="${b.id}"]`) : null; },
+    appendAt() { return ctx.kind === 'prompt' ? tailIndex(arr) : arr.length; },
+    insert(i, text, how = 'button') {
+      const wasDirty = S.ed.dirty;
+      pushUndo();
+      const b = C.blk(text);
+      arr.splice(i, 0, b);
+      api.render();
+      markDirty();
+      startEdit(api.nodeOf(b), b, api, how, null, text.length);
+      if (EDIT && EDIT.b === b) EDIT.wasDirty = wasDirty;
+      ctx.after && ctx.after();
+      return b;
+    },
+    remove(b, focusPrev) {
+      const i = arr.indexOf(b); if (i < 0) return;
+      pushUndo(); arr.splice(i, 1);
+      api.render(); markDirty(); scheduleRail(); ctx.after && ctx.after();
+      if (focusPrev && arr[i - 1]) { const p = arr[i - 1]; startEdit(api.nodeOf(p), p, api, false, null, p.text.length); }
+    },
+    move(b, d) {
+      const i = arr.indexOf(b), j = i + d;
+      if (i < 0 || j < 0 || j >= arr.length) return false;
+      pushUndo(); arr.splice(i, 1); arr.splice(j, 0, b);
+      api.render(); markDirty(); scheduleRail(); ctx.after && ctx.after();
+      return true;
+    },
+  };
+  api.render();
+  return api;
+}
+function blockEl(b, list) {
+  const ctx = list.ctx;
+  const role = roleOf(b, ctx);
+  const node = h('div', { class: `blk r-${role}`, 'data-id': b.id });
+  node.append(viewOf(b, role, ctx));
+  if (ctx.ro) return node;
+  node.append(toolsOf(b, list));
+  node.addEventListener('mousedown', ev => {
+    if (ev.button !== 0 || ev.target.closest('.tools') || node.classList.contains('editing')) return;
+    ev.preventDefault();
+    startEdit(node, b, list, false, ev);
+  });
+  return node;
+}
+function caretFromEvent(ev, node) {
+  if (!ev || !document.caretRangeFromPoint) return null;
+  const r = document.caretRangeFromPoint(ev.clientX, ev.clientY);
+  if (!r || !node.contains(r.startContainer)) return null;
+  const el = r.startContainer.nodeType === 3 ? r.startContainer.parentElement : r.startContainer;
+  const host = el && el.closest('[data-o]');
+  if (!host || !node.contains(host)) return null;
+  let off = 0;
+  const w = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+  let tn;
+  while ((tn = w.nextNode())) { if (tn === r.startContainer) { off += r.startOffset; break; } off += tn.length; }
+  if (host.querySelector('.hint')) off = 0;
+  return +host.dataset.o + off;
+}
+function grow(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+function startEdit(node, b, list, isNew, ev, caret) {
+  if (!node) return;
+  const pos = caret != null ? caret : caretFromEvent(ev, node);
+  commitEditing();
+  if (!node.isConnected) { node = list.nodeOf(b); if (!node) return; }
+  const role = roleOf(b, list.ctx);
+  const ta = h('textarea', { class: 'ta', rows: '1', spellcheck: 'false' });
+  ta.value = b.text;
+  node.classList.add('editing');
+  node.replaceChildren(h('div', { class: 'ed-cap' }, captionOf(role, list.ctx, b)), ta,
+    h('div', { class: 'ed-tips' }, 'Esc 完成　回车 另起一行　Tab 下一行　Alt+↑↓ 移动　Ctrl+Z 撤销'), toolsOf(b, list));
+  EDIT = { node, b, list, ta, orig: b.text, isNew, wasDirty: S.ed && S.ed.dirty };
+  grow(ta);
+  ta.focus({ preventScroll: true });
+  const p = pos == null ? ta.value.length : Math.max(0, Math.min(ta.value.length, pos));
+  ta.setSelectionRange(p, p);
+  ta.addEventListener('input', () => grow(ta));
+  ta.addEventListener('blur', () => { if (EDIT && EDIT.ta === ta) commitEditing(); });
+  ta.addEventListener('keydown', e => onEditKey(e, ta));
+}
+function onEditKey(e, ta) {
+  if (isComposing(e) || !EDIT || EDIT.ta !== ta) return;
+  const { b, list } = EDIT;
+  const arr = list.arr;
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); commitEditing(); return; }
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    const pre = nextPrefix(list.ctx);
+    commitEditing();
+    const i = arr.indexOf(b);
+    list.insert(i >= 0 ? i + 1 : list.appendAt(), pre);
+    return;
+  }
+  if (e.key === 'Enter' && !e.shiftKey) {
+    // 一行一件事：回车就是另起一行，光标后面的字带到下一行
+    e.preventDefault();
+    const prompt = list.ctx.kind === 'prompt';
+    const s = ta.selectionStart, rest = ta.value.slice(ta.selectionEnd);
+    ta.value = ta.value.slice(0, s);
+    if (prompt || rest) EDIT.isNew = false;
+    commitEditing();
+    const i = arr.indexOf(b);
+    if (i < 0) return;                       // 新加的空行，回车就是不要了
+    const text = prompt ? rest : rest || nextPrefix(list.ctx);
+    list.insert(i + 1, text, prompt || rest ? 'split' : 'button');
+    if (EDIT && rest) EDIT.ta.setSelectionRange(0, 0);
+    return;
+  }
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const d = e.shiftKey ? -1 : 1;
+    commitEditing();
+    let j = arr.indexOf(b) + d;
+    while (arr[j] && !list.shown(j)) j += d;
+    if (arr[j]) startEdit(list.nodeOf(arr[j]), arr[j], list, false, null, arr[j].text.length);
+    return;
+  }
+  if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    e.preventDefault();
+    const caret = ta.selectionStart;
+    commitEditing();
+    if (list.move(b, e.key === 'ArrowUp' ? -1 : 1)) {
+      const n = list.nodeOf(b); flash(n);
+      startEdit(n, b, list, false, null, caret);
+    }
+    return;
+  }
+  if (e.key === 'Backspace' && ta.value === '' && arr.length > 1) {
+    e.preventDefault();
+    EDIT = null;
+    list.remove(b, true);
+  }
+}
+const nextPrefix = ctx => ctx.kind === 'script' && ctx.sec === 'body' ? '△ ' : '';
+function commitEditing() {
+  if (INPUT_EDIT) flushInputEdit();
+  if (!EDIT) return false;
+  const { b, list, ta, orig, isNew, wasDirty } = EDIT;
+  EDIT = null;
+  const prompt = list.ctx.kind === 'prompt';
+  let text = ta.value.replace(/\r/g, '');
+  if (!prompt) text = text.replace(/[ \t\u3000]+$/gm, '').replace(/\n{2,}/g, '\n').replace(/^\n+|\n+$/g, '');
+  const bare = text.replace(/^[△▲]\s*$/, '').replace(/^[^：:\n]{1,10}[：:]\s*$/, '').trim();
+  const i = list.arr.indexOf(b);
+  // 新加的一行什么也没写：撤掉，像没加过一样
+  const drop = prompt ? (isNew === 'button' && !text.trim()) || (isNew === 'split' && !text && i >= tailIndex(list.arr)) : !bare;
+  if (isNew && i >= 0 && drop) {
+    list.arr.splice(i, 1);
+    if (S.ed) { S.ed.undo.pop(); S.ed.dirty = !!wasDirty; paintStatus(); }
+    list.render(); scheduleRail(); list.ctx.after && list.ctx.after();
+    return true;
+  }
+  if (text !== orig && i >= 0) {
+    pushUndo();
+    if (text.includes('\n')) {
+      const lines = text.split('\n');
+      b.text = lines[0];
+      list.arr.splice(i + 1, 0, ...lines.slice(1).map(C.blk));
+    } else b.text = text;
+    markDirty();
+  }
+  list.render();
+  list.ctx.after && list.ctx.after();
+  scheduleRail();
+  return true;
+}
+function flash(n) { if (!n) return; n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); }
+
+/* ---------- 一行的工具条 ---------- */
+function tbtn(ic, title, fn) {
+  const x = h('button', { class: 'tb', type: 'button', title }, icon(ic));
+  x.addEventListener('mousedown', e => e.preventDefault());
+  x.addEventListener('click', e => { e.stopPropagation(); fn(); });
+  return x;
+}
+function toolsOf(b, list) {
+  const t = h('div', { class: 'tools' });
+  const ctx = list.ctx;
+  if (ctx.kind === 'script' && ctx.sec === 'body') {
+    const role = C.scriptRole(b.text, 'body');
+    for (const [r, label] of [['action', '△'], ['line', '台词'], ['sub', '字幕'], ['sfx', '音效']]) {
+      const x = h('button', { class: 'tb role' + (role === r ? ' on' : ''), type: 'button', title: '改成' + { action: '动作', line: '台词', sub: '字幕', sfx: '音效' }[r] }, label);
+      x.addEventListener('mousedown', e => e.preventDefault());
+      x.addEventListener('click', e => { e.stopPropagation(); commitEditing(); convertBeat(b, r, list); });
+      t.append(x);
+    }
+    t.append(h('i', { class: 'tsep' }));
+  }
+  t.append(
+    tbtn('up', '上移　Alt+↑', () => { commitEditing(); if (list.move(b, -1)) flash(list.nodeOf(b)); }),
+    tbtn('down', '下移　Alt+↓', () => { commitEditing(); if (list.move(b, 1)) flash(list.nodeOf(b)); }),
+    tbtn('plus', '在下面加一行　Ctrl+Enter', () => { commitEditing(); list.insert(list.arr.indexOf(b) + 1, nextPrefix(ctx)); }),
+    tbtn('x', '删掉这一行', () => { commitEditing(); list.remove(b); }));
+  return t;
+}
+function beatBody(t) {
+  if (/^[△▲]/.test(t)) return t.replace(/^[△▲]\s*/, '');
+  const f = /^(字幕|音效)[：:]\s*([\s\S]*)$/.exec(t); if (f) return f[2];
+  const L = C.parseLine(t); if (L) return L.say;
+  return t;
+}
+function castNames() {
+  const d = S.ed && S.ed.doc; if (!d || d.kind !== 'script') return [];
+  const c = d.sections[0].blocks.find(x => C.labelOf(x.text) === '人物');
+  return c ? C.parseCast(C.splitLabel(c.text).value).map(x => x.name) : [];
+}
+function lastSpeaker(list, b) {
+  const i = list.arr.indexOf(b);
+  for (let k = i - 1; k >= 0; k--) { const L = C.parseLine(list.arr[k].text); if (L && C.scriptRole(list.arr[k].text, 'body') === 'line') return L.who; }
+  return castNames()[0] || '角色';
+}
+function convertBeat(b, r, list) {
+  const body = beatBody(b.text);
+  const nt = r === 'action' ? '△ ' + body : r === 'sub' ? '字幕：' + body : r === 'sfx' ? '音效：' + body : lastSpeaker(list, b) + '：' + body;
+  if (nt === b.text) return;
+  pushUndo(); b.text = nt;
+  list.render(); markDirty(); scheduleRail();
+  const n2 = list.nodeOf(b); flash(n2);
+  if (r === 'line') startEdit(n2, b, list, false, null, nt.indexOf('：'));
+}
+
+/* ---------- 加一行 ---------- */
+function addBar(items) {
+  const bar = h('div', { class: 'addbar' });
+  for (const it of items) {
+    if (!it) continue;
+    const btn = h('button', { class: 'add' + (it.cls ? ' ' + it.cls : ''), type: 'button', title: it.title || null }, it.label);
+    btn.addEventListener('mousedown', e => e.preventDefault());
+    btn.addEventListener('click', e => { e.stopPropagation(); commitEditing(); it.menu ? popMenu(btn, it.menu()) : it.run(); });
+    bar.append(btn);
+  }
+  return bar;
+}
+function popMenu(anchor, items) {
+  document.querySelectorAll('.menu').forEach(m => m.remove());
+  const r = anchor.getBoundingClientRect();
+  const m = h('div', { class: 'menu', style: `left:${r.left}px; top:${r.bottom + 6}px` });
+  for (const it of items) {
+    const x = h('button', { class: 'menu-i', type: 'button' }, it.label);
+    x.addEventListener('mousedown', e => e.preventDefault());
+    x.addEventListener('click', () => { m.remove(); it.run(); });
+    m.append(x);
+  }
+  document.body.append(m);
+  const off = e => { if (!m.contains(e.target)) { m.remove(); document.removeEventListener('mousedown', off, true); } };
+  setTimeout(() => document.addEventListener('mousedown', off, true), 0);
+}
+/* 固定标签：缺哪个补哪个，插在固定的位置 */
+function labelAdds(arr, labels, list, extra) {
+  const have = new Set(arr.map(b => C.labelOf(b.text)));
+  const items = labels.filter(l => !have.has(l)).map(l => ({
+    label: '＋ ' + l, title: HINT[l] || null,
+    run: () => {
+      const idx = labels.indexOf(l);
+      let at = 0;
+      arr.forEach((b, i) => { const k = labels.indexOf(C.labelOf(b.text)); if (k >= 0 && k < idx) at = i + 1; });
+      list.insert(at, l + '：');
+    },
+  }));
+  return [...items, ...(extra || [])];
+}
+const sectionHead = (no, name) => h('div', { class: 'sec-h' }, no ? h('span', { class: 'sec-no' }, no) : null, h('span', { class: 'sec-name' }, name));
+
+/* ---------- 剧本 ---------- */
+function renderScript(sheet, doc, ro) {
+  const [H, B, N] = doc.sections;
+  const head = h('section', { class: 'sec sec-head', 'data-sec': 'head' });
+  const hl = blockList(H.blocks, { kind: 'script', sec: 'head', ro });
+  head.append(hl.el);
+  if (!ro) head.append(addBar(labelAdds(H.blocks, C.SCRIPT_HEAD, hl, [{ label: '＋ 其他', title: '标签：内容', run: () => hl.insert(H.blocks.length, '') }])));
+  sheet.append(head);
+
+  const body = h('section', { class: 'sec', 'data-sec': 'body' }, sectionHead('', '正　文'));
+  const bl = blockList(B.blocks, { kind: 'script', sec: 'body', ro });
+  body.append(bl.el);
+  if (!ro) body.append(addBar([
+    { label: '＋ △ 动作', run: () => bl.insert(B.blocks.length, '△ ') },
+    { label: '＋ 台词', menu: () => [...castNames().map(n => ({ label: n, run: () => bl.insert(B.blocks.length, n + '：') })), { label: '其他角色…', run: () => bl.insert(B.blocks.length, '') }] },
+    { label: '＋ 字幕', run: () => bl.insert(B.blocks.length, '字幕：') },
+    { label: '＋ 音效', run: () => bl.insert(B.blocks.length, '音效：') },
+  ]));
+  sheet.append(body);
+
+  if (!ro || N.blocks.length) {
+    const notes = h('section', { class: 'sec sec-notes', 'data-sec': 'notes' }, sectionHead('', '备　注'));
+    const nl = blockList(N.blocks, { kind: 'script', sec: 'notes', ro });
+    notes.append(nl.el);
+    if (!N.blocks.length && !ro) notes.append(h('p', { class: 'sec-empty' }, '修改记录、待定事项写在这里；没有就空着，不会写进文件。'));
+    if (!ro) notes.append(addBar([{ label: '＋ 备注', run: () => nl.insert(N.blocks.length, '') }]));
+    sheet.append(notes);
+  }
+}
+
+/* ---------- 镜头表：一镜一行，不超过十个字 ---------- */
+function renderShots(sheet, doc, ro) {
+  const old = C.shotOldCount(doc);
+  if (old && !ro) sheet.append(h('div', { class: 'oldnote', 'data-sec': 'old' },
+    h('div', null, h('b', null, '这份镜头表还是旧格式。'), `除了每一镜的概述，还有 ${old} 行细节。固定格式只留概述，细节写进提示词。`),
+    h('button', { class: 'btn sm', onclick: () => keepOnlySummaries(doc) }, '只留概述')));
+  if (doc.pre.length) sheet.append(oldBox(doc.pre, 'pre', '旧格式 · 分镜之前', ro));
+  const list = h('ol', { class: 'shotlist' + (ro ? ' ro' : '') });
+  doc.shots.forEach((sh, k) => list.append(shotRow(doc, sh, k, ro)));
+  const sec = h('section', { class: 'sec sec-shots', 'data-sec': 'shots' }, list);
+  if (!doc.shots.length) sec.append(h('p', { class: 'sec-empty' }, '还没有镜头。'));
+  if (!ro) sec.append(addBar([{ label: '＋ 镜头', cls: 'strong', run: () => insertShot(doc, doc.shots.length) }]));
+  sheet.append(sec);
+  if (doc.post.length) sheet.append(oldBox(doc.post, 'post', '旧格式 · 分镜之后', ro));
+}
+function oldBox(arr, key, title, ro) {
+  const id = (S.ed ? S.ed.target.join('/') : '') + '#' + key;
+  const box = h('div', { class: 'oldbox' + (S.open.has(id) ? ' open' : '') });
+  const body = h('div', { class: 'oldbody' });
+  const paint = () => { body.replaceChildren(); if (S.open.has(id)) body.append(blockList(arr, { kind: 'shots', sec: 'old', ro }).el); };
+  box.append(h('button', { class: 'oldtog', type: 'button', onclick: () => { S.open.has(id) ? S.open.delete(id) : S.open.add(id); box.classList.toggle('open'); paint(); } },
+    icon('chev'), h('span', null, title), h('em', null, arr.length + ' 行')), body);
+  paint();
+  return box;
+}
+function shotRow(doc, sh, k, ro) {
+  const row = h('li', { class: 'srow', 'data-shot': sh.id });
+  const no = h('span', { class: 'sno' }, '镜头' + (k + 1));
+  if (ro) {
+    row.append(no, h('span', { class: 'sbar' }, '｜'), h('span', { class: 'stitle' }, sh.title || h('span', { class: 'hint' }, '未写')));
+    return row;
+  }
+  const inp = h('input', { class: 'sin', value: sh.title, maxlength: String(C.SHOT_MAX), placeholder: '十个字以内', spellcheck: 'false', 'aria-label': '镜头' + (k + 1) + ' 概述' });
+  const cnt = h('span', { class: 'scount' });
+  const paint = () => { const n = C.countChars(inp.value); cnt.textContent = n + ' / ' + C.SHOT_MAX; cnt.classList.toggle('over', n > C.SHOT_MAX); cnt.classList.toggle('zero', !n); };
+  paint();
+  bindInput(inp, v => { sh.title = v; }, paint);
+  inp.addEventListener('focus', () => row.classList.add('focus'));
+  inp.addEventListener('blur', () => row.classList.remove('focus'));
+  inp.addEventListener('keydown', e => {
+    if (isComposing(e)) return;
+    const i = doc.shots.indexOf(sh);
+    if (e.key === 'Enter') { e.preventDefault(); insertShot(doc, i + 1); }
+    else if (e.key === 'Backspace' && !inp.value && doc.shots.length > 1 && !sh.blocks.length) { e.preventDefault(); removeShot(doc, sh, -1); }
+    else if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); moveShot(doc, sh, e.key === 'ArrowUp' ? -1 : 1); }
+    else if (e.key === 'ArrowUp' && doc.shots[i - 1]) { e.preventDefault(); focusShot(doc.shots[i - 1].id); }
+    else if (e.key === 'ArrowDown' && doc.shots[i + 1]) { e.preventDefault(); focusShot(doc.shots[i + 1].id); }
+    else if (e.key === 'Escape') inp.blur();
+  });
+  const tools = h('div', { class: 'stools' },
+    tbtn('up', '上移　Alt+↑', () => moveShot(doc, sh, -1)),
+    tbtn('down', '下移　Alt+↓', () => moveShot(doc, sh, 1)),
+    tbtn('plus', '在下面加一镜　回车', () => insertShot(doc, doc.shots.indexOf(sh) + 1)),
+    tbtn('x', '删掉这一镜', () => removeShot(doc, sh, 0)));
+  row.append(no, h('span', { class: 'sbar' }, '｜'), inp, cnt, tools);
+  if (sh.blocks.length) row.append(oldBox(sh.blocks, sh.id, '旧细节', ro));
+  return row;
+}
+function focusShot(id) {
+  const row = document.querySelector(`.sheet [data-shot="${id}"]`);
+  if (!row) return;
+  row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  const inp = row.querySelector('input');
+  if (inp) { inp.focus({ preventScroll: true }); const n = inp.value.length; inp.setSelectionRange(n, n); }
+  else flash(row);
+}
+function insertShot(doc, i) {
+  commitEditing(); pushUndo();
+  const sh = C.newShot('');
+  doc.shots.splice(i, 0, sh);
+  markDirty(); rerender(); focusShot(sh.id);
+}
+async function removeShot(doc, sh, focus) {
+  commitEditing();
+  if (sh.title.trim() || sh.blocks.length) {
+    const ok = await confirmDlg({ title: '删掉这一镜', body: `「镜头${doc.shots.indexOf(sh) + 1}｜${sh.title}」${sh.blocks.length ? `连同 ${sh.blocks.length} 行旧细节` : ''}一起删掉。可以 Ctrl+Z 撤销。`, ok: '删掉', danger: true });
+    if (!ok) return;
+  }
+  const i = doc.shots.indexOf(sh);
+  pushUndo(); doc.shots.splice(i, 1);
+  markDirty(); rerender();
+  const next = doc.shots[focus < 0 ? i - 1 : i] || doc.shots[i - 1];
+  if (next) focusShot(next.id);
+}
+function moveShot(doc, sh, d) {
+  const i = doc.shots.indexOf(sh), j = i + d;
+  if (j < 0 || j >= doc.shots.length) return;
+  commitEditing(); pushUndo();
+  doc.shots.splice(i, 1); doc.shots.splice(j, 0, sh);
+  markDirty(); rerender(); focusShot(sh.id);
+}
+async function keepOnlySummaries(doc) {
+  const n = C.shotOldCount(doc);
+  const ok = await confirmDlg({ title: '只留概述', body: `删掉 ${n} 行旧格式的内容，镜头表里只留每一镜的概述。保存时原文件会先移进 历史记录，旧细节在那里还查得到；现在也可以 Ctrl+Z 撤销。`, ok: '只留概述', danger: true });
+  if (!ok) return;
+  commitEditing(); pushUndo();
+  doc.pre = []; doc.post = []; doc.shots.forEach(s => { s.blocks = []; });
+  markDirty(); rerender(); toast('只留下了概述，记得保存');
+}
+
+/* ---------- 提示词 ---------- */
+const promptSecLabels = key => key === 'basic' ? C.PROMPT_BASIC : key === 'rules' ? C.PROMPT_RULES : null;
+function renderPrompt(sheet, doc, ro, ed) {
+  if (!doc.sections.length) {
+    const asset = ed && ed.entry.cat;
+    const empty = !doc.pre.some(b => b.text.trim());
+    const el = h('section', { class: 'sec', 'data-sec': 'pre' }, asset ? null : sectionHead('', '正　文'),
+      empty ? h('p', { class: 'sec-empty' }, '还空着，点「＋ 一行」开始写，一行一句。')
+        : asset ? null : h('p', { class: 'sec-empty' }, '没有认出七个分区，按自由格式一行一行改。延长、编辑类的提示词本来就是这样。'));
+    const l = blockList(doc.pre, { kind: 'prompt', sec: 'pre', ro });
+    el.append(l.el);
+    if (!ro) el.append(addBar([{ label: '＋ 一行', run: () => l.insert(l.appendAt(), '') }]));
+    sheet.append(el);
+    return;
+  }
+  if (doc.pre.some(b => b.text.trim())) {
+    const el = h('section', { class: 'sec', 'data-sec': 'pre' }, sectionHead('', '分区之前'));
+    el.append(blockList(doc.pre, { kind: 'prompt', sec: 'pre', ro }).el);
+    sheet.append(el);
+  }
+  const present = new Set(doc.sections.map(s => s.key));
+  const order = C.PROMPT_SECTIONS.map(s => s.key);
+  const placeholder = def => h('div', { class: 'sec-missing', 'data-sec': def.key }, h('span', null, '缺少「' + def.name + '」分区'),
+    ro ? null : h('button', { class: 'btn sm', onclick: () => addPromptSection(doc, def.key) }, '补上'));
+  const done = new Set();
+  doc.sections.forEach(sec => {
+    const ci = order.indexOf(sec.key);
+    if (!ro) C.PROMPT_SECTIONS.forEach((def, k) => { if (k < ci && !present.has(def.key) && !done.has(def.key)) { done.add(def.key); sheet.append(placeholder(def)); } });
+    sheet.append(promptSection(sec, doc, ro));
+  });
+  if (!ro) C.PROMPT_SECTIONS.forEach(def => { if (!present.has(def.key) && !done.has(def.key)) sheet.append(placeholder(def)); });
+}
+function promptSection(sec, doc, ro) {
+  const ci = C.PROMPT_SECTIONS.findIndex(s => s.key === sec.key);
+  const el = h('section', { class: 'sec p-sec', 'data-sec': sec.key }, sectionHead(C.CN_NUM[ci], sec.head.trim()));
+  const l = blockList(sec.blocks, { kind: 'prompt', sec: sec.key, ro });
+  el.append(l.el);
+  if (sec.key === 'shots') {
+    const shotsEl = h('div', { class: 'pshots' });
+    sec.shots.forEach((sh, k) => shotsEl.append(promptShotCard(sh, k, sec, ro)));
+    el.append(shotsEl);
+    if (!ro) el.append(addBar([{ label: '＋ 镜头', cls: 'strong', run: () => addPromptShot(sec) }]));
+  } else if (!ro) {
+    const labels = promptSecLabels(sec.key);
+    const one = { label: '＋ 一行', run: () => l.insert(l.appendAt(), '') };
+    el.append(addBar(labels ? labelAdds(sec.blocks, labels, l, [one]) : [one]));
+  }
+  return el;
+}
+function promptShotCard(sh, k, sec, ro) {
+  const card = h('div', { class: 'p-shot', 'data-shot': sh.id });
+  let title;
+  if (ro) title = h('div', { class: 'shot-title' }, C.promptShotTitle(sh));
+  else {
+    const inp = h('input', { class: 'shot-title-in', value: C.promptShotTitle(sh), placeholder: '这一镜的标题', spellcheck: 'false' });
+    bindInput(inp, v => { sh.head = sh.head.replace(/^(\s*镜头\s*[0-9０-９]+)[\s\S]*$/, (m, a) => a + '｜' + v); });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !isComposing(e)) inp.blur(); });
+    title = h('div', { class: 'shot-title' }, inp);
+  }
+  card.append(h('div', { class: 'shot-h' }, h('span', { class: 'shot-no' }, '镜 ' + (k + 1)), title, ro ? null : promptShotTools(sh, sec)));
+  const l = blockList(sh.blocks, { kind: 'prompt', sec: 'shot', ro });
+  card.append(l.el);
+  if (!ro) {
+    const have = new Set(sh.blocks.map(b => C.labelOf(b.text)));
+    const subs = sh.blocks.filter(b => C.RE_SUB.test(b.text.trim())).length;
+    const tailAt = () => { const i = sh.blocks.findIndex(b => C.PROMPT_SHOT_TAIL.includes(C.labelOf(b.text))); return i < 0 ? l.appendAt() : i; };
+    const items = [
+      ...C.PROMPT_SHOT_HEAD.filter(x => !have.has(x)).map(x => ({ label: '＋ ' + x, title: HINT[x], run: () => { let at = 0; sh.blocks.forEach((b, i) => { const q = C.PROMPT_SHOT_HEAD.indexOf(C.labelOf(b.text)); if (q >= 0 && q < C.PROMPT_SHOT_HEAD.indexOf(x)) at = i + 1; }); l.insert(at, x + '：'); } })),
+      { label: '＋ 小节' + C.CN_NUM[Math.min(subs, 9)], title: '动作/表情、镜头、台词', run: () => {
+        pushUndo();
+        sh.blocks.splice(tailAt(), 0, ...['小节' + C.CN_NUM[Math.min(subs, 9)], '动作/表情：', '镜头：', '台词：无'].map(C.blk));
+        markDirty(); rerender();
+      } },
+      ...C.PROMPT_SHOT_TAIL.filter(x => !have.has(x)).map(x => ({ label: '＋ ' + x, title: HINT[x], run: () => l.insert(x === '退出状态' ? tailAt() : l.appendAt(), x + '：') })),
+    ];
+    card.append(addBar(items));
+  }
+  return card;
+}
+function promptShotTools(sh, sec) {
+  const arr = sec.shots;
+  const mv = d => {
+    const i = arr.indexOf(sh), j = i + d; if (j < 0 || j >= arr.length) return;
+    commitEditing(); pushUndo(); arr.splice(i, 1); arr.splice(j, 0, sh); C.renumberPromptShots(sec); markDirty(); rerender(); scrollToShot(sh.id);
+  };
+  return h('div', { class: 'shot-tools' },
+    tbtn('up', '这一镜上移', () => mv(-1)), tbtn('down', '这一镜下移', () => mv(1)),
+    tbtn('dup', '复制这一镜', () => addPromptShot(sec, sh)),
+    tbtn('x', '删掉这一镜', async () => {
+      const ok = await confirmDlg({ title: '删掉这一镜', body: '删掉以后可以 Ctrl+Z 撤销。', ok: '删掉', danger: true });
+      if (!ok) return;
+      commitEditing(); pushUndo(); arr.splice(arr.indexOf(sh), 1); C.renumberPromptShots(sec); markDirty(); rerender();
+    }));
+}
+function addPromptShot(sec, from) {
+  commitEditing(); pushUndo();
+  const sh = from ? C.cloneDoc(from) : C.newPromptShot(sec.shots.length + 1, '');
+  const at = from ? sec.shots.indexOf(from) + 1 : sec.shots.length;
+  const prev = sec.shots[at - 1];
+  if (prev) C.ensureTrailingBlank(prev.blocks); else C.ensureTrailingBlank(sec.blocks);
+  sec.shots.splice(at, 0, sh);
+  C.renumberPromptShots(sec);
+  markDirty(); rerender();
+  scrollToShot(sh.id, true);
+}
+function scrollToShot(id, focusTitle) {
+  const n = document.querySelector(`.sheet [data-shot="${id}"]`);
+  if (!n) return;
+  n.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  flash(n);
+  if (focusTitle) { const i = n.querySelector('input'); if (i) setTimeout(() => i.focus({ preventScroll: true }), 300); }
+}
+function addPromptSection(doc, key) {
+  commitEditing(); pushUndo();
+  const sec = C.cloneDoc(C.promptTemplate().sections.find(s => s.key === key));
+  const order = C.PROMPT_SECTIONS.map(s => s.key);
+  const ci = order.indexOf(key);
+  let at = doc.sections.length;
+  for (let i = 0; i < doc.sections.length; i++) if (order.indexOf(doc.sections[i].key) > ci) { at = i; break; }
+  const lastOf = s => s.shots && s.shots.length ? s.shots[s.shots.length - 1].blocks : s.blocks;
+  const prev = doc.sections[at - 1];
+  if (prev) C.ensureTrailingBlank(lastOf(prev)); else if (doc.pre.length) C.ensureTrailingBlank(doc.pre);
+  if (at < doc.sections.length) C.ensureTrailingBlank(lastOf(sec));
+  doc.sections.splice(at, 0, sec);
+  markDirty(); rerender();
+  toast('补上了「' + sec.head + '」，〔 〕里的内容换成本段的');
+}
+
+/* ---------- 右栏：大纲、校对、对照、历史 ---------- */
+function lintOf(ed) {
+  if (!ed) return [];
+  const d = ed.doc;
+  return d.kind === 'script' ? C.lintScript(d) : d.kind === 'shots' ? C.lintShots(d) : C.lintPrompt(d, ed.target[ed.target.length - 1]);
+}
+const RAIL_TABS = [['outline', '大纲'], ['lint', '校对'], ['compare', '对照'], ['history', '历史']];
+function renderRail() {
+  const rail = h('aside', { class: 'rail', id: 'rail' });
+  rail.append(h('div', { class: 'rail-tabs' }, RAIL_TABS.map(([k, label]) => h('button', { class: 'rail-tab', 'data-k': k, onclick: () => {
+    S.rail = k; const st = document.querySelector('.stage'); st && st.classList.toggle('wide-rail', k === 'compare'); paintRail();
+  } }, label))));
+  rail.append(h('div', { class: 'rail-body', id: 'rail-body' }));
+  setTimeout(paintRail, 0);
+  return rail;
+}
+const scheduleRail = debounce(() => paintRail(true), 260);
+function paintRail(light) {
+  const body = document.getElementById('rail-body');
+  if (!body || !S.ed) return;
+  const lint = lintOf(S.ed);
+  const n = lint.filter(x => x.level === 'warn').length;
+  document.querySelectorAll('.rail-tab').forEach(t => {
+    const k = t.dataset.k;
+    t.classList.toggle('on', k === S.rail);
+    if (k === 'lint') { t.textContent = '校对' + (n ? ' ' + n : ''); t.classList.toggle('has', !!n); }
+  });
+  if (light && (S.rail === 'compare' || S.rail === 'history')) return;
+  if (S.rail === 'outline') body.replaceChildren(outlineOf(S.ed.doc));
+  else if (S.rail === 'lint') body.replaceChildren(lintView(lint));
+  else if (S.rail === 'compare') body.replaceChildren(compareView());
+  else { body.replaceChildren(h('p', { class: 'faint small' }, '正在找旧版本…')); historyView().then(v => { if (S.rail === 'history') body.replaceChildren(v); }); }
+}
+function jump(loc) {
+  if (!loc) return;
+  if (loc.shot && S.ed && S.ed.kind === 'shots') { focusShot(loc.shot); return; }
+  let n = null;
+  if (loc.block) n = document.querySelector(`.sheet [data-id="${loc.block}"]`);
+  if (!n && loc.shot) n = document.querySelector(`.sheet [data-shot="${loc.shot}"]`);
+  if (!n && loc.sec) n = document.querySelector(`.sheet [data-sec="${loc.sec}"]`);
+  if (!n) return;
+  n.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  flash(n);
+}
+function outlineOf(doc) {
+  const box = h('div', { class: 'outline' });
+  const item = (cls, label, sub, loc) => h('button', { class: 'ol-i ' + cls, onclick: () => jump(loc) }, h('span', { class: 'ol-l' }, label), sub ? h('span', { class: 'ol-s' }, sub) : null);
+  if (doc.kind === 'script') {
+    box.append(item('ol-sec', '段头', sceneOf(doc), { sec: 'head' }));
+    box.append(item('ol-sec', '正文', doc.sections[1].blocks.length + ' 行', { sec: 'body' }));
+    for (const b of doc.sections[1].blocks) {
+      const r = C.scriptRole(b.text, 'body');
+      const L = r === 'line' ? C.parseLine(b.text) : null;
+      const txt = L ? L.say : beatBody(b.text);
+      box.append(item('ol-beat r-' + r, r === 'line' ? L.who : { action: '△', sub: '字幕', sfx: '音效', plain: '·' }[r], txt.slice(0, 22) + (txt.length > 22 ? '…' : ''), { block: b.id }));
+    }
+    if (doc.sections[2].blocks.length) box.append(item('ol-sec', '备注', doc.sections[2].blocks.length + ' 条', { sec: 'notes' }));
+  } else if (doc.kind === 'shots') {
+    box.append(item('ol-sec', '镜头', doc.shots.length + ' 镜', { sec: 'shots' }));
+    doc.shots.forEach((sh, k) => { const n = C.countChars(sh.title); box.append(item('ol-shot' + (n > C.SHOT_MAX ? ' over' : ''), '镜' + (k + 1) + '　' + (sh.title || '未写'), n > C.SHOT_MAX ? n + ' 字' : '', { shot: sh.id })); });
+    if (C.shotOldCount(doc)) box.append(item('ol-sec', '旧格式内容', C.shotOldCount(doc) + ' 行', { sec: 'old' }));
+  } else {
+    if (!doc.sections.length) box.append(item('ol-sec', '全文', doc.pre.filter(b => b.text.trim()).length + ' 行', { sec: 'pre' }));
+    doc.sections.forEach(s => {
+      const ci = C.PROMPT_SECTIONS.findIndex(x => x.key === s.key);
+      box.append(item('ol-sec', C.CN_NUM[ci] + '　' + s.head.trim(), s.shots ? s.shots.length + ' 镜' : s.blocks.filter(b => b.text.trim()).length + ' 行', { sec: s.key }));
+      if (s.shots) s.shots.forEach((sh, k) => box.append(item('ol-shot', '镜' + (k + 1) + '　' + (C.promptShotTitle(sh) || '未命名'), '', { shot: sh.id })));
+    });
+  }
+  return box;
+}
+function lintView(list) {
+  if (!list.length) return h('div', { class: 'lint-ok' }, h('div', { class: 'seal sm' }, '妥'), h('p', null, '按固定格式查过一遍，没发现问题。'));
+  const warn = list.filter(x => x.level === 'warn'), info = list.filter(x => x.level !== 'warn');
+  const row = x => h('button', { class: 'issue ' + x.level, onclick: () => jump(x.loc) }, h('i', { class: 'lv' }), h('span', null, x.msg));
+  const box = h('div', { class: 'lint' });
+  if (warn.length) box.append(h('div', { class: 'lint-h' }, '要改 · ' + warn.length), ...warn.map(row));
+  if (info.length) {
+    const more = h('div', { class: 'lint-more' + (warn.length ? '' : ' open') }, ...info.map(row));
+    box.append(h('button', { class: 'lint-h tog', onclick: () => more.classList.toggle('open') }, '提示 · ' + info.length), more);
+  }
+  if (S.ed.kind === 'prompt' && S.ed.doc.sections.length) box.append(h('p', { class: 'faint small' }, '按 seedance-prompt-format 的交付前自检查的。老项目沿用旧格式时，「提示」一类可以不管。'));
+  return box;
+}
+function compareView() {
+  const ed = S.ed;
+  const box = h('div', { class: 'compare' });
+  if (ed.entry.cat) {
+    const im = imageFor(ed.entry.key);
+    if (!im) { box.append(h('p', { class: 'faint small' }, '资产里还没有对应的图。图片名照「' + ed.entry.key + '_资产.png」就能自动对上。')); return box; }
+    const img = imgEl(im, 'cmp-img');
+    box.append(h('div', { class: 'cmp-h' }, '对照 · 资产图'), h('button', { class: 'cmp-imgbtn', onclick: () => showImage(im, img.src) }, img), h('div', { class: 'faint small' }, rel(im.path)));
+    return box;
+  }
+  const slot = S.seg && S.pj.segs.get(S.seg);
+  const pick = k => slot && (slot[k].find(e => !e.combined) || slot[k][0]);
+  const k = S.tab === 'shots' ? 'script' : 'shots';
+  const r = pick(k) || (S.tab === 'prompt' ? pick('script') : null);
+  if (r) {
+    const sheet = h('article', { class: 'sheet mini k-' + r.kind });
+    sheet.append(renderTitle(r.doc, null, true));
+    if (r.kind === 'script') renderScript(sheet, r.doc, true); else renderShots(sheet, r.doc, true);
+    box.append(h('div', { class: 'cmp-h' }, '对照 · ' + KN[r.kind]), sheet);
+  } else box.append(h('p', { class: 'faint small' }, `这一段还没有${KN[k]}。`));
+  const imgs = S.seg ? segImages(S.seg) : [];
+  if (imgs.length) {
+    box.append(h('div', { class: 'cmp-h' }, '本段的图'));
+    const g = h('div', { class: 'cmp-imgs' });
+    imgs.forEach(im => { const img = imgEl(im); g.append(h('button', { class: 'cmp-imgbtn', title: im.name, onclick: () => showImage(im, img.src) }, img)); });
+    box.append(g);
+  }
+  return box;
+}
+async function historyView() {
+  const a = archiveOf(S.ed.target);
+  let ents = [];
+  try { ents = await FS.list(a.dir); } catch (e) { /* 还没有旧版本 */ }
+  const items = ents.filter(e => e.kind === 'file' && e.name !== S.ed.target[S.ed.target.length - 1] && e.name.startsWith(a.base) && e.name.endsWith(a.ext))
+    .map(e => { const m = /__(\d{8}-\d{6})$/.exec(e.name.slice(0, e.name.length - a.ext.length)); return { name: e.name, st: m ? m[1] : '', path: [...a.dir, e.name] }; })
+    .sort((x, y) => (y.st || '').localeCompare(x.st || '') || x.name.localeCompare(y.name, 'zh'));
+  const box = h('div', { class: 'history' }, h('p', { class: 'faint small' }, '每次保存前，原文件都移进 ' + rel(a.dir) + '。'));
+  if (!items.length) { box.append(h('p', { class: 'hist-empty' }, '还没有旧版本。')); return box; }
+  for (const it of items) {
+    box.append(h('div', { class: 'hist-i' }, h('span', null, it.st ? fmtStamp(it.st) : it.name), h('button', { class: 'btn sm', onclick: () => loadVersion(it) }, '载入')));
+  }
+  return box;
+}
+async function loadVersion(it) {
+  commitEditing();
+  try {
+    const { buf } = await FS.read(it.path);
+    const { doc } = await parseEntry({ ...S.ed.entry, combined: false }, buf);
+    pushUndo();
+    S.ed.doc = doc;
+    S.ed.notice = `载入了旧版「${it.name}」。保存以后才会替换现在的文件；不想要就 Ctrl+Z。`;
+    markDirty(); rerender();
+  } catch (e) { toast('载入失败：' + e.message, 'err'); }
+}
+
+/* ---------- 新建 ---------- */
+const segOk = seg => /^[0-9]+(-[0-9]+)*$/.test(seg);
+const nameOk = s => !!s && !/[\\/:*?"<>|]/.test(s);
+async function writeNew(p, bytes) {
+  if (await FS.stat(p)) throw new Error('「' + rel(p) + '」已经有了');
+  await FS.write(p, bytes);
+  return p;
+}
+async function afterCreate(p, label, seg) {
+  await rescan();
+  toast(label + '：' + rel(p));
+  const ent = findEntry(p, seg);
+  if (ent) await loadEntry(ent); else render();
+}
+async function newSegmentDlg() {
+  if (!(await guardDirty())) return;
+  const segIn = h('input', { class: 'inp', value: C.nextSeg(S.pj.order), 'data-focus': '' });
+  const nameIn = h('input', { class: 'inp', placeholder: '可以先空着', maxlength: '24' });
+  const err = h('div', { class: 'fld-err' });
+  const r = await dialog(close => {
+    const ok = () => {
+      const seg = C.normSeg(segIn.value.trim());
+      if (!segOk(seg)) { err.textContent = '段号只能是数字和 -，如 1-4'; return; }
+      if (S.pj.segs.has(seg)) { err.textContent = '第' + seg + '段已经有了'; return; }
+      close({ seg, name: nameIn.value.trim() });
+    };
+    [segIn, nameIn].forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter' && !isComposing(e)) ok(); }));
+    return dlgShell('新建一段', '按固定格式建好这一段的剧本和镜头表，放在 定稿的剧本/第N段/ 下。',
+      [field('段号', segIn, '写成 集-段，如 1-4；不分集就写 4'), field('段名', nameIn), err],
+      [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'), h('button', { class: 'btn ink', onclick: ok }, '建好')]);
+  });
+  if (!r) return;
+  try {
+    const p1 = await writeNew(canonical('script', r.seg), await docBytes(C.scriptTemplate(r.seg, r.name)));
+    if (!(await FS.stat(canonical('shots', r.seg)))) await FS.write(canonical('shots', r.seg), await docBytes(C.shotsTemplate(r.seg, r.name)));
+    S.tab = 'script';
+    await afterCreate(p1, '建好了第' + r.seg + '段', r.seg);
+  } catch (e) { toast('没建成：' + e.message, 'err'); }
+}
+async function createDoc(kind, seg, fromEntry) {
+  try {
+    const slot = S.pj.segs.get(seg);
+    const guess = slot && (slot.script.find(e => e.title) || slot.shots.find(e => e.title));
+    const name = guess ? guess.title : '';
+    let doc;
+    if (fromEntry) { doc = C.cloneDoc(fromEntry.doc); doc.seg = seg; doc.name = name; }
+    else doc = kind === 'script' ? C.scriptTemplate(seg, name) : C.shotsTemplate(seg, name);
+    const p = await writeNew(canonical(kind, seg), await docBytes(doc));
+    await afterCreate(p, '新建了' + KN[kind], seg);
+  } catch (e) { toast('没建成：' + e.message, 'err'); }
+}
+async function copyFromDlg(seg, others) {
+  const pick = chips(others.map(s => [s, '第' + s + '段']), others[others.length - 1]);
+  const r = await dialog(close => dlgShell('照别的段复制', `把那一段的剧本复制过来，再改成第${seg}段的内容。`, [field('照哪一段', pick)],
+    [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'), h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close(pick.get()) }, '复制')]));
+  if (!r) return;
+  const src = S.pj.segs.get(r).script.find(e => !e.combined);
+  if (src) await createDoc('script', seg, src);
+}
+async function newPromptDlg() {
+  if (!(await guardDirty())) return;
+  const seg = S.seg, pjn = S.pj.name;
+  const mains = [];
+  for (const s of S.pj.order) { const m = S.pj.segs.get(s).prompt.find(e => e.main) || S.pj.segs.get(s).prompt[0]; if (m) mains.push(m); }
+  const fname = `${pjn}_第${seg}段_视频提示词.txt`;
+  const near = mains.filter(e => C.segCompare(e.seg, seg) < 0).pop() || mains[mains.length - 1];
+  const dirOf = v => v === 'blank' ? (near ? near.path.slice(1, -1) : ['提示词']) : mains.find(e => e.path.join('/') === v).path.slice(1, -1);
+  const prev = h('div', { class: 'fname-prev' });
+  const paint = () => { prev.textContent = [...dirOf(base.get()), fname].join(' / '); };
+  const base = chips([['blank', '空白模板（七分区）'], ...mains.slice(-6).map(e => [e.path.join('/'), '照第' + e.seg + '段'])], near ? near.path.join('/') : 'blank', paint);
+  paint();
+  const r = await dialog(close => dlgShell('新建视频提示词', `第${seg}段。全局部分（基础设定、人物特征句、声音、场景、规则）各段要逐字一样，照前面一段复制最省事；复制过来以后改本段事件、本段说明、分镜和保持一致。`,
+    [field('底稿', base), field('存到', prev)],
+    [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'), h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close(base.get()) }, '建好')]));
+  if (!r) return;
+  try {
+    let doc, dir = near ? near.path.slice(1, -1) : ['提示词'];
+    if (r === 'blank') doc = C.promptTemplate();
+    else {
+      const src = mains.find(e => e.path.join('/') === r);
+      const { buf } = await FS.read(src.path);
+      doc = C.parsePrompt(C.decodeText(buf).text); doc.bom = C.hasBom(buf);
+      dir = src.path.slice(1, -1);
+    }
+    const p = await writeNew([pjn, ...dir, fname], await docBytes(doc));
+    S.tab = 'prompt';
+    await afterCreate(p, '新建了视频提示词', seg);
+  } catch (e) { toast('没建成：' + e.message, 'err'); }
+}
+/* 新资产提示词放在哪：同类已有的放哪就放哪；一份一个子文件夹的（如 人物/外星战士/），放到上一级 */
+function assetDir(cat) {
+  const same = S.pj.aprompts.filter(e => e.cat === cat);
+  if (!same.length) return ['提示词'];
+  const cnt = new Map();
+  for (const e of same) {
+    let d = e.path.slice(1, -1);
+    if (d.length > 2 && d[d.length - 1] === e.label.split(' ')[0]) d = d.slice(0, -1);
+    const k = d.join('/'); cnt.set(k, (cnt.get(k) || 0) + 1);
+  }
+  return [...cnt.entries()].sort((a, b) => b[1] - a[1])[0][0].split('/');
+}
+function assetSuffix(cat) {
+  const any = S.pj.aprompts.find(e => e.cat === cat) || S.pj.aprompts[0];
+  return any && !/资产提示词\.txt$/i.test(any.name) ? '_提示词.txt' : '_资产提示词.txt';
+}
+async function newAssetPromptDlg(cat0) {
+  if (!(await guardDirty())) return;
+  const pjn = S.pj.name;
+  const cats = [...new Set([...CAT_ORDER, ...S.pj.aprompts.map(e => e.cat)])];
+  const nameIn = h('input', { class: 'inp', placeholder: '如 童爸爸_三十出头', 'data-focus': '' });
+  const baseWrap = h('div');
+  const prev = h('div', { class: 'fname-prev' });
+  const err = h('div', { class: 'fld-err' });
+  let base = null;
+  const catIn = chips(cats.map(c => [c, c]), cat0 || cats[0], () => { paintBase(); paint(); });
+  const fname = () => `${pjn}_${catIn.get()}_${nameIn.value.trim().replace(/\s+/g, '_')}${assetSuffix(catIn.get())}`;
+  const paint = () => { prev.textContent = [...assetDir(catIn.get()), fname()].join(' / '); };
+  const paintBase = () => {
+    const same = S.pj.aprompts.filter(e => e.cat === catIn.get());
+    base = chips([['blank', '空白'], ...same.slice(0, 8).map(e => [e.path.join('/'), '照「' + e.label + '」'])], 'blank');
+    baseWrap.replaceChildren(base);
+  };
+  paintBase(); paint();
+  nameIn.addEventListener('input', paint);
+  const r = await dialog(close => dlgShell('新建资产提示词', '人物、场景、道具的出图提示词，按自由格式一行一行写。',
+    [field('类别', catIn), field('名称', nameIn, '名字和资产图对上：资产/' + pjn + '_类别_名称_资产.png'), field('存到', prev), field('底稿', baseWrap), err],
+    [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'), h('button', { class: 'btn ink', onclick: () => {
+      if (!nameOk(nameIn.value.trim())) { err.textContent = '名称不能空着，也不能有 \\ / : * ? " < > |'; return; }
+      close({ cat: catIn.get(), fn: fname(), base: base.get() });
+    } }, '建好')]));
+  if (!r) return;
+  try {
+    let bytes;
+    if (r.base === 'blank') bytes = C.encodeText('');
+    else { const src = S.pj.aprompts.find(e => e.path.join('/') === r.base); bytes = (await FS.read(src.path)).buf; }
+    const p = await writeNew([pjn, ...assetDir(r.cat), r.fn], bytes);
+    await afterCreate(p, '新建了资产提示词', null);
+  } catch (e) { toast('没建成：' + e.message, 'err'); }
+}
+async function newProjectDlg() {
+  if (!(await guardDirty())) return;
+  const nameIn = h('input', { class: 'inp', placeholder: '项目名称', 'data-focus': '' });
+  const err = h('div', { class: 'fld-err' });
+  const name = await dialog(close => dlgShell('新建项目', '在 ' + S.rootName + ' 下面建一个以项目名命名的文件夹，里面带好 定稿的剧本、提示词、资产、成片、历史记录。',
+    [field('项目名称', nameIn), err],
+    [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'), h('button', { class: 'btn ink', onclick: () => {
+      const v = nameIn.value.trim();
+      if (!nameOk(v)) { err.textContent = '名称不能空着，也不能有 \\ / : * ? " < > |'; return; }
+      if (S.projects.some(p => p.name === v)) { err.textContent = '已经有这个项目了'; return; }
+      close(v);
+    } }, '建好')]));
+  if (!name) return;
+  try {
+    for (const d of STD_DIRS) await FS.dir([name, d], true);
+    await loadProjects();
+    await openProject(name);
+    toast('项目建好了：' + name);
+  } catch (e) { toast('没建成：' + e.message, 'err'); }
+}
+
+/* ---------- 固定格式说明 ---------- */
+const EX_SCRIPT = `第2-1段｜打烊前的一碗面
+场景：夜｜内｜老街·面馆
+人物：店员（二十出头，扎马尾，白围裙）、女主（二十七八，长发，米色风衣）
+梗概：快打烊时女主进店，店员把最后一碗面端给她。
+
+正文
+△ 门口的风铃一响，女主推门进来，肩上还挂着雨。
+店员（抬头，手里还擦着碗）：要打烊了，就剩最后一碗的料。
+女主：那就那一碗。
+△ 特写：面碗落在台面上，热气扑上女主的脸。（音效：咚）
+字幕：2008 年 冬`;
+const EX_SHOTS = `第2-1段｜镜头表｜打烊前的一碗面
+镜头1｜推门进店
+镜头2｜店员说要打烊
+镜头3｜特写面碗落桌`;
+function renderGuide() {
+  const toParas = s => s.split('\n').map(t => ({ text: t }));
+  const sd = C.parseScripts(toParas(EX_SCRIPT), '2-1').segs[0];
+  const sh = C.parseShotList(toParas(EX_SHOTS), '2-1');
+  const sheetOf = (doc, fn) => { const a = h('article', { class: 'sheet guide-sheet k-' + doc.kind }); a.append(renderTitle(doc, null, true)); fn(a, doc, true); return a; };
+  const rules = (title, items) => h('div', { class: 'g-rules' }, h('h4', null, title), h('ol', null, items.map(x => h('li', null, x))));
+  const wrap = h('div', { class: 'canvas', id: 'canvas' }, h('div', { class: 'guide' },
+    h('div', { class: 'ov-kicker' }, '固 定 格 式'),
+    h('div', { class: 'ov-title' }, '剧本 · 镜头表 · 提示词'),
+    h('p', { class: 'g-lead' }, '三样东西都照固定格式写，编辑器才能一段一段读回来、改回去。剧本和镜头表的完整规则在 ', h('code', null, '.agents/skills/script-shotlist-format/SKILL.md'), '；提示词照同一处的 ', h('code', null, 'seedance-prompt-format'), '，和 sd25-pe 冲突时以 sd25-pe 为准。'),
+    h('div', { class: 'g-row' }, sheetOf(sd, renderScript), rules('剧本', [
+      '一段一个文件：定稿的剧本/第N段/第N段_剧本.docx。',
+      '标题「第N段｜段名」；段头依次是 场景、人物、梗概。',
+      '不写时长和秒数。',
+      '场景写成「时间｜内/外｜地点」。',
+      '正文只有四种行：△ 动作、角色（表演提示）：台词、字幕：、音效：。',
+      '台词的角色名和人物表一致；画外、旁白、内心写在括号里。',
+      '机位、运镜不写进剧本；最多写「△ 特写：」这样的景别提示。',
+      '修改记录放进备注。'])),
+    h('div', { class: 'g-row' }, sheetOf(sh, renderShots), rules('镜头表', [
+      '一段一个文件：定稿的剧本/第N段/第N段_镜头表.docx。',
+      '标题「第N段｜镜头表｜段名」，下面一镜一行：镜头N｜概述。',
+      '概述不超过十个字，标点也算；超过了编辑器不让保存。',
+      '只写这一镜拍什么；时间、秒数、机位、声音都不写，细节写进提示词的分镜。',
+      '镜数、顺序和提示词的分镜一致。'])),
+    h('div', { class: 'g-row' }, h('div', { class: 'g-skel' }, h('div', { class: 'cmp-h' }, '视频提示词七分区'), h('ol', { class: 'g-seven' }, C.PROMPT_SECTIONS.map(s => h('li', null, s.name)))), rules('提示词', [
+      '视频提示词每段一个：片名_第N段_视频提示词.txt；补拍这类单独的任务各自一个文件。',
+      '分区顺序固定。全局部分各段逐字一样；每段改的只有本段事件、人物与参考图对应里的本段说明、分镜、保持一致。',
+      '台词用 {}，音效用 <>；不用括号和引号；【】只用于【未采用素材】。',
+      '@编号只写在 人物与参考图对应、本镜调用、保持一致。',
+      '不写时间码、秒数、画幅、分辨率；时长在生成参数里设。',
+      '资产提示词（人物、场景、道具）按自由格式一行一行改。',
+      '保存时只动改过的行，别的行一个字节都不变。'])),
+    h('div', { class: 'g-row' }, h('div', { class: 'g-skel' }, h('div', { class: 'cmp-h' }, '保存'), h('p', { class: 'g-note' }, '每段只留一个当前版本。')), rules('改版', [
+      '修改中和定稿的版本都放在原来的文件夹里。',
+      '每次保存前，原文件先移进 历史记录 下面同样的路径，名字后面加上日期时间。',
+      '右栏「历史」能看到并载入这些旧版本。',
+      '汇总稿里的某一段，保存时另存成分段文件，汇总稿不动。']))));
+  return h('div', { class: 'stage' }, wrap);
+}
+
+/* ---------- 全局键盘、窗口 ---------- */
+document.addEventListener('keydown', e => {
+  if (isComposing(e)) return;
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); if (S.ed && !document.querySelector('.mask:not(.out)')) save(); return; }
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+  if (typing || document.querySelector('.mask:not(.out)')) return;
+  if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  else if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+  else if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && S.pj && S.view === 'editor' && S.seg) {
+    e.preventDefault();
+    const i = S.pj.order.indexOf(S.seg), j = i + (e.key === 'ArrowLeft' ? -1 : 1);
+    if (S.pj.order[j]) openSlot(S.pj.order[j], S.tab);
+  }
+});
+window.addEventListener('beforeunload', e => { commitEditing(); if (S.ed && S.ed.dirty) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('focus', async () => {
+  const ed = S.ed;
+  if (!ed || !FS.root || saving || document.querySelector('.mask:not(.out)')) return;
+  const st = await FS.stat(ed.entry.path);
+  if (!st || st.mtime === ed.mtime || S.ed !== ed) return;
+  if (!ed.dirty) { await loadEntry(ed.entry, { keepScroll: true }); toast('文件在外面更新过，已重新读取'); }
+  else if (!ed.extWarned) { ed.extWarned = true; ed.notice = '这份文件在外面被改过（' + fmtTime(st.mtime) + '）。你保存时会再问一次。'; rerender(); }
+});
+
+window.Antou = { S, FS, boot, useRoot, save, render, commitEditing, openProject, openOverview, openGuide, openSlot, openAsset, undo, redo };
+boot();
+})();
+</script>
+</body>
+</html>

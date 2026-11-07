@@ -10,5 +10,10 @@
 - 处理 Seedance 2.5 提示词时，按需读取并使用 `E:\new-video8-8\.claude\skills\sd25-pe\SKILL.md`。
 - 需要组织 Seedance 视频提示词格式时，读取并使用 `E:\new-video8-8\.claude\skills\seedance-prompt-format\SKILL.md`；先使用 `sd25-pe`，两者冲突时以 `sd25-pe` 为准。
 
+## 剧本与镜头表格式
+
+- 写或改剧本、镜头表时，读取并使用 `.agents/skills/script-shotlist-format/SKILL.md` 的固定格式：每段一个剧本 DOCX、一个镜头表 DOCX，放在 `定稿的剧本/第N段/` 下；镜头表一镜一行概述，不超过十个字；剧本和镜头表都不写时长和秒数。
+- 本目录的 `项目管理.html` 是按这套格式做的编辑器（用 Chrome 或 Edge 打开），可以逐段修改剧本、镜头表和提示词；保存前会把原文件移进该项目 `历史记录` 下的同样路径。
+
 
 
