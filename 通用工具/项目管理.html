@@ -2521,10 +2521,36 @@ const isPm = m => m === 'script' || m === 'prompt';
 const is = k => k === 'pm' ? isPm(D.mode) : D.mode === k;
 const modOf = m => MOD[isPm(m) ? 'pm' : m];
 const SERVICE = 'http://localhost:8766';   // 本机服务：在 Claude 里说「打开项目管理」时开的那个
-/* 流水线已经拆成一步一页，那几页要经本机服务才读得了项目。经服务打开的（第 4 版起能发那几页）：点「流水线」直接过去。
-   直接双击文件打开的：服务开着也过去（到服务那边用）；服务没开，才在这一页里用老的整页版 */
-const flowOut = () => !EMBED && (LINK.on ? LINK.v >= 4 : location.protocol === 'file:');
+/* 流水线已经拆成一步一页，那几页要经本机服务（第 4 版起能发那几页）才读得了项目。点「流水线」一律过去；
+   服务没开、或者开着的是旧版，就说清怎么开，不再用这一页里老的整页版（2026-11-13 用户定）。嵌在流水线页面里的不跳 */
+const flowOut = () => !EMBED;
 const serviceUp = () => fetch(SERVICE + '/' + FLOW_HOME, { mode: 'no-cors', cache: 'no-store' }).then(() => true, () => false);
+/* 开本机服务的那句命令：页面在 总文件夹\通用工具 里，服务在 总文件夹\.agents\skills\annotate-live */
+function serviceCmd() {
+  const page = location.protocol === 'file:' && !location.host ? decodeURIComponent(location.pathname).replace(/^\/(?=[A-Za-z]:)/, '') : '';
+  const m = /^(.+)\/通用工具\/[^/]+$/.exec(page);
+  const top = m ? m[1] : (D.abs || '').replace(/\\/g, '/');
+  return 'node "' + (top ? top + '/' : '') + '.agents/skills/annotate-live/server.js" open';
+}
+/* 新版流水线开不了时弹这个；点「再试一次」连上了服务就回 true */
+function needService() {
+  const old = LINK.on;   // 经服务打开的还走到这里：开着的服务是旧版
+  const cmd = serviceCmd(), err = h('div', { class: 'fld-err' });
+  return dialog(close => dlgShell(
+    old ? '本机服务是旧版，开不了新版流水线' : '新版流水线要先开本机服务',
+    old ? '先关掉旧服务（任务管理器里结束 Node.js），再运行下面这句重开，然后点「刷新」。'
+      : '本机服务没开。在 Claude 里说「打开项目管理」，或者在命令行运行下面这句（要先装 Node.js），开好以后点「再试一次」。',
+    [h('code', { style: 'display: block; padding: 9px 11px; line-height: 1.6; word-break: break-all; user-select: all' }, cmd), err],
+    [
+      h('button', { class: 'btn ghost', onclick: () => close(false) }, '关闭'),
+      h('button', { class: 'btn ghost', onclick: () => copyText(cmd, '命令复制好了') }, '复制命令'),
+      h('button', { class: 'btn ink', 'data-focus': '', onclick: async () => {
+        if (old) return location.reload();
+        err.textContent = '';
+        if (await serviceUp()) close(true); else err.textContent = '还是连不上本机服务（' + SERVICE + '）';
+      } }, old ? '刷新' : '再试一次'),
+    ]));
+}
 const store = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* 存满了就不存 */ } };
 
 /* ---------- 启动：经本机服务打开就直接是总文件夹；直接开文件就用上次选的文件夹 ---------- */
@@ -2612,16 +2638,17 @@ async function leaveMode(next) {
 }
 function setMode(m, opts) {
   const run = async () => {
-    if (m === 'flow' && flowOut()) {   // 流水线已经拆成一步一页：去那边
+    if (m === 'flow' && flowOut()) {   // 流水线已经拆成一步一页：去那边；去不了就说清怎么开服务，不再用老的整页版
       if (D.view !== 'main') return;
       const A = window.Antou, L = window.Liushui;
       const p = opts && opts.open ? toPm(opts.open)[0] : (L && L.F.name) || (A && A.S.pj && A.S.pj.name) || '';   // 带上现在看的项目
-      if (LINK.on || await serviceUp()) {
+      if ((LINK.on ? LINK.v >= 4 : await serviceUp()) || await needService()) {
         if (D.mode && !(await leaveMode(m))) return;
         location.href = (LINK.on ? '' : SERVICE + '/') + FLOW_HOME + (p ? '?p=' + encodeURIComponent(p) : '');
         return;
       }
-      toast('新版流水线要经本机服务打开：在 Claude 里说「打开项目管理」，再点一次「流水线」。现在先用老的这一页。');
+      if (D.mode) return;   // 留在原来那一样
+      m = 'prompt'; opts = null;   // 刚打开就点名要流水线的（#open=…流水线.json）：先落在提示词
     }
     if (!MODES.includes(m) || !modOf(m)) m = 'prompt';   // 认不出的、没装上的，都回提示词
     if (D.view !== 'main' || (D.mode === m && !opts)) return;
