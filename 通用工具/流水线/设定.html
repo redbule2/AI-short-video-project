@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>流水线 · 设定</title>
+<link rel="stylesheet" href="../公用/样式.css">
+<link rel="stylesheet" href="流水线.css">
+</head>
+<body class="wf">
+<div id="wf"></div>
+<div id="layer"></div>
+<div id="toasts" aria-live="polite"></div>
+<script src="../公用/核心.js"></script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="流水线.js"></script>
+<script>
+/* ============================================================
+   流水线 · 全片设定（梗概、人物、场景、道具）
+   全片的，写一次，各场共用。一次看一样，顶上四个分页换；人物、道具一行一个，场景是一段话。
+   共用的东西（读写流水线.json、顶栏、弹窗里加人物道具、小部件）在 流水线.js。
+   ============================================================ */
+'use strict';
+const TABS = ['梗概', '人物', '场景', '道具'];
+let TAB = (() => { let k = ''; try { k = decodeURIComponent(location.hash.slice(1)); } catch (e) { /* 网址不对就从头 */ } return TABS.includes(k) ? k : '梗概'; })();
+/* 表里这一行还没引用图，项目里又正好有一张叫这个名字的 */
+function hintFor(K, it) {
+  if (it.资产.length || !it.名) return null;
+  const used = new Set(F.doc[K.key].flatMap(x => x.资产));
+  const hit = poolOf(K).filter(x => !used.has(x.文件) && (tokenOf(x) === it.名 || x.名称 === it.名));
+  return hit.length === 1 || (K.multi && hit.length) ? hit : null;   // 道具：同一个名字的几张图（几个状态）一起引用
+}
+
+function listSection(K) {
+  const box = h('div', { class: 'fl-rows' });
+  const paint = () => {
+    const list = F.doc[K.key];
+    box.style.setProperty('--fr-pics', String(Math.min(3, Math.max(1, ...list.map(it => it.资产.length)))));   // 前头留几张小图的位置，各行对齐
+    box.replaceChildren(...list.map(it => {
+      const used = usedIn(K.key, it.名), hint = hintFor(K, it);
+      const row = h('div', { class: 'fr', role: 'button', tabindex: '0', title: '点一下改', onclick: () => entryDlg(K, it) },
+        picsEl(it),
+        h('span', { class: 'fr-name' }, it.名),
+        h('span', { class: 'fr-desc' }, oneLine(it.描写) || h('span', { class: 'faint' }, '还没写' + (K.key === '人物' ? '他什么样' : '它什么样'))),
+        hint ? h('button', { class: 'fl-link', type: 'button', title: '项目里有叫这个名字的图：' + hint.map(x => x.文件).join('、'), onclick: e => { e.stopPropagation(); it.资产 = hint.map(x => x.文件); touch(); repaintRefs(); } }, hint.length > 1 ? '引用这 ' + hint.length + ' 张图' : '引用「' + hint[0].名称 + '」') : null,
+        aiText(K.key, it.名) ? h('span', { class: 'fr-ai', title: 'AI 把描写补细了，点开看，合适就采用' }, 'AI 补了描写') : aiWaiting(K.key, it.名) ? h('span', { class: 'fr-ai wait', title: aiWaiting(K.key, it.名) + ' 交给 AI 了，补好这里会提示' }, 'AI 在补…') : null,
+        used.length ? h('span', { class: 'fr-use', title: '这几场用了' }, used.map(x => x + ' 场').join('、')) : null,
+        h('button', { class: 'fl-ib', type: 'button', title: '删掉这一行', onclick: e => { e.stopPropagation(); delEntry(K, it); } }, icon('x')));
+      row.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target === row) entryDlg(K, it); });
+      return row;
+    }));
+    if (!list.length) box.append(h('div', { class: 'fr-empty' }, '还没有' + K.key + '。点右边「加' + K.key + '」，一行一个。'));
+    const free = poolOf(K).filter(x => !list.some(e => e.资产.includes(x.文件))).length;
+    bulk.hidden = !free;
+    bulk.textContent = '从已有的图里加（' + free + '）';
+  };
+  const bulk = h('button', { class: 'btn sm', type: 'button', title: '项目的 资产 / 全局资产 里已经有图的，选上就各加一行，图也对上了', onclick: () => bulkAddDlg(K) });
+  REPAINT[K.key] = paint;
+  paint();
+  return h('section', { class: 'fl-sec fl-list' }, secHead(K.no, K.title, K.sub, bulk, h('button', { class: 'btn sm ink', type: 'button', onclick: () => entryDlg(K) }, icon('plus'), '加' + K.key)), box);
+}
+
+/* 弹窗：从已有的图里一次加几行，叫法取文件名下划线前面那一段 */
+async function bulkAddDlg(K) {
+  const list = F.doc[K.key], free = poolOf(K).filter(x => !list.some(e => e.资产.includes(x.文件)));
+  if (!free.length) return;
+  const picked = new Set(), count = h('span'), grid = h('div', { class: 'fl-ag' });
+  const paint = () => { count.textContent = '加上（' + picked.size + (K.multi ? ' 张）' : ' 行）'); grid.replaceChildren(...free.map(x => tileEl(x, picked.has(x.文件), '', () => { picked.has(x.文件) ? picked.delete(x.文件) : picked.add(x.文件); paint(); }))); };
+  paint();
+  const ok = await dialog(close => {
+    const el = dlgShell('从已有的图里加' + K.key, '点一下选上。选上的各加一行，叫法先用图的名字，描写回头点那一行再补。' + (K.multi ? '同一个名字的几张图（比如 面车_白天、面车_夜里）并成一行。' : ''), [h('div', { class: 'fl-apick' }, grid)],
+      [h('button', { class: 'btn ghost', onclick: () => close(false) }, '取消'), h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close(true) }, count)]);
+    el.classList.add('wide');
+    return el;
+  });
+  if (!ok || !picked.size) return;
+  for (const x of free) {
+    if (!picked.has(x.文件)) continue;
+    let name = tokenOf(x) || x.名称;
+    if (!K.multi && list.some(e => e.名 === name)) name = x.名称;   // 道具：同一个名字的几张图（几个状态）并进一行
+    const same = list.find(e => e.名 === name);
+    if (same) { if (K.multi ? !same.资产.includes(x.文件) : !same.资产.length) same.资产.push(x.文件); } else list.push({ 名: name, 描写: '', 资产: [x.文件] });
+  }
+  touch(); repaintRefs();
+}
+
+/* ---------- 场景：全片的，一段话；下面挂引用的场景图 ---------- */
+function sceneSection() {
+  const d = F.doc;
+  const ta = h('textarea', { class: 'fl-ta', id: 'fl-scene-ta', spellcheck: 'false', placeholder: '全片有哪些地方，各是什么样：什么时候、在哪、有什么。比如：\n面摊：傍晚，菜市场外的马路边，一辆旧三轮改的面车，两张矮桌，头顶拉着一条横幅。' });
+  ta.value = d.场景;
+  const strip = h('div', { class: 'fs-as' }), aiBox = h('div');
+  const paintAi = () => {
+    const t = aiText('场景'), wait = aiWaiting('场景'), geo = F.ai.data && F.ai.data.场景.底稿;
+    aiBox.replaceChildren(...(t ? [h('div', { class: 'fl-aibox' }, h('div', { class: 'fl-aibox-h' }, 'AI 照 GEO 写的场景', h('span', { class: 'sp' }),
+      geo ? h('button', { class: 'fl-link', type: 'button', title: 'GEO 底稿只给人审，不进提示词：' + geo, onclick: () => showText(at([F.name, ...geo.split('/')])) }, '看 GEO 底稿') : null,
+      h('button', { class: 'btn sm', type: 'button', title: '把上面你写的那段换成这一版；换之前的留一版在历史记录', onclick: async () => {
+        await flush();
+        if (F.text) FS.write(at([F.name, '历史记录', '定稿的剧本', '流水线__' + stampNow() + '.json']), C.encodeText(F.text)).catch(() => {});
+        d.场景 = t; ta.value = t; fit(ta); setFold('场景', false); touch(); rerender();
+      } }, '采用'),
+      h('button', { class: 'btn sm ghost', type: 'button', onclick: () => { sayNo('场景', '', t); paintAi(); } }, '不要')), h('p', null, t))] : []),
+      ...(wait ? [h('p', { class: 'fn-note', style: 'margin-top:8px' }, wait + (t ? ' 又交给 AI 了，新的写好会换掉上面这一版。' : ' 交给 AI 了：它照 GEO 先出底稿，再写成场景段，写好这里出现。'))] : []));
+  };
+  const paint = () => {
+    paintAi();
+    const have = new Set(d.场景图);
+    const sug = F.pool.filter(x => isSceneImg(x) && !have.has(x.文件) && tokenOf(x).length >= 2 && d.场景.includes(tokenOf(x)));
+    strip.replaceChildren(
+      ...d.场景图.map(file => imgChip(file, '场景图', () => { d.场景图 = d.场景图.filter(f => f !== file); for (const s of d.场) s.场景图 = s.场景图.filter(f => f !== file); touch(); repaintRefs(); })),
+      ...sug.map(x => h('button', { class: 'fl-asset sug', type: 'button', title: '场景里提到了「' + tokenOf(x) + '」，项目里有这张图：' + x.文件, onclick: () => { d.场景图.push(x.文件); touch(); repaintRefs(); } }, thumbImg(x.文件), h('span', { class: 'nm' }, x.名称, h('small', null, '提到了，点一下引用')))),
+      h('button', { class: 'btn sm', type: 'button', title: '从 资产 / 全局资产 / 场景 里选全片用的场景图', onclick: pickSceneImgs }, icon('plus'), '引用场景图'));
+  };
+  const later = debounce(() => { if (strip.isConnected) paint(); }, 400);
+  ta.addEventListener('input', () => { d.场景 = ta.value; fit(ta); touch(); paintSteps(); later(); });
+  REPAINT.场景图 = paint;
+  paint();
+  const box = h('div', null, ta);
+  const askGeo = h('button', { class: 'btn sm', type: 'button', title: '把这一段交给 AI：照 GEO 的办法把空间关系核清楚，先出 GEO 底稿给你审，再写成场景段。写好摆在下面，你点「采用」才换上', onclick: () => batchSend({ 人物: [], 道具: [], 场景: true, 场: [] }) }, '让 AI 扩写（用 GEO）');
+  return h('section', { class: 'fl-sec fl-syn' }, secHead('三', '场　景', '全片的，一段话写清楚有哪些地方', askGeo, folder('场景', box, () => d.场景, () => ta.focus())), box, aiBox, strip);
+}
+
+async function pickSceneImgs() {
+  const d = F.doc;
+  F.pool = await loadPool(F.name);
+  const items = F.pool.filter(isSceneImg);
+  if (!items.length) { toast('「' + F.name + '」的 资产 / 全局资产 / 场景 里还没有图。先写场景，定下一场以后让 AI 出'); return; }
+  const picked = new Set(d.场景图), count = h('span'), grid = h('div', { class: 'fl-ag' });
+  const paint = () => { count.textContent = '引用（' + items.filter(x => picked.has(x.文件)).length + ' 张）'; grid.replaceChildren(...items.map(x => tileEl(x, picked.has(x.文件), '', () => { picked.has(x.文件) ? picked.delete(x.文件) : picked.add(x.文件); paint(); }))); };
+  paint();
+  const ok = await dialog(close => {
+    const el = dlgShell('引用场景图', '点一下选上，再点一下去掉。引用只是记下全片用它，图还在原处。', [h('div', { class: 'fl-apick' }, grid)],
+      [h('button', { class: 'btn ghost', onclick: () => close(false) }, '取消'), h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close(true) }, count)]);
+    el.classList.add('wide');
+    return el;
+  });
+  if (!ok) return;
+  const shown = new Set(items.map(x => x.文件));
+  d.场景图 = [...d.场景图.filter(f => !shown.has(f)), ...items.filter(x => picked.has(x.文件)).map(x => x.文件)];
+  for (const s of d.场) s.场景图 = s.场景图.filter(f => d.场景图.includes(f));
+  touch(); repaintRefs();
+}
+
+/* ---------- 梗概：全片讲什么 ---------- */
+function synSection() {
+  const d = F.doc;
+  const syn = h('textarea', { class: 'fl-ta', id: 'fl-syn', spellcheck: 'false', placeholder: '这个片子讲什么：谁，想要什么，遇到什么，最后怎么样。前因后果写清楚，后面一场一场照它拆。' });
+  syn.value = d.梗概;
+  syn.addEventListener('input', () => { d.梗概 = syn.value; fit(syn); touch(); paintSteps(); });
+  const box = h('div', null, syn);
+  return h('section', { class: 'fl-sec fl-syn' }, secHead('一', '梗　概', '全片的，你写', folder('梗概', box, () => d.梗概, () => syn.focus())), box);
+}
+
+/* ---------- 顶上四个分页：各写到什么样 ---------- */
+function tabNote(k) {
+  const d = F.doc;
+  if (k === '梗概') return d.梗概.trim() ? '写了' : '还没写';
+  if (k === '场景') return d.场景.trim() ? (d.场景图.length ? d.场景图.length + ' 张图' : '写了') : '还没写';
+  return d[k].length ? d[k].length + ' ' + KIND[k].unit : '还没有';
+}
+const tabTodo = k => k === '梗概' ? !F.doc.梗概.trim() : k === '场景' ? !F.doc.场景.trim() : !F.doc[k].length;
+const tabsEls = () => TABS.map(k => h('button', { class: 'wf-tab' + (k === TAB ? ' on' : '') + (tabTodo(k) ? ' todo' : ''), type: 'button', onclick: () => setTab(k) }, k, h('small', null, tabNote(k))));
+function setTab(k) {
+  TAB = k;
+  history.replaceState(null, '', location.pathname + location.search + '#' + encodeURIComponent(k));
+  rerender(0);
+}
+function render() {
+  const i = TABS.indexOf(TAB), next = TABS[i + 1];
+  return [
+    h('div', { class: 'fl-head' }, h('div', { class: 'fl-kicker' }, '全 片 设 定'), h('div', { class: 'wf-tabs', id: 'wf-tabs' }, tabsEls())),
+    TAB === '梗概' ? synSection() : TAB === '场景' ? sceneSection() : listSection(KIND[TAB]),
+    h('div', { class: 'wf-foot' },
+      h('span', { class: 'fn-note' }, '全片的，写一次，各场共用。边写边自动保存。'),
+      i > 0 ? h('button', { class: 'btn ghost', onclick: () => setTab(TABS[i - 1]) }, '← ' + TABS[i - 1]) : null,
+      next ? h('button', { class: 'btn ink', onclick: () => setTab(next) }, '下一步：' + next + ' →') : h('button', { class: 'btn ink', onclick: () => go('总览') }, '写好了，回首页分场 →')),
+  ];
+}
+
+start({
+  name: '设定', render,
+  steps() { const el = document.getElementById('wf-tabs'); if (el) el.replaceChildren(...tabsEls()); },   // 写了字、加了行：分页上的小字跟着变
+  sides(changed) { if (changed.has('*')) repaintRefs(); },   // AI 补了描写、出了图：表里跟着换
+});
+</script>
+</body>
+</html>

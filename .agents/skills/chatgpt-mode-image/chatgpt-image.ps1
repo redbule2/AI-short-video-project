@@ -4,6 +4,7 @@
 #    → UIA 核对输入框后点 Send → 盯着对话直到出图（Stop 按钮消失、出现 Copy image）
 #    → 点 Copy image，从剪贴板取 PNG 原图（全分辨率）存盘，再把剪贴板里原来的文字放回去。
 #    对话被切走（有人在用这个窗口）时，切回 ChatGPT 模式，从侧栏新出现的对话里按提示词内容找回来。
+#    结束时（成功失败都算）切回开始前的模式：Codex 模式用 codex://new?mode=codex，Work with ChatGPT 用 mode=work。
 # 注意：本文件必须存成带 BOM 的 UTF-8，否则 PowerShell 5.1 会按 GBK 读坏中文。
 param(
   [string]$PromptFile = '',
@@ -31,11 +32,21 @@ $Desc = [System.Windows.Automation.TreeScope]::Descendants
 $CT = [System.Windows.Automation.ControlType]
 $MaxUrl = 30000   # 深链接要经过命令行，上限 32767，留余量
 $Suffix = '（请直接生成 1 张图片，不要提问，不要只回复文字。）'
+$GlobalState = Join-Path $env:USERPROFILE '.codex\.codex-global-state.json'
 $clock = [Diagnostics.Stopwatch]::StartNew()
 $result = [ordered]@{ ok = $false; status = $null; error = $null; image = $null; warnings = @() }
+$script:modeBefore = $null   # 开始前的模式（codex / work / chat），切到 ChatGPT 模式前记下，结束时切回去
 
 function Say([string]$s) { [Console]::Out.WriteLine($s) }
 function Finish([int]$code) {
+  # 没出成图时记下这条对话的标题（切回原来的模式前，侧栏还是 ChatGPT 的），方便之后到 ChatGPT 模式里找
+  if (-not $result.ok -and $script:win -and $script:before) {
+    try {
+      $n = @(Sidebar-Names $script:win | Where-Object { $script:before -notcontains $_ } | Select-Object -Unique)
+      if ($n.Count -eq 1) { $result.chat = $n[0] }
+    } catch { }
+  }
+  Restore-Mode
   $result.seconds = [Math]::Round($clock.Elapsed.TotalSeconds, 1)
   Say ('RESULT_JSON ' + ($result | ConvertTo-Json -Compress -Depth 3))
   exit $code
@@ -72,6 +83,58 @@ function Get-Text($el) {
 }
 function Find-Composer($win) {
   foreach ($e in Find-All $win $CT::Edit) { if ($e.Current.ClassName -like 'ProseMirror*') { return $e } }
+}
+# 当前模式：codex = Codex 模式；ChatGPT 模式里再分 chat（Ask ChatGPT）和 work（Work with ChatGPT）。
+# 左上角「Switch mode, current mode: Codex / ChatGPT」按钮分前两种；chat 还是 work 先看输入框名字，
+# 认不出再读存盘的 home-composer-mode-v1（Codex 模式不记在这里）。Codex 没开或认不出时返回 $null。
+function Get-Mode {
+  foreach ($w in Get-Windows) {
+    $surface = $null
+    foreach ($b in Find-All $w $CT::Button) {
+      if ($b.Current.Name -match 'current mode:\s*(\S+)') { $surface = $Matches[1]; break }
+    }
+    if ($surface -eq 'Codex') { return 'codex' }
+    $c = Find-Composer $w
+    $name = ''; if ($c) { $name = $c.Current.Name }
+    if ($surface -ne 'ChatGPT' -and $name -notlike '*ChatGPT*') { continue }
+    if ($name -like 'Ask ChatGPT*') { return 'chat' }
+    if ($name -like 'Work with ChatGPT*') { return 'work' }
+    return (State-Mode)
+  }
+}
+function State-Mode {
+  try {
+    $fs = [IO.File]::Open($GlobalState, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]'ReadWrite, Delete')
+    try { $text = (New-Object IO.StreamReader($fs, [Text.Encoding]::UTF8)).ReadToEnd() } finally { $fs.Dispose() }
+    if ($text -match '"home-composer-mode-v1"\s*:\s*"(\w+)"') { return $Matches[1] }
+  } catch { }   # Codex 换存盘文件的一瞬间会读不到
+}
+# 这个输入框是不是 ChatGPT 聊天的（叫 Ask ChatGPT），左上角按钮也不能是 Codex。
+# 切模式的半途中按钮和输入框会短暂对不上，这时不算；Codex 模式的输入框叫 Do anything / Work with Codex。
+function Is-ChatComposer($w, $c) {
+  if ($c.Current.Name -notlike 'Ask ChatGPT*') { return $false }
+  foreach ($b in Find-All $w $CT::Button) { if ($b.Current.Name -match 'current mode:\s*Codex') { return $false } }
+  $true
+}
+# 深链接填错了地方（别的模式的输入框）又没发出去时，把我们填的提示词清掉，免得之后被人顺手发出去
+function Clear-Stray($c) {
+  try { if ($c -and (Norm (Get-Text $c)) -eq $want) { $c.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue('') } } catch { }
+}
+# 结束时切回开始前的模式（codex 或 work；原来就是 chat 或认不出时不动），等界面确认；确认不了只记进 warnings。
+# 不切回的话，之后 codex-chat 续接对话、或用户自己用，都会落在 ChatGPT 模式里。
+function Restore-Mode {
+  $m = $script:modeBefore; $script:modeBefore = $null
+  if ($m -ne 'codex' -and $m -ne 'work') { return }
+  try {
+    $t0 = Get-Date; $next = $t0
+    while (((Get-Date) - $t0).TotalSeconds -lt 20) {
+      # 切换深链接偶尔不生效，没切过去就每 8 秒补发
+      if ((Get-Date) -ge $next) { Start-Process "codex://new?mode=$m"; $next = (Get-Date).AddSeconds(8) }
+      Start-Sleep -Milliseconds 500
+      if ((Get-Mode) -eq $m) { $result.restored = $m; return }
+    }
+    Warn "20 秒内没确认 Codex 切回了原来的模式，可以手动运行 codex://new?mode=$m"
+  } catch { Warn ('切回原来的模式出错：' + $_.Exception.Message) }
 }
 # 侧栏里的对话条目（只认 sidebar-item，免得点到对话区的按钮）
 function Sidebar-Names($win) {
@@ -136,23 +199,32 @@ try {
   if ($sent.Length -le $MaxUrl) { $url = 'codex://new?mode=chat&prompt=' + [Uri]::EscapeDataString($sent) }
   if ($null -eq $url -or $url.Length -gt $MaxUrl) { Fail '提示词太长，深链接装不下（约 3000 个汉字以内）' 2 }
 
-  # 1. 切到 ChatGPT 模式、开新聊天、填好提示词（Codex 没开会自动启动）
+  # 1. 切到 ChatGPT 模式、开新聊天、填好提示词（Codex 没开会自动启动）。记下原来的模式，结束时切回去。
+  #    深链接里切模式那一步偶尔晚到或不生效，提示词照样填进当前模式的输入框（11-07 从 Codex 模式出图，就这样发成了 Codex 任务），
+  #    所以只认 ChatGPT 聊天里、连续两次都对得上的输入框；没等到就每 10 秒补发一次（冷启动时第一次也可能在界面加载完之前就到了）。
+  $script:modeBefore = Get-Mode
   $coldStart = -not (Get-Windows)
-  Start-Process $url
   $wait = 30; if ($coldStart) { $wait = 120 }
   $deadline = (Get-Date).AddSeconds($wait)
-  $win = $null; $seen = ''; $refired = $false
+  $next = Get-Date; $fired = 0
+  $win = $null; $cand = $null; $stray = $null; $seen = ''
   while (-not $win -and (Get-Date) -lt $deadline) {
+    if ((Get-Date) -ge $next -and $fired -lt 4) { Start-Process $url; $fired++; $next = (Get-Date).AddSeconds(10) }
     Start-Sleep -Milliseconds 500
+    $hit = $null
     foreach ($w in Get-Windows) {
       $c = Find-Composer $w
       if (-not $c) { continue }
       $seen = Get-Text $c
-      if ((Norm $seen) -eq $want) { $win = $w; break }
+      if ((Norm $seen) -ne $want) { continue }
+      if (-not (Is-ChatComposer $w $c)) { $stray = $c; continue }
+      $hit = $w; break
     }
-    if (-not $win -and $coldStart -and -not $refired -and $clock.Elapsed.TotalSeconds -gt 30) { Start-Process $url; $refired = $true }
+    if ($hit -and $cand -and $hit.Current.NativeWindowHandle -eq $cand.Current.NativeWindowHandle) { $win = $hit }
+    $cand = $hit
   }
   if (-not $win) {
+    if ($stray) { Clear-Stray $stray; Fail "等了 $wait 秒，Codex 没切到 ChatGPT 模式，提示词填进了别的模式的输入框（已清空），没有发送" }
     if ($seen.Length -gt 120) { $seen = $seen.Substring(0, 120) + '…' }
     $result.composer_text = $seen
     Fail "等了 $wait 秒，输入框里的内容和提示词对不上（可能有人在 Codex 里打字，或深链接没生效），没有发送"
@@ -162,6 +234,9 @@ try {
   $before = Sidebar-Names $win
   $send = Find-Button $win 'Send'
   if (-not $send -or -not $send.Current.IsEnabled) { Fail '找不到可用的发送按钮，没有发送' }
+  # 点之前最后核对一次：还是这段话、还在 ChatGPT 聊天里
+  $c = Find-Composer $win
+  if (-not $c -or (Norm (Get-Text $c)) -ne $want -or -not (Is-ChatComposer $win $c)) { Fail '发送前输入框变了（内容或模式不对，可能有人在用这个窗口），没有发送' }
   Invoke-El $send
   $tSend = Get-Date
 
@@ -171,7 +246,7 @@ try {
   while ($true) {
     Start-Sleep -Seconds 2
     Ensure-Visible $win
-    if ((Get-Date) -gt $deadline) { $result.status = 'timeout'; Fail "等了 $Timeout 秒还没出图；图生成后在 ChatGPT 模式的这个对话里，可以手动保存" 124 }
+    if ((Get-Date) -gt $deadline) { $result.status = 'timeout'; Fail "等了 $Timeout 秒还没出图；图生成后在 ChatGPT 模式的这个对话里（标题见 chat），可以手动保存" 124 }
     if (Is-OurChat $win) {
       if (Find-Button $win 'Stop') { $idle = 0; continue }
       $copyBtn = Find-Button $win 'Copy image'
@@ -224,7 +299,7 @@ try {
     } catch { }
   }
   if ($null -ne $oldText) { try { [System.Windows.Forms.Clipboard]::SetText($oldText) } catch { Warn '剪贴板里原来的文字没能放回去' } }
-  if (-not $saved) { Fail '点了 Copy image，但 20 秒内剪贴板里没拿到图片；图在 ChatGPT 模式的这个对话里，可以手动保存' }
+  if (-not $saved) { Fail '点了 Copy image，但 20 秒内剪贴板里没拿到图片；图在 ChatGPT 模式的这个对话里（标题见 chat），可以手动保存' }
 
   $img = [System.Drawing.Image]::FromFile($outPath)
   $result.width = $img.Width; $result.height = $img.Height; $img.Dispose()

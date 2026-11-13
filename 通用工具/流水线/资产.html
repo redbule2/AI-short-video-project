@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>流水线 · 资产</title>
+<link rel="stylesheet" href="../公用/样式.css">
+<link rel="stylesheet" href="流水线.css">
+</head>
+<body class="wf">
+<div id="wf"></div>
+<div id="layer"></div>
+<div id="toasts" aria-live="polite"></div>
+<script src="../公用/核心.js"></script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="流水线.js"></script>
+<script>
+
+/* ============================================================
+   流水线 · 资产（一场的第三道工序）
+   剧本定稿以后才开：这一场出场的人物、道具、场景图各对着哪张图。
+   用已有的：点「选出场的」，从全片设定的表里选上；点「用已有的图」，从项目的图里挑一张（删掉的也能放回来）；
+     剧本、段落里提到了还没选的，摆在下面点一下选上。
+   补齐缺的：还没有图的，让 AI 照描写出（先写出图提示词，再交给 Codex 出图）。
+   确认可用：一张图一张图确认（2026-11-12 他定的）。确认记在全片，确认过的图别的场不用再确认；
+     这一场要的图都确认了，这一步自动过。图重出过、它的描写改过，那一张要再确认。
+   点一张图看大图、写批注（用的是「项目管理」里图片那一样），看大图时顶上也能点「这张确认可用」。
+   共用的东西（读写流水线.json、顶栏、步骤条、这一场要哪些图、哪张图确认过）在 流水线.js。
+   ============================================================ */
+'use strict';
+/* 这张图有没有提示词挂着：看 资产/参考素材映射.json（AI 写提示词时登记的） */
+async function usedByPrompts(file) {
+  try {
+    if (!(await hasFile(F.name, ['资产', '参考素材映射.json']))) return [];
+    const j = await readJson(at([F.name, '资产', '参考素材映射.json']));
+    return Object.entries(j.prompts || {}).filter(([, v]) => (v && v.references || []).some(r => r && cleanFile(r.path) === file)).map(([k]) => k);
+  } catch (e) { return []; }
+}
+/* 删一张图。两种删法：只是不引用（图还在原处，以后点「用已有的图」能再挂回来）；图不要了（移进这个项目的 历史记录，全片各处都不再引用它；
+   想重出就点「让 AI 出缺的」，想要回来就点「用已有的图」，在最下面「删掉的」里放回来） */
+async function removeAsset(s, it) {
+  const file = it.at, isRow = !!KIND[it.类别], e = isRow ? entryOf(it.类别, it.名称) : null;
+  const canUnref = it.own && (isRow ? !!e && e.资产.includes(file) : it.类别 === '场景图' && s.场景图.includes(file));
+  const used = await usedByPrompts(file);
+  const r = await dialog(close => dlgShell('删掉这张图 · ' + it.名称 + (it.sub ? ' · ' + it.sub : ''), file,
+    [h('p', { class: 'fn-note' }, '图不要了：移进这个项目的「历史记录」，全片各处都不再引用它。想重出一张，删完点「让 AI 出缺的」；后悔了，点「用已有的图」，在最下面放回来。'),
+      canUnref ? h('p', { class: 'fn-note' }, isRow ? '只是不引用：图还留在原处，「' + it.名称 + '」不再挂它（各场都不挂）。以后点「用已有的图」能再挂回来。' : '只是这一场不用：图还留在原处，全片还引用着，只是这一场不挂它。') : null,
+      used.length ? h('p', { class: 'fn-note warn' }, '有提示词挂着这张图：' + used.join('、') + '。移走以后，那边要重新挂图。') : null],
+    [h('button', { class: 'btn ghost', 'data-focus': '', onclick: () => close(null) }, '取消'),
+      canUnref ? h('button', { class: 'btn', onclick: () => close('unref') }, isRow ? '只是不引用' : '只是这一场不用') : null,
+      h('button', { class: 'btn zhu', onclick: () => close('del') }, '图不要了')]));
+  if (!r) return;
+  if (r === 'unref') {
+    if (isRow) { e.资产 = e.资产.filter(f => f !== file); e.不用 = [...new Set([...(Array.isArray(e.不用) ? e.不用 : []), file])]; }   // 记下「不用」：AI 清单里再列着它，也不替你对回去
+    else s.场景图 = s.场景图.filter(f => f !== file);
+    touch(); paint();
+    return;
+  }
+  const parts = file.split('/'), dir = parts.slice(0, -1), name = parts[parts.length - 1], dot = name.lastIndexOf('.'), stem = dot > 0 ? name.slice(0, dot) : name, stamp = stampNow();
+  const dest = [F.name, '历史记录', ...dir, stem + '__' + stamp + (dot > 0 ? name.slice(dot) : '')];
+  try { await FS.move(at([F.name, ...parts]), at(dest)); }
+  catch (err) { toast('没移走：' + err.message, 'err'); return; }
+  // 看大图时写的批注、批注截图跟着一起收走：不然重出的同名图一打开就带着旧批注
+  try { if (await hasFile(F.name, [...dir, stem + '_批注.md'])) await FS.move(at([F.name, ...dir, stem + '_批注.md']), at([F.name, '历史记录', ...dir, stem + '_批注__' + stamp + '.md'])); } catch (err) { /* 挪不动就留着 */ }
+  try { if (await FS.isDir(at([F.name, ...dir, stem + SHOTS_TAIL]))) await FS.move(at([F.name, ...dir, stem + SHOTS_TAIL]), at([F.name, '历史记录', ...dir, stem + SHOTS_TAIL + '__' + stamp])); } catch (err) { /* 挪不动就留着 */ }
+  for (const K of LISTS) for (const x of F.doc[K.key]) x.资产 = x.资产.filter(f => f !== file);
+  F.doc.场景图 = F.doc.场景图.filter(f => f !== file);
+  for (const x of F.doc.场) x.场景图 = x.场景图.filter(f => f !== file);
+  delete F.doc.可用[file];   // 图不在了，它的「可用」也不留：重出的那一张要重新确认
+  touch();
+  await flush();
+  window.UI.dropThumbs();   // 重出的图会回到同一个名字：做好的缩小图不能再用
+  try { F.pool = await loadPool(F.name); } catch (err) { /* 下回再读 */ }
+  await loadSides();
+  rerender();
+  toast('移进历史记录了：' + dest.slice(1).join(' / '));
+}
+/* ---------- 用已有的图：项目 资产/全局资产 里的图点一张，这一场就用上它；删掉的（在历史记录里）点一下放回来 ---------- */
+/* 这一张图该挂到哪一行：从哪一格点开的就是那一行；不然看哪一行已经引用它，再不然照图名里的叫法找（老名字「项目_类别_叫法_资产」也认） */
+function rowFor(x, cell) {
+  const K = LISTS.find(k => k.cats(x.类别));
+  if (!K) return null;
+  return (cell && cell.类别 === K.key ? entryOf(K.key, cell.名称) : null) || F.doc[K.key].find(r => r.资产.includes(x.文件)) || F.doc[K.key].find(r => r.名 === tokenOf(x) || r.名 === x.名称) || null;
+}
+/* 这一场用上一张已有的图：人物、道具的图挂到 rowFor 找到的那一行（找不到就照叫法加一行），这一场选上；场景图加进全片和这一场 */
+function useImage(s, x, cell) {
+  const file = x.文件;
+  if (isSceneImg(x)) {
+    if (!F.doc.场景图.includes(file)) F.doc.场景图.push(file);
+    if (!s.场景图.includes(file)) s.场景图.push(file);
+    orderCast(s); touch();
+    return '场景图「' + x.名称 + '」这一场用上了';
+  }
+  const K = LISTS.find(k => k.cats(x.类别));
+  let e = rowFor(x, cell);
+  const fresh = !e;
+  if (fresh) { e = { 名: tokenOf(x), 描写: '', 资产: [] }; F.doc[K.key].push(e); }
+  if (!e.资产.includes(file)) {
+    if (!K.multi && e.资产.length) e.不用 = [...new Set([...(Array.isArray(e.不用) ? e.不用 : []), ...e.资产])];   // 人物换图：换下来的那张记进「不用」，AI 清单里列着它也不再替你挂回去
+    e.资产 = K.multi ? [...e.资产, file] : [file];
+  }
+  if (Array.isArray(e.不用)) { e.不用 = e.不用.filter(f => f !== file); if (!e.不用.length) delete e.不用; }
+  if (e.不用时) { delete e.不用时[file]; if (!Object.keys(e.不用时).length) delete e.不用时; }
+  if (!s[K.key].includes(e.名)) s[K.key].push(e.名);
+  orderCast(s); touch();
+  return K.key + '「' + e.名 + '」' + (fresh ? '加进了' + K.key + '表，' : '') + '挂上了这张图，这一场也选上了';
+}
+/* 删掉的图：历史记录/资产/全局资产/类别/原名__时间.后缀（「图不要了」移过去的） */
+async function loadDeleted() {
+  const ls = lister(F.name), out = [];
+  for (const c of (await ls('历史记录/资产/全局资产')).filter(e => e.kind === 'directory').map(e => e.name))
+    for (const e of (await ls('历史记录/资产/全局资产/' + c)).filter(x => x.kind === 'file' && IMG_RE.test(x.name))) {
+      const m = /^(.+)__(\d{8})-(\d{6})(\.[^.]+)$/.exec(e.name);
+      if (m) out.push({ 类别: c, 名称: m[1], 文件: '历史记录/资产/全局资产/' + c + '/' + e.name, 原处: '资产/全局资产/' + c + '/' + m[1] + m[4], 序: m[2] + m[3], 戳: m[2] + '-' + m[3], 时: m[2].slice(4, 6) + '-' + m[2].slice(6) + ' ' + m[3].slice(0, 2) + ':' + m[3].slice(2, 4) });
+    }
+  return out.sort((a, b) => b.序.localeCompare(a.序)).slice(0, 80);
+}
+async function useExisting(s, cell) {   // cell：从哪一格点开的（还没有图、图不在了的那一格）：挑的人物、道具图就挂到那一行
+  closePop(); hideHov();
+  let deleted = [];
+  try { F.pool = await loadPool(F.name); } catch (e) { /* 读不出来就用手里的 */ }   // 页面开着的时候放进来的图（自己拷的、Codex 出的）也要列出来
+  try { deleted = await loadDeleted(); } catch (e) { deleted = []; }
+  await dialog(close => {
+    const box = h('div', { class: 'fl-apick' });
+    const here = x => isSceneImg(x) ? s.场景图.includes(x.文件) : LISTS.some(K => K.cats(x.类别) && s[K.key].some(n => { const e = entryOf(K.key, n); return !!e && e.资产.includes(x.文件); }));
+    const owner = x => { if (isSceneImg(x)) return ''; for (const K of LISTS) { const e = F.doc[K.key].find(r => r.资产.includes(x.文件)); if (e) return e.名 + ' 的图'; } return '还没人用'; };
+    const pick = async x => {
+      const K = LISTS.find(k => k.cats(x.类别)), row = isSceneImg(x) ? null : rowFor(x, cell);
+      if (isSceneImg(x) ? s.场景图.includes(x.文件) : row && row.资产.includes(x.文件) && s[K.key].includes(row.名)) { toast('这一场已经在用它了。不用了点那一格右上角的 ×'); return; }
+      if (row && !K.multi && row.资产.length && !row.资产.includes(x.文件) && !(await confirmDlg({ title: '「' + row.名 + '」换成这张图？', body: '现在挂的是 ' + baseOf(row.资产[0]) + '，换成 ' + x.名称 + '。原来那张还留在项目里，随时能换回去。', ok: '换成这一张' }))) return;
+      toast(useImage(s, x, cell)); paintBox(); repaint();
+    };
+    const back = async x => {   // 放回原处（批注、批注截图一起），再照点图那样挂上：人物原来有图的，先问换不换
+      try { await FS.move(at([F.name, ...x.文件.split('/')]), at([F.name, ...x.原处.split('/')])); }
+      catch (e) { toast('没放回来：' + e.message + '（原处要是已经有一张同名的图，先处理那一张）', 'err'); return; }
+      const dir = x.原处.split('/').slice(0, -1), stem = stemOf(x.原处.split('/').pop()), old = ['历史记录', ...dir];
+      try { const n = stem + '_批注__' + x.戳 + '.md'; if (await hasFile(F.name, [...old, n]) && !(await hasFile(F.name, [...dir, stem + '_批注.md']))) await FS.move(at([F.name, ...old, n]), at([F.name, ...dir, stem + '_批注.md'])); } catch (e) { /* 挪不动就留在历史记录里 */ }
+      try { const n = stem + SHOTS_TAIL + '__' + x.戳; if (await FS.isDir(at([F.name, ...old, n])) && !(await FS.isDir(at([F.name, ...dir, stem + SHOTS_TAIL])))) await FS.move(at([F.name, ...old, n]), at([F.name, ...dir, stem + SHOTS_TAIL])); } catch (e) { /* 同上 */ }
+      window.UI.dropThumbs();
+      try { F.pool = await loadPool(F.name); } catch (e) { /* 下回再读 */ }
+      await loadSides();
+      deleted = deleted.filter(d => d !== x);
+      paintBox(); repaint();
+      toast('放回来了：' + x.原处);
+      const it = F.pool.find(p => p.文件 === x.原处);
+      if (it) await pick(it);
+    };
+    const paintBox = () => {
+      const out = [];
+      for (const [lab, test] of [['人物', x => KIND.人物.cats(x.类别)], ['道具', x => KIND.道具.cats(x.类别)], ['场景图', isSceneImg]]) {
+        const items = F.pool.filter(test);
+        out.push(h('div', { class: 'pick-lab' }, lab), items.length ? h('div', { class: 'fl-ag' }, items.map(x => tileEl(x, here(x), here(x) ? '这一场在用' : owner(x), () => pick(x)))) : h('p', { class: 'fn-note' }, '项目的 资产 / 全局资产 里还没有' + lab + '。'));
+      }
+      if (deleted.length) out.push(h('div', { class: 'pick-lab' }, '删掉的（在历史记录里）'), h('div', { class: 'fl-ag' }, deleted.map(x => tileEl(x, false, x.时 + ' 删的，点一下放回来', () => back(x)))));
+      box.replaceChildren(...out);
+    };
+    paintBox();
+    const el = dlgShell('用已有的图 · 第' + s.段 + '场', '点一张，这一场就用上它：人物、道具的图挂到它那一行（照图名里的叫法找，表里没有就加一行），场景图加进这一场。删掉的图在最下面，点一下放回原处。',
+      [box], [h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close() }, '好了')]);
+    el.classList.add('wide');
+    return el;
+  });
+  paint();
+}
+/* 点开看大图时，顶上那一条里也能确认这一张 */
+const shellActs = it => close => okOf(it)
+  ? h('span', { class: 'fs-state ok', title: '确认的时间：' + F.doc.可用[it.at] }, icon('check'), '确认过可用')
+  : h('button', { class: 'btn sm', type: 'button', title: '这张图看过了、能用。确认过的图，别的场不用再确认', onclick: () => { setMark(it.at, true, sinceOf(it)); toast('「' + it.名称 + (it.sub ? '（' + it.sub + '）' : '') + '」确认可用'); close(); } }, icon('check'), '这张确认可用');
+/* 一格图：右边是「确认可用」，右上角是删除。还没有图的那一格：点一下从已有的图里挑 */
+function chipEl(s, it) {
+  const isImg = !!it.at && IMG_RE.test(it.at);
+  const el = assetChip(it, isImg ? () => openImage(it.at, shellActs(it)) : null);
+  if (!it.at) {
+    if (it.own) { el.style.cursor = 'pointer'; el.title = (it.状态 === '图不在了' && it.文件 ? '挂的图不在了：' + it.文件 + '。' : '还没有图。') + '点一下从已有的图里挑一张，挂到「' + it.名称 + '」；要新出一张，点上面的「让 AI 出缺的」'; el.addEventListener('click', () => useExisting(s, it)); }
+    const e = it.own && it.文件 && KIND[it.类别] ? entryOf(it.类别, it.名称) : null;   // 挂的图不在了、清单里列着却没有的那一格：右上角能去掉
+    if (e) el.append(h('button', { class: 'fl-asset-x', type: 'button', title: e.资产.includes(it.文件) ? '这张图不在了：去掉这个引用' : '这一格不要了（不出这一张）', onkeydown: ev => ev.stopPropagation(),
+      onclick: ev => { ev.stopPropagation(); e.资产 = e.资产.filter(f => f !== it.文件); e.不用 = [...new Set([...(Array.isArray(e.不用) ? e.不用 : []), it.文件])]; touch(); paint(); } }, icon('x')));
+    return el;
+  }
+  const ok = okOf(it), again = !ok && !!F.doc.可用[it.at];   // again：确认过，可后来图重出了、或者描写改了
+  if (ok) el.classList.add('ok');
+  const stop = ev => ev.stopPropagation();
+  el.append(
+    h('button', { class: 'fl-asset-ok' + (ok ? ' on' : ''), type: 'button', onkeydown: stop,
+      title: ok ? '确认过可用（' + F.doc.可用[it.at].slice(5, 16) + '）。点一下取消' : again ? '你确认过，可后来这张图重出过、或者它的描写改过：再看一眼，能用就再确认' : '这张图看过了、能用。确认过的图，别的场不用再确认',
+      onclick: ev => { stop(ev); setMark(it.at, !ok, sinceOf(it)); paint(); } }, ok ? [icon('check'), '可用'] : again ? '再确认' : '确认可用'),
+    h('button', { class: 'fl-asset-x', type: 'button', title: '删掉这张图：只是不引用，或者图也不要了', onclick: ev => { stop(ev); removeAsset(s, it); }, onkeydown: stop }, icon('x')));
+  return el;
+}
+/* 缺的图交给 AI 出：一张一个任务，先让顶栏选的那个 AI 写出图提示词，再交给 Codex 出图；Codex 一次出一张，排着队来 */
+async function askImages(s, lacking) {
+  if (scriptState(s).st !== 'final') { rerender(); toast('剧本定稿以后才能出资产图', 'err'); return; }
+  if (!AI.ok) { await flush(); sendAI('出资产 ' + flowRef() + '｜' + segName(s.段), '交给 AI 了。缺的列好、图出了，这里自动出现'); return; }
+  const todo = lacking.filter(it => KIND[it.类别] && it.own);
+  if (!todo.length) { toast('缺的是场景图：点「用已有的图」挑一张，或者到全片设定的「场景」里引用', 'err'); return; }
+  const fileOf = it => it.名称 + (it.sub ? '_' + it.sub : ''), label = it => it.名称 + (it.sub ? '（' + it.sub + '）' : ''), pathOf = it => '资产/全局资产/' + it.类别 + '/' + fileOf(it) + '.png';
+  try { F.pool = await loadPool(F.name); } catch (e) { /* 读不出来就用手里的 */ }
+  const lying = todo.filter(it => { const e = entryOf(it.类别, it.名称); return F.pool.some(p => p.文件 === pathOf(it)) && !(e && Array.isArray(e.不用) && e.不用.includes(pathOf(it))); });   // 同名的图已经在资产文件夹里、只是没挂上（不是你点过「只是不引用」的）：出新的会把它收进历史记录，先说一声
+  const olds = [];   // 已经有出图提示词的（以前出过）
+  for (const it of todo) { try { if (await hasFile(F.name, ['提示词', '全局资产', it.类别, fileOf(it) + '_提示词.txt'])) olds.push(it); } catch (e) { /* 看不了就当没有 */ } }
+  const again = h('input', { type: 'checkbox' });
+  const ok = await dialog(close => dlgShell('让 AI 出 ' + todo.length + ' 张图', todo.map(label).join('、') + '。先由 ' + chName() + ' 照描写写出图提示词，再交给 Codex 出图，一张一张来，出好一张这里多一张。',
+    lying.length || olds.length ? [lying.length ? h('p', { class: 'fn-note warn' }, lying.map(it => fileOf(it) + '.png').join('、') + ' 已经在资产文件夹里，只是没挂上：出新的会把它收进历史记录。要用它，点「取消」，再点那一格挑它。') : null,
+      olds.length ? h('label', { class: 'fn-note', style: 'display:flex;gap:8px;align-items:flex-start;cursor:pointer' }, again,
+        h('span', null, olds.map(label).join('、') + ' 以前出过、已经有出图提示词。勾上：照现在的描写重新写提示词；不勾：用上一回的提示词再出一张（描写在那以后改过的，会自动重写）。')) : null] : null,
+    [h('button', { class: 'btn ghost', onclick: () => close(false) }, '取消'), h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close(true) }, '开始出')]));
+  if (!ok) return;
+  const ls = lister(F.name);
+  for (const it of todo) {   // 说过「不用」的那张正好是这回要出的名字：记下旧图现在的时间。新图出好（文件时间变了）照样挂上；没出成，旧图也不会被挂回去
+    const e = entryOf(it.类别, it.名称), path = pathOf(it), parts = path.split('/');
+    if (!e || !Array.isArray(e.不用) || !e.不用.includes(path)) continue;
+    const ent = (await ls(parts.slice(0, -1).join('/'))).find(x => x.kind === 'file' && x.name === parts[parts.length - 1]);
+    if (ls.failed) break;   // 本机服务问不到：这回不动
+    if (ent && ent.mtime) e.不用时 = { ...(e.不用时 || {}), [path]: ent.mtime };
+    else if (!ent) { e.不用 = e.不用.filter(f => f !== path); if (!e.不用.length) delete e.不用; }   // 旧图已经不在了：不用再记
+    touch();
+  }
+  for (const it of todo) await startJob({ 事: '出图', 段: s.段, 类别: it.类别, 名: it.名称, 状态名: it.sub || '', 重写: again.checked && olds.includes(it) ? '是' : '' }, true);
+  toast('排上了 ' + todo.length + ' 张。出好一张这里多一张');
+  paint();
+}
+/* 提到了、还没选上的：段落的字里、定稿的剧本里提到了表里的人物、道具；全片只引用了一张场景图。
+   剧本的人物表里有、全片设定里没有的（比如只在这一场出来的城管）：点一下加进人物表、这一场也选上 */
+function suggest(s) {
+  const out = mentioned(s), extra = [], sc = docsOf(s.段).script, doc = sc && sc.doc;
+  if (doc && Array.isArray(doc.sections) && doc.sections.length) {
+    const body = doc.sections.map(x => x.blocks.map(b => b.text).join('\n')).join('\n');
+    for (const K of LISTS) for (const e of F.doc[K.key]) if (e.名.length >= 2 && !s[K.key].includes(e.名) && body.includes(e.名) && !out.some(x => x.key === K.key && x.id === e.名)) out.push({ key: K.key, id: e.名, name: e.名, file: e.资产[0] || '' });
+    const head = doc.sections[0].blocks.find(b => C.labelOf(b.text) === '人物');
+    for (const c of head ? C.parseCast(C.splitLabel(head.text).value) : []) if (!/若干$/.test(c.name) && c.name.length <= 12 && !F.doc.人物.some(e => e.名 === c.name)) extra.push(c);
+  }
+  return { out, extra };
+}
+function sugEls(s) {
+  const { out, extra } = suggest(s);
+  if (!out.length && !extra.length) return [];
+  const take = x => { if (!s[x.key].includes(x.id)) s[x.key].push(x.id); orderCast(s); touch(); paint(); };
+  const add = c => {   // 加进全片的人物表（描写照剧本里写的），这一场也选上；图还没有，接着让 AI 出
+    if (!F.doc.人物.some(e => e.名 === c.name)) F.doc.人物.push({ 名: c.name, 描写: c.desc || '', 资产: [] });
+    if (!s.人物.includes(c.name)) s.人物.push(c.name);
+    orderCast(s); touch(); paint();
+    toast('「' + c.name + '」加进人物表、这一场也选上了。它还没有图');
+  };
+  return [h('div', { class: 'wf-sug' },
+    out.length ? [h('span', { class: 'fn-note' }, '提到了、还没选上：'), out.map(x => h('button', { class: 'fl-ref sug', type: 'button', title: x.only ? '全片只引用了这一张场景图，点一下这一场也用它' : '这一场的段落、剧本里提到了它，点一下选上', onclick: () => take(x) },
+      x.file && !F.gone.has(x.file) ? thumbImg(x.file) : h('i', { class: 'ph' }, x.key[0]), h('span', null, x.name), h('small', null, x.only ? '用它？' : '选上')))] : null,
+    extra.length ? [h('span', { class: 'fn-note' }, '剧本里有、人物表里没有：'), extra.map(c => h('button', { class: 'fl-ref sug', type: 'button', title: '加进全片的人物表（描写：' + (c.desc || '剧本里没写') + '），这一场也选上。它还没有图，加了以后可以让 AI 出', onclick: () => add(c) },
+      h('i', { class: 'ph' }, '人'), h('span', null, c.name), h('small', null, '加进人物表')))] : null)];
+}
+/* 上面那一条：走到哪了、该点什么 */
+function barEls(s) {
+  const seg = s.段, { list } = assetsOf(s), has = list.filter(x => x.at), lacking = list.filter(x => !x.at), lack = lacking.length, okN = has.filter(okOf).length, st = assetState(s);
+  const jobs = AI.jobs.filter(j => j.事 === '出图' && j.段 === seg && jobLive(j));
+  const pick = h('button', { class: 'btn sm' + (list.length ? '' : ' ink'), type: 'button', title: '这一场有谁、用什么道具、在哪张场景图里：从全片设定的表里选。已经有图的直接用', onclick: e => openPickPop(e.currentTarget, s, paint) }, icon('plus'), '选出场的');
+  const exist = h('button', { class: 'btn sm', type: 'button', title: '从项目已有的图里挑一张给这一场用；删掉的图也在里面，能放回来', onclick: () => useExisting(s) }, '用已有的图');
+  const all = () => {
+    const t = nowText();
+    for (const it of has) if (!okOf(it)) F.doc.可用[it.at] = t;
+    s.资产确认 = t; touch(); paint(); toast('第' + seg + '场的图都确认可用了');
+  };
+  const again = () => { s.资产确认 = nowText(); touch(); paint(); toast('第' + seg + '场的资产核对过了'); };
+  if (st.st === 'ok') return [h('span', { class: 'fs-state ok' }, icon('check'), '这一场的图都确认可用了'), h('span', { class: 'fn-note' }, '图重出了、描写改了，那一张要再确认。'), h('span', { class: 'sp' }), pick, exist,
+    h('button', { class: 'btn ink', onclick: () => go('提示词', { s: seg }) }, '下一步：提示词 →')];
+  const note = !list.length ? '这一场还没选出场的人物、道具、场景图。点「选出场的」从表里选，或者点「用已有的图」挑图；没有图的再让 AI 出。'
+    : st.tx === '待核对' ? '待核对：' + st.why + '。看一遍这些图还合不合适，合适就点「还能用，确认」，不合适的点 × 删掉重出。'
+      : (lack ? lack + ' 样还没有图：点那一格从已有的图里挑，或者让 AI 出。' : '') + (has.length ? has.length + ' 张图，确认了 ' + okN + ' 张。点图看大图；能用的点「确认可用」，不要的点 × 删掉重出。' : '');
+  return [h('span', { class: 'fn-note' + (lack || st.tx === '待核对' ? ' warn' : '') }, note), h('span', { class: 'sp' }), pick, exist,
+    F.dirs.has(segName(seg)) ? h('button', { class: 'btn sm', title: '看这一场文件夹里的图，框出来写批注', onclick: () => openShell(at([F.name, '资产', segName(seg)]), '第' + seg + '场的图') }, '看这一场的图') : null,
+    lack && !jobs.length ? h('button', { class: 'btn sm ink', title: '先由顶栏选的那个 AI 写出图提示词，再交给 Codex 出图', onclick: () => askImages(s, lacking) }, '让 AI 出缺的') : null,
+    okN < has.length ? h('button', { class: 'btn sm' + (lack ? '' : ' ink'), title: '这一场现在有的图你都看过了、都能用', onclick: all }, okN ? '剩下的都确认可用' : '都确认可用') : null,
+    st.tx === '待核对' ? h('button', { class: 'btn ink', title: '这一场要的图你又看了一遍，还能用', onclick: again }, '还能用，确认') : null];
+}
+/* 只换会变的几块（上面那一条、提到了的、各格图）：不整页重画，开着的小窗、滚到的位置都不动。
+   架子不在、或者这一场又锁上了（剧本不算定稿了），返回 false，让外面整页重画 */
+function repaint() {
+  const s = sceneNow(), bar = document.getElementById('as-bar');
+  if (!s || !bar || !s.定稿 || scriptState(s).st !== 'final') return false;
+  const flat = a => [a].flat(Infinity).filter(Boolean);
+  const { list, rec } = assetsOf(s), jobs = AI.jobs.filter(j => j.事 === '出图' && j.段 === s.段 && jobLive(j)), bad = jobs.length ? null : jobFailed('出图', s.段);
+  bar.replaceChildren(...flat(barEls(s)));
+  document.getElementById('as-more').replaceChildren(...flat([
+    jobs.length ? h('div', { class: 'wf-jobs' }, jobs.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题.replace(/^出图 · /, ''))))) : null,
+    bad ? h('p', { style: 'margin-top:10px' }, bad) : null,
+    rec && rec.bad ? h('p', { class: 'fn-note warn', style: 'margin-top:12px' }, 'AI 列的资产清单读不了：' + rec.bad) : null,
+    sugEls(s)]));
+  document.getElementById('as-grid').replaceChildren(...list.map(it => chipEl(s, it)));
+  paintSteps(); paintStatus();
+}
+const paint = () => { if (repaint() === false) rerender(); };
+function render() {
+  const s = sceneNow(), seg = s.段;
+  if (!s.定稿 || scriptState(s).st !== 'final') return h('div', { class: 'wf-lock' },
+    !s.定稿 ? '这一场的段落还没定下来。' : '剧本定稿以后才能出资产图。先到「剧本」那一步，看完点「剧本定稿」。',
+    h('button', { class: 'btn ink', onclick: () => go(s.定稿 ? '剧本' : '分场', { s: seg }) }, s.定稿 ? '← 去看剧本' : '← 回去写段落'));
+  setTimeout(repaint, 0);   // 架子先摆上，里面的东西接着填
+  return [h('div', { class: 'wf-bar', id: 'as-bar' }), h('div', { id: 'as-more' }), h('div', { class: 'wf-grid', id: 'as-grid' })];
+}
+
+start({ name: '资产', scene: true, render, repaint });
+</script>
+</body>
+</html>

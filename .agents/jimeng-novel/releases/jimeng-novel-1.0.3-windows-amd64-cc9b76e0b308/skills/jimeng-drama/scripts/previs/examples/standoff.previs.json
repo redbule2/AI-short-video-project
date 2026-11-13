@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "id": "S03",
+  "ratio": "9:16",
+  "fps": 24,
+  "shortSide": 480,
+  "duration": 12,
+  "source": {"storyboard": "standoff.storyboard.json", "segment": "S03", "beat": "冲突升级：女主与男主在客厅对峙"},
+  "overlay": {"enabled": true, "shotInfo": true, "names": true, "timeline": true},
+  "scene": {
+    "id": "lin_home.night",
+    "background": "#2a2e36",
+    "ground": {"size": [24, 24], "color": "#6b6f78", "grid": true},
+    "objects": [
+      {"id": "back_wall", "type": "box", "size": [8, 3, 0.2], "position": [0, 0, -3.2], "color": "#8b8f99"},
+      {"id": "left_wall", "type": "box", "size": [0.2, 3, 7], "position": [-3.6, 0, 0], "color": "#7d828c"},
+      {"id": "right_wall", "type": "box", "size": [0.2, 3, 7], "position": [3.6, 0, 0], "color": "#7d828c"},
+      {"id": "door", "type": "box", "size": [1.0, 2.1, 0.05], "position": [3.48, 0, -1.2], "rotY": 90, "color": "#5a3e2b"},
+      {"id": "table", "type": "box", "size": [1.0, 0.78, 1.0], "position": [0, 0, -1.8], "color": "#7a4a2a", "label": "八仙桌"},
+      {"id": "lamp", "type": "cylinder", "size": [0.3, 1.6], "position": [-2.6, 0, -2.4], "color": "#e8d9a8"},
+      {"id": "sofa", "type": "box", "size": [2.0, 0.8, 0.8], "position": [-2.9, 0, 0.8], "rotY": 90, "color": "#4b5a6b"}
+    ]
+  },
+  "characters": [
+    {"id": "nvzhu", "name": "女主", "color": "#e2574c", "height": 1.62,
+     "keys": [{"t": 0, "pos": [-0.6, 0, 0], "face": "nanzhu"}]},
+    {"id": "nanzhu", "name": "男主", "color": "#3b82f6", "height": 1.8,
+     "keys": [
+       {"t": 0, "pos": [0.6, 0, 0], "face": "nvzhu"},
+       {"t": 5.0, "pos": [0.6, 0, 0]},
+       {"t": 6.0, "pos": [0.4, 0, 0]}
+     ]}
+  ],
+  "shots": [
+    {"id": "1", "t": [0, 4], "label": "过肩近景 正打",
+     "camera": {"keys": [
+       {"pos": [0.9, 1.5, 0.3], "follow": "nanzhu", "lookAt": "nvzhu:head", "lookOffset": [0, -0.05, -0.03], "focal": 50}
+     ]}},
+    {"id": "2", "t": [4, 8], "label": "过肩近景 反打",
+     "camera": {"keys": [
+       {"pos": [-0.9, 1.42, 0.3], "follow": "nvzhu", "lookAt": "nanzhu:head", "lookOffset": [0, -0.05, -0.03], "focal": 50}
+     ]}},
+    {"id": "3", "t": [8, 12], "label": "近景→特写 缓推",
+     "camera": {"ease": "inOut", "keys": [
+       {"u": 0, "lookAt": "nvzhu:neck", "sph": {"dist": 0.93, "azim": -35, "elev": 0, "ref": "target"}, "focal": 50},
+       {"u": 1, "lookAt": "nvzhu:head", "sph": {"dist": 0.48}}
+     ]}}
+  ]
+}

@@ -1,0 +1,6 @@
+interface:
+  display_name: "即梦视频快线"
+  short_description: "复用画布与已上传图片，集中确认积分并提交视频，支持中断后恢复"
+  default_prompt: "使用 $dreamina-video-fastlane，按已确认图片与提示词准备即梦视频，复用画布和素材，并集中处理必要的积分批准。"
+policy:
+  allow_implicit_invocation: true

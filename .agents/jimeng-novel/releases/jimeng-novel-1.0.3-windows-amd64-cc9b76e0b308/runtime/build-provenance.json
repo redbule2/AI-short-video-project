@@ -1,0 +1,28 @@
+{
+  "artifact_repository": "capcut-business/byted_pippit_cli",
+  "source_repository": "ies/pippit",
+  "source_branch": "master",
+  "source_ref": "origin/master",
+  "source_commit": "7bf62fd1a3b6e43e089f9eae62f1cc5c39fb82b2",
+  "build_checkout_branch": "codex/canvas-runtime-master-20261103",
+  "source_dirty": false,
+  "fix_status": "基于 SDK master 重建；使用显式边命令与 V2 空导演台边界，不恢复已撤回协议",
+  "fix_source_files_sha256": {
+    "packages/xyq-canvas-sdk/src/canvas-page/node-factory.ts": "2396d7d01328ee929ed402f79f4fd39d94834bf968d8f10b24d1d8aa8ec8d6e2",
+    "packages/xyq-canvas-sdk/src/canvas-command-runtime.ts": "00c1ca4062bd1e5f16e5a6d5b35d99c3534dbad3b57c76256e5cff5f5f41e90a",
+    "packages/xyq-canvas-sdk/src/command-runtime-opencode.ts": "c4932841d37b454556e0195947ee1cdaed371a43cccb4f1c780d31cce75e6c1d",
+    "packages/xyq-canvas-sdk/src/opencode/index.ts": "33d962b454c116211162e227f9a7fa20a82bfcb3f814cf3505081b7749ab8990",
+    "packages/xyq-canvas-sdk/src/nodes/media-history-runtime-cli.ts": "bdb93040973bfdc6c536146299745ef65d3f7cb3e2eedfd4c421e2d365fa78c2",
+    "packages/xyq-canvas-sdk/src/nodes/media-size.ts": "ae5850e60993f691edc0d064d564e4daa173d0c2215e95c0f8c9885e8b745a1f",
+    "packages/xyq-canvas-sdk/scripts/command-runtime-environment.mjs": "d1252eda0d75ec9102ccafdb7340d6443dd0a4f569f9ab8a02760a385d0594df",
+    "packages/xyq-canvas-sdk/scripts/build-canvas-command-runtime.mjs": "748a8ab795b32fece2c250d029c088a46047fe7b14206b5aaa8252dfba3106fd"
+  },
+  "lockfile_blob": "897f223502e4724e56d8ee4b982bef2afa703f76",
+  "lockfile_sha256": "1a3ea3195a52fdfe2fd9dbe5a789f0ff20b973a7e2c767c869ea16ce344301e3",
+  "dependency_source": "EMO frozen lockfile，安装构建所需 workspace 及可选原生依赖；先构建 ag-ui-core",
+  "node_version": "24.18.0",
+  "build_command": "BUILD_TYPE=online DEBUG=1 IS_OVERSEA=false IS_US=false emo run build:cli-runtime --filter @byted-image/xyq-canvas-sdk --updateCache -- --out-dir <CLI>/release-artifacts/canvas-runtime",
+  "runtime_sha256": "7e45eb4e7bb2323fd1a0f5bc56b731247076f9ae8171f46d01ba4d6774de1b0f",
+  "runtime_bytes": 980798,
+  "legal_sha256": "c547c923eaf2e8c155f84aed934f42ad02855d669e8c0a890e38d049bc1ef8e7"
+}

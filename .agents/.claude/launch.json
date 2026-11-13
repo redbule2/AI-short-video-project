@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "审阅页",
+      "runtimeExecutable": "C:/Users/li/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe",
+      "runtimeArgs": ["-I", "-m", "http.server", "8765", "--bind", "127.0.0.1", "--directory", "E:/AI短视频项目"],
+      "port": 8765
+    },
+    {
+      "name": "项目管理",
+      "runtimeExecutable": "C:/Program Files/nodejs/node.exe",
+      "runtimeArgs": ["E:/AI短视频项目/.agents/skills/annotate-live/server.js"],
+      "port": 8766
+    }
+  ]
+}

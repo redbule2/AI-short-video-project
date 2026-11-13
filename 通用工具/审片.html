@@ -1,0 +1,1209 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>审片 · 短视频项目</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='9' fill='%23a83a2c'/%3E%3Crect x='9' y='9' width='46' height='46' rx='5' fill='none' stroke='%23f6e2d6' stroke-opacity='.5' stroke-width='1.5'/%3E%3Ctext x='32' y='44' font-size='32' text-anchor='middle' fill='%23fbf1e6' font-family='KaiTi,STKaiti,serif'%3E%E5%AE%A1%3C/text%3E%3C/svg%3E">
+<style>
+/* ============================================================
+   审片 · 样式　和 项目管理.html 同一套纸、墨、朱、黛、赭；放映区是暗的，好看光影
+   ============================================================ */
+:root {
+  --paper: #f4efe6; --paper-2: #ece5d8; --sheet: #fffdf9;
+  --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --ink-4: #b2a89b;
+  --line: #e5dccd; --line-2: #d6cab6;
+  --zhu: #a83a2c; --zhu-soft: rgba(168, 58, 44, .065); --zhu-line: rgba(168, 58, 44, .26);
+  --dai: #3e5c5e; --dai-soft: rgba(62, 92, 94, .075); --dai-line: rgba(62, 92, 94, .28);
+  --zhe: #8d6a3c; --zhe-soft: rgba(141, 106, 60, .085); --zhe-line: rgba(141, 106, 60, .3);
+  --jin: #b39256;
+  --night: #191714; --night-2: #23201c; --night-ink: #e6ddcf; --night-ink-2: #9a9084;
+  --serif: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  --sans: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --kai: 'KaiTi', 'STKaiti', 'Kaiti SC', 'BiauKai', 'Noto Serif SC', serif;
+  --mono: 'Cascadia Mono', Consolas, 'Noto Sans SC', monospace;
+  --shadow: 0 1px 2px rgba(60, 45, 30, .05), 0 10px 32px -14px rgba(60, 45, 30, .2);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; overflow: hidden;
+  display: grid; grid-template-columns: 236px minmax(0, 1fr);
+  color: var(--ink); font: 14px/1.7 var(--sans);
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .42  0 0 0 0 .34  0 0 0 0 .24  0 0 0 .055 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+::selection { background: rgba(168, 58, 44, .16); }
+:focus-visible { outline: 2px solid rgba(62, 92, 94, .4); outline-offset: 2px; }
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline: none; }
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-thumb { background: rgba(140, 118, 92, .22); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
+.ic { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.faint { color: var(--ink-3); }
+p { margin: 0; }
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 16px; border-radius: 6px; cursor: pointer; white-space: nowrap;
+  font: 13.5px/1.2 var(--sans); letter-spacing: .08em;
+  color: var(--ink); background: var(--sheet); border: 1px solid var(--line-2);
+  transition: background .15s, border-color .15s, color .15s;
+}
+.btn:hover { background: #fff; border-color: var(--ink-4); }
+.btn.ink { background: var(--ink); border-color: var(--ink); color: #f7f1e6; }
+.btn.ink:hover { background: #3c3630; border-color: #3c3630; }
+.btn.zhu { background: var(--zhu); border-color: var(--zhu); color: #fff8f2; }
+.btn.zhu:hover { background: #95301f; }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
+.btn.ghost:hover { background: rgba(80, 60, 40, .06); }
+.btn.sm { padding: 5px 11px; font-size: 12.5px; letter-spacing: .04em; }
+.btn.lg { padding: 12px 28px; font-size: 15px; letter-spacing: .14em; }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.danger { color: var(--zhu); }
+
+/* ---------- 印章 ---------- */
+.seal {
+  width: 38px; height: 38px; flex: none; display: grid; place-items: center;
+  background: var(--zhu); color: #fbf1e6; border-radius: 5px; font: 22px/1 var(--kai);
+  box-shadow: inset 0 0 0 2px var(--zhu), inset 0 0 0 3px rgba(255, 238, 225, .38);
+  transform: rotate(-2.5deg);
+}
+.seal.w-seal { width: 66px; height: 66px; font-size: 38px; border-radius: 8px; box-shadow: inset 0 0 0 3px var(--zhu), inset 0 0 0 4.5px rgba(255, 238, 225, .4); }
+
+/* ---------- 侧栏：成片列表 ---------- */
+#side { min-height: 0; display: flex; flex-direction: column; padding: 22px 14px 14px; background: rgba(232, 224, 209, .72); border-right: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 13px; padding: 2px 8px 22px; user-select: none; }
+.brand-name { font: 600 19px/1.2 var(--serif); letter-spacing: .32em; }
+.brand-sub { margin-top: 3px; font: 11px/1.2 var(--sans); color: var(--ink-3); letter-spacing: .2em; }
+.vlist { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 2px; margin: 0 -4px; padding: 0 4px; }
+.side-label { margin-top: 12px; padding: 0 10px 6px; font: 13px var(--kai); color: var(--ink-3); letter-spacing: .2em; }
+.side-label:first-child { margin-top: 0; }
+.side-empty { padding: 6px 10px; font: 13px var(--kai); color: var(--ink-4); }
+.side-sub { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 2px 10px 2px 14px; font-size: 12px; color: var(--ink-3); letter-spacing: .08em; }
+.side-sub::after { content: ''; flex: 1; height: 1px; background: var(--line-2); }
+.vitem {
+  position: relative; display: flex; flex-direction: column; gap: 1px; width: 100%;
+  padding: 8px 12px 8px 14px; border: 0; border-radius: 7px; background: none; cursor: pointer; text-align: left;
+  transition: background .15s;
+}
+.vitem:hover { background: rgba(255, 253, 249, .5); }
+.vitem.on { background: var(--sheet); box-shadow: 0 1px 2px rgba(60, 45, 30, .06), 0 4px 14px -8px rgba(60, 45, 30, .18); }
+.vitem.on::before { content: ''; position: absolute; left: 0; top: 11px; bottom: 11px; width: 2.5px; border-radius: 2px; background: var(--zhu); }
+.vname { font: 14px/1.5 var(--serif); letter-spacing: .02em; word-break: break-all; }
+.vitem.on .vname { font-weight: 600; }
+.vcount { font-size: 11.5px; color: var(--zhu); letter-spacing: .04em; }
+.side-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.linkbtn {
+  display: inline-flex; align-items: center; gap: 7px; max-width: 100%;
+  padding: 5px 10px; border: 0; border-radius: 5px; background: none; cursor: pointer;
+  font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.linkbtn:hover { background: rgba(255, 253, 249, .55); color: var(--ink); }
+
+/* ---------- 欢迎页 ---------- */
+#main { min-width: 0; min-height: 0; height: 100vh; display: flex; flex-direction: column; }
+.welcome { flex: 1; display: grid; place-items: center; padding: 40px; }
+.w-inner { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; animation: rise .5s ease both; }
+.w-seal { margin-bottom: 10px; }
+.w-title { font: 600 46px/1.2 var(--serif); letter-spacing: .5em; margin-right: -.5em; }
+.w-title.sm { font-size: 24px; letter-spacing: .16em; margin-right: -.16em; }
+.w-sub { font: 15px var(--kai); color: var(--ink-3); letter-spacing: .42em; margin-right: -.42em; }
+.w-verse { writing-mode: vertical-rl; height: 8.2em; margin: 22px 0 18px; white-space: nowrap; font: 19px/2.3 var(--kai); color: var(--ink-2); letter-spacing: .5em; }
+.w-verse span { display: block; }
+.w-verse span + span { margin-top: 1.4em; color: var(--ink-3); }
+.w-note { margin-top: 14px; max-width: 460px; font-size: 12.5px; line-height: 1.95; color: var(--ink-3); }
+
+/* ---------- 顶栏 ---------- */
+.top { flex: none; height: 60px; display: flex; align-items: center; gap: 20px; padding: 0 22px 0 30px; border-bottom: 1px solid var(--line); background: rgba(250, 246, 239, .6); }
+.crumb { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 12px; }
+.ptitle { font: 600 18px/1.3 var(--serif); letter-spacing: .08em; white-space: nowrap; }
+.crumb-seg { min-width: 0; font: 15px var(--kai); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crumb-seg::before { content: '／'; margin-right: 10px; color: var(--ink-4); }
+.top-right { flex: none; display: flex; align-items: center; gap: 10px; }
+.status { display: flex; align-items: center; gap: 7px; margin-right: 6px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-2); }
+.status.noted { color: var(--zhu); }
+.status.noted .dot { background: var(--zhu); }
+.status.err { color: var(--zhu); font-weight: 600; }
+
+/* ---------- 放映区 ---------- */
+.stage { flex: 1; min-height: 0; display: flex; }
+.deck { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--night); color: var(--night-ink); }
+.screen { flex: 1; min-height: 0; position: relative; padding: 16px 22px 8px; }
+.vid { display: block; width: 100%; height: 100%; object-fit: contain; cursor: pointer; }
+.bar { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 22px 2px; }
+.ctl { width: 36px; height: 32px; flex: none; display: inline-grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--night-ink); cursor: pointer; transition: background .15s; }
+.ctl:hover { background: rgba(255, 255, 255, .09); }
+.ctl .ic { width: 17px; height: 17px; }
+.clock { display: flex; align-items: baseline; gap: 12px; margin: 0 14px 0 8px; white-space: nowrap; }
+.tc { font: 15px var(--mono); font-variant-numeric: tabular-nums; color: #f6efe2; letter-spacing: .02em; }
+.fr { font: 12px var(--mono); font-variant-numeric: tabular-nums; color: var(--night-ink-2); }
+.rates { display: flex; gap: 2px; padding: 2px; border-radius: 999px; background: rgba(255, 255, 255, .06); }
+.rate { padding: 3px 11px; border: 0; border-radius: 999px; background: transparent; color: var(--night-ink-2); font-size: 12px; cursor: pointer; white-space: nowrap; }
+.rate:hover { color: var(--night-ink); }
+.rate.on { background: var(--night-ink); color: var(--night); }
+.addbtn { margin-left: auto; }
+.track { flex: none; position: relative; height: 34px; margin: 4px 22px 0; cursor: pointer; touch-action: none; }
+.groove { position: absolute; left: 0; right: 0; top: 18px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .15); overflow: hidden; }
+.fill { height: 100%; width: 0; background: var(--jin); }
+.ph { position: absolute; top: 11px; width: 2px; height: 18px; margin-left: -1px; border-radius: 1px; background: #fff; pointer-events: none; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25); }
+.marks { position: absolute; inset: 0; pointer-events: none; }
+.mk { position: absolute; top: 3px; width: 11px; height: 11px; margin-left: -5.5px; padding: 0; border: 2px solid var(--night); border-radius: 50%; background: #d4614f; cursor: pointer; pointer-events: auto; }
+.mk.range { margin-left: 0; height: 9px; top: 4px; border-radius: 5px; border-width: 1px; min-width: 6px; background: rgba(212, 97, 79, .75); }
+.mk:hover, .mk.on { background: #ff8a72; box-shadow: 0 0 0 2px rgba(255, 138, 114, .35); }
+.mk.editing { background: var(--jin); }
+.keys { flex: none; padding: 4px 22px 12px; font-size: 11.5px; color: #6f665c; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.blank { flex: 1; display: grid; place-items: center; font: 17px var(--kai); color: var(--ink-3); letter-spacing: .12em; }
+
+/* ---------- 右栏：批注 ---------- */
+.rail { flex: none; width: 384px; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: rgba(246, 241, 233, .85); }
+.rail-h { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
+.prow { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--ink-3); letter-spacing: .06em; white-space: nowrap; }
+.sel { flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid var(--line-2); border-radius: 6px; background: #fff; font-size: 13px; color: var(--ink); cursor: pointer; }
+.sel:focus { border-color: var(--ink-3); }
+.gen {
+  display: block; width: 100%; min-height: 34px; max-height: 30vh; padding: 6px 10px; resize: none; overflow: auto;
+  border: 1px dashed var(--line-2); border-radius: 6px; outline: 0; background: rgba(255, 253, 249, .6);
+  font: 14.5px/1.75 var(--kai); color: var(--zhu);
+}
+.gen::placeholder { color: var(--ink-4); }
+.gen:focus { border-style: solid; border-color: var(--zhu-line); background: #fffefa; }
+.rail-body { flex: 1; min-height: 0; overflow: auto; padding: 14px 16px 60px; }
+.list-h { margin: 4px 2px 8px; font: 13px var(--kai); color: var(--ink-3); letter-spacing: .3em; }
+.list-empty { margin: 6px 2px; font: 14px/1.9 var(--kai); color: var(--ink-3); }
+
+/* 写批注的卡片 */
+.form { margin-bottom: 18px; padding: 14px 16px 12px; border: 1px solid var(--zhu-line); border-radius: 9px; background: var(--sheet); box-shadow: var(--shadow); animation: rise .2s ease both; }
+.form-h { margin-bottom: 10px; font: 15px var(--kai); color: var(--zhu); letter-spacing: .2em; }
+.frow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin: 7px 0; }
+.flab { width: 2.4em; flex: none; font: 13px var(--kai); color: var(--ink-3); letter-spacing: .1em; }
+.fthumb { width: 64px; height: 36px; flex: none; border-radius: 3px; object-fit: cover; background: var(--paper-2); border: 1px solid var(--line); }
+.ftime { font: 14px var(--mono); font-variant-numeric: tabular-nums; }
+.fnone { font: 13px var(--kai); color: var(--ink-4); }
+.fgo { margin-left: auto; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { padding: 2px 11px; border-radius: 999px; border: 1px solid var(--line-2); background: #fff; cursor: pointer; font-size: 12.5px; color: var(--ink-2); transition: all .15s; }
+.chip:hover { border-color: var(--ink-4); color: var(--ink); }
+.chip.on { background: var(--ink); border-color: var(--ink); color: #f7f1e6; }
+.inp { flex: 1; min-width: 0; padding: 5px 9px; border: 1px solid var(--line-2); border-radius: 6px; outline: 0; background: #fff; font-size: 13px; }
+.inp:focus { border-color: var(--ink-3); }
+.inp::placeholder { color: var(--ink-4); }
+.fta {
+  display: block; width: 100%; min-height: 96px; max-height: 40vh; margin-top: 10px; padding: 10px 12px; resize: none; overflow: auto;
+  border: 1px solid var(--line); border-radius: 6px; outline: 0; background: #fffefa;
+  font: 16px/1.8 var(--kai); color: var(--zhu);
+}
+.fta::placeholder { color: var(--ink-4); font-size: 14.5px; }
+.fta:focus { border-color: var(--zhu-line); box-shadow: 0 0 0 3px var(--zhu-soft); }
+.form-f { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.form-f .sp { flex: 1; }
+.form-f em { font-style: normal; font-size: 11px; color: var(--ink-4); }
+
+/* 一条批注 */
+.ni {
+  display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; margin-bottom: 8px; padding: 8px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); cursor: pointer; transition: border-color .15s, box-shadow .15s;
+}
+.ni:hover { border-color: var(--line-2); }
+.ni.on { border-color: var(--zhu-line); box-shadow: 0 0 0 2px var(--zhu-soft); }
+.ni.editing { opacity: .45; }
+.ni-img { width: 112px; height: 63px; border-radius: 4px; overflow: hidden; background: var(--paper-2); display: grid; place-items: center; font: 11px var(--kai); color: var(--ink-4); }
+.ni-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ni-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ni-h { display: flex; align-items: center; gap: 7px; }
+.ni-no { min-width: 18px; height: 18px; padding: 0 4px; display: grid; place-items: center; border-radius: 3px; background: var(--zhu); color: #fff8f2; font: 11px/1 var(--sans); }
+.ni-t { font: 13px var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+.ni-acts { margin-left: auto; display: flex; gap: 2px; opacity: 0; transition: opacity .15s; }
+.ni:hover .ni-acts, .ni.on .ni-acts { opacity: 1; }
+.mini { padding: 0 7px; border: 0; border-radius: 4px; background: none; cursor: pointer; font-size: 12px; color: var(--ink-3); line-height: 1.7; }
+.mini:hover { background: var(--paper-2); color: var(--ink); }
+.mini.del:hover { color: var(--zhu); }
+.ni-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.tag { padding: 0 7px; border-radius: 999px; border: 1px solid var(--line-2); font-size: 11px; line-height: 1.6; color: var(--ink-2); }
+.tag.c0 { color: var(--zhe); border-color: var(--zhe-line); background: var(--zhe-soft); }
+.tag.c1 { color: var(--dai); border-color: var(--dai-line); background: var(--dai-soft); }
+.tag.c2 { color: var(--zhu); border-color: var(--zhu-line); background: var(--zhu-soft); }
+.tag.c3 { color: #5b4f7a; border-color: rgba(91, 79, 122, .3); background: rgba(91, 79, 122, .07); }
+.ni-shot { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ni-text { font: 14px/1.7 var(--kai); color: var(--zhu); white-space: pre-wrap; word-break: break-word; }
+
+/* ---------- 对话框、提示条 ---------- */
+.mask { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(42, 36, 30, .3); backdrop-filter: blur(2px); animation: fade .18s ease both; transition: opacity .18s; }
+.mask.out { opacity: 0; pointer-events: none; }
+.dlg { width: min(460px, 100%); max-height: 88vh; overflow: auto; padding: 26px 28px 20px; border-radius: 11px; background: var(--sheet); box-shadow: 0 0 0 1px rgba(214, 202, 182, .8), 0 30px 70px -24px rgba(40, 28, 16, .5); animation: rise .22s ease both; }
+.dlg h3 { margin: 0 0 8px; font: 600 19px/1.4 var(--serif); letter-spacing: .12em; }
+.dlg-sub { font-size: 13px; line-height: 1.85; color: var(--ink-2); white-space: pre-wrap; word-break: break-word; }
+.acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+#layer { position: fixed; z-index: 50; }
+#toasts { position: fixed; left: 50%; bottom: 28px; z-index: 70; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+.toast { max-width: min(70vw, 720px); display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-radius: 999px; background: rgba(40, 35, 30, .93); color: #f6efe3; font-size: 13px; letter-spacing: .04em; box-shadow: 0 12px 30px -12px rgba(30, 20, 10, .5); animation: rise .25s ease both; transition: opacity .4s, transform .4s; }
+.toast .s { width: 6px; height: 6px; flex: none; border-radius: 50%; background: #cdb27a; }
+.toast.err { background: rgba(92, 33, 24, .95); }
+.toast.err .s { background: #f08a74; }
+.toast.out { opacity: 0; transform: translateY(6px); }
+
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+@media (max-width: 1280px) {
+  body { grid-template-columns: 200px minmax(0, 1fr); }
+  .rail { width: 330px; }
+  .keys { display: none; }
+}
+</style>
+</head>
+<body>
+<aside id="side"></aside>
+<main id="main"></main>
+<div id="layer"></div>
+<div id="toasts" aria-live="polite"></div>
+<script>
+/* ============================================================
+   审片：给 成片 里的样片按时间点写批注。
+   批注存成视频旁边的「原文件名_批注.md」，每条顺手截一帧，放在旁边的「原文件名_批注截图」文件夹。
+   ============================================================ */
+(function () {
+'use strict';
+
+const PAGE = decodeURIComponent(location.pathname.split('/').pop() || '') || '审片.html';
+const VIDEO_RE = /\.(mp4|m4v|mov|webm)$/i;
+const NOTES_TAIL = '_批注.md', SHOTS_TAIL = '_批注截图';
+const CATS = ['光影', '镜头', '表演', '声音', '其他'];
+const RATES = [0.25, 0.5, 1];
+const RE_SHOT = /^\s*镜头\s*([0-9０-９]+[A-Za-z]?)\s*(?:[｜|：:]\s*|\s+|$)(.*)$/;
+const HAS_RVFC = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
+
+const S = {
+  saved: null, rootName: '', level: '', abs: '', groups: [], view: 'boot', loading: false,
+  v: null,        // 正在看的这条
+  form: null,     // 正在写的这条批注
+  sel: null,      // 选中的批注
+  rate: 1, muted: false, tok: 0,
+};
+let P = null;     // 播放器
+
+/* ---------- DOM 小工具 ---------- */
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  if (attrs) for (const k in attrs) {
+    const v = attrs[k];
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'style') el.style.cssText = v;
+    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
+    else if (k === 'value') el.value = v;
+    else if (k === 'disabled') el.disabled = !!v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat(Infinity)) {
+    if (c == null || c === false || c === '') continue;
+    el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return el;
+}
+const $ = s => document.querySelector(s);
+const ICON = {
+  plus: '<path d="M8 3.5v9M3.5 8h9"/>',
+  folder: '<path d="M2.5 4.6a1 1 0 0 1 1-1h2.9l1.4 1.4h4.7a1 1 0 0 1 1 1v5.9a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1z"/>',
+  copy: '<rect x="5.5" y="2.8" width="7.7" height="9.2" rx="1.2"/><path d="M3.2 5.6v6.6a1 1 0 0 0 1 1h5.6"/>',
+  play: '<path d="M5 3.4v9.2L12.6 8z" fill="currentColor"/>',
+  pause: '<path d="M5.4 3.6v8.8M10.6 3.6v8.8" stroke-width="2.4"/>',
+  prev: '<path d="M4 3.8v8.4" stroke-width="1.8"/><path d="M12.4 3.8 6.6 8l5.8 4.2z" fill="currentColor"/>',
+  next: '<path d="M12 3.8v8.4" stroke-width="1.8"/><path d="M3.6 3.8 9.4 8l-5.8 4.2z" fill="currentColor"/>',
+  sound: '<path d="M2.8 6.1h2.4l3.3-2.6v9l-3.3-2.6H2.8z"/><path d="M10.7 5.8a3.2 3.2 0 0 1 0 4.4M12.4 4.1a5.6 5.6 0 0 1 0 7.8"/>',
+  mute: '<path d="M2.8 6.1h2.4l3.3-2.6v9l-3.3-2.6H2.8z"/><path d="M10.6 6.2l3.4 3.6M14 6.2l-3.4 3.6"/>',
+};
+function icon(n) {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('viewBox', '0 0 16 16'); s.setAttribute('class', 'ic'); s.setAttribute('aria-hidden', 'true');
+  s.innerHTML = ICON[n] || '';
+  return s;
+}
+const isComposing = e => e.isComposing || e.keyCode === 229;
+const pathEq = (a, b) => !!a && !!b && a.length === b.length && a.every((x, i) => x === b[i]);
+const byName = (a, b) => a.name.localeCompare(b.name, 'zh', { numeric: true });
+const stem = n => n.replace(/\.[^.]+$/, '');
+const uid = () => Math.random().toString(36).slice(2, 10);
+const baseName = s => s.trim().split(/[\\/]/).pop();
+function grow(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; }
+
+/* ---------- 提示、对话框 ---------- */
+function toast(msg, kind) {
+  const t = h('div', { class: 'toast' + (kind ? ' ' + kind : '') }, h('i', { class: 's' }), h('span', null, msg));
+  $('#toasts').append(t);
+  setTimeout(() => t.classList.add('out'), kind === 'err' ? 6000 : 2600);
+  setTimeout(() => t.remove(), kind === 'err' ? 6500 : 3100);
+}
+function confirmDlg({ title, body, ok = '确定', cancel = '取消', danger }) {
+  return new Promise(resolve => {
+    const mask = h('div', { class: 'mask' });
+    let done = false;
+    const close = v => {
+      if (done) return; done = true;
+      mask.classList.add('out');
+      document.removeEventListener('keydown', onKey, true);
+      setTimeout(() => mask.remove(), 180);
+      resolve(v);
+    };
+    const onKey = e => {
+      if (isComposing(e)) return;
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(false); }
+      else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); close(true); }
+    };
+    mask.append(h('div', { class: 'dlg' }, h('h3', null, title), body ? h('div', { class: 'dlg-sub' }, body) : null,
+      h('div', { class: 'acts' },
+        h('button', { class: 'btn ghost', onclick: () => close(false) }, cancel),
+        h('button', { class: 'btn ' + (danger ? 'zhu' : 'ink'), onclick: () => close(true) }, ok))));
+    mask.addEventListener('mousedown', e => { if (e.target === mask) close(false); });
+    document.addEventListener('keydown', onKey, true);
+    $('#layer').append(mask);
+  });
+}
+
+/* ---------- IndexedDB：记住上次的文件夹 ---------- */
+const IDB = {
+  open() { return new Promise((res, rej) => { const r = indexedDB.open('shenpian', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+  async get(k) { try { const db = await this.open(); return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } catch (e) { return undefined; } },
+  async set(k, v) { try { const db = await this.open(); return await new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(true); t.onerror = t.onabort = () => res(false); }); } catch (e) { return false; /* 存不下就算了 */ } },
+};
+/* ---------- 文件系统（路径都是相对选中文件夹的一串名字） ---------- */
+const FS = {
+  root: null,
+  async dir(parts, create) { let d = this.root; for (const p of parts) d = await d.getDirectoryHandle(p, { create: !!create }); return d; },
+  async fh(parts, create) { const d = await this.dir(parts.slice(0, -1), create); return d.getFileHandle(parts[parts.length - 1], { create: !!create }); },
+  async read(parts) { const f = await (await this.fh(parts)).getFile(); return { buf: new Uint8Array(await f.arrayBuffer()), mtime: f.lastModified }; },
+  async stat(parts) { try { const f = await (await this.fh(parts)).getFile(); return { mtime: f.lastModified, size: f.size }; } catch (e) { return null; } },
+  async write(parts, data) { const w = await (await this.fh(parts, true)).createWritable(); await w.write(data); await w.close(); return this.stat(parts); },
+  async list(parts) { const d = await this.dir(parts); const out = []; for await (const [name, hd] of d.entries()) out.push({ name, kind: hd.kind }); return out; },
+  async remove(parts) { await (await this.dir(parts.slice(0, -1))).removeEntry(parts[parts.length - 1]); },
+};
+const TE = new TextEncoder();
+function decodeText(buf) {
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+  catch (e) { try { return new TextDecoder('gb18030').decode(buf); } catch (e2) { return new TextDecoder().decode(buf); } }
+}
+
+/* ---------- 从 mp4 头里读帧率和帧数；读不出就按每秒 24 帧 ---------- */
+const fourcc = (dv, p) => String.fromCharCode(dv.getUint8(p), dv.getUint8(p + 1), dv.getUint8(p + 2), dv.getUint8(p + 3));
+function boxAt(dv, p, end) {
+  if (p + 8 > end) return null;
+  let size = dv.getUint32(p), head = 8;
+  if (size === 1) { if (p + 16 > end) return null; size = Number(dv.getBigUint64(p + 8)); head = 16; }
+  else if (size === 0) size = end - p;
+  if (size < head || p + size > end) return null;
+  return { type: fourcc(dv, p + 4), start: p + head, end: p + size };
+}
+function boxes(dv, box) { const out = []; for (let p = box.start; p < box.end;) { const b = boxAt(dv, p, box.end); if (!b) break; out.push(b); p = b.end; } return out; }
+const child = (dv, box, type) => box ? boxes(dv, box).find(b => b.type === type) || null : null;
+function snapFps(x) {
+  const std = [24000 / 1001, 24, 25, 30000 / 1001, 30, 48, 50, 60000 / 1001, 60];
+  const c = std.reduce((a, b) => Math.abs(b - x) < Math.abs(a - x) ? b : a);
+  return Math.abs(c - x) / c < 0.01 ? c : x;
+}
+async function videoInfo(file) {
+  try {
+    let p = 0, moov = null;
+    while (p + 8 <= file.size) {
+      const dv = new DataView(await file.slice(p, p + 16).arrayBuffer());
+      let size = dv.getUint32(0), head = 8;
+      if (size === 1) { size = Number(dv.getBigUint64(8)); head = 16; } else if (size === 0) size = file.size - p;
+      if (size < head) return null;
+      if (fourcc(dv, 4) === 'moov') { moov = new DataView(await file.slice(p, p + size).arrayBuffer()); break; }
+      p += size;
+    }
+    if (!moov) return null;
+    for (const trak of boxes(moov, boxAt(moov, 0, moov.byteLength)).filter(b => b.type === 'trak')) {
+      const mdia = child(moov, trak, 'mdia'), hdlr = child(moov, mdia, 'hdlr'), mdhd = child(moov, mdia, 'mdhd');
+      if (!hdlr || !mdhd || fourcc(moov, hdlr.start + 8) !== 'vide') continue;
+      const scale = moov.getUint32(mdhd.start + (moov.getUint8(mdhd.start) === 1 ? 20 : 12));
+      const stts = child(moov, child(moov, child(moov, mdia, 'minf'), 'stbl'), 'stts');
+      if (!stts) return null;
+      let frames = 0, ticks = 0;
+      for (let i = 0, n = moov.getUint32(stts.start + 4); i < n; i++) {
+        const c = moov.getUint32(stts.start + 8 + i * 8);
+        frames += c; ticks += c * moov.getUint32(stts.start + 12 + i * 8);
+      }
+      return frames && ticks && scale ? { frames, fps: snapFps(frames * scale / ticks) } : null;
+    }
+  } catch (e) { /* 不是 mp4，或者头坏了 */ }
+  return null;
+}
+
+/* ---------- 时间：分:秒.十分之一秒；帧号给人看从 1 数 ---------- */
+function fmt(t) { const d = Math.max(0, Math.floor(t * 10 + 1e-6)); return `${Math.floor(d / 600)}:${String(Math.floor(d / 10) % 60).padStart(2, '0')}.${d % 10}`; }
+const fmtF = f => fmt(f / S.v.fps);
+const fpsText = x => String(Math.round(x * 1000) / 1000);
+const rangeText = n => n.f2 == null ? fmtF(n.f) : `${fmtF(n.f)}～${fmtF(n.f2)}`;
+const frameText = n => n.f2 == null ? `第${n.f + 1}帧` : `第${n.f + 1}～${n.f2 + 1}帧`;
+function shotFileName(f) {
+  const d = Math.floor(f / S.v.fps * 10 + 1e-6);
+  return `${Math.floor(d / 600)}分${String(Math.floor(d / 10) % 60).padStart(2, '0')}.${d % 10}秒_第${f + 1}帧.jpg`;
+}
+const byFrame = (a, b) => a.f - b.f || (a.f2 == null ? a.f : a.f2) - (b.f2 == null ? b.f : b.f2);
+
+/* ---------- 找成片：选的可以是总文件夹、某个项目、成片 本身，或者 成片 里某一段的文件夹 ---------- */
+function pageDir() {
+  const p = decodeURIComponent(location.pathname).replace(/\/[^/]*$/, '').replace(/^\/(?=[A-Za-z]:)/, '').replace(/\//g, '\\');
+  return location.host ? '\\\\' + location.host + p : p;
+}
+function videoLabel(name, pj, sub) {
+  let s = stem(name);
+  if (s.startsWith(pj + '_')) s = s.slice(pj.length + 1);
+  if (sub && s.startsWith(sub + '_')) s = s.slice(sub.length + 1);   // 第几段已经写在小标题上
+  return s.replace(/_样片\d*p?$/i, '').replace(/_/g, ' ').trim() || stem(name);
+}
+/* 成片 按段分了文件夹（成片\第1-1段），往下多看一层；截图文件夹、历史记录不看 */
+async function videosIn(g, parts, sub) {
+  const files = await FS.list(parts), names = new Set(files.map(f => f.name)), out = [];
+  for (const f of files) {
+    if (f.kind === 'directory') {
+      if (!sub && !/^[.$]|^历史记录$/.test(f.name) && !f.name.endsWith(SHOTS_TAIL)) {
+        try { out.push(...await videosIn(g, [...parts, f.name], f.name)); } catch (err) { /* 读不了就跳过 */ }
+      }
+      continue;
+    }
+    if (!VIDEO_RE.test(f.name)) continue;
+    const it = { name: f.name, path: [...parts, f.name], sub, label: videoLabel(f.name, g.name, sub), count: 0, general: false };
+    const md = stem(f.name) + NOTES_TAIL;
+    if (names.has(md)) {
+      try { const r = parseMd(decodeText((await FS.read([...parts, md])).buf), 24); it.count = r.notes.length; it.general = !!r.general; } catch (err) { /* 读不了就不显示 */ }
+    }
+    out.push(it);
+  }
+  return out;
+}
+async function scan() {
+  const root = FS.root, rootName = S.rootName;
+  const ents = await FS.list([]);
+  const hasDir = (list, n) => list.some(e => e.kind === 'directory' && e.name === n);
+  let groups, level, abs = '';
+  if (rootName === '成片' || segOf(rootName) || ents.some(e => e.kind === 'file' && VIDEO_RE.test(e.name))) { level = 'cp'; groups = [{ name: rootName, cp: [], pr: null }]; }
+  else if (hasDir(ents, '成片')) { level = 'project'; groups = [{ name: rootName, cp: ['成片'], pr: hasDir(ents, '提示词') ? ['提示词'] : null }]; }
+  else {
+    level = 'root';
+    // 选的正是这个页面所在的文件夹（或它上一层的总文件夹）：md 里就能写 E:\ 开头的完整路径
+    if (location.protocol === 'file:') {
+      if (ents.some(e => e.kind === 'file' && e.name === PAGE)) abs = pageDir();
+      else if (hasDir(ents, '通用工具') && /\\通用工具$/.test(pageDir())) abs = pageDir().replace(/\\通用工具$/, '');
+    }
+    groups = [];
+    const dirs = list => list.filter(e => e.kind === 'directory' && !/^[.$]/.test(e.name)).sort(byName);
+    // 项目都在 项目 文件夹里；总文件夹下还没挪进去的旧项目也列出来
+    const places = [];
+    for (const e of dirs(ents)) {
+      if (e.name !== '项目') { places.push([e.name]); continue; }
+      let pjs; try { pjs = await FS.list(['项目']); } catch (err) { continue; }
+      for (const p of dirs(pjs)) places.push(['项目', p.name]);
+    }
+    for (const at of places) {
+      let sub; try { sub = await FS.list(at); } catch (err) { continue; }
+      if (hasDir(sub, '成片')) groups.push({ name: at[at.length - 1], cp: [...at, '成片'], pr: hasDir(sub, '提示词') ? [...at, '提示词'] : null });
+    }
+  }
+  for (const g of groups) {
+    g.videos = await videosIn(g, g.cp, '');
+    g.videos.sort((a, b) => a.sub.localeCompare(b.sub, 'zh', { numeric: true }) || byName(a, b));
+  }
+  if (FS.root !== root) return;   // 扫到一半换了文件夹：这次扫的不算
+  S.level = level; S.abs = abs; S.groups = groups;
+}
+
+/* ---------- 对应的视频提示词和它的分镜 ---------- */
+const segOf = n => { const m = /第\s*(\d+(?:\s*[-－]\s*\d+)?)\s*段/.exec(n); return m ? m[1].replace(/\s/g, '').replace(/－/g, '-') : ''; };
+function promptLabel(n, pj, seg) {
+  let s = stem(n);
+  if (s.startsWith(pj + '_')) s = s.slice(pj.length + 1);
+  s = s.replace(`第${seg}段`, '').replace(/_?视频提示词$/, '');
+  return s.replace(/^[_\s]+|[_\s]+$/g, '').replace(/_/g, ' ') || '本段';
+}
+async function promptsFor(g, seg) {
+  const out = [];
+  if (!g.pr || !seg) return out;
+  const walk = async (parts, depth) => {
+    let ents; try { ents = await FS.list(parts); } catch (e) { return; }
+    const dseg = segOf(parts[parts.length - 1]);   // 文件名里没写段落的，看所在的 第N段 文件夹
+    for (const e of ents) {
+      if (e.kind === 'directory') { if (depth > 0 && !/^[.$]|^(历史记录|全局资产)$/.test(e.name)) await walk([...parts, e.name], depth - 1); }
+      else if (/视频提示词\.txt$/i.test(e.name) && (segOf(e.name) || dseg) === seg) out.push({ name: e.name, path: [...parts, e.name], label: promptLabel(e.name, g.name, seg) });
+    }
+  };
+  await walk(g.pr, 2);
+  return out.sort(byName);
+}
+/* 按文件名猜：去掉 第N条 和 样片480p、720p，剩下的和提示词一样去掉项目名、段落，比内容（视频提示词.txt 算「本段」） */
+function guessPrompt(v) {
+  const key = stem(v.name).replace(/_(?:样片\d*p?|\d+p)$/i, '').replace(/_成片$/, '').replace(/_第\d+条/, '');
+  const seg = v.seg, lab = promptLabel(key + '_视频提示词.txt', v.g.name, seg);
+  return v.prompts.find(p => p.label === lab) || null;
+}
+async function readShots(p) {
+  try {
+    const text = decodeText((await FS.read(p.path)).buf);
+    const out = [];
+    for (const line of text.split(/\r?\n/)) {
+      const m = RE_SHOT.exec(line);
+      if (m) out.push({ no: m[1].replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)), title: m[2].trim() });
+    }
+    return out;
+  } catch (e) { return []; }
+}
+
+/* ---------- 批注文件：AI 一读就懂，页面也读得回来 ---------- */
+// 路径：知道完整位置就写 E:\ 开头的，否则写相对这份批注所在文件夹的
+function shown(v, parts) {
+  if (S.abs) return [S.abs, ...parts].join('\\');
+  const base = v.notesAt.slice(0, -1);
+  let i = 0;
+  while (i < base.length && i < parts.length - 1 && base[i] === parts[i]) i++;
+  return '../'.repeat(base.length - i) + parts.slice(i).join('/');
+}
+const mdEsc = s => s.replace(/^#/gm, '＃');
+function mdText(v) {
+  const L = [`# 审片批注｜${v.name}`, '', `视频：${shown(v, v.path)}`];
+  if (v.prompt) L.push(`提示词：${shown(v, v.prompt.path)}`);
+  else if (v.promptKeep) L.push(`提示词：${v.promptKeep}`);
+  L.push('', `用户在 ${PAGE} 里边看这条样片边写的批注。时间是样片里的位置（分:秒.十分之一秒），括号里是第几帧（从 1 数，每秒 ${fpsText(v.fps)} 帧）；「镜头」对应提示词里的「镜头 NN」；截图是写这条批注时停住的那一帧，先看截图再读批注。` +
+    (S.abs ? '' : '路径都相对这份批注所在的文件夹。'), '');
+  if (v.general.trim()) L.push('## 整体', '批注：' + mdEsc(v.general.trim()), '');
+  v.notes.forEach((n, i) => {
+    L.push(`## ${i + 1}｜${rangeText(n)}`, `时间：${rangeText(n)}（${frameText(n)}）`);
+    if (n.cats.length) L.push('分类：' + n.cats.join('、'));
+    if (n.shot) L.push('镜头：' + n.shot);
+    if (n.img) L.push('截图：' + shown(v, [...v.shotsDir, n.img]));
+    if (n.img2) L.push('结束截图：' + shown(v, [...v.shotsDir, n.img2]));
+    L.push('批注：' + mdEsc(n.text), '');
+  });
+  return L.join('\n');
+}
+function framesOf(s, fps) {
+  const m = /第\s*(\d+)\s*(?:帧)?\s*(?:[～~\-–—至到]\s*第?\s*(\d+)\s*)?帧/.exec(s);
+  if (m) return [m[1] - 1, m[2] ? m[2] - 1 : null];
+  const ts = [...s.matchAll(/(\d+):(\d{1,2}(?:\.\d+)?)/g)].map(x => (+x[1]) * 60 + (+x[2]));
+  return ts.length ? [Math.round(ts[0] * fps), ts[1] != null ? Math.round(ts[1] * fps) : null] : null;
+}
+function parseMd(md, fps) {
+  const out = { prompt: '', promptLine: '', general: '', notes: [] }, all = [];
+  let cur = null;
+  for (const line of String(md).replace(/^\uFEFF/, '').split(/\r?\n/)) {
+    const hd = /^##\s*(整体|\d+)\s*(?:[｜|]\s*(.*))?$/.exec(line);
+    if (hd) { all.push(cur = { general: hd[1] === '整体', head: (hd[2] || '').trim(), time: '', cats: [], shot: '', img: '', img2: '', text: null }); continue; }
+    if (!cur) { const m = /^提示词：\s*(.+)$/.exec(line); if (m) { out.promptLine = m[1].trim(); out.prompt = baseName(m[1]); } continue; }
+    if (cur.text !== null) { cur.text += '\n' + line; continue; }   // 批注写在最后，可以有好几行
+    let m;
+    if ((m = /^批注：(.*)$/.exec(line))) cur.text = m[1];
+    else if ((m = /^时间：(.*)$/.exec(line))) cur.time = m[1];
+    else if ((m = /^分类：(.*)$/.exec(line))) cur.cats = m[1].split(/[、，,\/／\s]+/).filter(Boolean);
+    else if ((m = /^镜头：(.*)$/.exec(line))) cur.shot = m[1].trim();
+    else if ((m = /^结束截图：(.*)$/.exec(line))) cur.img2 = baseName(m[1]);
+    else if ((m = /^截图：(.*)$/.exec(line))) cur.img = baseName(m[1]);
+  }
+  for (const x of all) {
+    const text = (x.text || '').trim();
+    if (!text) continue;
+    if (x.general) { out.general = text; continue; }
+    const fr = framesOf(x.time || x.head, fps);
+    if (!fr) continue;
+    out.notes.push({ id: uid(), f: fr[0], f2: fr[1] != null && fr[1] !== fr[0] ? fr[1] : null, cats: x.cats, shot: x.shot, img: x.img, img2: x.img2, text });
+  }
+  out.notes.sort(byFrame);
+  return out;
+}
+async function readMd(v) {
+  try {
+    const r = await FS.read(v.notesAt), p = parseMd(decodeText(r.buf), v.fps);
+    v.notes = p.notes; v.general = p.general; v.mdMtime = r.mtime;
+    return p;
+  } catch (e) { v.notes = []; v.general = ''; v.mdMtime = 0; return null; }
+}
+/* 写进文件；批注全删光就删掉文件。上一次还没写完的，排在后面接着写 */
+function saveNow() {
+  const v = S.v;
+  if (!v) return Promise.resolve();
+  clearTimeout(v.saveT); v.saveT = 0;
+  v.q = v.q.then(async () => {
+    try {
+      if (v.notes.length || v.general.trim()) await FS.write(v.notesAt, TE.encode(mdText(v)));
+      else if (await FS.stat(v.notesAt)) await FS.remove(v.notesAt);
+      const st = await FS.stat(v.notesAt);
+      v.mdMtime = st ? st.mtime : 0; v.err = '';
+    } catch (e) { v.err = e.message; toast('批注没存上：' + e.message, 'err'); }
+    if (S.v === v) { paintStatus(); syncCount(); }
+  });
+  return v.q;
+}
+function saveLater() { const v = S.v; clearTimeout(v.saveT); v.saveT = setTimeout(saveNow, 500); }
+function syncCount() {
+  const v = S.v, n = v.notes.length, gen = !!v.general.trim();
+  for (const it of [v.item, ...S.groups.flatMap(g => g.videos).filter(it => pathEq(it.path, v.path))]) { it.count = n; it.general = gen; }
+  renderSide();
+}
+
+/* ---------- 截图 ---------- */
+function grab() {
+  const vd = P.video, c = document.createElement('canvas');
+  c.width = vd.videoWidth; c.height = vd.videoHeight;
+  c.getContext('2d').drawImage(vd, 0, 0);
+  return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('浏览器没给出图片')), 'image/jpeg', 0.92));
+}
+async function grabEnd() {
+  const f = P.f;
+  try { const blob = await grab(); return { f, blob, url: URL.createObjectURL(blob), img: '' }; }
+  catch (e) { toast('这一帧没截下来：' + e.message, 'err'); return { f, img: '' }; }
+}
+async function writeShot(v, f, blob) {
+  const name = shotFileName(f);
+  try {
+    await FS.write([...v.shotsDir, name], blob);
+    const old = v.thumbs.get(name); if (old) old.then(URL.revokeObjectURL).catch(() => {});
+    v.thumbs.set(name, Promise.resolve(URL.createObjectURL(blob)));
+    return name;
+  } catch (e) { toast('截图没存上：' + e.message, 'err'); return ''; }
+}
+function shotImg(v, name, cls) {
+  const img = h('img', { alt: name, class: cls || null, decoding: 'async' });
+  if (!v.thumbs.has(name)) v.thumbs.set(name, FS.fh([...v.shotsDir, name]).then(fh => fh.getFile()).then(f => URL.createObjectURL(f)));
+  v.thumbs.get(name).then(u => { img.src = u; }).catch(() => { v.thumbs.delete(name); img.replaceWith(h('span', null, '图不见了')); });
+  return img;
+}
+/* 批注删了、改了时间，原来的截图没别的批注用，就删掉；文件夹空了也删掉 */
+async function dropUnused(v, names) {
+  const used = new Set(v.notes.flatMap(n => [n.img, n.img2]).filter(Boolean));
+  for (const name of new Set(names.filter(Boolean))) {
+    if (used.has(name)) continue;
+    try { await FS.remove([...v.shotsDir, name]); } catch (e) { /* 已经没了 */ }
+    const u = v.thumbs.get(name); if (u) { u.then(URL.revokeObjectURL).catch(() => {}); v.thumbs.delete(name); }
+  }
+  if (!used.size) { try { await FS.remove(v.shotsDir); } catch (e) { /* 还有别的文件，或者本来就没有 */ } }
+}
+
+/* ---------- 启动 ---------- */
+async function boot() {
+  if (!('showDirectoryPicker' in window)) { S.view = 'nosupport'; render(); return; }
+  const saved = await IDB.get('root');
+  if (saved && typeof saved.queryPermission === 'function') {
+    S.saved = saved;
+    try { if (await saved.queryPermission({ mode: 'readwrite' }) === 'granted') { await useRoot(saved); return; } } catch (e) { /* 需要重新授权 */ }
+  }
+  S.view = 'welcome'; render();
+}
+async function pickRoot() {
+  if (!(await leaveForm())) return;
+  let hd;
+  try { hd = await window.showDirectoryPicker({ id: 'shenpian', mode: 'readwrite' }); }
+  catch (e) {
+    if (e.name === 'AbortError') toast('没打开：选的时候取消了，或者浏览器问能不能修改时没点「允许」', 'err');
+    else toast('没能打开文件夹：' + e.message, 'err');
+    return;
+  }
+  S.saved = hd;
+  IDB.set('root', hd);   // 记下来下次用；记不记得上都不耽误这次打开
+  await useRoot(hd);
+}
+async function resumeRoot() {
+  try {
+    if (await S.saved.requestPermission({ mode: 'readwrite' }) === 'granted') await useRoot(S.saved);
+    else toast('要允许修改这个文件夹，才能存批注和截图', 'err');
+  } catch (e) { toast('授权没有成功：' + e.message, 'err'); }
+}
+async function useRoot(hd) {
+  S.tok++;
+  closeVideo();
+  FS.root = hd; S.rootName = hd.name; S.view = 'main'; S.groups = []; S.loading = true;
+  render();
+  try { await scan(); }
+  catch (e) { S.groups = []; toast('读不了这个文件夹：' + e.message, 'err'); }
+  if (FS.root !== hd) return;
+  S.loading = false;
+  render();
+  const last = localStorage.getItem('shenpian:last:' + S.rootName);
+  for (const g of S.groups) for (const it of g.videos) if (it.path.join('/') === last) return openVideo(g, it);
+}
+
+/* ---------- 打开一条样片 ---------- */
+function closeVideo() {
+  if (P) { P.video.pause(); P.video.removeAttribute('src'); P.video.load(); P = null; }
+  const v = S.v;
+  if (v) { URL.revokeObjectURL(v.url); for (const u of v.thumbs.values()) u.then(URL.revokeObjectURL).catch(() => {}); }
+  dropFormUrls();
+  S.v = null; S.form = null; S.sel = null;
+}
+async function openVideo(g, it) {
+  if (S.v && pathEq(S.v.path, it.path)) return;
+  if (!(await leaveForm())) return;
+  const tok = ++S.tok;
+  let file;
+  try { file = await (await FS.fh(it.path)).getFile(); }
+  catch (e) { toast('打不开这条视频：' + e.message, 'err'); return; }
+  const info = await videoInfo(file);
+  const dir = it.path.slice(0, -1), base = stem(it.name);
+  const v = {
+    g, item: it, name: it.name, path: it.path, seg: segOf(it.name) || segOf(it.sub), fps: info ? info.fps : 24, frames: info ? info.frames : 0,
+    notesAt: [...dir, base + NOTES_TAIL], shotsDir: [...dir, base + SHOTS_TAIL],
+    notes: [], general: '', mdMtime: 0, prompts: [], prompt: null, promptKeep: '', shots: [],
+    thumbs: new Map(), q: Promise.resolve(), saveT: 0, err: '',
+  };
+  v.prompts = await promptsFor(g, v.seg);
+  const md = await readMd(v);
+  const named = md && md.prompt ? v.prompts.find(p => p.name === md.prompt) : null;
+  if (md && md.prompt && !named) v.promptKeep = md.promptLine;   // 批注里记的提示词已经不在了：照原样留着
+  v.prompt = named || (v.promptKeep ? null : guessPrompt(v));
+  if (v.prompt) v.shots = await readShots(v.prompt);
+  if (tok !== S.tok) return;
+  closeVideo();
+  v.url = URL.createObjectURL(file);
+  S.v = v;
+  localStorage.setItem('shenpian:last:' + S.rootName, it.path.join('/'));
+  P = buildPlayer(v);
+  render();
+}
+async function setPrompt(i) {
+  const v = S.v;
+  v.prompt = i === '' ? null : v.prompts[+i] || null; v.promptKeep = '';
+  v.shots = v.prompt ? await readShots(v.prompt) : [];
+  if (S.v !== v) return;
+  if (v.notes.length || v.general.trim()) saveNow();
+  paintRail();
+}
+
+/* ---------- 播放器 ---------- */
+const clampF = f => Math.max(0, Math.min(Math.max(1, S.v.frames) - 1, f));
+function ctlBtn(name, title, fn) { return h('button', { class: 'ctl', title, onclick: fn }, icon(name)); }
+function buildPlayer(v) {
+  const video = h('video', { class: 'vid', preload: 'auto', playsinline: true });
+  video.muted = S.muted;
+  video.defaultPlaybackRate = S.rate; video.playbackRate = S.rate;
+  video.src = v.url;
+  const p = { video, f: 0, want: null, seeking: false, seekP: null };
+  p.tc = h('span', { class: 'tc' }); p.fr = h('span', { class: 'fr' });
+  p.playBtn = ctlBtn('play', '播放／暂停（空格）', togglePlay);
+  p.muteBtn = ctlBtn(S.muted ? 'mute' : 'sound', '声音开／关', toggleMute);
+  p.rates = h('div', { class: 'rates', title: '慢放' }, RATES.map(r => h('button', { class: 'rate' + (r === S.rate ? ' on' : ''), onclick: () => setRate(r) }, r === 1 ? '原速' : r + '×')));
+  p.fill = h('div', { class: 'fill' }); p.ph = h('div', { class: 'ph' }); p.marks = h('div', { class: 'marks' });
+  p.track = h('div', { class: 'track', title: '点一下或拖动，跳到那里' }, h('div', { class: 'groove' }, p.fill), p.marks, p.ph);
+  p.col = h('section', { class: 'deck' },
+    h('div', { class: 'screen' }, video),
+    h('div', { class: 'bar' },
+      p.playBtn, ctlBtn('prev', '上一帧（←）', () => step(-1)), ctlBtn('next', '下一帧（→）', () => step(1)),
+      h('span', { class: 'clock' }, p.tc, p.fr), p.rates, p.muteBtn,
+      h('button', { class: 'btn zhu addbtn', title: '在这一帧写批注（回车）', onclick: () => openForm() }, icon('plus'), '写批注')),
+    p.track,
+    h('div', { class: 'keys' }, '空格 播放／暂停　　← → 逐帧　　Shift + ← → 前后一秒　　回车 在这一帧写批注'));
+
+  video.addEventListener('click', togglePlay);
+  for (const ev of ['play', 'pause', 'ended']) video.addEventListener(ev, paintPlay);
+  video.addEventListener('loadedmetadata', () => {
+    if (!v.frames) v.frames = Math.max(1, Math.round(video.duration * v.fps));
+    paintTime(); paintMarks();
+  });
+  video.addEventListener('error', () => { if (P === p) toast('这条视频放不出来', 'err'); });
+  // 画面上真正显示的是第几帧：有 requestVideoFrameCallback 就按它报的那一帧算
+  if (HAS_RVFC) {
+    const cb = (now, meta) => {
+      if (P !== p) return;
+      if (!p.seeking) { p.f = clampF(Math.round(meta.mediaTime * v.fps)); paintTime(); }
+      video.requestVideoFrameCallback(cb);
+    };
+    video.requestVideoFrameCallback(cb);
+  } else {
+    const fromClock = () => { if (P === p && !p.seeking) { p.f = clampF(Math.floor(video.currentTime * v.fps + 1e-3)); paintTime(); } };
+    video.addEventListener('timeupdate', fromClock);
+    video.addEventListener('play', () => { const loop = () => { if (P !== p || video.paused) return; fromClock(); requestAnimationFrame(loop); }; loop(); });
+  }
+  // 时间条：点或拖
+  p.track.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    p.track.setPointerCapture(e.pointerId);
+    halt();
+    const go = ev => { const r = p.track.getBoundingClientRect(); seekTo(Math.round(Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)) * (Math.max(1, v.frames) - 1))); };
+    const up = () => { p.track.removeEventListener('pointermove', go); p.track.removeEventListener('pointerup', up); p.track.removeEventListener('pointercancel', up); };
+    go(e);
+    p.track.addEventListener('pointermove', go); p.track.addEventListener('pointerup', up); p.track.addEventListener('pointercancel', up);
+  });
+  return p;
+}
+/* 跳到第 f 帧（从 0 数）：对准这一帧的正中间，前后帧都不会串。连着跳只跳最后一次 */
+function seekTo(f) {
+  const p = P;
+  if (!p) return Promise.resolve();
+  p.want = clampF(f); p.f = p.want; paintTime();
+  if (!p.seeking) p.seekP = (async () => {
+    p.seeking = true;
+    try { while (p.want != null) { const t = (p.want + 0.5) / S.v.fps; p.want = null; await seekRaw(p.video, t); } }
+    finally { p.seeking = false; }
+  })();
+  return p.seekP;
+}
+function seekRaw(video, t) {
+  return new Promise(res => {
+    let done = false;
+    const fin = () => { if (done) return; done = true; video.removeEventListener('seeked', fin); clearTimeout(tm); res(); };
+    const tm = setTimeout(fin, 2000);
+    video.addEventListener('seeked', fin);
+    video.currentTime = isFinite(video.duration) ? Math.min(t, video.duration) : t;
+  });
+}
+/* 停下来：正在放就按现在的时间算是第几帧，之后都对准这一帧 */
+function halt() {
+  const vd = P.video;
+  if (!vd.paused) { vd.pause(); P.f = clampF(Math.floor(vd.currentTime * S.v.fps + 1e-3)); }
+  return P.f;
+}
+function step(d) { if (P) seekTo(halt() + d); }
+function togglePlay() { if (!P) return; const vd = P.video; if (vd.paused || vd.ended) vd.play().catch(e => toast('放不了：' + e.message, 'err')); else seekTo(halt()); }
+function setRate(r) {
+  S.rate = r;
+  if (!P) return;
+  P.video.defaultPlaybackRate = r; P.video.playbackRate = r;
+  [...P.rates.children].forEach((b, i) => b.classList.toggle('on', RATES[i] === r));
+}
+function toggleMute() { S.muted = !S.muted; if (P) { P.video.muted = S.muted; P.muteBtn.replaceChildren(icon(S.muted ? 'mute' : 'sound')); } }
+function paintPlay() { if (P) P.playBtn.replaceChildren(icon(P.video.paused || P.video.ended ? 'play' : 'pause')); }
+function paintTime() {
+  const p = P;
+  if (!p || !S.v) return;
+  const d = p.video.duration, n = Math.max(1, S.v.frames - 1);
+  p.tc.textContent = fmtF(p.f) + ' / ' + (isFinite(d) ? fmt(d) : '-:--.-');
+  p.fr.textContent = `第 ${p.f + 1} 帧`;
+  const x = Math.min(100, p.f / n * 100) + '%';
+  p.ph.style.left = x; p.fill.style.width = x;
+}
+function paintMarks() {
+  const p = P, v = S.v;
+  if (!p || !v) return;
+  const n = Math.max(1, v.frames - 1), pc = f => Math.min(100, f / n * 100);
+  p.marks.replaceChildren(...v.notes.map((x, i) => {
+    const a = pc(x.f), cls = 'mk' + (x.f2 != null ? ' range' : '') + (S.sel === x.id ? ' on' : '') + (S.form && S.form.id === x.id ? ' editing' : '');
+    const el = h('button', { class: cls, title: `${i + 1}．${rangeText(x)}　${x.text.slice(0, 40)}`, style: x.f2 != null ? `left:${a}%;width:${pc(x.f2) - a}%` : `left:${a}%`, onclick: () => jump(x) });
+    el.addEventListener('pointerdown', e => e.stopPropagation());
+    return el;
+  }));
+}
+
+/* ---------- 写批注 ---------- */
+function dropFormUrls() {
+  const fm = S.form;
+  if (fm) for (const e of [fm.a, fm.b]) if (e && e.url && !e.saved) URL.revokeObjectURL(e.url);
+}
+function defaultShot(f) {
+  const prev = [...S.v.notes].reverse().find(n => n.f <= f && n.shot);
+  return prev ? prev.shot : '';
+}
+async function openForm(n) {
+  if (!P || S.opening || !(await leaveForm())) return;
+  halt();
+  if (n) {
+    S.form = { id: n.id, a: { f: n.f, img: n.img }, b: n.f2 != null ? { f: n.f2, img: n.img2 } : null, cats: new Set(n.cats), shot: n.shot, text: n.text, changed: false };
+    S.sel = n.id;
+    seekTo(n.f);
+  } else {
+    S.opening = true;   // 连按两下回车只开一张
+    try {
+      const p = P;
+      await seekTo(p.f);
+      if (P !== p) return;
+      const a = await grabEnd();
+      if (P !== p) return;
+      S.form = { id: null, a, b: null, cats: new Set(), shot: defaultShot(a.f), text: '', changed: false };
+    } finally { S.opening = false; }
+  }
+  paintRail(); paintMarks();
+  const body = $('#rail-body'); if (body) body.scrollTop = 0;
+  const ta = $('.fta'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+}
+async function setEnd(which) {
+  const fm = S.form;
+  if (!fm || !P) return;
+  await seekTo(halt());
+  if (!P || S.form !== fm) return;
+  const e = await grabEnd();
+  if (which === 'b' && e.f === fm.a.f) { if (e.url) URL.revokeObjectURL(e.url); toast('结束和开始是同一帧：先往后放到结束的地方，再点这里'); return; }
+  const old = fm[which]; if (old && old.url) URL.revokeObjectURL(old.url);
+  fm[which] = e; fm.changed = true;
+  paintForm();
+}
+function clearEnd() { const fm = S.form; if (fm.b && fm.b.url) URL.revokeObjectURL(fm.b.url); fm.b = null; fm.changed = true; paintForm(); }
+async function saveForm() {
+  const fm = S.form, v = S.v;
+  if (!fm || fm.busy) return;
+  const text = fm.text.trim();
+  if (!text) { toast('先写几个字再存'); const ta = $('.fta'); if (ta) ta.focus(); return; }
+  fm.busy = true;
+  let ends = [fm.a, fm.b].filter(Boolean).sort((x, y) => x.f - y.f);
+  if (ends.length === 2 && ends[0].f === ends[1].f) ends = [ends[0]];
+  for (const e of ends) if (e.blob && !e.img) { e.img = await writeShot(v, e.f, e.blob); e.saved = !!e.img; }
+  const old = fm.id ? v.notes.find(n => n.id === fm.id) : null;
+  let shot = fm.shot.trim();
+  if (/^[0-9０-９]+$/.test(shot)) shot = shot.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).padStart(2, '0');
+  const note = {
+    id: fm.id || uid(), f: ends[0].f, img: ends[0].img || '', f2: ends[1] ? ends[1].f : null, img2: ends[1] ? ends[1].img || '' : '',
+    cats: [...CATS.filter(c => fm.cats.has(c)), ...[...fm.cats].filter(c => !CATS.includes(c))], shot, text,
+  };
+  v.notes = [...v.notes.filter(n => n !== old), note].sort(byFrame);
+  dropFormUrls();
+  S.form = null; S.sel = note.id;
+  if (old) await dropUnused(v, [old.img, old.img2]);
+  await saveNow();
+  paintRail(); paintMarks();
+  toast(old ? '改好了' : `记下了：${rangeText(note)}`);
+}
+/* 写了一半要走：问一句 */
+async function leaveForm() {
+  const fm = S.form;
+  if (!fm) return true;
+  if (fm.changed && (fm.text.trim() || fm.id)) {
+    const ok = await confirmDlg({ title: '这条批注还没存', body: '不存就丢掉了。', ok: '不要了', cancel: '回去接着写', danger: true });
+    if (!ok) return false;
+  }
+  dropFormUrls();
+  S.form = null;
+  paintRail(); paintMarks();
+  return true;
+}
+async function delNote(n) {
+  const ok = await confirmDlg({ title: '删掉这条批注？', body: `${rangeText(n)}　${n.text.length > 60 ? n.text.slice(0, 60) + '…' : n.text}\n这条的截图也一起删掉。`, ok: '删掉', danger: true });
+  const v = S.v;
+  if (!ok || !v || !v.notes.includes(n)) return;
+  v.notes = v.notes.filter(x => x !== n);
+  if (S.form && S.form.id === n.id) { dropFormUrls(); S.form = null; }
+  if (S.sel === n.id) S.sel = null;
+  await dropUnused(v, [n.img, n.img2]);
+  await saveNow();
+  paintRail(); paintMarks();
+  toast('删掉了');
+}
+function jump(n) {
+  if (!P) return;
+  halt();
+  S.sel = n.id;
+  seekTo(n.f);
+  paintRail(); paintMarks();
+}
+async function copyForAI() {
+  const v = S.v;
+  const path = S.abs ? shown(v, v.notesAt) : [S.rootName, ...v.notesAt].join('/');
+  try { await navigator.clipboard.writeText('按审片批注改提示词 ' + path); toast('复制好了，贴给 Claude 或 Codex'); }
+  catch (e) { toast('复制没成功：' + e.message, 'err'); }
+}
+
+/* ============================================================
+   渲染
+   ============================================================ */
+function render() { renderSide(); renderMain(); }
+function renderSide() {
+  const side = $('#side');
+  side.replaceChildren(h('div', { class: 'brand' }, h('div', { class: 'seal' }, '审'),
+    h('div', null, h('div', { class: 'brand-name' }, '审片'), h('div', { class: 'brand-sub' }, '按时间点批注'))));
+  if (!FS.root) { side.append(h('div', { class: 'side-empty' }, '还没打开文件夹')); return; }
+  const list = h('div', { class: 'vlist' });
+  for (const g of S.groups) {
+    if (S.level !== 'cp') list.append(h('div', { class: 'side-label' }, g.name));
+    if (!g.videos.length) list.append(h('div', { class: 'side-empty' }, '成片里还没有视频'));
+    let sub = '';
+    for (const it of g.videos) {
+      if (it.sub !== sub) { sub = it.sub; list.append(h('div', { class: 'side-sub' }, sub)); }
+      list.append(h('button', { class: 'vitem' + (S.v && pathEq(S.v.path, it.path) ? ' on' : ''), title: it.name, onclick: () => openVideo(g, it) },
+        h('span', { class: 'vname' }, it.label),
+        it.count || it.general ? h('span', { class: 'vcount' }, [it.count ? `批注 ${it.count}` : '', it.general ? '整条意见' : ''].filter(Boolean).join(' · ')) : null));
+    }
+  }
+  if (!S.groups.length) list.append(h('div', { class: 'side-empty' }, S.loading ? '正在读取……' : '这里没找到 成片 文件夹'));
+  side.append(list, h('div', { class: 'side-foot' }, h('button', { class: 'linkbtn', onclick: pickRoot, title: '换一个文件夹' }, icon('folder'), S.rootName)));
+}
+function renderMain() {
+  const main = $('#main');
+  if (S.view === 'boot') { main.replaceChildren(); return; }
+  if (S.view === 'nosupport') { main.replaceChildren(renderNoSupport()); return; }
+  if (S.view === 'welcome') { main.replaceChildren(renderWelcome()); return; }
+  if (!S.v) {
+    const any = S.groups.some(g => g.videos.length);
+    main.replaceChildren(h('div', { class: 'blank' }, S.loading ? '正在读取「' + S.rootName + '」……' : any ? '点左边一条样片，开始看' : '这个文件夹里没找到样片（mp4）'));
+    return;
+  }
+  main.replaceChildren(renderTop(), h('div', { class: 'stage' }, P.col, renderRail()));
+  paintPlay(); paintTime(); paintMarks(); paintStatus();
+}
+function renderWelcome() {
+  return h('div', { class: 'welcome' }, h('div', { class: 'w-inner' },
+    h('div', { class: 'seal w-seal' }, '审'),
+    h('div', { class: 'w-title' }, '审片'),
+    h('div', { class: 'w-sub' }, '成片 · 按时间点批注'),
+    h('div', { class: 'w-verse' }, h('span', null, '停在那一帧'), h('span', null, '写下哪里不对')),
+    S.saved ? h('button', { class: 'btn ink lg', onclick: resumeRoot }, '继续打开「' + S.saved.name + '」') : null,
+    h('button', { class: 'btn ' + (S.saved ? 'ghost' : 'ink lg'), onclick: pickRoot }, S.saved ? '换一个文件夹' : '选择文件夹'),
+    h('p', { class: 'w-note' }, '选 E:\\AI短视频项目 这一层（和项目管理一样），每个项目 成片 里各段的样片都列出来，还能对上提示词的分镜；只选某个项目、它的 成片 或某一段的文件夹也行。', h('br'),
+      '浏览器问能不能修改时选「允许」：批注和截图要存进去。以后打开这页，点「继续打开」就行。')));
+}
+function renderNoSupport() {
+  return h('div', { class: 'welcome' }, h('div', { class: 'w-inner' },
+    h('div', { class: 'seal w-seal' }, '审'), h('div', { class: 'w-title' }, '审片'),
+    h('p', { class: 'w-note' }, '这个浏览器不能直接读写电脑上的文件夹。', h('br'), '请用 Chrome 或 Edge 打开这个文件。')));
+}
+function renderTop() {
+  const v = S.v;
+  return h('header', { class: 'top' },
+    h('div', { class: 'crumb' }, h('span', { class: 'ptitle' }, v.g.name),
+      v.item.sub ? h('span', { class: 'crumb-seg' }, v.item.sub) : null,
+      h('span', { class: 'crumb-seg', title: v.name }, v.item.label)),
+    h('div', { class: 'top-right' },
+      h('div', { class: 'status', id: 'status' }),
+      h('button', { class: 'btn ink', id: 'ai-btn', onclick: copyForAI, title: '复制一句话，贴给 Claude 或 Codex，它照批注改提示词' }, icon('copy'), '交给 AI')));
+}
+function paintStatus() {
+  const el = $('#status'), v = S.v;
+  if (!el || !v) return;
+  const n = v.notes.length + (v.general.trim() ? 1 : 0);
+  el.className = 'status' + (v.err ? ' err' : n ? ' noted' : '');
+  el.title = n ? '存在 ' + shown(v, v.notesAt) : '';
+  el.replaceChildren(h('i', { class: 'dot' }), v.err ? '没存上，看右下角提示' : n ? `批注 ${v.notes.length} 条${v.general.trim() ? ' · 整条意见' : ''} · 已存` : '还没有批注');
+  const ab = $('#ai-btn'); if (ab) ab.disabled = !n;
+}
+function paintRail() {
+  const old = $('#rail');
+  if (!old || !S.v) return;
+  const sc = ($('#rail-body') || {}).scrollTop || 0;
+  const focusTa = document.activeElement && document.activeElement.classList.contains('fta');
+  old.replaceWith(renderRail());
+  const body = $('#rail-body'); if (body) body.scrollTop = sc;
+  if (focusTa) { const ta = $('.fta'); if (ta) ta.focus(); }
+  paintStatus();
+}
+function paintForm() {
+  const old = $('.form');
+  if (!old || !S.form) { paintRail(); return; }
+  const ta = old.querySelector('.fta'), focused = document.activeElement === ta, s = ta.selectionStart, e = ta.selectionEnd;
+  old.replaceWith(renderForm());
+  if (focused) { const t = $('.fta'); t.focus(); t.setSelectionRange(s, e); }
+  paintMarks();
+}
+function renderRail() {
+  const v = S.v;
+  const head = h('div', { class: 'rail-h' });
+  if (v.g.pr) {
+    const sel = h('select', { class: 'sel', title: '这条样片是照哪份提示词出的', onchange: e => { e.target.blur(); setPrompt(e.target.value); } },
+      h('option', { value: '' }, v.promptKeep ? '（原来记的：' + baseName(v.promptKeep) + '）' : v.prompts.length ? '没对应' : '本段没找到视频提示词'),
+      v.prompts.map((p, i) => h('option', { value: String(i) }, p.label)));
+    sel.value = v.prompt ? String(v.prompts.indexOf(v.prompt)) : '';
+    head.append(h('label', { class: 'prow' }, h('span', null, '对应提示词'), sel));
+  }
+  const gen = h('textarea', {
+    class: 'gen', rows: 1, placeholder: '整条片子的意见（可不写）', value: v.general,
+    oninput: e => { v.general = e.target.value; grow(e.target); saveLater(); },
+    onblur: () => { if (v.saveT) saveNow(); },
+    onkeydown: e => { if (e.key === 'Escape') e.target.blur(); },
+  });
+  head.append(gen);
+  requestAnimationFrame(() => grow(gen));
+  const body = h('div', { class: 'rail-body', id: 'rail-body' });
+  if (S.form) body.append(renderForm());
+  body.append(h('div', { class: 'list-h' }, v.notes.length ? `批注 ${v.notes.length} 条` : '还没有批注'));
+  if (!v.notes.length && !S.form) body.append(h('p', { class: 'list-empty' }, '看到哪里不对，停下来按回车（或点「写批注」），写一句就行。要说一段，先停在开头写，再放到结尾点「到」那一行的按钮。'));
+  v.notes.forEach((n, i) => body.append(renderItem(n, i)));
+  return h('aside', { class: 'rail', id: 'rail' }, head, body);
+}
+function renderForm() {
+  const fm = S.form, v = S.v;
+  const no = fm.id ? v.notes.findIndex(n => n.id === fm.id) + 1 : 0;
+  const thumb = e => e.url ? h('img', { class: 'fthumb', src: e.url, alt: '' }) : e.img ? shotImg(v, e.img, 'fthumb') : h('span', { class: 'fthumb' });
+  const endRow = (label, e, which) => h('div', { class: 'frow' },
+    h('span', { class: 'flab' }, label),
+    e ? [thumb(e), h('span', { class: 'ftime', title: `第${e.f + 1}帧` }, fmtF(e.f))] : h('span', { class: 'fnone' }, '只这一刻'),
+    h('span', { class: 'fgo' },
+      which === 'b' && e ? h('button', { class: 'btn ghost sm', title: '不要结束时间', onclick: clearEnd }, '去掉') : null,
+      h('button', { class: 'btn sm', title: which === 'a' ? '开头改成播放器里现在这一帧' : '结束设成播放器里现在这一帧', onclick: () => setEnd(which) }, '用当前画面')));
+  const chips = h('div', { class: 'chips' }, CATS.map(c => h('button', {
+    class: 'chip' + (fm.cats.has(c) ? ' on' : ''),
+    onclick: e => { fm.cats.has(c) ? fm.cats.delete(c) : fm.cats.add(c); e.currentTarget.classList.toggle('on', fm.cats.has(c)); fm.changed = true; },
+  }, c)));
+  let shot;
+  if (v.shots.length) {
+    const opts = v.shots.map(s => `${s.no}｜${s.title}`);
+    if (fm.shot && !opts.includes(fm.shot)) opts.unshift(fm.shot);
+    shot = h('select', { class: 'sel', onchange: e => { fm.shot = e.target.value; fm.changed = true; e.target.blur(); } },
+      h('option', { value: '' }, '不标'), opts.map(o => h('option', { value: o }, '镜头 ' + o.replace('｜', '　'))));
+    shot.value = fm.shot;
+  } else {
+    shot = h('input', { class: 'inp', value: fm.shot, placeholder: v.g.pr ? '上面选了对应的提示词，这里就能挑' : '第几镜，比如 03（可空）', oninput: e => { fm.shot = e.target.value; fm.changed = true; } });
+  }
+  const ta = h('textarea', {
+    class: 'fta', placeholder: '哪里不对，想要什么样', value: fm.text,
+    oninput: e => { fm.text = e.target.value; fm.changed = true; grow(e.target); },
+  });
+  requestAnimationFrame(() => grow(ta));
+  return h('div', { class: 'form' },
+    h('div', { class: 'form-h' }, no ? `改第 ${no} 条` : '新批注'),
+    endRow('从', fm.a, 'a'), endRow('到', fm.b, 'b'),
+    h('div', { class: 'frow' }, h('span', { class: 'flab' }, '分类'), chips),
+    h('div', { class: 'frow' }, h('span', { class: 'flab' }, '镜头'), shot),
+    ta,
+    h('div', { class: 'form-f' },
+      fm.id ? h('button', { class: 'btn ghost sm danger', onclick: () => { const n = v.notes.find(x => x.id === fm.id); if (n) delNote(n); } }, '删掉') : null,
+      h('span', { class: 'sp' }),
+      h('em', null, 'Ctrl + 回车 存'),
+      h('button', { class: 'btn ghost sm', onclick: () => leaveForm() }, '取消'),
+      h('button', { class: 'btn ink sm', onclick: saveForm }, '存好')));
+}
+function renderItem(n, i) {
+  const v = S.v, editing = S.form && S.form.id === n.id;
+  return h('div', { class: 'ni' + (S.sel === n.id ? ' on' : '') + (editing ? ' editing' : ''), title: '点一下跳到这里', onclick: () => jump(n) },
+    h('div', { class: 'ni-img' }, n.img ? shotImg(v, n.img) : '没有截图'),
+    h('div', { class: 'ni-main' },
+      h('div', { class: 'ni-h' },
+        h('span', { class: 'ni-no' }, i + 1),
+        h('span', { class: 'ni-t' }, rangeText(n)),
+        h('span', { class: 'ni-acts' },
+          h('button', { class: 'mini', title: '改这条', onclick: e => { e.stopPropagation(); openForm(n); } }, '改'),
+          h('button', { class: 'mini del', title: '删掉这条', onclick: e => { e.stopPropagation(); delNote(n); } }, '删'))),
+      n.cats.length || n.shot ? h('div', { class: 'ni-tags' },
+        n.cats.map(c => h('span', { class: 'tag c' + CATS.indexOf(c) }, c)),
+        n.shot ? h('span', { class: 'ni-shot', title: '镜头 ' + n.shot }, '镜头 ' + n.shot.replace('｜', ' ')) : null) : null,
+      h('div', { class: 'ni-text' }, n.text)));
+}
+
+/* ---------- 键盘、窗口 ---------- */
+// 点按钮不抢焦点：打字时点分类不会丢光标，空格、回车也不会去按刚点过的按钮
+document.addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
+document.addEventListener('keydown', e => {
+  if (isComposing(e) || $('.mask')) return;
+  const tag = document.activeElement && document.activeElement.tagName;
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(tag);
+  if (S.form && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveForm(); return; }
+  if (S.form && e.key === 'Escape') { e.preventDefault(); leaveForm(); return; }
+  if (typing || !P || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); const d = e.key === 'ArrowLeft' ? -1 : 1; step(e.shiftKey ? d * Math.round(S.v.fps) : d); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (S.form) { const ta = $('.fta'); if (ta) ta.focus(); } else openForm(); }
+});
+window.addEventListener('beforeunload', e => {
+  const v = S.v;
+  if (v && v.saveT) saveNow();
+  if (S.form && S.form.changed && S.form.text.trim()) { e.preventDefault(); e.returnValue = ''; }
+});
+/* 切回来时看一眼：AI 改了或移走了批注文件，就重新读；成片里多了新视频，列表跟着变 */
+window.addEventListener('focus', async () => {
+  if (!FS.root || S.view !== 'main' || $('.mask')) return;
+  const v = S.v;
+  if (v && !S.form) {
+    await v.q;
+    const st = await FS.stat(v.notesAt);
+    if (S.v === v && !S.form && (st ? st.mtime : 0) !== v.mdMtime) {
+      const md = await readMd(v);
+      if (md && md.prompt) { const p = v.prompts.find(x => x.name === md.prompt); if (p && p !== v.prompt) { v.prompt = p; v.shots = await readShots(p); } }
+      S.sel = null;
+      paintRail(); paintMarks(); syncCount();
+      toast(st ? '批注在外面改过，已重新读取' : '批注文件被移走了');
+    }
+  }
+  try { await scan(); renderSide(); } catch (e) { /* 下次再看 */ }
+});
+
+window.Shenpian = { S, FS, boot, useRoot, parseMd, mdText, videoInfo, get P() { return P; } };
+boot();
+})();
+</script>
+</body>
+</html>

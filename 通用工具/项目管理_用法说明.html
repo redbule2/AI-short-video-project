@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>项目管理怎么用</title>
+<style>
+:root{--ink:#2a241d;--sub:#6b6358;--paper:#fbf8f1;--line:#e3dccd;--seal:#9b2c2c;--red:#b3261e;--bar:#f1ebdd;--dai:#3d5a5a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.8 "Microsoft YaHei","PingFang SC",sans-serif}
+main{max-width:760px;margin:0 auto;padding:32px 22px 60px}
+h1{font-size:26px;margin:0 0 6px}
+h2{font-size:19px;margin:30px 0 8px}
+p{margin:6px 0}
+.n{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--seal);color:#fff;font-size:13px;font-weight:700;flex:none}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:14px 0;font-size:14.5px}
+.box{border:1px solid #cdc4b1;border-radius:8px;background:#fff;padding:6px 12px;line-height:1.5}
+.box b{display:block}
+.box small{color:var(--sub)}
+.loop{border:1px dashed #b9ad95;border-radius:12px;padding:10px 12px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;background:#fdfaf3}
+.loop>em{font-style:normal;color:var(--sub);font-size:13px;width:100%}
+.arr{color:var(--sub)}
+.steps{list-style:none;padding:0;margin:0}
+.steps li{display:flex;gap:10px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:8px 0}
+.steps .n{margin-top:4px}
+.tips{padding-left:22px;margin:6px 0}
+.pill{display:inline-block;border:1px solid #cdc4b1;border-radius:14px;padding:0 10px;background:#fff;font-size:14px;line-height:1.7}
+.warn{color:var(--red)}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid #d8c9a8;border-top-color:#a0783c;border-radius:50%;vertical-align:-1px;animation:sp .9s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<main>
+<h1>项目管理怎么用</h1>
+<p>在对话里说「打开项目管理」，右边出现的就是<b>流水线首页</b>。在自己的浏览器里用：开 http://localhost:8766/ （可以收藏）。</p>
+<p>原来的「审片、剧本、提示词、图片」几个菜单都并进了流水线的工序里；想看原来那一页，点首页左上角「老页面」。</p>
+
+<h2>五道工序</h2>
+<div class="flow">
+<div class="box"><b>工序一　全片设定</b><small>梗概、人物、场景、道具</small></div><span class="arr">→</span>
+<div class="loop"><em>每一场走一遍</em>
+<div class="box"><b>工序二</b><small>段落 → 剧本</small></div><span class="arr">→</span>
+<div class="box"><b>工序三</b><small>资产</small></div><span class="arr">→</span>
+<div class="box"><b>工序四</b><small>提示词</small></div><span class="arr">→</span>
+<div class="box"><b>工序五</b><small>审片</small></div>
+</div>
+</div>
+<p>工序六「经验总结」已经画进工序图，页面还没做。</p>
+<p>过了前一关才进下一步：段落「定下来」→「剧本定稿」→ 这一场的图都「确认可用」→ 每一条「批准出片」→ 样片「选定」。没有镜头表这一步：镜头在提示词的「分镜」里设计。完整的图在 项目 文件夹里的「工序图.html」。</p>
+
+<ol class="steps">
+<li><span class="n">首页</span><div>最上面「接着做」是现在该你做的那件事，点一下直接过去。下面是全片设定四格，和各场的进度表：一场一行，五格对着五步，点哪一格进哪一步。最下面是「即梦授权」。</div></li>
+<li><span class="n">一</span><div><b>全片设定</b>：梗概、人物、场景、道具，写一次，各场共用。人物、道具一行一个，在弹窗里写叫法、描写，引用已有的图；写得粗的可以让 AI 补细，场景可以让 AI 照 GEO 扩写。写提示词时，场景那几行照这一段的 GEO 底稿写；还没有底稿，AI 先看场景图建一份（草案，等你审）。AI 写的先摆给你看，你点「采用」才换上。</div></li>
+<li><span class="n">二</span><div><b>段落</b>：选这一场出场的人物、道具、场景图，写这一场主要表达什么，再一段一段写：每段写什么、起什么作用。拿不准可以点「让 AI 看看」，它只提意见、不改你的字。写好点「定下来」。</div></li>
+<li><span class="n">二</span><div><b>剧本</b>：点「让 AI 扩写成剧本」。写好就在这一页看，点一段写批注，点「交给 AI 改」。没问题了点「剧本定稿」。</div></li>
+<li><span class="n">三</span><div><b>资产</b>：这一场要的图都摆在这里。
+<br>用已有的：点「选出场的」，从全片设定里选这一场的人物、道具、场景图；剧本里提到了还没选的，会摆在下面，点一下选上。点「用已有的图」，项目里已有的图点一张，这一场就用上它（人物、道具的图挂到它那一行，表里没有就加一行）；点某一格「还没有图」再挑，图就挂到那一行。删掉的图也在最下面，点一下放回来（批注跟着回来；人物原来有图的，先问换不换）。
+<br>补齐缺的：没有图的点「让 AI 出缺的」，先由你选的那个 AI 写出图提示词，再交给 Codex 一张一张出。挂的图不在了、或者某个状态不想要了，点那一格右上角的 × 去掉。
+<br>确认可用：一张图一张图确认。能用的在那张图上点「确认可用」；点开看大图时，顶上也有「这张确认可用」。不要的点右上角 × 删掉重出。确认过的图，别的场不用再确认；这一场的图都确认了，这一步就过了。</div></li>
+<li><span class="n">四</span><div><b>提示词</b>：这一场的视频提示词都列在这里，一条提示词出一条视频。点「写一条提示词」，选这一条写哪几个段落的戏（一条视频最多十五秒）、谁来写：「我来写」——本段事件和每一镜你写，素材、基础设定、本段、保持一致和每镜的关键词 AI 铺好；「AI 先写一版」——整份它写，你批注。
+<br>你写的稿点「接着写」：本段事件和每一镜你写，写的时候可以「请 AI 批」，它只批不改，你点「照改」才动稿子。AI 写的稿点「打开看、写批注」，再交给 AI 改。
+<br>每一条都可以点「让 AI 批一批」：最多批 8 条，只批不改。
+<br>写好以后点「生成任务书」（选模型、清晰度、秒数、最多花多少积分、用哪个即梦账号），这一步不花积分。看过任务书，点「批准出片」再确认一次，才交给 Codex 去即梦出一条样片。</div></li>
+<li><span class="n">五</span><div><b>审片</b>：样片出好了自动出现在这里。点「看片、写批注」。满意：选定它是哪一条提示词的成品。不满意、东西不用改：回提示词再批准出一条。不满意、要改：点「让 AI 说说回哪一道」，它照你的批注说该改什么、回哪一道工序；回哪一道由你定。没选上的点「这条不要了」，移进历史记录。每一条都选定了，连起来看一遍，点「这一场定稿」。</div></li>
+</ol>
+
+<h2>AI 在做的时候</h2>
+<ul class="tips">
+<li>每页顶上右边「AI 用」，选这回交给谁：Claude、Codex、DeepSeek（都是这台电脑上装好的）。出图只走 Codex。</li>
+<li>点了「让 AI ……」以后，那里会出现 <span class="pill"><span class="spin"></span> Claude 在写　0:42　停掉</span>：谁在做、做到哪、用了多久；不想等了点「停掉」。做完页面自己换上。可以接着干别的，也可以关掉页面，做完的东西照样落盘。</li>
+<li>没做成会写明原因（比如 AI 回的格式不对），再点一次就行。每个任务的任务书和 AI 的回答留在这个项目的「历史记录 / AI任务」里。</li>
+<li>交给 Codex 的活，Codex 会开一个看得见的对话，一次只做一件，别的排着队。</li>
+</ul>
+
+<h2>待核对</h2>
+<p>前面确认过的东西后来又动了，后面用到它的会标 <span class="pill warn">待核对</span>，由你看一眼，选<b>沿用</b>或者<b>重做</b>：</p>
+<ul class="tips">
+<li>剧本重新定稿了：这一场的资产（「还能用，确认」或删掉重出）。</li>
+<li>全片设定里改了某个人物、道具的描写，或者图重出了：那一张图要再确认一次（用到它的各场都等着它）。</li>
+<li>剧本重新定稿、图重新确认过、换了出场的：这一场的提示词（「沿用」或者改）；提示词改过：选定的样片（「沿用」或者重出）。</li>
+</ul>
+<p>没核对完的那一步后面先锁着，核对完就开。</p>
+
+<h2>即梦授权</h2>
+<p>首页最下面。一个登录位一行（默认的一个；另一个号点「加一个登录位」填它的名字）：登没登录、是哪个号、还有多少积分。没登录就点「去授权」，页面给一个链接，你在登着即梦账号的浏览器里打开、点同意，页面自己会变成「登录着」。生成任务书的时候可以选这一条用哪个号。</p>
+
+<h2>还有几件事</h2>
+<ul class="tips">
+<li>先看一眼顶上的项目名对不对，不对点它换项目。</li>
+<li>一场的页面顶上是步骤条，右边「上一场」「下一场」换场；左上「← 首页」。</li>
+<li>一场就是一段：第 1-1 场的东西都在各处的「第1-1段」文件夹里。</li>
+<li>看图、看剧本、看提示词、看样片时是整页盖上来的，看完点左上「← 回到流水线」。里面的用法和以前一样：点一段写批注；图上拖一个框写一句；样片停在那一帧按回车写。</li>
+<li>以前 AI 写的段列在首页下面，点「搬进流水线」就能接着用。</li>
+<li>本机服务没开的时候（还没在 Claude 里说过「打开项目管理」），直接双击 项目管理.html 打开的是原来一整页的样子，没有 AI 任务。</li>
+</ul>
+<p><b>东西放在哪</b>（都在这个项目的文件夹里）</p>
+<ul class="tips">
+<li>定稿的剧本 / 流水线.json：你在流水线里写的全部，每一场各关口点过的时间，哪张图确认过可用。</li>
+<li>定稿的剧本 / 第N段：剧本（Word），AI 对段落的意见。</li>
+<li>资产 / 全局资产 / 人物、道具、场景：图；提示词 / 全局资产 下面同名加「_提示词」的是它的出图提示词。</li>
+<li>提示词 / 第N段：视频提示词；旁边的「_写稿.json」（关键词）、「_AI批注.md」、「_出片任务.txt」是它的过程文件。</li>
+<li>成片 / 第N段：样片；旁边的「_批注.md」「_AI建议.md」。</li>
+<li>历史记录：换下来的旧版都在这里，同样的路径，名字后面带时间；「AI任务」里是每次交给 AI 的任务书和回答。</li>
+</ul>
+</main>
+</body>
+</html>

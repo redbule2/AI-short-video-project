@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>提示词格式技能＋GEO 技能 · 场景和站位的钟面写法 11-11</title>
+<style>
+:root { --red:#fdecea; --redd:#f4b4ae; --green:#e3f6e8; --greend:#a6e3b8; --grey:#f2f2ef; --ink:#222; --sub:#6b6b6b; }
+* { box-sizing:border-box; }
+body { margin:0; font:16px/1.75 "Microsoft YaHei","PingFang SC","Noto Sans CJK SC",sans-serif; color:var(--ink); background:#f7f7f4; }
+header { position:sticky; top:0; z-index:5; background:#fff; border-bottom:1px solid #e3e3de; padding:10px 24px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+header h1 { font-size:18px; margin:0; flex:1; min-width:12em; }
+#count { color:var(--sub); font-size:15px; }
+button { font:inherit; font-size:15px; padding:5px 14px; border:1px solid #c9c9c4; border-radius:6px; background:#fff; cursor:pointer; }
+button.primary { background:#2563eb; border-color:#2563eb; color:#fff; }
+button:hover { filter:brightness(.96); }
+main { max-width:1000px; margin:0 auto; padding:18px 24px 90px; }
+.intro { background:#fff; border:1px solid #e3e3de; border-radius:10px; padding:14px 20px; }
+.intro p { margin:4px 0; }
+.legend span { padding:1px 8px; border-radius:4px; margin-right:6px; }
+.toc { list-style:none; padding:0; margin:10px 0 0; }
+.toc li { padding:2px 0; }
+.toc a { color:var(--ink); text-decoration:none; }
+.toc a:hover { text-decoration:underline; }
+.toc .n { display:inline-block; width:1.6em; }
+.toc .st { margin-left:6px; font-size:13px; padding:0 6px; border-radius:8px; }
+.st.同意 { background:#d7f1de; color:#1d6b35; }
+.st.要改 { background:#fdebc8; color:#8a5a00; }
+.st.不要 { background:#e6e6e6; color:#555; }
+.card { background:#fff; border:2px solid #e3e3de; border-radius:12px; padding:16px 20px; margin:18px 0; scroll-margin-top:70px; }
+.card.s-ok { border-color:#79c48d; }
+.card.s-fix { border-color:#e6a23c; }
+.card.s-no { border-color:#bdbdbd; }
+.card.s-no .item { opacity:.55; }
+.card h2 { font-size:18px; margin:0 0 4px; display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.num { display:inline-flex; width:28px; height:28px; align-items:center; justify-content:center; border-radius:50%; background:#333; color:#fff; font-size:15px; }
+.badge { font-size:13px; font-weight:normal; padding:0 8px; border-radius:10px; background:#eef1fb; color:#34407a; }
+.why { color:#444; margin:4px 0 8px; }
+.item { margin:14px 0; }
+.where { font-size:14px; color:var(--sub); margin-bottom:4px; }
+.row { display:flex; gap:8px; align-items:flex-start; margin:3px 0; }
+.tag { flex:0 0 2.8em; font-size:14px; color:var(--sub); padding-top:6px; }
+.txt { flex:1; white-space:pre-wrap; word-break:break-word; padding:6px 10px; border-radius:6px; }
+.old { background:var(--red); color:#5b2a26; }
+.old .d { background:var(--redd); text-decoration:line-through; }
+.new { background:var(--green); }
+.new .a { background:var(--greend); }
+.ctx { background:var(--grey); color:#555; }
+.review { border-top:1px dashed #d6d6d0; margin-top:12px; padding-top:10px; }
+.picks label { margin-right:18px; cursor:pointer; font-size:16px; }
+textarea { width:100%; min-height:62px; font:inherit; padding:8px 10px; border:1px solid #cfcfca; border-radius:6px; margin-top:6px; resize:vertical; }
+#other { min-height:90px; }
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#222; color:#fff; padding:8px 18px; border-radius:8px; display:none; z-index:9; }
+details.fold { background:#fff; border:1px dashed #c9c9c4; border-radius:10px; padding:10px 18px; margin:18px 0; } details.fold summary { cursor:pointer; font-weight:bold; } details.fold pre { white-space:pre-wrap; background:#f2f2ef; padding:8px 10px; border-radius:6px; font:inherit; } details.fold li { margin:3px 0; }
+</style></head>
+<body><header><h1>提示词格式技能＋GEO 技能 · 场景和站位的钟面写法 11-11</h1><span id="count"></span>
+<button class="primary" id="copy">复制批注</button><button id="export">导出批注</button><button id="clear">清空</button></header>
+<main>
+<div class="intro"><p><b>改什么</b>：两个技能：提示词格式（seedance-prompt-format）和 GEO（scene-geo）。<br>真文件还没动，批完再改；项目里的提示词一份不动。</p><p><b>为什么</b>：你给的镜2 站位对，关键是「钟面」：以红桌为中心，每人只报几点。<br>定成固定写法，墙面陈设交给场景图。<br>拿镜2 试写，场景加站位约 1830 字缩到约 380 字（页尾可看）。</p><p><b>DeepSeek</b>：讨论两轮，结论是改后采用；它提的小改都已改进来。<br>它的意见摘要在页尾，不用批。</p><p><b>和「空间描述」那份</b>：通用工具里还有一份没批的「空间描述」审阅稿，要连画面左右都禁掉。<br>镜2 末镜正靠画面左右站对，两份冲突。建议用这份，那份不改了。</p><p><b>跟着动，不用批</b>：项目管理的空白模板同步；GEO 版本记成 v6.3，台账记一笔。</p><p><b>怎么批</b>：每张卡选「同意 / 要改 / 不要」，意见写在框里，自动存在这页上。<br>批完跟我说一声，或点「复制批注」贴给我。</p><p class="legend"><b>颜色</b>：<span style="background:var(--red)">红底</span>原来的，<span style="background:var(--redd);text-decoration:line-through">划线</span>删掉的字；<span style="background:var(--green)">绿底</span>改成的，<span style="background:var(--greend)">深绿</span>新加的字；<span style="background:var(--grey)">灰底</span>现状。</p><ol class="toc"><li><a href="#card-c1"><span class="n">①</span>场景段加「钟面」一句</a><span class="st" id="st-c1"></span></li><li><a href="#card-c2"><span class="n">②</span>总规则：有钟面的，人和机位都报钟点</a><span class="st" id="st-c2"></span></li><li><a href="#card-c3"><span class="n">③</span>站位：报几点、坐还是站、朝着谁</a><span class="st" id="st-c3"></span></li><li><a href="#card-c4"><span class="n">④</span>分镜：机位报钟点，偏了补画面左右</a><span class="st" id="st-c4"></span></li><li><a href="#card-c5"><span class="n">⑤</span>出了错再补、自检：各加一条</a><span class="st" id="st-c5"></span></li><li><a href="#card-c6"><span class="n">⑥</span>GEO 底稿：加钟面行和一条自检</a><span class="st" id="st-c6"></span></li></ol></div>
+<section class="card" id="card-c1"><h2><span class="num">①</span>场景段加「钟面」一句<span class="badge">GEO 技能 › 六、翻译成场景段</span></h2><div class="why">以锚物为中心，四面墙各在几点；钟点钉在墙上，不跟机位转。<br>再用一句把左右绑在一张场景图上，防左右翻。<br>不写「俯视」「顺时针」，这两个词会被读成运镜。</div><div class="item"><div class="where">GEO 技能 › 六、写什么 › 第 3 条（左右手性）下面，加第三小条</div><div class="row"><div class="tag">接在</div><div class="txt ctx">   - M0 不是任何一张图的机位 → 手性没有图可以托付：……</div></div><div class="row"><div class="tag">新加</div><div class="txt new"><span class="a">   - 底稿有 CLOCK 行 → 写钟面一句：以&lt;锚物&gt;为钟面：&lt;地标&gt;在12点，&lt;地标&gt;在3点，&lt;地标&gt;在6点，&lt;地标&gt;在9点；在@图片N 的画面里，&lt;地标&gt;在&lt;左／右&gt;侧。不写俯视、顺时针这类会被读成运镜的词。</span></div></div></div><div class="item"><div class="where">GEO 技能 › 六、写什么 › 第 4 条</div><div class="row"><div class="tag">原来</div><div class="txt old">4. **主光一句**：从哪个地标照进来。明暗、影子方向，成片漂过再补。</div></div><div class="row"><div class="tag">改成</div><div class="txt new">4. **主光一句**：从哪个地标照进来<span class="a">，有钟面的带上几点</span>。明暗、影子方向，成片漂过再补。</div></div></div><div class="review"><div class="picks"><label><input type="radio" name="pick-c1" value="同意"> 同意</label><label><input type="radio" name="pick-c1" value="要改"> 要改</label><label><input type="radio" name="pick-c1" value="不要"> 不要</label></div><textarea data-id="c1" placeholder="批注：哪句不对、想怎么改，直接写在这里"></textarea></div></section>
+<section class="card" id="card-c2"><h2><span class="num">②</span>总规则：有钟面的，人和机位都报钟点<span class="badge">提示词格式技能 › 二、总规则</span></h2><div class="why">左右会跟着机位变，钟点不会。<br>没有钟面的场景，照旧靠固定物说。</div><div class="item"><div class="where">提示词格式技能 › 二、总规则</div><div class="row"><div class="tag">接在</div><div class="txt ctx">17. 时长按掐表定，交稿时报出来。</div></div><div class="row"><div class="tag">新加</div><div class="txt new"><span class="a">18. GEO 有钟面的，人和机位都报钟点。</span></div></div></div><div class="review"><div class="picks"><label><input type="radio" name="pick-c2" value="同意"> 同意</label><label><input type="radio" name="pick-c2" value="要改"> 要改</label><label><input type="radio" name="pick-c2" value="不要"> 不要</label></div><textarea data-id="c2" placeholder="批注：哪句不对、想怎么改，直接写在这里"></textarea></div></section>
+<section class="card" id="card-c3"><h2><span class="num">③</span>站位：报几点、坐还是站、朝着谁<span class="badge">提示词格式技能 › 三、骨架／四、本段</span></h2><div class="why">开场站位按钟点写，「隔多远」照留。<br>不挨着锚物的人，写夹在哪两样固定物之间。</div><div class="item"><div class="where">提示词格式技能 › 三、骨架 › 本段 › 站位</div><div class="row"><div class="tag">原来</div><div class="txt old">站位：〔开场时谁在哪、朝着谁、隔多远；有首帧时仅开场站位照@图片N；必要的图外关系补写〕。</div></div><div class="row"><div class="tag">改成</div><div class="txt new">站位：〔开场时谁在<span class="d">哪</span><span class="a">几点、坐还是站</span>、朝着谁、隔多远；有首帧时仅开场站位照@图片N；必要的图外关系补写〕。</div></div></div><div class="item"><div class="where">提示词格式技能 › 四、各处怎么写 › 本段</div><div class="row"><div class="tag">接在</div><div class="txt ctx">- 写谁在哪、朝谁、隔多远，靠固定物说。</div></div><div class="row"><div class="tag">新加</div><div class="txt new"><span class="a">- 离开锚物的，写夹在哪两样之间。</span></div></div></div><div class="review"><div class="picks"><label><input type="radio" name="pick-c3" value="同意"> 同意</label><label><input type="radio" name="pick-c3" value="要改"> 要改</label><label><input type="radio" name="pick-c3" value="不要"> 不要</label></div><textarea data-id="c3" placeholder="批注：哪句不对、想怎么改，直接写在这里"></textarea></div></section>
+<section class="card" id="card-c4"><h2><span class="num">④</span>分镜：机位报钟点，偏了补画面左右<span class="badge">提示词格式技能 › 三、骨架／四、分镜</span></h2><div class="why">机位在 6 点朝 12 点拍时，钟点和画面左右一致，不用多写。<br>机位换了方向或拍过肩，才补谁在画面左、谁在右。<br>人和机位在同一个钟点（比如机位在某人身后），用远近分开。</div><div class="item"><div class="where">提示词格式技能 › 三、骨架 › 分镜 › 镜头那段话（只动中间两处）</div><div class="row"><div class="tag">原来</div><div class="txt old">〔景别、机位在哪朝哪、固定还是移动〕。〔开镜时谁在哪、朝着谁〕。</div></div><div class="row"><div class="tag">改成</div><div class="txt new">〔景别、机位在<span class="d">哪</span><span class="a">几点</span>朝<span class="d">哪</span><span class="a">几点拍、高低</span>、固定还是移动〕。〔开镜时谁在<span class="d">哪</span><span class="a">几点</span>、朝着谁<span class="a">；机位偏离6点朝12点或过肩的，写谁在画面左右</span>〕。</div></div></div><div class="item"><div class="where">提示词格式技能 › 四、各处怎么写 › 分镜</div><div class="row"><div class="tag">接在</div><div class="txt ctx">- 位置靠固定物说，不只写画面左右。</div></div><div class="row"><div class="tag">新加</div><div class="txt new"><span class="a">- 同一钟点的人和机位，用远近或地标分开。
+- 机位偏离6点朝12点或过肩，写画面左右。</span></div></div></div><div class="review"><div class="picks"><label><input type="radio" name="pick-c4" value="同意"> 同意</label><label><input type="radio" name="pick-c4" value="要改"> 要改</label><label><input type="radio" name="pick-c4" value="不要"> 不要</label></div><textarea data-id="c4" placeholder="批注：哪句不对、想怎么改，直接写在这里"></textarea></div></section>
+<section class="card" id="card-c5"><h2><span class="num">⑤</span>出了错再补、自检：各加一条<span class="badge">提示词格式技能 › 五、七</span></h2><div class="why">站错了先查钟点和画面左右。</div><div class="item"><div class="where">提示词格式技能 › 五、出了错再补</div><div class="row"><div class="tag">接在</div><div class="txt ctx">- 朝向拍反：补机位在谁身后，不拍反打。</div></div><div class="row"><div class="tag">新加</div><div class="txt new"><span class="a">- 站错位、换边：补钟点和画面左右。</span></div></div></div><div class="item"><div class="where">提示词格式技能 › 七、自检</div><div class="row"><div class="tag">接在</div><div class="txt ctx">- [ ] 每镜写了机位朝向和站位。</div></div><div class="row"><div class="tag">新加</div><div class="txt new"><span class="a">- [ ] 有钟面的，人和机位都报了钟点。</span></div></div></div><div class="review"><div class="picks"><label><input type="radio" name="pick-c5" value="同意"> 同意</label><label><input type="radio" name="pick-c5" value="要改"> 要改</label><label><input type="radio" name="pick-c5" value="不要"> 不要</label></div><textarea data-id="c5" placeholder="批注：哪句不对、想怎么改，直接写在这里"></textarea></div></section>
+<section class="card" id="card-c6"><h2><span class="num">⑥</span>GEO 底稿：加钟面行和一条自检<span class="badge">GEO 技能 › 五、八</span></h2><div class="why">底稿里先定钟面，场景段照它翻；底稿只给人看，不进提示词。<br>人围着锚物时才有这行；走廊、街道这类可标不适用。</div><div class="item"><div class="where">GEO 技能 › 五、底稿模板（ANCHOR 那几行后面）</div><div class="row"><div class="tag">接在</div><div class="txt ctx">—— ANCHOR ＝ &lt;唯一固定锚物&gt;，其中心为 ORIGIN；……【】</div></div><div class="row"><div class="tag">新加</div><div class="txt new"><span class="a">——（人物、机位围着锚物时）CLOCK ＝ 以 ORIGIN 为中心的俯视钟面：12 点＝&lt;M0 正前方的地标&gt;，3 点＝&lt;M0 右手&gt;，6 点＝&lt;M0 身后&gt;，9 点＝&lt;M0 左手&gt;；钟点钉在锚物默认位上，不随机位转。【】</span></div></div></div><div class="item"><div class="where">GEO 技能 › 八、自检 › 场景段</div><div class="row"><div class="tag">接在</div><div class="txt ctx">- [ ] 主光一句；没有英文词、秒数、时间码</div></div><div class="row"><div class="tag">新加</div><div class="txt new"><span class="a">- [ ] 有 CLOCK 行的：场景段有钟面一句和绑图的左右句，四个钟点和场景图一致</span></div></div></div><div class="review"><div class="picks"><label><input type="radio" name="pick-c6" value="同意"> 同意</label><label><input type="radio" name="pick-c6" value="要改"> 要改</label><label><input type="radio" name="pick-c6" value="不要"> 不要</label></div><textarea data-id="c6" placeholder="批注：哪句不对、想怎么改，直接写在这里"></textarea></div></section>
+<details class="fold"><summary>参考：拿镜2 试写新写法（只看长短，不改项目文件，不用批）</summary><p>原稿里场景和站位相关约 1830 字；新写法这几行约 310 字，无图配角的长相另写在人物行约 70 字。定妆卡说明、声音、台词这次不动。</p><pre>@图片6是大堂从大门墙往彩龛墙看的样子，只采用空间布局、陈设、材质、灯光。
+@图片7是同一大堂从11点往5点看的样子，只采用空间布局、陈设、材质、灯光。
+总场景：参考@图片6、@图片7。武馆议事大堂，长方形，厅心偏彩龛墙一侧一张铺红布的正圆大桌，四周一圈木椅。以红桌为钟面：彩龛墙在12点，壁画墙在3点，大门墙在6点，第四面墙在9点；在@图片6的画面里，壁画墙在右侧。主光从12点彩龛墙的彩玻隔扇和亮窗进来。
+站位：霍元甲坐6点，背朝大门墙。方师傅坐10点，蔡师傅坐11点，邱师傅坐2点，棕短褂师傅坐4点，都朝着霍元甲。八字胡掌门坐8点，姜黄长衫掌门坐12点。两名弟子站在12点、红桌和彩龛墙之间，分站彩玻隔扇两侧，面朝6点。
+镜头01：机位在6点霍元甲身后、高过众人头顶，朝12点拍，宽全景……镜头一边下降一边朝12点推近，越过霍元甲的肩停在11点的蔡师傅……向画面左摇到10点的方师傅……再向画面右摇到2点的邱师傅……
+镜头02：机位贴在11点桌沿、和桌面齐平，朝5点拍：霍元甲在画面右，棕短褂师傅在画面左，背景是壁画墙，墙前并排站着五名灰衣徒弟……</pre></details><details class="fold"><summary>DeepSeek 怎么看（两轮讨论摘要，不用批）</summary><ul><li>结论：改后采用。钟面有用，但只成功过一次，不能说它是唯一原因。</li><li>它同意：6 点钉在大门墙，不钉在摄影机；四个钟点写满；一个场景一个钟面；遮挡、出画框不默认写。</li><li>它同意保留镜头里的画面左右，不赞成「空间描述」那份全禁。</li><li>它提、已改进来：钟点规则只在有钟面时用；钟面只放一处；加一句把左右绑在场景图上；同一钟点的人和机位用远近分开；过肩也补画面左右。</li><li>它第一轮要在提示词里写「俯视、顺时针」；我说这两个词会被读成运镜，第二轮它同意不写，手性改靠绑图那一句。</li><li>看图：@图片7 是从 11 点朝 5 点拍（它第一轮看成 12 点朝 6 点，第二轮改口同意）。</li></ul></details>
+<section class="card" id="card-other"><h2>其他意见</h2>
+<textarea id="other" placeholder="其他意见"></textarea></section>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+const CARDS = [{"id": "c1", "num": "①", "title": "场景段加「钟面」一句"}, {"id": "c2", "num": "②", "title": "总规则：有钟面的，人和机位都报钟点"}, {"id": "c3", "num": "③", "title": "站位：报几点、坐还是站、朝着谁"}, {"id": "c4", "num": "④", "title": "分镜：机位报钟点，偏了补画面左右"}, {"id": "c5", "num": "⑤", "title": "出了错再补、自检：各加一条"}, {"id": "c6", "num": "⑥", "title": "GEO 底稿：加钟面行和一条自检"}];
+const KEY = 'skill-review-20261111-clock-blocking-v1';
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { state = {}; }
+const CLS = { '同意': 's-ok', '要改': 's-fix', '不要': 's-no' };
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} paint(); }
+function paint() {
+  let n = 0;
+  CARDS.forEach(c => {
+    const s = state[c.id] || {}, el = document.getElementById('card-' + c.id), st = document.getElementById('st-' + c.id);
+    el.classList.remove('s-ok', 's-fix', 's-no');
+    st.className = 'st'; st.textContent = '';
+    if (s.pick) { n++; el.classList.add(CLS[s.pick]); st.classList.add(s.pick); st.textContent = s.pick; }
+    else if (s.note) { st.classList.add('要改'); st.textContent = '有批注'; }
+  });
+  document.getElementById('count').textContent = '已批 ' + n + ' / ' + CARDS.length;
+}
+document.querySelectorAll('input[type=radio]').forEach(r => {
+  const id = r.name.slice(5);
+  if ((state[id] || {}).pick === r.value) r.checked = true;
+  r.addEventListener('change', () => { state[id] = Object.assign(state[id] || {}, { pick: r.value }); save(); });
+});
+document.querySelectorAll('textarea[data-id]').forEach(t => {
+  const id = t.dataset.id;
+  t.value = (state[id] || {}).note || '';
+  t.addEventListener('input', () => { state[id] = Object.assign(state[id] || {}, { note: t.value }); save(); });
+});
+const other = document.getElementById('other');
+other.value = state.other || '';
+other.addEventListener('input', () => { state.other = other.value; save(); });
+function asText() {
+  const lines = ['【提示词格式技能＋GEO 技能 · 场景和站位的钟面写法 11-11 批注】'];
+  CARDS.forEach(c => {
+    const s = state[c.id] || {};
+    lines.push(c.num + ' ' + c.title + '：' + (s.pick || '没选'));
+    if ((s.note || '').trim()) lines.push('   批注：' + s.note.trim().replace(/\n/g, '\n   '));
+  });
+  if ((state.other || '').trim()) lines.push('其他意见：' + state.other.trim());
+  return lines.join('\n');
+}
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = 'none', 2600); }
+document.getElementById('copy').onclick = () => {
+  const txt = asText();
+  const done = () => toast('已复制，贴到对话里就行');
+  const fallback = () => { const a = document.createElement('textarea'); a.value = txt; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); done(); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(done, fallback); else fallback();
+};
+document.getElementById('export').onclick = () => {
+  const data = { 文件: '提示词格式技能＋GEO 技能 · 场景和站位的钟面写法 11-11', 导出时间: new Date().toLocaleString('zh-CN'), 批注: CARDS.map(c => ({ 编号: c.num, 标题: c.title, 选择: (state[c.id] || {}).pick || '', 批注: (state[c.id] || {}).note || '' })), 其他意见: state.other || '' };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  a.download = '技能修改审阅_钟面站位_批注.json';
+  a.click();
+  toast('已存到“下载”文件夹：技能修改审阅_钟面站位_批注.json');
+};
+document.getElementById('clear').onclick = () => { if (confirm('清空这页上所有的选择和批注？')) { state = {}; save(); location.reload(); } };
+paint();
+</script>
+</body></html>

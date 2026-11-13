@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>流水线 · 总览</title>
+<link rel="stylesheet" href="../公用/样式.css">
+<link rel="stylesheet" href="流水线.css">
+</head>
+<body class="wf">
+<div id="wf"></div>
+<div id="layer"></div>
+<div id="toasts" aria-live="polite"></div>
+<script src="../公用/核心.js"></script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="流水线.js"></script>
+<script>
+/* ============================================================
+   流水线 · 总览（首页）
+   一眼看清走到哪了：接着做什么；全片设定四样写到什么样；各场的 写段落 → 剧本 → 资产 各到哪一步，点哪一格进哪一步。
+   添加分场、把以前 AI 写的段搬进来、一次让 AI 扩写几样，也在这一页。
+   共用的东西（读写流水线.json、顶栏、各场的状态）在 流水线.js。
+   ============================================================ */
+'use strict';
+async function addSceneDlg() {
+  if (!F.doc.梗概.trim()) {   // 第一步是梗概：没写先提醒一句，硬要加也行
+    const r = await choiceDlg({ title: '梗概还没写', body: '先写梗概，后面每一场才有依据。', buttons: [{ label: '先添加分场', value: 'go', cls: 'ghost' }, { label: '回去写梗概', value: 'back', cls: 'ink', focus: true }] });
+    if (r !== 'go') { setFold('梗概', false); go('设定', null, '梗概'); return; }
+  }
+  const mine = new Set(F.doc.场.map(s => s.段));
+  const olds = new Set(F.pj.order.filter(seg => { const sl = F.pj.segs.get(seg); return sl.script.length || sl.shots.length; }));
+  const segIn = h('input', { class: 'inp', value: C.nextSeg([...mine, ...F.pj.order]), spellcheck: 'false' });
+  const nameIn = h('input', { class: 'inp', placeholder: '可以先空着', maxlength: '24', 'data-focus': '' });
+  const err = h('div', { class: 'fld-err' });
+  const r = await dialog(close => {
+    const ok = () => {
+      const seg = C.normSeg(segIn.value.trim());
+      if (!segOk(seg)) { err.textContent = '场号只能是数字和 -，如 1-4'; return; }
+      if (mine.has(seg)) { err.textContent = '第' + seg + '场已经有了'; return; }
+      if (olds.has(seg)) { err.textContent = '第' + seg + '段以前写过剧本：在最下面「以前写的段」里点「搬进流水线」'; return; }
+      close({ seg, name: nameIn.value.trim() });
+    };
+    [segIn, nameIn].forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter' && !isComposing(e)) ok(); }));
+    return dlgShell('添加分场 · ' + F.name, '一场就是一段：这一场的剧本、资产、提示词、成片，都放在「' + F.name + '」各处的「第N段」文件夹里。',
+      [field('场号', segIn, '写成 集-场，如 1-4；不分集就写 4'), field('场名', nameIn), err],
+      [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'), h('button', { class: 'btn ink', onclick: ok }, '加上')]);
+  });
+  if (!r) return;
+  putScene({ 段: r.seg, 名: r.name, 人物: [], 道具: [], 场景图: [], 表达: '', 段落: [{ 写什么: '', 作用: '' }], 定稿: '', 扩写: '', 剧本定稿: '' });
+}
+function putScene(s) {
+  F.doc.场.push(s);
+  F.doc.场.sort((a, b) => C.segCompare(a.段, b.段));
+  touch(); go('分场', { s: s.段 });   // 加好了：直接去写这一场
+}
+
+/* ---------- 以前写的段：剧本、镜头表是 AI 写、人批注的 ---------- */
+function legacyBlock() {
+  const mine = new Set(F.doc.场.map(s => s.段)), rows = [];
+  for (const seg of F.pj.order) {
+    if (mine.has(seg)) continue;
+    const sl = F.pj.segs.get(seg), sc = sl.script.find(e => !e.combined) || sl.script[0], sh = sl.shots[0];
+    if (!sc && !sh) continue;
+    const title = (sc && sc.title) || (sh && sh.title) || '', n = sh ? sh.doc.shots.length : 0;
+    rows.push(h('div', { class: 'fl-old-row' }, h('span', { class: 'fs-no' }, '第' + seg + '段'),
+      h('span', { class: 'fl-old-name' }, title || h('span', { class: 'faint' }, '未命名'), n ? h('small', null, n + ' 镜') : null),
+      h('span', { class: 'fl-old-acts' },
+        h('button', { class: 'btn ghost sm', onclick: () => seeOld(seg, sc ? 'script' : 'shots') }, sc ? '看剧本' : '看镜头表'),
+        h('button', { class: 'btn sm', title: '把段名搬过来，剧本里的人物加进人物表、场景并进场景，镜头表的镜头搬成一个个段落。原来的剧本、镜头表不动', onclick: () => adopt(seg) }, '搬进流水线'))));
+  }
+  if (!rows.length) return null;
+  return h('section', { class: 'fl-sec fl-old' }, secHead('', '以前写的段', '剧本、镜头表是 AI 写、你批注的'), rows);
+}
+function adopt(seg) {
+  const d = F.doc, sl = F.pj.segs.get(seg), sc = sl.script.find(e => !e.combined) || sl.script[0], sh = sl.shots[0];
+  const head = k => { const b = sc && sc.doc.sections[0].blocks.find(x => C.labelOf(x.text) === k); return b ? C.splitLabel(b.text).value.trim() : ''; };
+  const cast = C.parseCast(head('人物')).map(c => { if (!d.人物.some(e => e.名 === c.name)) d.人物.push({ 名: c.name, 描写: c.desc, 资产: [] }); return c.name; });
+  const place = head('场景').split('｜').map(t => t.trim()).filter(Boolean).join('，');
+  if (place && !d.场景.includes(place)) d.场景 = (d.场景.trim() ? d.场景.trim() + '\n' : '') + place;
+  const shots = sh ? sh.doc.shots.map(x => ({ 写什么: x.title || '', 作用: '' })) : [];
+  putScene({ 段: seg, 名: (sc && sc.title) || (sh && sh.title) || '', 人物: cast, 道具: [], 场景图: [], 表达: '', 段落: shots.length ? shots : [{ 写什么: '', 作用: '' }], 定稿: '', 扩写: '', 剧本定稿: '' });
+}
+
+/* 弹窗：勾上要扩写的 */
+async function batchDlg() {
+  await flush();
+  const d = F.doc, picked = { 人物: new Set(), 道具: new Set(), 场: new Set() };
+  let scene = !!(d.场景.trim() || d.场景图.length) && !aiText('场景') && !aiWaiting('场景') && !(F.ai.data && F.ai.data.场景.描写);
+  for (const K of LISTS) for (const e of d[K.key]) if (!e.描写.trim() && !aiText(K.key, e.名) && !aiWaiting(K.key, e.名)) picked[K.key].add(e.名);   // 还没写描写的先替你勾上
+  for (const s of d.场) if (s.定稿 && ['none', 'old'].includes(scriptState(s).st)) picked.场.add(s.段);   // 定了、还没有剧本（或者剧本是旧的）的先勾上
+  const count = h('span'), body = h('div', { class: 'fl-bat' }), okBtn = h('button', { class: 'btn ink', type: 'button', 'data-focus': '' }, count);
+  const total = () => picked.人物.size + picked.道具.size + picked.场.size + (scene ? 1 : 0);
+  const chip = (set, id, label, note, off) => h('button', { type: 'button', class: 'fl-bc' + (set.has(id) ? ' on' : ''), disabled: !!off, title: off || note || null,
+    onclick: () => { set.has(id) ? set.delete(id) : set.add(id); paint(); } }, h('i', null, icon('check')), h('span', null, label), note ? h('small', null, note) : null);
+  const group = (title, tip, ids, set, kids) => h('div', { class: 'fl-bg' },
+    h('div', { class: 'fl-bg-h' }, title, h('em', null, tip), h('span', { class: 'sp' }),
+      ids.length > 1 ? h('button', { class: 'fl-link', type: 'button', onclick: () => { ids.every(x => set.has(x)) ? ids.forEach(x => set.delete(x)) : ids.forEach(x => set.add(x)); paint(); } }, ids.every(x => set.has(x)) ? '都不选' : '全选') : null),
+    kids.length ? h('div', { class: 'fl-bcs' }, kids) : h('p', { class: 'fn-note' }, '还没有。'));
+  const paint = () => {
+    count.textContent = total() ? '交给 AI 扩写（' + total() + ' 样）' : '先勾上要扩写的';
+    okBtn.disabled = !total();
+    const out = [];
+    for (const K of LISTS) {
+      const note = e => aiWaiting(K.key, e.名) ? 'AI 在补' : aiText(K.key, e.名) ? '补过了，还没采用' : e.描写.trim() ? '' : '还没写描写';
+      const g = group(K.key, '补细描写：' + (K.key === '人物' ? '年纪、长相、穿着' : '样子、材质、新旧') + '这些看得见的；补完你点「采用」才换上', d[K.key].map(e => e.名), picked[K.key], d[K.key].map(e => chip(picked[K.key], e.名, e.名, note(e))));
+      if (K.key === '道具') out.push(h('div', { class: 'fl-bg' }, h('div', { class: 'fl-bg-h' }, '场景', h('em', null, '照 GEO 的办法把空间关系核清楚：先出 GEO 底稿给你审，再写成场景段')),
+        h('div', { class: 'fl-bcs' }, h('button', { type: 'button', class: 'fl-bc' + (scene ? ' on' : ''), disabled: !(d.场景.trim() || d.场景图.length), title: d.场景.trim() || d.场景图.length ? null : '场景那一格还空着',
+          onclick: () => { scene = !scene; paint(); } }, h('i', null, icon('check')), h('span', null, '场景那一段'), h('small', null, aiWaiting('场景') ? 'AI 在写' : aiText('场景') ? '写过了，还没采用' : d.场景.trim() ? '用 GEO' : d.场景图.length ? '还没写字，照场景图来' : '还空着')))));
+      out.push(g);
+    }
+    out.push(group('各场', '照剧本段落写成剧本；定下来的才能扩写', d.场.filter(s => s.定稿).map(s => s.段), picked.场,
+      d.场.map(s => { const st = s.定稿 ? scriptState(s).st : ''; return chip(picked.场, s.段, '第' + s.段 + '场' + (s.名.trim() ? ' ' + s.名.trim() : ''), !s.定稿 ? '还没定下来' : st === 'wait' ? 'AI 在写' : st === 'final' ? '剧本定稿了，再写要重新定稿' : st === 'ok' ? '有剧本了，再写会换掉' : st === 'old' ? '剧本是旧的' : '还没有剧本', s.定稿 ? '' : '这一场还没定下来，先点「定下来」'); })));
+    body.replaceChildren(...out);
+  };
+  paint();
+  const ok = await dialog(close => {
+    const el = dlgShell('让 AI 扩写 · ' + F.name, '勾上要扩写的，一次交给 AI。人物、道具、场景补出来的先摆给你看，你点「采用」才换上；各场直接写出剧本，到那一场的「剧本」那一步里看、写批注。', [body],
+      [h('button', { class: 'btn ghost', onclick: () => close(false) }, '取消'), okBtn]);
+    okBtn.onclick = () => { if (total()) close(true); };
+    el.classList.add('wide');
+    return el;
+  });
+  if (!ok) return;
+  await batchSend({ 人物: [...picked.人物], 道具: [...picked.道具], 场景: scene, 场: d.场.map(s => s.段).filter(x => picked.场.has(x)) });
+}
+
+/* ---------- 接着做：从头数，第一件等你的事 ---------- */
+function nextTodo() {
+  const d = F.doc;
+  if (!d.梗概.trim()) return { tx: '先写梗概：全片讲什么', btn: '去写梗概', run: () => go('设定', null, '梗概') };
+  if (!d.人物.length) return { tx: '梗概写了。接着写全片的人物、场景、道具', btn: '去写人物', run: () => go('设定', null, '人物') };
+  if (!d.场.length) return { tx: '全片的设定有了。照梗概一场一场加', btn: '添加第一场', run: addSceneDlg };
+  let ai = '';
+  for (const s of d.场) {
+    const info = stepInfo(s), i = info.findIndex(x => x.st === 'you'), nm = '第' + s.段 + '场' + (s.名.trim() ? ' ' + s.名.trim() : '');
+    if (!ai && info.some(x => x.st === 'ai')) ai = nm;
+    if (i < 0) continue;
+    const sc = i === 1 ? scriptState(s) : null;
+    const tx = i === 0 ? '段落还没定下来'
+      : i === 1 ? (sc.st === 'none' ? '段落定了，让 AI 扩写成剧本' : sc.st === 'old' ? '这一场又定过，剧本还是以前的' : sc.st === 'final' ? '剧本定稿了，' + info[1].tx : sc.again ? '剧本改过了，看完再定稿' : '剧本写好了，等你看完定稿')
+      : i === 2 ? (info[2].tx === '没选出场的' ? '剧本定稿了，还没选出场的人物、道具' : /^确认 /.test(info[2].tx) ? '图都有了，等你一张一张确认可用（' + info[2].tx.slice(3) + '）' : info[2].tx === '待核对' ? '资产待核对：' + info[2].why : '剧本定稿了，资产还' + info[2].tx)
+      : i === 3 ? (info[3].tx === '待核对' ? '提示词待核对：它写好以后前面又动过，看一眼，沿用或者改' : '资产确认了，该写提示词了')
+      : info[4].tx === '还没出片' ? '提示词有了，还没出片' : info[4].tx === '等你定稿' ? '各条都选定了，等你把这一场定稿' : info[4].tx === '待核对' ? '选定的样片待核对：它出了以后前面又动过' : '样片出来了，等你审（' + info[4].tx + '）';
+    return { tx: nm + '：' + tx, btn: ['去写段落', '去看剧本', '去看资产', '去写提示词', '去审片'][i], run: () => go(STEPS[i][0], { s: s.段 }) };
+  }
+  if (ai) return { tx: 'AI 正在做' + ai + '的活，做好这里会变', btn: '', run: null };
+  return { tx: '各场都定稿了：场次素材齐备，可以交剪辑。', btn: '添加分场', run: addSceneDlg };
+}
+/* ---------- 全片设定四格：各写到什么样，点一格去写 ---------- */
+function setupTiles() {
+  const d = F.doc, ai = k => k === '场景' ? !!aiText('场景') : KIND[k] ? d[k].some(e => aiText(k, e.名)) : false;
+  const tile = (k, note, todo) => h('button', { class: 'wf-tile' + (todo ? ' todo' : ''), type: 'button', onclick: () => go('设定', null, k) },
+    h('b', null, k), h('span', null, note), ai(k) ? h('em', null, 'AI 补了描写，去看看') : null);
+  return h('div', { class: 'wf-tiles' },
+    tile('梗概', d.梗概.trim() ? oneLine(d.梗概) : '还没写', !d.梗概.trim()),
+    tile('人物', d.人物.length ? d.人物.map(e => e.名).join('、') : '还没有', !d.人物.length),
+    tile('场景', d.场景.trim() ? oneLine(d.场景) : '还没写', !d.场景.trim()),
+    tile('道具', d.道具.length ? d.道具.map(e => e.名).join('、') : '还没有', false));
+}
+/* ---------- 各场走到哪一步：一场一行，三步各一格 ---------- */
+function scenesTable() {
+  const row = s => {
+    const info = stepInfo(s), i = info.findIndex(x => x.st === 'you');
+    return h('div', { class: 'wf-row' },
+      h('button', { class: 'nm', type: 'button', title: '打开这一场', onclick: () => go(STEPS[i < 0 ? 0 : i][0], { s: s.段 }) },
+        h('span', { class: 'fs-no' }, '第' + s.段 + '场'), h('span', null, s.名.trim() || h('span', { class: 'faint' }, '没起名'))),
+      info.map((x, j) => h('span', null, h('button', { class: 'wf-pill ' + x.st, type: 'button', title: x.st === 'lock' ? x.tx + '才能做这一步' : '去这一步', onclick: () => go(STEPS[j][0], { s: s.段 }) },
+        x.st === 'ok' ? icon('check') : null, x.tx))));
+  };
+  return h('div', { class: 'wf-table' }, h('div', { class: 'wf-row head' }, h('span', null, '分场'), STEPS.map(x => h('span', null, x[1] + '　' + x[2]))), F.doc.场.map(row));
+}
+/* ---------- 即梦授权：出片要用即梦账号。一个登录位一行：登没登录、是哪个号、还有多少积分；要登录就拿一个授权链接，你自己在浏览器里点同意。
+   登录位是即梦命令行里放账号的位子：默认的一个，另外的号各起一个名字。这一页只记有哪几个名字，不退登、不清凭据 ---------- */
+const JM_NAME = /^[A-Za-z0-9_-]{1,40}$/;
+const JM = { list: [''], rows: new Map() };
+try { JM.list = ['', ...new Set(JSON.parse(localStorage.getItem('antou:flow:jm-list') || '[]').filter(x => typeof x === 'string' && JM_NAME.test(x)))]; } catch (e) { JM.list = ['']; }
+const jmRow = p => { if (!JM.rows.has(p)) JM.rows.set(p, { res: null, busy: '', link: null, msg: '' }); return JM.rows.get(p); };
+const jmSaveList = () => store('antou:flow:jm-list', JM.list.length > 1 ? JSON.stringify(JM.list.slice(1)) : null);
+const jmGet = async (method, q, p) => { try { return await (await LINK.req(method, '/api/jimeng?' + q + '&profile=' + encodeURIComponent(p))).json(); } catch (e) { return { ok: false, error: e.message }; } };
+const jmData = r => (r && r.data && (r.data.data || r.data)) || {};
+const jmErr = r => (r && r.data && r.data.error) || null;   // 即梦命令行自己报的错：{code, reason, message}
+const jmSeen = () => { try { return JSON.parse(sessionStorage.getItem('antou:flow:jm-seen') || '{}'); } catch (e) { return {}; } };
+async function jmCheck(p) {
+  const row = jmRow(p);
+  row.busy = '在查…'; row.msg = ''; paintJm();
+  row.res = await jmGet('GET', 'x=1', p);
+  row.busy = ''; paintJm();
+  if (row.res && !row.res.error) { const seen = jmSeen(); seen[p] = { t: Date.now(), res: row.res }; try { sessionStorage.setItem('antou:flow:jm-seen', JSON.stringify(seen)); } catch (e) { /* 存不下就不存 */ } }
+}
+async function jmLogin(p) {
+  const row = jmRow(p);
+  row.busy = '在要授权链接…'; row.msg = ''; row.link = null; paintJm();
+  const r = await jmGet('POST', 'login', p), d = jmData(r), ch = d.challenge || {};
+  row.busy = '';
+  if (d.status === 'reused' || d.status === 'logged_in') { await jmCheck(p); row.msg = '已经登录着，不用再授权。'; paintJm(); return; }
+  const url = ch.verificationUriComplete || ch.verificationUri;
+  if (!url || !ch.deviceCode) { const e = jmErr(r); row.msg = '没拿到授权链接：' + (r.error || (e && (e.message || e.reason)) || r.raw || '即梦命令行没给'); paintJm(); return; }
+  row.link = { url, user: ch.userCode || '', code: ch.deviceCode }; paintJm();
+  for (let i = 0; i < 8 && row.link && row.link.code === ch.deviceCode; i++) {   // 等你在浏览器里点同意：一次等 50 秒，最多等几分钟
+    const w = await jmGet('POST', 'wait&code=' + encodeURIComponent(ch.deviceCode), p), e = jmErr(w);
+    if (!row.link || row.link.code !== ch.deviceCode) return;
+    if (jmData(w).status === 'logged_in') { row.link = null; await jmCheck(p); row.msg = '授权好了。'; paintJm(); return; }
+    if (e && String(e.code) === '40011') continue;   // 只是这一回等的时间到了，接着等
+    row.link = null;
+    row.msg = e && String(e.code) === '40014' ? '这个授权链接过期了，再点一次「去授权」。' : '这次授权没成：' + (w.error || (e && (e.message || e.reason)) || '即梦命令行没说原因') + '。';
+    paintJm(); return;
+  }
+  if (row.link) { row.link = null; row.msg = '等了几分钟没等到。授权完了点「查一下」。'; paintJm(); }
+}
+async function jmAdd() {
+  const name = await window.UI.inputDlg({ title: '加一个登录位', body: '另一个即梦账号用的位子，起个名字（字母、数字、横线）。即梦命令行里已经有的，填它原来的名字。', label: '名字', ok: '加上',
+    check: v => !JM_NAME.test(v) ? '只能用字母、数字、横线、下划线' : JM.list.includes(v) || v === 'default' ? '已经有了' : '' });
+  if (!name) return;
+  JM.list.push(name); jmSaveList(); paintJm(); jmCheck(name);
+}
+function jmRowEl(p) {
+  const row = jmRow(p), st = row.res && row.res.status, sd = jmData(st), ad = jmData(row.res && row.res.account);
+  const logged = !!st && st.ok && sd.loggedIn === true, fail = row.res && (row.res.error || (st && st.error));
+  const credits = ad.availableCredits != null ? ad.availableCredits : ad.credits && ad.credits.available;
+  const raw = () => dialog(close => { const el = dlgShell('即梦命令行原话 · ' + (p || '默认登录位'), '', [h('pre', { class: 'mdview' }, ((st && st.raw) || '') + (row.res.account ? '\n\n' + (row.res.account.raw || '') : ''))], [h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close() }, '好了')]); el.classList.add('wide'); return el; });
+  const state = row.busy ? h('span', { class: 'ai-run' }, h('i', { class: 'ai-spin' }), row.busy)
+    : fail ? h('span', { class: 'fn-note warn' }, fail + '。在普通终端里跑 dreamina-canvas auth status 看看。')
+      : !st ? h('span', { class: 'fn-note' }, '还没查')
+        : logged ? h('span', { class: 'fs-state ok', title: ad.vipLevel ? '会员：' + ad.vipLevel : '' }, icon('check'), '登录着' + (ad.displayName ? '：' + ad.displayName : '') + (credits != null ? '　积分 ' + credits : ''))
+          : h('span', { class: 'fs-state', style: 'color:var(--zhu);border-color:var(--zhu-line)' }, '没登录，或者登录过期了');
+  return h('div', { class: 'wf-jm-row' },
+    h('div', { class: 'wf-jm-h' }, h('b', null, p || '默认登录位'), state, h('span', { class: 'sp' }),
+      st && !fail ? h('button', { class: 'fl-link', type: 'button', onclick: raw }, '看原话') : null,
+      h('button', { class: 'btn sm', type: 'button', disabled: !!row.busy, onclick: () => jmCheck(p) }, '查一下'),
+      h('button', { class: 'btn sm', type: 'button', disabled: !!row.busy || !!row.link, title: '拿一个授权链接，在登着即梦账号的浏览器里打开、点同意', onclick: () => jmLogin(p) }, '去授权'),
+      p ? h('button', { class: 'fl-link', type: 'button', title: '这一页不再列它。不退登，凭据还在', onclick: () => { JM.list = JM.list.filter(x => x !== p); JM.rows.delete(p); jmSaveList(); paintJm(); } }, '不列了') : null),
+    row.link ? h('div', { class: 'fl-aibox', style: 'margin-top:10px' }, h('p', null, '在登着即梦账号的浏览器里打开这个链接，点同意（这里在等，授权好了自己会变）：'),
+      h('p', null, h('a', { href: row.link.url, target: '_blank', rel: 'noopener', style: 'word-break:break-all;color:var(--dai)' }, row.link.url)),
+      row.link.user ? h('p', { class: 'faint small' }, '页面上要是问验证码，填：' + row.link.user) : null,
+      h('p', null, h('button', { class: 'fl-link', type: 'button', onclick: () => { row.link = null; row.msg = '不等了。授权完了点「查一下」。'; paintJm(); } }, '不等了'))) : null,
+    row.msg ? h('p', { class: 'fn-note', style: 'margin-top:8px' }, row.msg) : null);
+}
+function jmBody() {
+  return [...JM.list.map(jmRowEl), h('div', { class: 'wf-acts' }, h('button', { class: 'btn sm ghost', type: 'button', onclick: jmAdd }, icon('plus'), '加一个登录位'))];
+}
+function paintJm() { const el = document.getElementById('wf-jm'); if (el) el.replaceChildren(...jmBody().filter(Boolean)); }
+/* 打开首页自己查一遍（一个一个来；十分钟里查过的不再查） */
+async function jmAuto() {
+  if (!AI.ok) return;
+  const seen = jmSeen();
+  for (const p of JM.list.slice()) {
+    const c = seen[p];
+    if (c && Date.now() - c.t < 10 * 60e3) { jmRow(p).res = c.res; paintJm(); }
+    else await jmCheck(p);
+  }
+}
+
+function render() {
+  const d = F.doc, todo = nextTodo();
+  return [
+    h('div', { class: 'fl-head' }, h('div', { class: 'fl-kicker' }, '流 水 线'),
+      h('div', { class: 'fl-trow' }, h('div', { class: 'fl-title' }, F.name), h('button', { class: 'btn sm', title: '每个项目有自己的流水线。写之前先看一眼是不是这个项目', onclick: pickProject }, icon('folder'), '换项目'))),
+    h('div', { class: 'wf-next' }, h('div', { class: 'wf-next-t' }, h('small', null, '接着做'), h('b', null, todo.tx)), todo.run ? h('button', { class: 'btn ink', onclick: todo.run }, todo.btn) : null),
+    h('section', { class: 'fl-sec' }, secHead('', '全片设定', '写一次，各场共用'), setupTiles()),
+    h('section', { class: 'fl-sec' }, secHead('', '分　场', d.场.length ? '一场一条线：段落 → 剧本 → 资产 → 提示词 → 审片。点哪一格进哪一步' : ''),
+      d.场.length ? scenesTable() : h('div', { class: 'fl-empty' }, h('p', null, '还没有场。'), h('p', { class: 'faint small' }, '照梗概一场一场加：选这一场出场的人物、道具，写这一场主要表达什么，再一段一段写剧本段落。')),
+      h('div', { class: 'wf-acts' }, h('button', { class: 'btn sm ink', onclick: addSceneDlg }, icon('plus'), '添加分场'),
+        h('button', { class: 'btn sm', title: '勾上要扩写的，一次交给 AI：各场写成剧本，人物、道具补细描写，场景照 GEO 写清空间', onclick: () => batchDlg() }, '让 AI 扩写…'))),
+    legacyBlock(),
+    AI.ok ? h('section', { class: 'fl-sec' }, secHead('', '即梦授权', '出片要用即梦账号：看登没登录、是哪个号'), h('div', { id: 'wf-jm' }, jmBody())) : null,
+  ];
+}
+
+start({ name: '总览', render }).then(jmAuto);
+</script>
+</body>
+</html>

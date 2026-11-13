@@ -1,0 +1,9 @@
+{
+  "artifactRepository": "capcut-business/byted_pippit_cli",
+  "artifactCommit": "86dcafff5d43a245749830ee7ba2ea1305d83a2a",
+  "artifactDirectory": "release-artifacts/canvas-runtime",
+  "sourceRepository": "ies/pippit",
+  "sourceCommit": "7bf62fd1a3b6e43e089f9eae62f1cc5c39fb82b2",
+  "runtimeSha256": "7e45eb4e7bb2323fd1a0f5bc56b731247076f9ae8171f46d01ba4d6774de1b0f",
+  "legalSha256": "c547c923eaf2e8c155f84aed934f42ad02855d669e8c0a890e38d049bc1ef8e7"
+}
