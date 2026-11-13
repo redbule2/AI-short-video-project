@@ -16,7 +16,7 @@ const ROOT = process.env.ANTOU_ROOT ? path.resolve(process.env.ANTOU_ROOT) : pat
 const TOOLS = process.env.ANTOU_TOOLS ? path.resolve(process.env.ANTOU_TOOLS) : path.join(ROOT, '通用工具');   // 页面放在这里；ANTOU_TOOLS：总文件夹用试验的、页面用正式的时候用
 const PAGE = process.env.ANTOU_PAGE || path.join(TOOLS, '项目管理.html');   // ANTOU_PAGE：试新版页面时用
 const PORT = Number(process.env.ANTOU_PORT) || 8766;
-const VERSION = 5;             // 2：两种批注分开排队；3：能改名、在资源管理器里显示、删空文件夹，ping 带总文件夹的完整路径；4：能发 通用工具 里的页面和它们用的脚本、样式；5：AI 任务（/api/job：页面点一下，这里去调本机的 claude、codex、deepseek，见 jobs.js）
+const VERSION = 6;             // 6：双模式草稿的冲突保护与正文/写稿记录联合保存；5：AI 任务
 const STATIC = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png' };   // 通用工具 里只发这几种
 const ONLINE_MS = 15 * 60e3;   // 这么久之内 AI 来等过，就算它在
 const WAIT_MS = 4 * 60e3;      // 一次最多挂这么久，没有就让等的那头再来一次
@@ -31,7 +31,8 @@ const waiters = new Set();   // 正在等的 AI，各记着自己等哪几种
 const online = k => [...waiters].some(w => w.kinds.includes(k)) || Date.now() - lastSeen[k] < ONLINE_MS;
 const log = (...a) => console.log(new Date().toLocaleTimeString('zh-CN', { hour12: false }), ...a);
 const httpErr = (status, msg) => Object.assign(new Error(msg), { status });
-const jobs = require('./jobs.js')({ ROOT, TOOLS, log });   // AI 任务
+const drafts = require('./draft-store.js')({ ROOT });
+const jobs = require('./jobs.js')({ ROOT, TOOLS, log, withFileLocks: drafts.withLocks });   // AI 任务与页面共用文件锁
 
 function send(res, status, body, headers) {
   res.writeHead(status, { 'Cache-Control': 'no-store', ...headers });
@@ -57,6 +58,12 @@ async function readBody(req, limit) {
 async function onFs(req, res, url) {
   const abs = resolveParts(url.pathname.slice('/api/fs'.length));
   const q = url.searchParams;
+  if (req.method === 'POST' && q.has('draft')) {
+    let body;
+    try { body = JSON.parse((await readBody(req, 8 * 1024 * 1024)).toString('utf8')); }
+    catch (e) { if (e.status) throw e; throw httpErr(400, '草稿保存请求不是有效 JSON'); }
+    return json(res, await drafts.save(abs, body));
+  }
   if (req.method === 'GET' && q.has('list')) {
     const ents = await fsp.readdir(abs, { withFileTypes: true });
     const out = ents.filter(e => e.isFile() || e.isDirectory()).map(e => ({ name: e.name, kind: e.isDirectory() ? 'directory' : 'file' }));
@@ -66,22 +73,33 @@ async function onFs(req, res, url) {
     return json(res, out);
   }
   if (req.method === 'GET') {
-    const fh = await fsp.open(abs, 'r');
-    try {
-      const st = await fh.stat();
-      if (!st.isFile()) throw httpErr(404, '不是文件');
-      if (q.has('stat')) return json(res, { mtime: mtimeOf(st), size: st.size });
-      return send(res, 200, await fh.readFile(), { 'Content-Type': 'application/octet-stream', 'X-Mtime': String(mtimeOf(st)) });
-    } finally { await fh.close(); }
+    return drafts.withLocks([abs], async () => {
+      const fh = await fsp.open(abs, 'r');
+      try {
+        const st = await fh.stat();
+        if (!st.isFile()) throw httpErr(404, '不是文件');
+        if (q.has('stat')) return json(res, { mtime: mtimeOf(st), size: st.size });
+        return send(res, 200, await fh.readFile(), { 'Content-Type': 'application/octet-stream', 'X-Mtime': String(mtimeOf(st)) });
+      } finally { await fh.close(); }
+    });
   }
   if (req.method === 'PUT') {
     const buf = await readBody(req, 200 * 1024 * 1024);
-    await fsp.mkdir(path.dirname(abs), { recursive: true });
-    const tmp = abs + '.antou-tmp';   // 先写在旁边，写完再换上，原处不会留半截文件
-    try { await fsp.writeFile(tmp, buf); await fsp.rename(tmp, abs); }
-    catch (e) { await fsp.unlink(tmp).catch(() => {}); throw e; }
-    const st = await fsp.stat(abs);
-    return json(res, { mtime: mtimeOf(st), size: st.size });
+    return drafts.withLocks([abs], async () => {
+      await fsp.mkdir(path.dirname(abs), { recursive: true });
+      const tmp = abs + '.antou-tmp';   // 先写在旁边，写完再换上，原处不会留半截文件
+      try {
+        await fsp.writeFile(tmp, buf);
+        if (req.headers['if-none-match'] === '*') {
+          // 链接只在目标不存在时成功；先检查存在再 rename 会覆盖并发创建的文件。
+          try { await fsp.link(tmp, abs); }
+          catch (e) { if (e.code === 'EEXIST') throw httpErr(412, '文件已经存在，未覆盖'); throw e; }
+          await fsp.unlink(tmp);
+        } else await fsp.rename(tmp, abs);
+      } catch (e) { await fsp.unlink(tmp).catch(() => {}); throw e; }
+      const st = await fsp.stat(abs);
+      return json(res, { mtime: mtimeOf(st), size: st.size });
+    });
   }
   if (req.method === 'POST' && q.has('mkdir')) { await fsp.mkdir(abs, { recursive: true }); return json(res, { ok: true }); }
   /* 改名、挪地方：?move=总文件夹里的新路径（用 / 隔开）；那里已经有了就不动 */
@@ -159,7 +177,7 @@ async function handle(req, res) {
       if (req.headers['x-antou'] !== '1') throw httpErr(403, '缺少 X-Antou');
       const origin = req.headers.origin;
       if (origin && !HOSTS.has(origin.replace(/^https?:\/\//, ''))) throw httpErr(403, 'Origin 不对');
-      if (url.pathname === '/api/ping') return json(res, { root: path.basename(ROOT), v: VERSION, abs: ROOT });
+      if (url.pathname === '/api/ping') return json(res, { root: path.basename(ROOT), v: VERSION, abs: ROOT, draftSave: true });
       if (url.pathname === '/api/fs' || url.pathname.startsWith('/api/fs/')) return await onFs(req, res, url);
       if (url.pathname.startsWith('/api/ai')) return await onAi(req, res, url);
       if (url.pathname === '/api/job' || url.pathname.startsWith('/api/job/') || url.pathname === '/api/jimeng') return await jobs.handle(req, res, url, { json, readBody, httpErr });

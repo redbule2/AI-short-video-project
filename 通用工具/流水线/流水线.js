@@ -530,14 +530,17 @@ function openWrite(seg, name) {
   const frame = h('iframe', { class: 'wf-shell-frame', title: '写提示词', src: encodeURI('/通用工具/项目管理_写稿试用.html') + '#open=' + [F.name, '提示词', segName(seg), name].map(encodeURIComponent).join('/') });
   const close = async () => {
     if (!SHELL) return;
-    try { const w = frame.contentWindow; if (w && typeof w.save === 'function') await w.save(); } catch (e) { /* 那一页没开起来 */ }
+    try {
+      const w = frame.contentWindow;
+      if (w && typeof w.save === 'function' && await w.save() === false) { toast('草稿还未保存，请在写稿页处理后再返回', 'err'); return; }
+    } catch (e) { toast('草稿没存上：' + e.message, 'err'); return; }
     if (SHELL) SHELL.remove();
     SHELL = null; document.body.classList.remove('wf-covered'); refresh();
   };
   SHELL = h('div', { class: 'wf-shell' },
     h('div', { class: 'wf-shell-h' }, h('button', { class: 'btn sm ink', type: 'button', onclick: close }, '← 回到流水线'),
       h('span', { class: 'wf-shell-t' }, '第' + seg + '场 · ' + (name.replace(/_?视频提示词\.txt$/i, '').replace(/_/g, ' ') || '整场') + ' · 你来写'), h('span', { class: 'sp' }),
-      h('span', { class: 'fn-note' }, '本段事件和每一镜你写；别的 AI 铺好，要它改就点那一行写批注。')),
+      h('span', { class: 'fn-note' }, '分镜模式或自由模式都可写；AI 建议在侧边按需选用。')),
     frame);
   document.body.append(SHELL); document.body.classList.add('wf-covered');
 }

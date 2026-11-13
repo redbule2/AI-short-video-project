@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>写稿编辑器 · 浏览器回归测试</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font:14px/1.6 'Microsoft YaHei',sans-serif;background:#f4efe6;color:#292720}header{padding:22px 28px;background:#fffdf9;border-bottom:1px solid #ddd3c3}h1{font-size:22px;margin:0 0 8px}p{margin:6px 0;color:#756d60}button{font:inherit;padding:9px 18px;border:1px solid #3e5c5e;border-radius:6px;background:#3e5c5e;color:white;cursor:pointer}button:disabled{opacity:.5;cursor:wait}#results{margin:18px 28px;padding:0;list-style:none}#results li{padding:9px 12px;border-bottom:1px solid #ded7c9;background:#fffdf9}#results .pass{color:#336044}#results .fail{color:#a83a2c;white-space:pre-wrap}#summary{font-weight:bold;margin:0 28px 16px}#preview{margin:16px 28px}iframe{width:100%;height:780px;border:1px solid #c9c2b5;border-radius:7px;background:white}details{margin:12px 28px}pre{white-space:pre-wrap;font:12px/1.6 Consolas,monospace}
+</style></head>
+<body>
+<header><h1>写稿编辑器 · 浏览器回归测试</h1><p>运行生产编辑器的 DOM、输入、保存及重新打开流程。文件、历史记录、浏览器存储和 AI 接口全部隔离在内存，测试不会修改任何项目文件。</p><button id="run">运行回归测试</button></header>
+<ul id="results"></ul><p id="summary">等待运行</p><details><summary>测试请求记录</summary><pre id="requests"></pre></details><div id="preview"></div>
+<script>
+'use strict';
+const testProject = '编辑器内存测试';
+const promptPath = '项目/' + testProject + '/提示词/第1段/视频提示词.txt';
+const sidePath = promptPath.replace(/\.txt$/, '_写稿.json');
+const editorKeys = ['写法', '写法范围', '分镜稿', '自由稿', '镜头信息', '挂图'];
+const original = '\uFEFF本段事件：  门外来人  \r\n\r\n素材\r\n\r\n基础设定\r\n影像风格：  写实  \r\n\r\n本段\r\n核心氛围：安静。\r\n\r\n分镜\r\n\r\n镜头 01｜听见动静\r\n  门外响起脚步声。  \r\n\r\n镜头 02｜看向门口\r\n人物抬头。\r\n\r\n保持一致：  光线不变';
+let files, storageMap, requestLog, archives, sequence, frame, sourceHtml, failures, completed, networkGate;
+const $ = s => document.querySelector(s);
+const copy = value => JSON.parse(JSON.stringify(value));
+const ordered = value => Array.isArray(value) ? value.map(ordered) : value && typeof value === 'object'
+  ? Object.fromEntries(Object.keys(value).sort().map(key => [key, ordered(value[key])])) : value;
+const equal = (a, b) => JSON.stringify(ordered(a)) === JSON.stringify(ordered(b));
+const assert = (condition, message) => { if (!condition) throw new Error(message); };
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
+const editorPart = side => Object.fromEntries(editorKeys.filter(key => Object.hasOwn(side, key)).map(key => [key, side[key]]));
+const put = (path, text) => files.set(path, { text, mtime: ++sequence });
+const textAt = path => files.get(path).text;
+const sideAt = () => JSON.parse(textAt(sidePath));
+const evalIn = code => frame.contentWindow.eval(code);
+// 夹具的公共区固定，不用生产解析器生成预期结果。
+function freeDocument(raw, base = original) {
+  const marker = '分镜\r\n', start = base.indexOf(marker) + marker.length;
+  const end = base.indexOf('保持一致：', start);
+  assert(start >= marker.length && end >= start, '测试夹具缺少分镜边界');
+  return base.slice(0, start) + raw + (raw && !/[\r\n]$/.test(raw) ? '\r\n' : '') + base.slice(end);
+}
+const commonNodes = () => ['event', 'refs', 'basic', 'seg', 'keep'].map(key => frame.contentDocument.querySelector('section[data-sec="' + key + '"]'));
+const commonValues = () => commonNodes().map(node => node.querySelector('.wr-ta')?.value ?? node.querySelector('.blist')?.textContent ?? node.textContent);
+
+function reset() {
+  if (frame) { frame.remove(); frame = null; }
+  networkGate = null;
+  files = new Map(); storageMap = new Map(); requestLog = []; archives = []; sequence = 1000;
+  put(promptPath, original);
+  put(sidePath, JSON.stringify({ 说明: '旧稿侧写数据', 关键词: { '01': { 动作: ['停顿'] }, '02': { 动作: ['抬头'] } } }));
+  put('项目/' + testProject + '/定稿的剧本/流水线.json', JSON.stringify({ 场: [{ 段: '1', 名: '门口', 表达: '来人', 段落: [{ 写什么: '响声', 作用: '打断日常' }, { 写什么: '抬头', 作用: '交代反应' }] }] }));
+  window.__draftHarness = {
+    storage: {
+      get length() { return storageMap.size; }, key: i => [...storageMap.keys()][i] || null,
+      getItem: key => storageMap.has(key) ? storageMap.get(key) : null,
+      setItem: (key, value) => storageMap.set(String(key), String(value)),
+      removeItem: key => storageMap.delete(key), clear: () => storageMap.clear(),
+    }, fetch: fakeFetch,
+  };
+}
+
+// 只暂停一条匹配的内存请求；由测试明确释放，避免依赖网络速度制造竞态。
+function delayNext(match) {
+  let markEntered, release;
+  const entered = new Promise(resolve => markEntered = resolve);
+  const wait = new Promise(resolve => release = resolve);
+  networkGate = { match, wait, markEntered, used: false };
+  return { entered, release };
+}
+
+async function fakeFetch(input, init = {}) {
+  const url = new URL(typeof input === 'string' ? input : input.url, location.href);
+  const method = (init.method || 'GET').toUpperCase();
+  requestLog.push(method + ' ' + decodeURIComponent(url.pathname) + url.search);
+  $('#requests').textContent = requestLog.join('\n');
+  const gate = networkGate;
+  if (gate && !gate.used && gate.match(url, method)) {
+    gate.used = true; gate.markEntered(); await gate.wait;
+    if (networkGate === gate) networkGate = null;
+  }
+  if (url.pathname === '/api/ping') return json({ v: 5 });
+  if (url.pathname === '/api/job' && method === 'GET') return json(url.searchParams.has('channels') ? { channels: [] } : { jobs: [] });
+  if (!url.pathname.startsWith('/api/fs/')) throw new Error('测试已拦截未授权请求：' + method + ' ' + url.pathname);
+  const path = url.pathname.slice('/api/fs/'.length).split('/').map(decodeURIComponent).join('/');
+  const current = files.get(path);
+  if (method === 'POST' && url.searchParams.has('draft')) {
+    const body = JSON.parse(init.body), currentSide = sideAt();
+    if (!current || body.baseText !== current.text || !equal(body.baseEditor, editorPart(currentSide))) return json({ error: 'conflict' }, 409);
+    if (body.archive) archives.push({ prompt: current.text, side: copy(currentSide) });
+    const nextSide = { ...currentSide, ...body.sidePatch };
+    put(path, body.text); put(sidePath, JSON.stringify(nextSide));
+    return json({ mtime: files.get(path).mtime, sideMtime: files.get(sidePath).mtime, side: nextSide });
+  }
+  if (method !== 'GET') throw new Error('测试已拦截非模拟写入：' + method + ' ' + path);
+  if (url.searchParams.has('list')) {
+    const children = new Map(), prefix = path + '/';
+    for (const [name, value] of files) if (name.startsWith(prefix)) {
+      const rest = name.slice(prefix.length), segment = rest.split('/')[0];
+      children.set(segment, { name: segment, kind: rest.includes('/') ? 'directory' : 'file', mtime: value.mtime });
+    }
+    return json([...children.values()]);
+  }
+  if (url.searchParams.has('stat')) return current ? json({ mtime: current.mtime, size: current.bytes ? current.bytes.length : current.text.length }) : json({}, 404);
+  return current ? new Response(current.bytes || current.text, { headers: { 'X-Mtime': String(current.mtime), 'Content-Type': current.mime || 'application/octet-stream' } }) : new Response('not found', { status: 404 });
+}
+
+async function productionSource() {
+  const base = new URL('./项目管理_写稿试用.html', location.href);
+  const response = await fetch(base);
+  if (!response.ok) throw new Error('生产页面读取失败：' + response.status);
+  const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+  for (const script of [...doc.querySelectorAll('script')]) {
+    let source = script.textContent;
+    if (script.hasAttribute('src')) {
+      const url = new URL(script.getAttribute('src'), base);
+      if (url.origin !== location.origin || url.pathname.startsWith('/api/')) throw new Error('测试只加载本地生产代码');
+      const r = await fetch(url); if (!r.ok) throw new Error('脚本读取失败：' + url.pathname);
+      source = await r.text(); script.removeAttribute('src');
+    }
+    script.textContent = source.replaceAll('location.hash', 'window.__TEST_HASH');
+  }
+  for (const link of [...doc.querySelectorAll('link[rel="stylesheet"]')]) {
+    const url = new URL(link.getAttribute('href'), base);
+    if (url.origin !== location.origin) throw new Error('测试只加载本地样式');
+    const r = await fetch(url); if (!r.ok) throw new Error('样式读取失败：' + url.pathname);
+    const style = doc.createElement('style'); style.textContent = await r.text(); link.replaceWith(style);
+  }
+  const csp = doc.createElement('meta'); csp.httpEquiv = 'Content-Security-Policy';
+  csp.content = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; media-src blob:; connect-src 'none'; form-action 'none'";
+  const bootstrap = doc.createElement('script');
+  bootstrap.textContent = 'window.__TEST_HASH=' + JSON.stringify('#open=' + testProject + '/提示词/第1段/视频提示词.txt') + ';' +
+    'window.fetch=(...args)=>parent.__draftHarness.fetch(...args);' +
+    'Object.defineProperty(window,"localStorage",{value:parent.__draftHarness.storage});' +
+    'Object.defineProperty(window,"sessionStorage",{value:parent.__draftHarness.storage});' +
+    'window.confirm=()=>true;window.__testErrors=[];' +
+    'addEventListener("error",e=>window.__testErrors.push(e.message));' +
+    'addEventListener("unhandledrejection",e=>window.__testErrors.push(String(e.reason&&e.reason.stack||e.reason)));';
+  doc.head.prepend(bootstrap); doc.head.prepend(csp);
+  return '<!doctype html>\n' + doc.documentElement.outerHTML;
+}
+
+async function waitFor(predicate, message, timeout = 5000) {
+  const end = performance.now() + timeout;
+  while (performance.now() < end) {
+    const errors = frame?.contentWindow?.__testErrors;
+    if (errors && errors.length) throw new Error(errors.join('\n'));
+    try { if (predicate()) return; } catch (error) { if (!(error instanceof ReferenceError) && !/not defined|Cannot access/.test(error.message)) throw error; }
+    await sleep(25);
+  }
+  throw new Error(message);
+}
+async function openEditor() {
+  if (frame) frame.remove();
+  frame = document.createElement('iframe'); frame.title = '内存测试中的生产编辑器';
+  frame.srcdoc = sourceHtml; $('#preview').replaceChildren(frame);
+  await waitFor(() => evalIn('typeof READY !== "undefined" && READY'), '编辑器未就绪');
+  await sleep(30);
+}
+function fill(selector, value) {
+  const node = frame.contentDocument.querySelector(selector);
+  assert(node, '找不到输入框：' + selector); node.focus(); node.value = value;
+  node.setSelectionRange(value.length, value.length);
+  node.dispatchEvent(new frame.contentWindow.Event('input', { bubbles: true }));
+}
+async function saveNow() {
+  const ok = await evalIn('save()'); assert(ok, '保存未成功');
+  await waitFor(() => !evalIn('dirty() || SAVING'), '保存尚未完成');
+}
+async function check(name, fn) {
+  const item = document.createElement('li'); item.textContent = '运行中 · ' + name; $('#results').append(item);
+  try { await fn(); completed++; item.className = 'pass'; item.textContent = '通过 · ' + name; }
+  catch (error) { failures++; item.className = 'fail'; item.textContent = '失败 · ' + name + '\n' + error.stack; throw error; }
+  finally { $('#summary').textContent = completed + ' 项通过，' + failures + ' 项失败'; }
+}
+
+async function run() {
+  $('#run').disabled = true; $('#results').replaceChildren(); completed = failures = 0; reset();
+  let firstId, secondId, structuredText, freeValue;
+  try {
+    sourceHtml = await productionSource();
+    await check('旧稿打开零写入，正文和旧作用完整保留', async () => {
+      await openEditor(); await sleep(900);
+      assert(!requestLog.some(line => line.startsWith('POST ') || line.startsWith('PUT ') || line.startsWith('DELETE ')), '仅打开页面不应该写入文件');
+      assert(textAt(promptPath) === original, '旧稿正文被改写');
+      assert(evalIn('activeText()') === original, '页面收集会改变未编辑的旧稿');
+      assert(frame.contentDocument.querySelectorAll('.p-shot').length === 2, '旧镜头数量不符');
+      assert(frame.contentDocument.querySelector('.shot-purpose').value === '打断日常', '旧作用没有迁移到输入框');
+      [firstId, secondId] = evalIn('DOC.shots.map(s=>s.id)');
+    });
+    await check('编辑标题和作用后保存，正文其他文字保持原样', async () => {
+      fill('.p-shot .shot-title', '听见脚步'); fill('.p-shot .shot-purpose', '由我决定的作用'); await saveNow();
+      assert(textAt(promptPath) === original.replace('听见动静', '听见脚步'), '改标题时其他原文发生变化');
+      assert(sideAt().镜头信息[0].作用 === '由我决定的作用', '作用没有保存');
+      assert(archives[0].prompt === original, '初次修改没有保留原始稿');
+    });
+    await check('调整顺序后作用、身份、关键词跟随原镜头', async () => {
+      evalIn('moveShot(document.querySelector(".p-shot"), 1)'); await saveNow();
+      const list = sideAt().镜头信息;
+      assert(list[0].id === secondId && list[1].id === firstId, '镜头身份没有跟随排序');
+      assert(list[1].作用 === '由我决定的作用', '作用错绑镜头');
+      assert(list[1].关键词.动作[0] === '停顿', '关键词错绑镜头');
+      assert(evalIn('DOC.shots[1].title') === '听见脚步', '正文顺序没有改变');
+      structuredText = textAt(promptPath);
+    });
+    await check('自由分镜原样保存，完整 TXT 仍包含公共区，重开仍完整', async () => {
+      await evalIn('switchMode("自由")');
+      freeValue = '  不套固定格式\n\n第一行：我自己写。\n    空格、标点「保留」。\n结尾  ';
+      fill('#freeText', freeValue); await saveNow();
+      const expected = freeDocument(freeValue, structuredText);
+      assert(textAt(promptPath) === expected, '自由分镜或公共区没有原样保存');
+      assert(sideAt().自由稿 === freeValue && sideAt().写法范围 === '分镜', '侧写记录没有保存自由分镜原文和范围');
+      await openEditor();
+      assert(evalIn('MODE') === '自由', '重开没有恢复自由模式');
+      assert(frame.contentDocument.querySelector('#freeText').value === freeValue, '重开丢失自由文本');
+      assert(evalIn('activeText()') === expected, '重开后提交文本或公共区变化');
+    });
+    await check('两种模式各自保留草稿，反复切换不互相覆盖', async () => {
+      await evalIn('switchMode("分镜")');
+      assert(textAt(promptPath) === structuredText, '切回分镜丢失结构稿');
+      assert(frame.contentDocument.querySelectorAll('.p-shot')[1].querySelector('.shot-purpose').value === '由我决定的作用', '切回分镜丢失作用');
+      await evalIn('switchMode("自由")');
+      assert(textAt(promptPath) === freeDocument(freeValue, structuredText), '切回自由丢失自由分镜或公共区');
+      await evalIn('switchMode("分镜")');
+    });
+    await check('新增镜头从空白开始，保存后重开仍可继续编辑', async () => {
+      evalIn('insertShot()'); await saveNow();
+      assert(evalIn('DOC.shots.length') === 3, '没有增加镜头');
+      assert(evalIn('DOC.shots[2].title === "" && DOC.shots[2].purpose === "" && DOC.shots[2].lines.length === 0'), '新镜头被预制内容填充');
+      const id = evalIn('DOC.shots[2].id'); await openEditor();
+      assert(evalIn('DOC.shots[2].id') === id, '重开改变了新增镜头身份');
+      assert(frame.contentDocument.querySelectorAll('.p-shot').length === 3, '重开丢失新增镜头');
+    });
+    await check('外部修改冲突时保留文件和本地输入', async () => {
+      fill('.p-shot .shot-title', '尚未提交的本地改动');
+      const external = textAt(promptPath) + '\n外部新增的内容'; put(promptPath, external);
+      assert(await evalIn('save()') === false, '冲突时不应报告保存成功');
+      assert(textAt(promptPath) === external, '覆盖了外部修改');
+      assert(frame.contentDocument.querySelector('.shot-title').value === '尚未提交的本地改动', '本地输入被冲突吞掉');
+      assert(evalIn('CONFLICT'), '没有进入冲突状态');
+      assert([...storageMap.keys()].some(key => key.startsWith('xiegao:recovery:')), '本地恢复稿没有保留');
+    });
+    await check('自由模式 @ 弹出资产列表，选择和重开后绑定均保留', async () => {
+      reset();
+      const asset = '资产/全局资产/场景/测试门口.png';
+      // 1×1 PNG，仅作为图片解码夹具；全部来自内存，不读用户素材。
+      const pixel = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lfoAAAAASUVORK5CYII='), ch => ch.charCodeAt(0));
+      files.set('项目/' + testProject + '/' + asset, { bytes: pixel, mime: 'image/png', mtime: ++sequence });
+      await openEditor(); await evalIn('switchMode("自由")');
+      fill('#freeText', '看看 @');
+      await waitFor(() => !frame.contentDocument.querySelector('.at-pop').hidden, '自由模式 @ 没有弹出列表');
+      assert(frame.contentDocument.querySelector('.at-pop').textContent.includes('测试门口'), '资产列表没有测试图片');
+      frame.contentDocument.querySelector('#freeText').dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      await saveNow();
+      const saved = textAt(promptPath), refsStart = saved.indexOf('素材\r\n') + '素材\r\n'.length;
+      const refsEnd = saved.indexOf('基础设定\r\n', refsStart), refs = saved.slice(refsStart, refsEnd);
+      assert(refsStart >= '素材\r\n'.length && refsEnd > refsStart, '保存后公共素材区缺失');
+      assert(refs.includes('@图片1') && refs.split(/\r?\n/).filter(line => line.trim()).length === 1, '公共素材区没有增加一条图片引用说明');
+      const withoutNewReference = saved.slice(0, refsStart) + '\r\n' + saved.slice(refsEnd);
+      assert(withoutNewReference === freeDocument('看看 @图片1'), '插入资产时改变了其他公共内容或自由正文');
+      assert(sideAt().自由稿 === '看看 @图片1', '没有把选择插入自由分镜');
+      assert(sideAt().挂图['@图片1'] === asset, '资产绑定没有写入侧写记录');
+      const materialText = frame.contentDocument.querySelector('[data-sec="refs"] .blist').textContent;
+      assert(materialText.includes('@图片1'), '公共素材区页面没有显示新引用');
+      await openEditor();
+      assert(evalIn('refOf(A["' + asset + '"])') === '@图片1', '重开丢失图片编号');
+      assert(frame.contentDocument.querySelector('#freeText').value === '看看 @图片1', '重开丢失带资产的正文');
+      assert(frame.contentDocument.querySelector('[data-sec="refs"] .blist').textContent === materialText, '重开丢失公共素材引用说明');
+      assert(evalIn('activeText()') === saved, '重开后公共素材或其他内容改变');
+    });
+    await check('第一笔保存在途时继续输入，第二笔保存最终保留所有修改', async () => {
+      reset(); await openEditor();
+      const gate = delayNext((url, method) => method === 'POST' && url.searchParams.has('draft'));
+      fill('.p-shot .shot-title', '第一笔修改');
+      const firstSave = evalIn('save()');
+      try {
+        await Promise.race([gate.entered, sleep(3000).then(() => { throw new Error('第一笔保存没有进入请求'); })]);
+        assert(evalIn('SAVING'), '请求延迟期间没有保存中标记');
+        fill('.p-shot .shot-title', '第二笔完整修改');
+        fill('.p-shot .shot-purpose', '在等待保存时补上的作用');
+        const secondSave = evalIn('save()'); gate.release();
+        assert((await Promise.all([firstSave, secondSave])).every(Boolean), '连续保存未全部成功');
+        await waitFor(() => !evalIn('dirty() || SAVING'), '后续修改仍未保存');
+      } finally { gate.release(); }
+      assert(textAt(promptPath).includes('镜头 01｜第二笔完整修改'), '迟到的第一笔覆盖了第二笔正文');
+      assert(sideAt().镜头信息[0].作用 === '在等待保存时补上的作用', '在途保存吞掉了作用修改');
+      assert(requestLog.filter(line => line.startsWith('POST ') && line.includes('?draft')).length >= 2, '没有重新提交后续输入');
+      await openEditor();
+      assert(frame.contentDocument.querySelector('.shot-title').value === '第二笔完整修改', '重开后最后一笔丢失');
+    });
+    await check('外部加载等待期间的新输入触发冲突保护，不被重绘覆盖', async () => {
+      reset(); await openEditor();
+      const external = original.replace('听见动静', '文件里的另一个标题'); put(promptPath, external);
+      const gate = delayNext((url, method) => method === 'GET' && !url.search && decodeURIComponent(url.pathname) === '/api/fs/' + promptPath);
+      const pulling = evalIn('pullExternal()');
+      try {
+        await Promise.race([gate.entered, sleep(3000).then(() => { throw new Error('外部加载没有进入请求'); })]);
+        fill('.p-shot .shot-title', '外部加载期间我仍在写');
+        gate.release(); await pulling;
+      } finally { gate.release(); }
+      assert(evalIn('CONFLICT'), '外部加载覆盖风险没有报告为冲突');
+      assert(frame.contentDocument.querySelector('.shot-title').value === '外部加载期间我仍在写', '加载完成时重绘吞掉新输入');
+      assert(textAt(promptPath) === external, '外部版本被本地输入覆盖');
+      assert([...storageMap.values()].some(value => value.includes('外部加载期间我仍在写')), '等待期间的输入没有恢复副本');
+    });
+    await check('恢复草稿待选择期间，输入和自动保存均不会抹掉恢复稿', async () => {
+      reset();
+      const recoveryKey = 'xiegao:recovery:' + testProject + '/提示词/第1段/视频提示词.txt';
+      const recoveredText = '上次没有保存的自由稿\n\n最后一行也要保留。';
+      const recovery = JSON.stringify({ baseText: original, editor: { 写法: '自由', 写法范围: '分镜', 分镜稿: original, 自由稿: recoveredText, 镜头信息: [], 挂图: {} }, time: 1234 });
+      storageMap.set(recoveryKey, recovery); await openEditor();
+      await waitFor(() => evalIn('RECOVERY_PENDING'), '没有进入恢复草稿等待状态');
+      assert(frame.contentDocument.querySelector('#sheet').inert, '恢复待选择时编辑区未锁定');
+      // 程序派发输入进一步检查保护逻辑，真实键盘会先被 inert 拦住。
+      fill('.p-shot .shot-title', '不应覆盖恢复稿的新事件');
+      assert(await evalIn('save()') === false, '尚未选择恢复方案就允许保存');
+      await sleep(800);
+      assert(storageMap.get(recoveryKey) === recovery, '恢复稿被新输入或自动保存改写/清除');
+      assert(textAt(promptPath) === original, '待选择期间改写了文件');
+      assert(!requestLog.some(line => line.startsWith('POST ') || line.startsWith('PUT ')), '待选择期间提交了写请求');
+      const restore = [...frame.contentDocument.querySelectorAll('button')].find(button => button.textContent === '恢复到页面');
+      assert(restore, '没有恢复按钮'); restore.click(); await saveNow();
+      assert(!evalIn('RECOVERY_PENDING'), '主动恢复后未解除等待');
+      assert(textAt(promptPath) === freeDocument(recoveredText), '主动恢复未完整保存自由分镜和公共区');
+    });
+    await check('模式仅切换分镜编辑器，公共区 DOM、内容和字号保持不变', async () => {
+      reset(); await openEditor();
+      const nodes = commonNodes(), values = commonValues();
+      assert(nodes.every(Boolean), '未找到全部公共区');
+      const fonts = nodes.map(node => frame.contentWindow.getComputedStyle(node).fontSize);
+      const eventInput = nodes[0].querySelector('.wr-ta');
+      await evalIn('switchMode("自由")');
+      assert(nodes.every((node, i) => commonNodes()[i] === node), '切换自由模式重新创建了公共区 DOM');
+      assert(equal(commonValues(), values), '切换自由模式改变了公共区内容');
+      assert(equal(nodes.map(node => frame.contentWindow.getComputedStyle(node).fontSize), fonts), '切换自由模式改变了公共区字号');
+      assert(frame.contentDocument.querySelector('[data-sec="shots"] #freeText'), '自由输入框没有放在分镜区内');
+      assert(frame.contentDocument.querySelector('[data-sec="event"] .wr-ta') === eventInput, '公共输入框被模式切换替换');
+      await evalIn('switchMode("分镜")');
+      assert(nodes.every((node, i) => commonNodes()[i] === node), '切回分镜模式重新创建了公共区 DOM');
+      assert(equal(commonValues(), values), '切回分镜模式改变了公共区内容');
+    });
+    await check('自由模式修改公共事件，两种分镜写法共用并持久保存', async () => {
+      reset(); await openEditor(); await evalIn('switchMode("自由")');
+      const event = '在自由模式写下的新事件', raw = '自由分镜内容。\n';
+      fill('[data-sec="event"] .wr-ta', event); fill('#freeText', raw); await saveNow();
+      const updated = original.replace('门外来人', event);
+      assert(textAt(promptPath) === freeDocument(raw, updated), '自由模式没有保存公共事件');
+      assert(sideAt().分镜稿.includes(event), '备用结构稿没有同步公共事件');
+      await evalIn('switchMode("分镜")');
+      assert(frame.contentDocument.querySelector('[data-sec="event"] .wr-ta').value === event, '切换后公共事件回退');
+      assert(textAt(promptPath) === updated, '切回结构化时公共事件或备用镜头丢失');
+      await evalIn('switchMode("自由")'); await openEditor();
+      assert(frame.contentDocument.querySelector('[data-sec="event"] .wr-ta').value === event, '重开后公共事件丢失');
+      assert(frame.contentDocument.querySelector('#freeText').value === raw, '公共区改动覆盖了自由分镜');
+    });
+    await check('自由分镜中的素材、保持一致和分镜字样不会被误当公共标题', async () => {
+      reset(); await openEditor(); await evalIn('switchMode("自由")');
+      const raw = '素材\n这些字就是我的分镜正文。\n保持一致：这里也属于正文\n分镜\n镜头99：自由编号\n基础设定\n本段\n结束';
+      const values = commonValues(); fill('#freeText', raw); await saveNow();
+      assert(textAt(promptPath) === freeDocument(raw), '保存时误切分了自由分镜中的标题');
+      await openEditor();
+      assert(frame.contentDocument.querySelector('#freeText').value === raw, '重开时误切分了自由分镜中的标题');
+      assert(equal(commonValues(), values), '自由正文污染了公共区');
+      assert(evalIn('activeText()') === freeDocument(raw), '重开后的完整提示词发生变化');
+      await evalIn('switchMode("分镜")');
+      assert(textAt(promptPath) === original, '自由文字污染了备用结构化分镜');
+    });
+    await check('旧整页自由稿兼容打开零写入，显式保存后原文完整保留', async () => {
+      reset();
+      const legacy = '旧版自由稿，整页自己写。\n\n素材\n保持一致：这句也是旧正文\n最后保留两个空格  ';
+      put(promptPath, legacy);
+      put(sidePath, JSON.stringify({ 写法: '自由', 分镜稿: original, 自由稿: legacy, 镜头信息: [], 挂图: {} }));
+      await openEditor(); await sleep(900);
+      assert(textAt(promptPath) === legacy, '仅打开就改写了旧整页自由稿');
+      assert(!requestLog.some(line => line.startsWith('POST ') || line.startsWith('PUT ')), '旧稿兼容打开触发了写入');
+      assert(frame.contentDocument.querySelector('#freeText').value === legacy, '旧整页正文丢失');
+      assert(frame.contentDocument.querySelector('[data-sec="event"] .wr-ta').value === '门外来人', '旧稿的共享区没有从备用结构稿保留');
+      evalIn('touch()'); await saveNow();
+      assert(sideAt().写法范围 === '分镜' && sideAt().自由稿 === legacy, '显式保存丢失了旧自由正文或范围标记');
+      assert(textAt(promptPath) === freeDocument(legacy), '旧自由正文转入分镜后不完整');
+      await openEditor();
+      assert(frame.contentDocument.querySelector('#freeText').value === legacy, '兼容保存重开后旧正文改变');
+    });
+    await check('标准格式旧自由稿保留当前公共区和自由分镜，备用分镜独立保留', async () => {
+      reset();
+      const current = original.replace('门外来人', '当前文件里的最新事件').replace('核心氛围：安静。', '核心氛围：当前文件里的氛围。')
+        .replace('听见动静', '当前自由稿的镜头标题').replace('门外响起脚步声。', '当前自由稿写下的镜头正文。');
+      const marker = '分镜\r\n';
+      const currentShots = current.slice(current.indexOf(marker) + marker.length, current.indexOf('保持一致：'));
+      const backupShots = original.slice(original.indexOf(marker) + marker.length, original.indexOf('保持一致：'));
+      put(promptPath, current);
+      put(sidePath, JSON.stringify({ 写法: '自由', 分镜稿: original, 自由稿: current, 镜头信息: [], 挂图: {} }));
+      await openEditor(); await sleep(900);
+      assert(!requestLog.some(line => line.startsWith('POST ') || line.startsWith('PUT ')), '标准旧自由稿打开触发写入');
+      assert(textAt(promptPath) === current, '打开时改写了标准旧自由稿');
+      assert(frame.contentDocument.querySelector('[data-sec="event"] .wr-ta').value === '当前文件里的最新事件', '公共事件错误沿用了过期备用稿');
+      assert(frame.contentDocument.querySelector('[data-sec="seg"] .blist').textContent.includes('当前文件里的氛围。'), '其他公共区错误沿用了过期备用稿');
+      assert(frame.contentDocument.querySelector('#freeText').value === currentShots.replace(/\r\n/g, '\n'), '没有只提取当前TXT中的自由分镜');
+      assert(evalIn('freeText()') === currentShots, '提取的分镜原始换行改变');
+      assert(evalIn('DOC.shots[0].title') === '听见动静', '当前自由稿覆盖了备用结构化镜头');
+      evalIn('touch()'); await saveNow();
+      assert(textAt(promptPath) === current, '显式保存时标准旧自由稿未能逐字保留');
+      assert(sideAt().写法范围 === '分镜' && sideAt().自由稿 === currentShots, '旧标准自由稿范围或分镜保存错误');
+      const backup = sideAt().分镜稿;
+      assert(backup.slice(backup.indexOf(marker) + marker.length, backup.indexOf('保持一致：')) === backupShots, '备用分镜原文改变');
+      await evalIn('switchMode("分镜")');
+      assert(textAt(promptPath) === current.replace(currentShots, backupShots), '切回结构化没有共用当前公共区与原备用分镜');
+      await evalIn('switchMode("自由")');
+      assert(textAt(promptPath) === current, '再次切回自由后标准旧自由稿改变');
+    });
+    await check('公共内容侧栏显示全部共享文字，切换模式保留侧栏和内容', async () => {
+      reset();
+      put(promptPath, original.replace('素材\r\n\r\n', '素材\r\n测试公共素材说明。\r\n\r\n'));
+      await openEditor();
+      evalIn('document.body.classList.remove("norail"); showRail("common")');
+      const pane = frame.contentDocument.querySelector('#pane-common');
+      assert(pane && !pane.hidden && pane.getClientRects().length, '公共内容侧栏没有显示');
+      const text = pane.textContent;
+      for (const value of ['素材', '测试公共素材说明。', '基础设定', '写实', '本段', '安静。', '保持一致', '光线不变'])
+        assert(text.includes(value), '公共侧栏缺少内容：' + value);
+      assert(!pane.querySelector('[contenteditable="true"], textarea, input'), '公共内容侧栏应该是只读对照');
+      await evalIn('switchMode("自由")');
+      assert(evalIn('RAIL') === 'common' && !pane.hidden, '切换自由模式改变了当前侧栏');
+      assert(pane.textContent === text, '切换自由模式改变了公共侧栏文字');
+      await evalIn('switchMode("分镜")');
+      assert(evalIn('RAIL') === 'common' && !pane.hidden, '切回分镜模式改变了当前侧栏');
+      assert(pane.textContent === text, '切回分镜模式改变了公共侧栏文字');
+    });
+    await check('快捷入口只展开所选公共区，模式切换保留展开并使用原字号宽布局', async () => {
+      reset(); await openEditor();
+      const values = commonValues(), basic = frame.contentDocument.querySelector('[data-sec="basic"]');
+      evalIn('openCommonSection("basic")');
+      const visibleCommon = () => commonNodes().filter(node => node.getClientRects().length && frame.contentWindow.getComputedStyle(node).display !== 'none');
+      assert(visibleCommon().length === 1 && visibleCommon()[0] === basic, '快捷入口没有只展开基础设定');
+      assert(equal(commonValues(), values), '展开公共区改变了内容');
+      assert(frame.contentDocument.querySelector('#editor-mode'), '缺少顶部模式切换区');
+      assert(frame.contentDocument.querySelector('#editor-outline'), '缺少左侧分区导航');
+      assert(frame.contentDocument.querySelectorAll('.section-nav [data-common]').length === 5, '公共区快捷入口应有五个');
+      await evalIn('switchMode("自由")');
+      assert(visibleCommon().length === 1 && visibleCommon()[0] === basic, '模式切换丢失了已展开的公共区');
+      assert(equal(commonValues(), values), '模式切换改变了展开区内容');
+      const computed = node => frame.contentWindow.getComputedStyle(node);
+      assert(computed(frame.contentDocument.querySelector('#freeText')).fontSize === '16px', '自由正文没有沿用原来的16px字号');
+      assert(computed(basic.querySelector('.blk')).fontSize === '15px', '公共正文没有沿用原来的15px字号');
+      const sheetStyle = computed(frame.contentDocument.querySelector('#sheet'));
+      assert(sheetStyle.maxWidth === 'none' || sheetStyle.maxWidth.endsWith('%') || parseFloat(sheetStyle.maxWidth) > 800, '写作区仍被限制为800px以内纸张');
+      assert(parseFloat(sheetStyle.borderTopWidth) === 0 && sheetStyle.boxShadow === 'none', '写作区仍有纸张边框或阴影');
+    });
+    await check('整体和公共区 AI 批注完整重绘后仍定位正确，侧栏点击会展开目标区', async () => {
+      reset(); await openEditor();
+      evalIn('NOTES = [{id:"test-overall",where:"整体",lv:"提醒",say:"这是整体提醒",find:"",to:null},{id:"test-basic",where:"基础设定",lv:"提醒",say:"这是基础设定提醒",find:"影像风格：写实",to:null}]; renderNotes();');
+      assert(frame.contentDocument.querySelectorAll('.ainote').length === 2, '初次渲染没有生成两条批注卡片');
+      evalIn('render()');
+      assert(frame.contentDocument.querySelectorAll('.ainote').length === 2, '完整重绘后批注卡片丢失');
+      const overall = frame.contentDocument.querySelector('.ainote[data-id="test-overall"]');
+      const specific = frame.contentDocument.querySelector('.ainote[data-id="test-basic"]');
+      assert(overall?.closest('#general-notes'), '整体批注没有定位到整体批注容器');
+      assert(specific?.closest('[data-sec="basic"]'), '基础设定批注定位到了错误分区');
+      const basic = frame.contentDocument.querySelector('[data-sec="basic"]');
+      assert(basic.hidden, '跳转前基础设定应处于收起状态');
+      evalIn('document.body.classList.remove("norail"); showRail("ai")');
+      const link = [...frame.contentDocument.querySelectorAll('#pane-ai .nl-i')].find(node => node.textContent.includes('基础设定'));
+      assert(link, 'AI 侧栏缺少基础设定批注入口'); link.click();
+      assert(!basic.hidden && basic.getClientRects().length, '点击 AI 批注没有展开基础设定');
+      assert(!requestLog.some(line => line.startsWith('POST ') || line.startsWith('PUT ')), '批注定位测试意外提交了写请求');
+    });
+    $('#summary').textContent = '全部通过：' + completed + ' 项浏览器回归；真实项目写入 0 次，AI 请求 0 次。';
+  } catch (error) {
+    if (!failures) { failures++; $('#summary').textContent = '测试准备失败：' + error.stack; }
+  } finally { $('#run').disabled = false; }
+}
+$('#run').onclick = run;
+</script></body></html>

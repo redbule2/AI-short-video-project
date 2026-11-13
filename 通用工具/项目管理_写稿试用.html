@@ -353,6 +353,7 @@ body.norail .rail { display: none; }
 .p-shot.fold > .shot-why { display: none; }
 /* <<< 流水线 · 作用 */
 </style>
+<link rel="stylesheet" href="公用/写稿编辑.css">
 </head>
 <body>
 <main id="main">
@@ -361,22 +362,26 @@ body.norail .rail { display: none; }
     <div class="top-right">
       <span class="status" id="save"><i class="dot"></i><span>正在打开…</span></span>
       <button class="btn sm zhu" id="sendNotes" title="把你写给 AI 那几区的批注交给 AI，它照着改，改好这里自动换上" hidden>把批注交给 AI 改</button>
-      <button class="btn sm ghost" id="railBtn" title="开关右边的资产、批注栏。收起来写的地方更宽">侧栏</button>
+      <button class="btn sm" id="previewBtn">预览全文</button>
+      <button class="btn sm" id="saveBtn">保存草稿</button>
+      <button class="btn sm ghost" id="railBtn" title="收起或展开右侧建议与资产">收起侧栏</button>
       <button class="btn sm" id="askOne" title="只批光标所在的这一镜" disabled>只批这一镜</button>
       <button class="btn dai" id="askAll" disabled>请 AI 批</button>
     </div>
   </div>
-  <div class="steps" id="steps"></div>
+  <div id="steps" hidden></div>
+  <div class="editor-mode" id="editor-mode"></div>
   <div class="stage">
+    <nav class="editor-outline" id="editor-outline" aria-label="提示词目录"></nav>
     <div class="col">
       <div class="canvas" id="canvas">
         <div class="tip" id="tip" hidden>
           <button class="x" title="收起，以后不再提示" id="tipX">×</button>
-          <b>试用版怎么用</b>　这回是真稿子：你打的字直接存进文件，「请 AI 批」是真的交给 AI（左下角看得见它在做）。
+          <b>两种写法</b>　边写边自动保存，也可以按 Ctrl+S 保存。
           <ol>
-            <li>素材、基础设定、本段、保持一致，AI 已经提前写好，点标题那一行展开看。要它改：点那一行写批注，再点右上「把批注交给 AI 改」。</li>
-            <li>你只写带框的两处：本段事件、每一镜。和记事本一样打字，回车换行，<kbd>Ctrl</kbd>+<kbd>Z</kbd> 撤销，边写边存。写好的点「收起」省地方。</li>
-            <li>每镜上面是 AI 给的关键词，点一下插进正文；在镜头里打 <kbd>@</kbd> 选资产。右边「对照」里有剧本、镜头表和 AI 写的现行稿。</li>
+            <li>分镜模式可以增删、复制和拖动镜头；标题、作用和正文都可以自己写。</li>
+            <li>两种写法只切换分镜部分。上方的本段事件、素材、基础设定、本段、保持一致是公共内容，两种写法共用。</li>
+            <li>右侧「建议」按分镜和关键词组织，点选才加入。输入 <kbd>@</kbd> 选资产；也可以查看剧本对照。</li>
             <li>写得差不多了点右上「请 AI 批」。AI 只写批注，你点「照改」才动稿子。</li>
           </ol>
         </div>
@@ -385,9 +390,12 @@ body.norail .rail { display: none; }
       <div class="guide" id="guide"></div>
     </div>
     <aside class="rail" id="rail">
+      <div class="rail-title">AI 建议与参考 <small>按需选用</small></div>
       <div class="rail-tabs" id="rail-tabs"></div>
       <div class="pin" id="pin" hidden></div>
       <div class="rail-body">
+        <div id="pane-suggest"></div>
+        <div id="pane-common" hidden></div>
         <div id="pane-assets"><input class="as-q" id="as-q" placeholder="搜资产：名字或拼音首字母" spellcheck="false"><div id="as-list"></div></div>
         <div id="pane-ai" hidden></div>
         <div id="pane-lint" hidden></div>
@@ -397,6 +405,8 @@ body.norail .rail { display: none; }
   </div>
 </main>
 <div id="toast"></div>
+<script src="公用/写稿状态.js"></script>
+<script src="公用/写稿交互.js"></script>
 <script>
 'use strict';
 const $ = (s, r) => (r || document).querySelector(s);
@@ -431,7 +441,7 @@ const HOME = '项目', HDR = { 'X-Antou': '1' };
 const api = (parts, q) => '/api/fs/' + parts.map(encodeURIComponent).join('/') + (q || '');
 const FS = {
   async read(parts) { const r = await fetch(api(parts), { headers: HDR }); if (!r.ok) throw new Error((await r.text()) || String(r.status)); return { buf: await r.arrayBuffer(), mtime: +r.headers.get('X-Mtime') }; },
-  async text(parts) { const r = await this.read(parts); return { text: new TextDecoder().decode(r.buf), mtime: r.mtime }; },
+  async text(parts) { const r = await this.read(parts); return { text: new TextDecoder('utf-8', { ignoreBOM: true }).decode(r.buf), mtime: r.mtime }; },
   async stat(parts) { const r = await fetch(api(parts, '?stat'), { headers: HDR }); return r.ok ? r.json() : null; },
   async list(parts) { const r = await fetch(api(parts, '?list'), { headers: HDR }); return r.ok ? r.json() : []; },
   async write(parts, body) { const r = await fetch(api(parts), { method: 'PUT', headers: HDR, body }); if (!r.ok) throw new Error((await r.text()) || String(r.status)); return r.json(); },
@@ -453,7 +463,7 @@ function jobBody(line, ch) {
   const base = { 渠道: ch, 项目: PJ, 段: SEGDIR.replace(/^第|段$/g, ''), 名: STEM + '.txt' };
   let m;
   if ((m = /^请批注 [^｜]+(?:｜只批镜头 (\S+))?$/.exec(line))) return { ...base, 事: '批注提示词', ...(m[1] ? { 只批: m[1] } : {}) };
-  if ((m = /^要关键词 [^｜]+｜镜头 (\S+)$/.exec(line))) return { ...base, 事: '要关键词', 镜头号: String(parseInt(m[1], 10)) };
+  if ((m = /^要关键词 [^｜]+｜镜头 (\S+)$/.exec(line))) { const s = DOC.shots.find(s => s.no === m[1]); return { ...base, 事: '要关键词', 镜头号: m[1] === '自由' ? '自由' : String(parseInt(m[1], 10)), ...(s ? { 镜头ID: s.id } : {}) }; }
   if ((m = /^按批注修改 (.+)$/.exec(line))) return { 渠道: ch, 项目: PJ, 事: '按批注改提示词', 批注: m[1] };
   if (/^重新铺底 /.test(line)) return { ...base, 事: '铺底' };
   return null;
@@ -517,51 +527,51 @@ async function resumeJobs() {
 let PJ = '', OPENPATH = '', PROMPT = [], DIR = [], STEM = '', SEGDIR = '', KEY = '', SIDEF = [], NOTESF = [], HIST = [];
 let DOC = null, MTIME = 0, LASTTEXT = '', VER = 0, SAVEDVER = 0, SAVING = false, AGAIN = false, READY = false;
 const dirty = () => VER !== SAVEDVER;
+let MODE = '分镜', FREE = '', BASE_EDITOR = {}, SAVE_PROMISE = null, CONFLICT = false, ARCHIVED = false, SELECTED_ID = '', RECOVERY_PENDING = false;
+const EDITOR_KEYS = ['写法', '写法范围', '分镜稿', '自由稿', '镜头信息', '挂图'];
+const editorPart = side => Object.fromEntries(EDITOR_KEYS.filter(k => Object.prototype.hasOwnProperty.call(side, k)).map(k => [k, side[k]]));
+const newShotId = () => 'shot-' + crypto.randomUUID();
+const freeText = () => { const value = $('#freeText').value; return value === FREE.replace(/\r\n?/g, '\n') ? FREE : FREE.includes('\r\n') ? value.replace(/\n/g, '\r\n') : value; };
+const activeText = () => MODE === '自由' ? PromptDraft.withShotText(collect(), freeText()) : serialize(collect());
+const draftKey = () => 'xiegao:recovery:' + OPENPATH;
 
 /* ---------- 提示词：读成几区，再照原样写回去 ---------- */
 const RE_LABEL_HEAD = /^([^：:\n]{1,10})[：:]/, RE_LABEL_OK = /^[㐀-鿿豈-﫿A-Za-z\/｜·]{1,10}$/;
 function splitLabel(line) { const m = RE_LABEL_HEAD.exec(line); if (!m) return null; const label = m[1].trim(); return RE_LABEL_OK.test(label) ? { label, value: line.slice(m[0].length) } : null; }
 const SEC_OF = { 素材: 'refs', 基础设定: 'basic', 本段: 'seg', 分镜: 'shots' };
 function parsePrompt(text) {
-  const d = { bom: false, eol: '\n', pre: [], event: '', refs: [], basic: [], seg: [], shotsPre: [], shots: [], keep: '', has: {} };
-  if (text.charCodeAt(0) === 0xFEFF) { d.bom = true; text = text.slice(1); }
-  if (/\r\n/.test(text)) d.eol = '\r\n';
-  let sec = 'pre', shot = null;
-  for (const raw of text.split(/\r\n|\n|\r/)) {
-    const t = raw.trim(), key = SEC_OF[t.replace(/\s+/g, '')];
-    if (key) { sec = key; d.has[key] = true; shot = null; continue; }
-    const f = splitLabel(t);
-    if (f && f.label === '本段事件' && sec === 'pre') { d.event = f.value.trim(); sec = 'event'; continue; }
-    if (f && f.label === '保持一致' && sec !== 'keep') { d.keep = f.value.trim(); d.has.keep = true; sec = 'keep'; shot = null; continue; }
-    if (sec === 'shots' && /^镜头\s*[0-9０-９]+/.test(t)) { const m = /^镜头\s*([0-9０-９]+)\s*[｜|：:]?\s*(.*)$/.exec(t); shot = { no: m[1], title: m[2], lines: [] }; d.shots.push(shot); continue; }
-    if (!t) continue;   // 空行只是间隔
-    if (sec === 'event') d.event += t;
-    else if (sec === 'keep') d.keep += t;
-    else if (sec === 'shots') (shot ? shot.lines : d.shotsPre).push(t);
-    else d[sec].push(t);
-  }
-  return d;
+  return PromptDraft.parse(text);
 }
 function serialize(d) {
-  const out = [];
-  if (d.pre.length) out.push(...d.pre, '');
-  out.push('本段事件：' + d.event, '');
-  if (d.has.refs || d.refs.length) out.push('素材', ...d.refs, '');
-  out.push('基础设定', ...d.basic, '', '本段', ...d.seg, '', '分镜', '');
-  if (d.shotsPre.length) out.push(...d.shotsPre, '');
-  for (const s of d.shots) out.push('镜头 ' + s.no + '｜' + s.title, ...s.lines, '');
-  out.push('保持一致：' + d.keep);
-  return (d.bom ? BOM : '') + out.join(d.eol) + d.eol;
+  return PromptDraft.serialize(d);
 }
 /* 页面上现在的样子 → 一份稿 */
 const lineOf = blk => { const t = plain($('.ed', blk)); return blk.dataset.lab ? blk.dataset.lab + '：' + t : t; };
 function collect() {
-  const d = { ...DOC, shots: [] };
+  const d = { ...DOC, shots: MODE === '自由' ? DOC.shots : [] };
   d.event = $('[data-sec="event"] .wr-ta').value.replace(/\s*\n+\s*/g, '').trim();
   for (const k of ['refs', 'basic', 'seg']) d[k] = $$('section[data-sec="' + k + '"] .blist > .blk').map(lineOf).filter(Boolean);
   d.keep = $$('section[data-sec="keep"] .blist > .blk').map(lineOf).filter(Boolean).join('');
-  for (const el of $$('.p-shot')) d.shots.push({ no: el.dataset.no, title: $('.shot-title', el).value.trim(), lines: $('.wr-ta', el).value.split(/\n+/).map(s => s.trim()).filter(Boolean) });
+  for (const el of $$('.p-shot')) d.shots.push({ ...DOC.shots.find(s => s.id === el.dataset.id), id: el.dataset.id, no: el.dataset.no, title: $('.shot-title', el).value.trim(), purpose: $('.shot-purpose', el).value, lines: $('.wr-ta', el).value.split(/\n+/).map(s => s.trim()).filter(Boolean) });
   return d;
+}
+function hydrateShots(d, metadata, legacy) {
+  const list = Array.isArray(metadata) ? metadata : [];
+  d.shots = d.shots.map(s => {
+    const m = list.find(x => String(x.no) === String(s.no));
+    return { ...s, id: m && m.id || newShotId(), purpose: m ? String(m.作用 || '') : legacy ? flowWhy(s.no) : '', keywords: m && m.关键词 || SIDE.关键词 && (SIDE.关键词[s.no] || SIDE.关键词[String(+s.no)]) || {}, sourceNo: m ? String(m.原编号 || '') : legacy ? s.no : '' };
+  });
+  return d;
+}
+function shotMetadata(d) { return d.shots.map(s => ({ id: s.id, no: s.no, 作用: s.purpose || '', 关键词: s.keywords || {}, 原编号: s.sourceNo || '' })); }
+function editorSnapshot() {
+  const d = collect();
+  return { 写法: MODE, 写法范围: '分镜', 分镜稿: serialize(d), 自由稿: MODE === '自由' ? freeText() : FREE, 镜头信息: shotMetadata(d), 挂图: { ...(SIDE.挂图 || {}) } };
+}
+function rememberDraft() {
+  if (!READY || RECOVERY_PENDING) return;
+  try { localStorage.setItem(draftKey(), JSON.stringify({ baseText: LASTTEXT, editor: editorSnapshot(), time: Date.now() })); }
+  catch (e) { setStatus('浏览器恢复草稿未存上，请保持页面打开并保存', true); }
 }
 
 /* ---------- 资产：扫 资产\全局资产 各类别和这一段的文件夹；缩小图用到才做 ---------- */
@@ -628,11 +638,14 @@ let NUM = { 图片: [], 音频: [], 视频: [] }, REFNAME = {}, SIDE = {}, SIDE_
 const refOf = a => { const i = NUM[a.type].indexOf(a.path); return i < 0 ? null : '@' + a.type + (i + 1); };
 const assetOfRef = ref => { const m = /^@(图片|视频|音频)([0-9]+)$/.exec(ref); return (m && A[NUM[m[1]][m[2] - 1]]) || null; };
 const nameOf = a => REFNAME[a.path] && REFNAME[a.path].length <= 8 ? REFNAME[a.path] : a.name;
-async function loadSide() {
+async function readSideState() {
   const st = (await has(SIDEF)) ? await FS.stat(SIDEF) : null;
-  SIDE_MT = st ? st.mtime : 0;
-  try { SIDE = st ? JSON.parse((await FS.text(SIDEF)).text.replace(BOM, '')) : {}; } catch (e) { SIDE = {}; toast('过程文件读不了：' + e.message); }
+  const r = st ? await FS.text(SIDEF) : null;
+  const side = r ? JSON.parse(r.text.replace(/^\uFEFF/, '')) : {};
+  if (!side || typeof side !== 'object' || Array.isArray(side)) throw new Error('写稿记录格式不正确，已停止读取，原记录保留');
+  return { side, mtime: r ? r.mtime : 0 };
 }
+async function loadSide() { const result = await readSideState(); SIDE = result.side; SIDE_MT = result.mtime; }
 async function loadRefs() {
   NUM = { 图片: [], 音频: [], 视频: [] }; REFNAME = {};
   const put = (ref, path, name) => {
@@ -667,11 +680,8 @@ function bind(a, quiet) {
   return ref;
 }
 async function saveBind(ref, path) {
-  try {
-    await loadSide();
-    SIDE.挂图 = { ...(SIDE.挂图 || {}), [ref]: path };
-    SIDE_MT = (await FS.write(SIDEF, JSON.stringify(SIDE, null, 2) + '\n')).mtime;
-  } catch (e) { toast('新挂的图没记上：' + e.message); }
+  SIDE.挂图 = { ...(SIDE.挂图 || {}), [ref]: path };
+  touch(); paintCommonContent();
 }
 
 /* ---------- 你写的地方：真的文字框。打字、回车、撤销都和记事本一样；底下垫一层影子只画标记 ---------- */
@@ -729,8 +739,8 @@ const SECS = [
   { key: 'refs', name: '素材', by: 'ai', fold: true },
   { key: 'basic', name: '基础设定', by: 'ai', fold: true },
   { key: 'seg', name: '本段', by: 'ai', fold: true },
-  { key: 'shots', name: '分镜', by: 'me', who: '你写 · AI 给关键词' },
-  { key: 'keep', name: '保持一致', by: 'ai' },
+  { key: 'keep', name: '保持一致', by: 'ai', fold: true },
+  { key: 'shots', name: '分镜', by: 'me', who: '自由增删 · 拖动排序' },
 ];
 const OPEN = new Set();   // 展开着的 AI 区
 function chip(ref) {
@@ -744,7 +754,7 @@ function fill(ed, text) { ed.replaceChildren(...text.split(/(@(?:图片|视频|�
 /* AI 写的一行（左边一道黛色细线）：不在这里直接改，点一下写批注，交给 AI 改，和「提示词」那边一样。
    还带着没填的〔 〕的行（你新挂资产时页面补的那一行）可以直接填 */
 function blockEl(b, sec, ai) {
-  const ro = !!ai && !/〔[^〕]*〕/.test(b.t);
+  const ro = !!ai && !!b.t.trim() && !/〔[^〕]*〕/.test(b.t);
   const ed = h('div', { class: 'ed' + (ro ? ' ro' : ''), contenteditable: ro ? 'false' : 'true', spellcheck: 'false', 'data-ph': '写在这里…' });
   fill(ed, b.t);
   return h('div', { class: 'blk' + (ai ? ' ai' : '') + (ro ? ' nt' : ''), 'data-sec': sec, 'data-lab': b.lab || null, title: ro ? '点一下写批注，交给 AI 改' : null }, b.lab ? h('span', { class: 'lab' }, b.lab + '：') : null,
@@ -760,6 +770,7 @@ function allLines() {
   const out = [{ text: '本段事件：' + $('[data-sec="event"] .wr-ta').value.replace(/\s*\n+\s*/g, '').trim(), where: '本段事件' }];
   const ai = k => $$('section[data-sec="' + k + '"] .blist > .blk').forEach(blk => out.push({ text: fullOf(blk), where: SECS.find(s => s.key === k).name, blk }));
   ai('refs'); ai('basic'); ai('seg');
+  if (MODE === '自由') out.push(...freeText().split(/\r?\n/).map(text => ({ text, where: '分镜' })));
   for (const el of $$('.p-shot')) {
     out.push({ text: '镜头 ' + el.dataset.no + '｜' + $('.shot-title', el).value.trim(), where: '分镜' });
     $('.wr-ta', el).value.split(/\n+/).map(s => s.trim()).filter(Boolean).forEach(t => out.push({ text: t, where: '分镜 · 镜头' + el.dataset.no }));
@@ -865,7 +876,7 @@ function paintSend() {
 }
 async function sendNotes() {
   try {
-    await saveHNotes(); clearTimeout(ST); await save();
+    await saveHNotes(); clearTimeout(ST); if (!await save()) return;
     const r = await tellAI('按批注修改 ' + HNF.join('/'));
     toast(r.online ? '交给 AI 了。改好这里自动换上，改过的行左边有一道红线' : 'AI 这会儿没在等。去对话里说一声「看右边」，它就来改');
   } catch (e) { toast('没交上：' + e.message); }
@@ -875,15 +886,18 @@ function toBlock(line, key) {
   return f ? { lab: f.label, t: f.value.trim(), geo: /^(总场景|分场景|轴线)/.test(f.label) } : { t: line };
 }
 /* 每镜上面那一行：AI 给的关键词，点一下插进正文；正文里已经有的打勾 */
-const kwOf = no => { const all = SIDE.关键词 || {}; return all[no] || all[String(+no)] || null; };
+const kwOf = no => { const s = DOC.shots.find(s => s.no === no); return s ? (SIDE.镜头关键词 || {})[s.id] || s.keywords || null : (SIDE.关键词 || {}).自由 || null; };
 function paintKw(row, no) {
   const kw = kwOf(no), kids = [];
-  if (!kw) kids.push(h('span', { class: 'kw-tip' }, '这一镜还没有关键词。'), h('button', { class: 'kw-more', tabindex: '-1', onmousedown: keep, onclick: () => moreKw(no) }, '让 AI 给几个'));
+  if (!kw || !Object.keys(kw).length) kids.push(h('span', { class: 'kw-tip' }, '还没有关键词。'), h('button', { class: 'kw-more', tabindex: '-1', onmousedown: keep, onclick: () => moreKw(no) }, '让 AI 给几个'));
   else {
     for (const [g, list] of Object.entries(kw)) {
+      if (!Array.isArray(list)) continue;
       kids.push(h('span', { class: 'kw-g' }, g));
       for (const it of list) {   // 提示每条不超过 10 个字；台词这类长的，牌子上只写个名（show），点了插进去的是原话（t）
-        const t = typeof it === 'string' ? it : it.t, show = (it && it.show) || t, label = show.length > 10 ? show.slice(0, 10) + '…' : show;
+        const t = typeof it === 'string' ? it : it && it.t;
+        if (typeof t !== 'string' || !t) continue;
+        const show = (it && it.show) || t, label = show.length > 10 ? show.slice(0, 10) + '…' : show;
         kids.push(h('button', { class: 'k', tabindex: '-1', 'data-t': t, title: (it && it.tip) || (label === t ? '点一下插进这一镜' : '点一下插进：' + t), onmousedown: keep, onclick: e => useKw(e.currentTarget) }, label));
       }
     }
@@ -892,13 +906,14 @@ function paintKw(row, no) {
   row.replaceChildren(...kids);
 }
 function useKw(b) {
-  const ta = $('.wr-ta', b.closest('.p-shot')), t = b.dataset.t;
+  const ta = currentWriter(), t = b.dataset.t;
+  if (!ta) return toast('先添加一镜，或切到自由模式');
   const on = document.activeElement === ta || ta._seen, s = on ? ta.selectionStart : ta.value.length, e = on ? ta.selectionEnd : ta.value.length;   // 没点过这一镜就接在最后
   const before = ta.value.slice(0, s);
   typeInto(ta, s, e, (before && !/[，。；：、！？\s]$/.test(before) ? '，' : '') + t);   // 前面有字又没断句的，先补一个逗号
 }
 async function moreKw(no) {
-  try { const r = await tellAI('要关键词 ' + OPENPATH + '｜镜头 ' + no); toast(r.online ? '跟 AI 说了，给好这里自动添上' : 'AI 这会儿没在等。去对话里说一声「看右边」'); }
+  try { if (!await save()) return; const r = await tellAI('要关键词 ' + OPENPATH + '｜镜头 ' + (no || '自由')); toast(r.online ? '跟 AI 说了，给好这里自动添上' : 'AI 这会儿没在等。去对话里说一声「看右边」'); }
   catch (e) { toast('没交上：' + e.message); }
 }
 /* 流水线里这一场写的：主要表达什么、每个剧本段落起什么作用。项目管理「流水线」页写的，这里只看 */
@@ -934,16 +949,19 @@ const flowAt = no => {
 };
 const flowWhy = no => { const x = flowParas()[flowAt(no)] || null; return x && typeof x.作用 === 'string' ? x.作用.trim() : ''; };
 function shotEl(sh) {
-  const row = h('div', { class: 'kw' });
-  paintKw(row, sh.no);
-  const el = h('div', { class: 'p-shot', 'data-no': sh.no },
-    h('div', { class: 'shot-h' }, h('span', { class: 'shot-no' }, '镜 ' + sh.no), h('input', { class: 'shot-title', value: sh.title, placeholder: '这一镜的标题', spellcheck: 'false' }),
-      h('span', { class: 'shot-meta', title: '掐表：台词每秒 4 个字；一镜最多一句台词，超过 5 秒就拆' }),
-      h('button', { class: 'mini-b fold-me', tabindex: '-1', title: '写好了就收起来，只留开头两行', onclick: () => foldMine(el) }, '收起'),
-      h('button', { class: 'shot-x', tabindex: '-1', title: '删掉这一镜', onclick: () => delShot(el) }, '删')),
+  const el = h('div', { class: 'p-shot', 'data-no': sh.no, 'data-id': sh.id },
+    h('div', { class: 'shot-h' }, h('span', { class: 'shot-handle', draggable: 'true', title: '拖动调整顺序' }, '⋮⋮'), h('span', { class: 'shot-no' }, '镜头 ' + sh.no), h('input', { class: 'shot-title', value: sh.title, placeholder: '这一镜的标题', 'aria-label': '镜头标题', spellcheck: 'false' }),
+      h('div', { class: 'shot-ops' },
+        h('button', { type: 'button', class: 'mini-b', 'data-move': '-1', title: '上移', onclick: () => moveShot(el, -1) }, '↑'),
+        h('button', { type: 'button', class: 'mini-b', 'data-move': '1', title: '下移', onclick: () => moveShot(el, 1) }, '↓'),
+        h('button', { type: 'button', class: 'mini-b', onclick: () => copyShot(el) }, '复制'),
+        h('button', { type: 'button', class: 'mini-b fold-me', onclick: () => foldMine(el) }, '收起'),
+        h('button', { type: 'button', class: 'mini-b', onclick: () => delShot(el) }, '删除'))),
     h('div', { class: 'peek', title: '点一下展开', onclick: () => foldMine(el, false) }),
-    flowWhy(sh.no) ? h('div', { class: 'shot-why', title: '流水线里这一镜对着的那个剧本段落，要起的作用' }, h('b', null, '作用'), flowWhy(sh.no)) : null,
-    row, writer('shot', 4, '这一镜你来写。点上面的关键词可以插进来，打 @ 选资产。', sh.lines.join('\n')));
+    h('label', { class: 'purpose-field' }, '作用', h('input', { class: 'shot-purpose', value: sh.purpose || '', placeholder: '这一镜想起什么作用？自由填写，也可留空' })),
+    h('div', { class: 'shot-caption' }, '镜头正文', h('span', null, '自由写 · 输入 @ 引用素材')),
+    writer('shot', 4, '写画面、动作、台词……', sh.lines.join('\n')),
+    h('div', { class: 'shot-bottom' }, h('span', { class: 'shot-meta' }), h('button', { class: 'mini-b', onclick: () => { selectShot(sh.id); document.body.classList.remove('norail'); showRail('suggest'); } }, '查看本镜建议 ↗')));
   return el;
 }
 /* 你写好的可以收起来，省地方：本段事件那一区、每一镜。收起来只留开头两行，点一下再展开；记在这台电脑的浏览器里 */
@@ -968,20 +986,20 @@ function toggleFold(sec, open) {
   const b = $('.fold-b', sec); if (b) b.textContent = f ? '展开看' : '收起';
 }
 function sumText(s) {
-  const vals = DOC[s.key].map(l => (splitLabel(l) || { value: l }).value.trim());
+  const vals = (s.key === 'keep' ? [DOC.keep] : DOC[s.key]).map(l => (splitLabel(l) || { value: l }).value.trim());
   const t = (s.key === 'seg' ? vals[0] : vals.slice(0, 2).join('')) || '';
   return t.length > 72 ? t.slice(0, 72) + '…' : t;
 }
-function aiBody(s) { const lines = s.key === 'keep' ? (DOC.keep ? [DOC.keep] : []) : DOC[s.key]; return h('div', { class: 'blist' }, lines.map(l => blockEl(toBlock(l, s.key), s.key, true))); }
+function aiBody(s) { const lines = s.key === 'keep' ? (DOC.keep ? [DOC.keep] : []) : DOC[s.key]; return h('div', { class: 'blist' }, (lines.length ? lines : ['']).map(l => blockEl(toBlock(l, s.key), s.key, s.by === 'ai'))); }
 function secEl(s, i) {
   const ai = s.by === 'ai', fold = s.fold && !OPEN.has(s.key);
   const sec = h('section', { class: 'sec' + (fold ? ' fold' : ''), 'data-sec': s.key },
     h('div', { class: 'sec-h' }, h('span', { class: 'sec-no' }, CN[i]), h('span', { class: 'sec-name' }, s.name),
-      h('span', { class: 'who ' + s.by }, s.who || (ai ? 'AI 写好了' : '你写')), h('span', { class: 'sec-line' }),
+      h('span', { class: 'who ' + s.by }, s.who || (ai ? 'AI 公共内容' : '你写')), h('span', { class: 'sec-line' }),
       s.fold ? h('button', { class: 'mini-b fold-b', tabindex: '-1', onclick: () => toggleFold(sec) }, fold ? '展开看' : '收起') : null,
       s.key === 'event' ? h('button', { class: 'mini-b fold-me', tabindex: '-1', title: '写好了就收起来，只留开头两行', onclick: () => foldMine(sec) }, '收起') : null));
   if (s.key === 'event') sec.append(h('div', { class: 'peek', title: '点一下展开', onclick: () => foldMine(sec, false) }), writer('event', 3, '谁要什么，所以发生了什么；结束时什么样。两人的情绪从哪来，也写在这里。', DOC.event));
-  else if (s.key === 'shots') sec.append(h('div', { class: 'pshots' }, DOC.shots.map(shotEl)), h('button', { class: 'add-shot', onclick: addShot }, '＋ 加一镜'));
+  else if (s.key === 'shots') sec.append(h('div', { id: 'shot-editor' }));
   else {
     if (s.fold) sec.append(h('div', { class: 'sum', title: '点一下展开看全文', onclick: e => { if (!e.target.closest('.ref')) toggleFold(sec, true); } }, s.key === 'refs' ? null : sumText(s)));
     sec.append(aiBody(s));
@@ -995,127 +1013,82 @@ function paintSum() {
 }
 function render() {
   const short = STEM.replace(/_?视频提示词$/, '');
+  $('#editor-mode').replaceChildren(h('b', { class: 'editor-title' }, '分镜提示词'), modeControls());
   $('#sheet').replaceChildren(
     h('header', { class: 'doc-title' }, h('div', { class: 'doc-kicker' }, '视 频 提 示 词'), h('div', { class: 'doc-seg' }, SEGDIR), short ? h('div', { class: 'doc-name' }, short.replace(/_/g, ' · ')) : null, h('div', { class: 'ornament' }, h('span'))),
-    h('div', { class: 'laid' }, h('b', null, 'AI 已经提前写好'), '：素材、基础设定、本段、保持一致，每镜的关键词。要它改，点那一行写批注。',
-      h('button', { class: 'linkb', tabindex: '-1', title: '对 AI 写的这几区整体的意见', onclick: editGNote }, '＋ 整体批注'),
-      h('button', { class: 'linkb', tabindex: '-1', title: '剧本、镜头表改了以后用：AI 重写它那几区和关键词，你写的不动', onclick: () => sendLine('重新铺底 ' + OPENPATH, '跟 AI 说了。它只重写它那几区，你写的不动') }, '重新铺底')),
+    commonControls(),
     h('div', { id: 'gnote' }),
-    ...SECS.map(secEl),
+    h('div', { id: 'general-notes' }),
+    h('div', { class: 'shared-settings' }, SECS.filter(s => s.key !== 'shots').map((s, i) => secEl(s, i))),
+    secEl(SECS.find(s => s.key === 'shots'), 5),
     h('div', { class: 'sheet-foot' }, OPENPATH.split('/').join(' / ')));
-  paintSum(); $$('.wr-ta').forEach(grow); restoreFolds(); paintHNotes(); paintLaid();
-}
-/* AI 在外面改了它那几区：只换那几区，你正写的框不动。was：换之前那几区的每一行，用来把 AI 改过的行标出来 */
-function renderAi(was) {
-  let n = 0;
-  for (const s of SECS) {
-    if (s.by !== 'ai') continue;
-    const sec = $('section[data-sec="' + s.key + '"]');
-    $$('.hnote', sec).forEach(x => x.remove());
-    $('.blist', sec).replaceWith(aiBody(s));
-    const sum = $('.sum', sec); if (sum && s.key !== 'refs') sum.textContent = sumText(s);
-    if (was) for (const blk of $$('.blist > .blk', sec)) if (!was.has(fullOf(blk))) { blk.classList.add('red'); n++; toggleFold(sec, true); }
-  }
-  paintSum(); paintHNotes(); paintLaid();
-  return n;
-}
-/* 刚从流水线新开的稿，AI 那几区还空着：照实说它还没铺好，铺好了再换回来 */
-function paintLaid() {
-  const el = $('.laid');
-  if (!el) return;
-  const none = !DOC.refs.length && !DOC.basic.length && !DOC.seg.length && !DOC.keep;
-  $('b', el).textContent = none ? 'AI 还没铺好底' : 'AI 已经提前写好';
-  el.childNodes[1].textContent = none ? '：素材、基础设定、本段、保持一致和每镜的关键词由它写，铺好这里自动出现。你先写本段事件和每一镜。' : '：素材、基础设定、本段、保持一致，每镜的关键词。要它改，点那一行写批注。';
-  for (const s of SECS) {
-    if (s.by !== 'ai' || s.who) continue;
-    const w = $('section[data-sec="' + s.key + '"] .who');
-    if (w) w.textContent = (s.key === 'keep' ? DOC.keep : DOC[s.key].length) ? 'AI 写好了' : 'AI 还没写';
-  }
+  renderShotEditor(); paintSum(); restoreFolds(); updateCommonSections(); $$('.wr-ta').forEach(grow); paintHNotes(); renderNotes(); paintSuggestions(); paintCommonContent();
 }
 async function sendLine(line, okMsg) {
-  try { clearTimeout(ST); await save(); const r = await tellAI(line); toast(r.online ? okMsg : 'AI 这会儿没在等。去对话里说一声「看右边」，它就来'); }
+  try { clearTimeout(ST); if (!await save()) return; const r = await tellAI(line); toast(r.online ? okMsg : 'AI 这会儿没在等。去对话里说一声「看右边」，它就来'); }
   catch (e) { toast('没交上：' + e.message); }
 }
 function addShot() {
-  const nos = $$('.p-shot').map(el => parseInt(el.dataset.no, 10) || 0), el = shotEl({ no: two(Math.max(0, ...nos) + 1), title: '', lines: [] });
-  $('.pshots').append(el); grow($('.wr-ta', el)); touch(); paintMarks();
-  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  $('.shot-title', el).focus();
+  insertShot();
 }
 function delShot(el) {
-  if ($('.wr-ta', el).value.trim() && !confirm('镜 ' + el.dataset.no + ' 已经写了字，确定删掉这一镜？')) return;
-  el.remove(); touch(); paintMarks();
+  if (($('.wr-ta', el).value.trim() || $('.shot-title', el).value.trim() || $('.shot-purpose', el).value.trim()) && !confirm('镜头 ' + el.dataset.no + ' 已经写了内容，确定删除？')) return;
+  DOC = collect(); DOC.shots = DOC.shots.filter(s => s.id !== el.dataset.id); refreshShotList();
 }
-/* 顶上的三步：现在轮到谁 */
-const STEPS = [['ai', 'AI 提前写好底', '素材、基础设定、本段、场景 GEO、关键词'], ['me', '你写本段事件和分镜', '点关键词、打 @'], ['ai', 'AI 批', '你定改不改']];
-function paintSteps() {
-  const now = NOTES.length || AI.busy ? 2 : 1;
-  $('#steps').replaceChildren(...STEPS.flatMap(([who, t, sub], i) => [i ? h('span', { class: 'step-arrow' }, '→') : null,
-    h('span', { class: 'step ' + who + (i === now ? ' now' : i < now ? ' done' : '') }, h('i', null, i < now ? '✓' : String(i + 1)), t, h('small', null, sub))]).filter(Boolean));
-}
+function paintSteps() { renderMode(); }
 
 /* ---------- 存盘：边写边存进原来那一份文件；AI 在外面改了它那几区，这里自动换上 ---------- */
 let ST, SAVED_AT = null;
 function setStatus(t, err) { const el = $('#save'); el.classList.toggle('err', !!err); $('span', el).textContent = t; }
 const savedText = () => SAVED_AT ? '已保存 ' + two(SAVED_AT.getHours()) + ':' + two(SAVED_AT.getMinutes()) : '边写边自动保存';
-function touch() { if (!READY) return; VER++; setStatus('正在保存…'); clearTimeout(ST); ST = setTimeout(save, 700); }
+function touch() { if (!READY) return; VER++; rememberDraft(); setStatus(CONFLICT ? '有修改冲突，输入已保留' : '正在保存…', CONFLICT); clearTimeout(ST); ST = setTimeout(save, 700); }
 let PULLING = false;   // 正在把外面改的换上：这时候不存（页面上 AI 那几区还是旧的，存了就把 AI 刚写的盖掉）
 async function save() {
-  if (!READY) return;
-  if (SAVING) { AGAIN = true; return; }
-  if (PULLING) { clearTimeout(ST); ST = setTimeout(save, 300); return; }
-  let v = VER, text = serialize(collect());
-  if (text === LASTTEXT) { SAVEDVER = v; return setStatus(savedText()); }
-  SAVING = true;
-  try {
-    const st = await FS.stat(PROMPT);   // 存之前看一眼：AI 是不是刚往这份稿里写了东西（铺底要一两分钟，这期间你多半在打字）
-    if (st && st.mtime !== MTIME) { await pullExternal(true); v = VER; text = serialize(collect()); }   // 先把 AI 写的那几区换上，再连你写的一起存
-    MTIME = (await FS.write(PROMPT, text)).mtime; LASTTEXT = text; SAVEDVER = v; SAVED_AT = new Date(); setStatus(savedText());
-  } catch (e) { setStatus('没存上：' + e.message, true); }
-  SAVING = false;
-  if (AGAIN) { AGAIN = false; save(); }
+  return saveEditor();
 }
 async function pullExternal(saving) {   // saving：存盘的半路上调的（这时你写的两处一定以页面为准，换完由存盘那边接着写）
   PULLING = true;
   try { await pullExternal0(saving); } finally { PULLING = false; }
 }
 async function pullExternal0(saving) {
-  const r = await FS.text(PROMPT), d = parsePrompt(r.text);
-  MTIME = r.mtime;
-  if (serialize(d) === LASTTEXT) return;
-  const mine = collect(), typing = !!saving || dirty();
-  const sameShots = d.shots.length === mine.shots.length && d.shots.every((s, i) => s.no === mine.shots[i].no);
-  if (typing) { d.event = mine.event; d.shots = mine.shots; }   // 你正写着：你写的两处以页面上的为准，AI 那几区以文件为准
-  const was = new Set($$('#sheet section .blist > .blk').map(fullOf));
-  let changed = 0;
-  DOC = d;
-  await loadRefs();
-  if (typing || sameShots) {
-    changed = renderAi(was);
-    if (!typing) {   // 你没在写：你那两处也照文件换上（不重画，光标和滚动都不动）
-      const ev = $('[data-sec="event"] .wr-ta'); if (ev.value !== d.event) ev.value = d.event;
-      $$('.p-shot').forEach((el, i) => { const t = $('.wr-ta', el), v = d.shots[i].lines.join('\n'); if (t.value !== v) t.value = v; const ti = $('.shot-title', el); if (ti.value !== d.shots[i].title) ti.value = d.shots[i].title; });
-      $$('.wr-ta').forEach(grow);
-    }
-  } else render();
-  LASTTEXT = typing ? LASTTEXT : serialize(collect());
-  if (typing && !saving) touch();
-  paintMarks(); paintAssets();
-  toast(changed ? `AI 改了 ${changed} 行，已经换上。改过的行左边有一道红线` : '稿子在外面改过了，已经换上');
+  const version = VER;
+  const [r, ss] = await Promise.all([FS.text(PROMPT), readSideState()]);
+  if (r.text === LASTTEXT && JSON.stringify(editorPart(ss.side)) === JSON.stringify(BASE_EDITOR)) { MTIME = r.mtime; return; }
+  if (saving || dirty() || VER !== version || SAVING) return reportConflict();
+  SIDE = ss.side; SIDE_MT = ss.mtime;
+  BASE_EDITOR = structuredClone(editorPart(SIDE));
+  const draft = readEditorDraft(r.text, SIDE);
+  MODE = draft.mode; FREE = draft.free;
+  DOC = hydrateShots(draft.doc, SIDE.镜头信息, !SIDE.写法);
+  MTIME = r.mtime; LASTTEXT = r.text; render(); paintMarks();
+  if (draft.conflict) reportConflict('文件和分镜草稿有不同的修改，请核对后保存');
+  await loadRefs(); paintMarks(); paintAssets();
+  toast('文件里的更新已载入');
 }
+let POLLING = false;
 async function poll() {
-  if (!READY) return;
+  if (!READY || SAVING || PULLING || POLLING || CONFLICT) return;
+  POLLING = true;
   try {
     const names = new Set((await FS.list(DIR)).map(x => x.name)), stOf = p => names.has(p[p.length - 1]) ? FS.stat(p) : null;
     const st = await stOf(PROMPT);
+    if (SAVING || CONFLICT) return;
     if (st && st.mtime !== MTIME && !SAVING) await pullExternal();
+    if (SAVING || CONFLICT) return;
     const ss = await stOf(SIDEF);
-    if ((ss ? ss.mtime : 0) !== SIDE_MT) { await loadSide(); $$('.p-shot').forEach(el => paintKw($('.kw', el), el.dataset.no)); paintMarks(); }
+    if ((ss ? ss.mtime : 0) !== SIDE_MT) {
+      const state = await readSideState();
+      if (SAVING || CONFLICT) return;
+      if (JSON.stringify(editorPart(state.side)) !== JSON.stringify(BASE_EDITOR)) await pullExternal();
+      else { const bindings = SIDE.挂图; SIDE = state.side; SIDE_MT = state.mtime; if (dirty()) SIDE.挂图 = { ...SIDE.挂图, ...bindings }; }
+      paintSuggestions(); paintMarks();
+    }
     const ns = await stOf(NOTESF);
     if ((ns ? ns.mtime : 0) !== NOTES_MT) await loadNotes(ns);
     const hs = await stOf(HNF);
     if ((hs ? hs.mtime : 0) !== HN_MT && !$('.hnote.edit')) await loadHNotes(hs);   // 你写的批注：AI 改完会把它收进历史记录，这里跟着清掉
   } catch (e) { /* 服务断了一下：下一轮再看 */ }
+  finally { POLLING = false; }
 }
 
 /* ---------- AI 写的几区里取文字：连着的字算一段，中间隔着资产名牌就断开 ---------- */
@@ -1135,12 +1108,13 @@ function rangeIn(run, s, e) {
 function go(x) {
   if (x.ta) {
     const box = x.ta.closest('.p-shot') || x.ta.closest('.sec');
+    if (box.closest('.shared-settings')) openCommonSection(box.dataset.sec);
     if (box.classList.contains('fold')) foldMine(box, false);   // 收着的先展开
     x.ta.focus(); x.ta.setSelectionRange(x.s, x.e); x.ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
   const r = x.range, el = r.startContainer.nodeType === 3 ? r.startContainer.parentElement : r.startContainer, ed = el.closest('.ed'), sec = el.closest('.sec');
-  if (sec) toggleFold(sec, true);
+  if (sec) { if (sec.closest('.shared-settings')) openCommonSection(sec.dataset.sec); else toggleFold(sec, true); }
   if (ed && ed.isContentEditable) ed.focus();
   const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
   (ed || el).scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1173,7 +1147,7 @@ function paintMarks() {
     add(/\{[^{}]*\}/g, 'm-say'); add(/<[^<>]*>/g, 'm-sfx');
     if (shot) for (const a of named) add(new RegExp(reEsc(a.name), 'g'), 'm-nm', mk => { mk.aid = a.path; });
     add(/@(?:图片|视频|音频)[0-9]+/g, 'm-ref', (mk, t) => { const a = assetOfRef(t); if (!a) { LINT.push({ msg: t + ' 还没挂上图', text: '', ta, s: mk.s, e: mk.e }); mk.c = 'm-lint'; return; } mk.aid = a.path; });
-    for (const rule of LINT_RULES) if (!rule.shot || shot) add(rule.re, 'm-lint', (mk, t) => { LINT.push({ msg: rule.msg, text: t, ta, s: mk.s, e: mk.e }); });
+    for (const rule of LINT_RULES) if (MODE !== '自由' && (!rule.shot || shot)) add(rule.re, 'm-lint', (mk, t) => { LINT.push({ msg: rule.msg, text: t, ta, s: mk.s, e: mk.e }); });
     for (const n of NOTES) {
       if (boxOf(n) !== ta || !n.find) continue;
       if (n.state === 'done' && n.to && !v.includes(n.to) && v.includes(n.find)) { n.state = null; keepStates(); changed = true; }   // 照改以后你按 Ctrl+Z 撤了：这条批注回到没处理
@@ -1210,7 +1184,7 @@ function atQuery() {
   const bad = q => q.length > 10 || /[\s，。；：、,.;:{}<>〔〕@]/.test(q) || q.includes(ZW);
   const el = document.activeElement;
   if (el && el.classList.contains('wr-ta')) {
-    if (el.dataset.kind !== 'shot' || el.selectionStart !== el.selectionEnd) return null;   // 本段事件里不挂图
+    if (!['shot', 'free'].includes(el.dataset.kind) || el.selectionStart !== el.selectionEnd) return null;
     const o = el.selectionStart, i = el.value.lastIndexOf('@', o - 1);
     if (o < 1 || i < 0 || bad(el.value.slice(i + 1, o))) return null;
     return { ta: el, start: i, end: o, q: el.value.slice(i + 1, o) };
@@ -1269,6 +1243,7 @@ function pick(a) {
 function insertAsset(a, where) {
   if (where.ta) {
     const ta = where.ta;
+    if (ta.dataset.kind === 'free') { const ref = bind(a); typeInto(ta, where.s, where.e, ref); return toast('插入了 ' + ref + '　' + a.name); }
     if (ta.dataset.kind !== 'shot') return toast('本段事件里不挂图，写清谁要什么就行');
     const fresh = !refOf(a), ref = bind(a), asName = isNamed(a);   // 镜头里的人和道具写称谓，别的插 @编号
     typeInto(ta, where.s, where.e, asName ? a.name : ref);
@@ -1350,15 +1325,15 @@ function onKey(e) {
 
 /* ---------- 引导条 ---------- */
 let AT_T;
-function afterEdit() { touch(); paintMarks(); clearTimeout(AT_T); AT_T = setTimeout(paintAssets, 400); }
+function afterEdit() { touch(); paintMarks(); paintCommonContent(); clearTimeout(AT_T); AT_T = setTimeout(paintAssets, 400); }
 const GUIDE = {
   /* 提示每条不超过 10 个字，只留最要紧的两三条 */
   event: ['本段事件 · 你写', ['谁要什么', '发生了什么', '情绪从哪来']],
-  refs: ['素材 · AI 写好了', ['点一行写批注']],
-  basic: ['基础设定 · AI 写好了', ['点一行写批注']],
-  seg: ['本段 · AI 写好了', ['点一行写批注']],
+  refs: ['素材 · 公共内容', ['点一行写批注', '输入 @ 引用素材']],
+  basic: ['基础设定 · 公共内容', ['点一行写批注']],
+  seg: ['本段 · 公共内容', ['点一行写批注']],
   shots: ['分镜 · 你写', ['一镜只写一两件事', '一句台词配一个动作', '听的人要有反应']],
-  keep: ['保持一致 · AI 写好了', ['点一行写批注']],
+  keep: ['保持一致 · 公共内容', ['点一行写批注']],
 };
 function setGuide(key) {
   const g = GUIDE[key];
@@ -1388,7 +1363,7 @@ async function loadNotes(st) {
     try {
       const r = parseNotes((await FS.text(NOTESF)).text);
       let saved = {}; try { saved = JSON.parse(localStorage.getItem(stateKey()) || '{}'); } catch (e) { /* 没记过 */ }
-      NOTES = r.items.map(n => ({ ...n, ...(saved[n.id] || {}) })); NOTES_SUM = r.sum;
+      NOTES = r.items.map(n => { const matches = n.find ? DOC.shots.filter(s => s.lines.join('\n').includes(n.find)) : []; return { ...n, ...(matches.length === 1 ? { shotId: matches[0].id } : {}), ...(saved[n.id] || {}) }; }); NOTES_SUM = r.sum;
       if (AI.busy) { AI.busy = false; showRail('ai'); toast(`AI 批了 ${NOTES.length} 条，稿子没动`); }
       for (const n of NOTES) { const ta = !n.state && boxOf(n), box = ta && (ta.closest('.p-shot') || ta.closest('.sec')); if (box && box.classList.contains('fold')) foldMine(box, false, true); }   // 批到的那一框要是收着，先展开
     } catch (e) { toast('批注读不了：' + e.message); }
@@ -1397,6 +1372,8 @@ async function loadNotes(st) {
 }
 /* 这条批注说的是哪个框：某一镜、本段事件，或者 AI 写的某一区（那就没有框） */
 function boxOf(n) {
+  if (MODE === '自由' && /分镜|镜头|自由稿/.test(n.where)) return $('#freeText');
+  if (n.shotId) { const el = $$('.p-shot').find(x => x.dataset.id === n.shotId); return el ? $('.wr-ta', el) : null; }
   const m = /镜头\s*0*([0-9]+)/.exec(n.where);
   if (m) { const el = $$('.p-shot').find(x => parseInt(x.dataset.no, 10) === +m[1]); return el ? $('.wr-ta', el) : null; }
   return /本段事件/.test(n.where) ? $('[data-sec="event"] .wr-ta') : null;
@@ -1405,12 +1382,12 @@ function homeOf(n) {   // 批注卡片挂在哪
   const ta = boxOf(n);
   if (ta) return ta.closest('.p-shot') || ta.closest('.sec');
   const s = SECS.find(x => n.where.includes(x.name));
-  return s ? $('section[data-sec="' + s.key + '"]') : $('.laid');
+  return s ? $('section[data-sec="' + s.key + '"]') : $('#general-notes');
 }
 function findNote(n) { const ta = boxOf(n), i = ta && n.find ? ta.value.indexOf(n.find) : -1; return i < 0 ? null : { ta, s: i, e: i + n.find.length }; }
 function renderNotes() {
   $$('.ainote').forEach(el => el.remove());
-  for (const n of NOTES) { const home = homeOf(n); if (!home) continue; home.matches('.laid') ? home.after(noteEl(n)) : home.append(noteEl(n)); }
+  for (const n of NOTES) { const home = homeOf(n); if (home) home.append(noteEl(n)); }
 }
 function noteEl(n) {
   const el = h('div', { class: 'ainote' + (n.state ? ' done' : '') + (n.lv === '提醒' ? ' soft' : ''), 'data-id': n.id });
@@ -1447,13 +1424,13 @@ function undoNote(n) {
   n.state = null; afterNotes();
 }
 let LASTF = null, LAST = null, LAST_SHOT = '';   // 最后一次光标在哪：文字框（LASTF）或 AI 那几行里的位置（LAST）
-const setAsk = () => { $('#askAll').disabled = $('#askOne').disabled = !READY || AI.busy; $('#askAll').textContent = AI.busy ? 'AI 正在看稿…' : '请 AI 批'; };
+const setAsk = () => { $('#askAll').disabled = !READY || AI.busy; $('#askOne').disabled = !READY || AI.busy || MODE === '自由' || !LAST_SHOT; $('#askAll').textContent = AI.busy ? 'AI 正在看稿…' : '请 AI 批'; };
 async function askAI(shotNo) {
   if (AI.busy || !READY) return;
   if (!$$('#sheet .wr-ta').some(t => t.value.trim())) return toast('本段事件和分镜都还空着，先写一点再请 AI 批');
   AI.busy = true; AI.since = Date.now(); setAsk();
   try {
-    clearTimeout(ST); await save();
+    clearTimeout(ST); if (!await save()) { AI.busy = false; setAsk(); return; }
     const stamp = stampNow();
     await FS.write([...HIST, STEM + '__' + stamp + '.txt'], LASTTEXT);   // 每批一轮，先留一版
     if (await has(NOTESF)) await FS.move(NOTESF, [...HIST, STEM + '_AI批注__' + stamp + '.md']);   // 上一轮的批注收进历史记录
@@ -1479,15 +1456,15 @@ function paintAi() {
   pane.replaceChildren(
     h('div', { class: 'ai-sum' }, NOTES_SUM ? '总评：' + NOTES_SUM : left.length ? 'AI 批好了。' : '这一轮都处理完了。',
       h('small', null, left.length ? `还剩 ${fix} 处要改、${soft} 条提醒没处理` : '都处理完了。改完可以再批一轮。')),
-    h('div', { class: 'nlist' }, [...NOTES].sort((a, b) => rank(a) - rank(b)).map(n => h('button', { class: 'nl-i' + (n.state ? ' done' : ''), onclick: () => { const el = $('.ainote[data-id="' + CSS.escape(n.id) + '"]'); if (el) { const sec = el.closest('.sec'); if (sec) toggleFold(sec, true); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); flash(el); } } },
+    h('div', { class: 'nlist' }, [...NOTES].sort((a, b) => rank(a) - rank(b)).map(n => h('button', { class: 'nl-i' + (n.state ? ' done' : ''), onclick: () => { const el = $('.ainote[data-id="' + CSS.escape(n.id) + '"]'); if (el) { const sec = el.closest('.sec'); if (sec) { if (sec.closest('.shared-settings')) openCommonSection(sec.dataset.sec); else toggleFold(sec, true); } el.scrollIntoView({ behavior: 'smooth', block: 'center' }); flash(el); } } },
       h('div', { class: 'nl-w' }, [n.where, n.lv, n.tag, n.state ? (n.state === 'done' ? '已照改' : n.state === 'ok' ? '知道了' : '不改') : ''].filter(Boolean).join('　·　')), h('div', { class: 'nl-n' }, n.say)))));
 }
 
 /* ---------- 右栏：资产、AI 批注、校对、对照 ---------- */
-const RAIL_TABS = [['assets', '资产'], ['ai', 'AI 批注'], ['lint', '校对'], ['cmp', '对照']];
-let RAIL = 'cmp', PIN = null;
+const RAIL_TABS = [['suggest', '分镜 / 关键词'], ['common', '公共内容'], ['assets', '资产'], ['ai', '批注'], ['lint', '校对'], ['cmp', '对照']];
+let RAIL = 'suggest', PIN = null;
 const GOPEN = new Set(['人物', '道具', '特效']);   // 资产栏里展开着的类别；图多的（场景、这一段）先收着
-function showRail(k) { RAIL = k; for (const [x] of RAIL_TABS) $('#pane-' + x).hidden = x !== k; paintTabs(); if (k === 'ai') paintAi(); if (k === 'lint') paintLint(); if (k === 'assets') paintAssets(); }
+function showRail(k) { RAIL = k; for (const [x] of RAIL_TABS) $('#pane-' + x).hidden = x !== k; paintTabs(); if (k === 'ai') paintAi(); if (k === 'lint') paintLint(); if (k === 'assets') paintAssets(); if (k === 'suggest') paintSuggestions(); if (k === 'common') paintCommonContent(); }
 function paintTabs() {
   const nAi = NOTES.filter(n => !n.state).length, nLint = LINT.filter(x => !x.info).length;
   $('#rail-tabs').replaceChildren(...RAIL_TABS.map(([k, label]) => h('button', { class: 'rail-tab' + (RAIL === k ? ' on' : '') + (k === 'ai' && (nAi || AI.busy) ? ' has-ai' : '') + (k === 'lint' && nLint ? ' has' : ''), onclick: () => showRail(k) },
@@ -1534,7 +1511,7 @@ function flowWho() {
 async function paintCmp() {
   const pane = $('#pane-cmp'), out = [h('p', { class: 'faint small', style: 'margin-bottom:10px' }, '这一段的镜头表、剧本、AI 写的现行稿和场景 GEO，写的时候随时对着看；AI 写底子、批注也是照这些。')];
   const box = (title, sub, body, cls) => out.push(h('div', { class: 'cmp-h' }, title, sub ? h('em', null, sub) : null), h('div', { class: 'cmp-box' + (cls ? ' ' + cls : '') }, body));
-  const mine = new Set($$('.p-shot').map(el => parseInt(el.dataset.no, 10)));
+  const mine = new Set(DOC.shots.map(s => parseInt(s.sourceNo, 10)).filter(Number.isFinite));
   if (FLOW) box('这一场 · 流水线', '第' + FLOW.段 + '场' + (FLOW.名 ? '　' + FLOW.名 : ''), [...flowWho(), h('p', null, h('b', null, '表达'), '　' + (FLOW.表达 || '没写')),
     ...flowParas().map((x, i) => h('p', { class: [...mine].some(n => flowAt(n) === i) ? 'on' : 'off' }, '段落' + (i + 1) + '｜' + (x.写什么 || x.拍什么 || '') + (x.作用 ? '　——　' + x.作用 : '')))]);
   try {
@@ -1671,24 +1648,27 @@ async function lightbox(a) {
 /* ---------- 接上事件 ---------- */
 const sheet = $('#sheet');
 sheet.addEventListener('input', e => {
-  const box = e.target.closest('.wr-ta, .shot-title'), ed = e.target.closest('.ed');
+  const box = e.target.closest('.wr-ta, .shot-title, .shot-purpose'), ed = e.target.closest('.ed');
   if (!box && !ed) return;
   if (box && box.classList.contains('wr-ta')) grow(box);
   if (ed) {
     if (!ed.textContent && ed.firstChild) ed.replaceChildren();   // 删光以后浏览器留下的空行
     const ai = ed.closest('.blk.ai'); if (ai) ai.classList.add('mine');   // AI 写的这一行你改过了
   }
+  if (MODE === '自由') $('#freeCount').textContent = $('#freeText').value.length + ' 字';
   touch(); paintMarks(); checkAt();
+  if (ed || box?.dataset.kind === 'event') paintCommonContent();
+  if (box?.classList.contains('shot-title')) paintOutline();
   clearTimeout(AT_T); AT_T = setTimeout(paintAssets, 600);
 });
 sheet.addEventListener('keydown', onKey);
 sheet.addEventListener('keyup', e => { if (/^(ArrowLeft|ArrowRight|Home|End)$/.test(e.key)) checkAt(); });
 sheet.addEventListener('mouseup', e => setTimeout(() => { if (e.target.closest('.ed')) selectPhAtCaret(); checkAt(); }, 0));
 sheet.addEventListener('focusin', e => {
-  const box = e.target.closest('.wr-ta, .shot-title'), ed = e.target.closest('.ed');
+  const box = e.target.closest('.wr-ta, .shot-title, .shot-purpose'), ed = e.target.closest('.ed');
   if (!box && !ed) return;
   const sec = e.target.closest('section[data-sec]'); setGuide(sec ? sec.dataset.sec : null);
-  const sh = e.target.closest('.p-shot'); LAST_SHOT = sh ? sh.dataset.no : '';
+  const sh = e.target.closest('.p-shot'); if (sh) selectShot(sh.dataset.id); else if (MODE === '自由') LAST_SHOT = '';
   if (box && box.classList.contains('wr-ta')) { LASTF = box; box._seen = true; LAST = null; } else if (ed) LASTF = null;
 });
 sheet.addEventListener('focusout', () => closeAt());
@@ -1699,6 +1679,28 @@ sheet.addEventListener('click', e => {
   const nt = e.target.closest('.blk.nt');   // AI 写的一行：点一下写批注（正选着字要复制的不算）
   if (nt && !String(getSelection())) { setGuide(nt.dataset.sec); editHNote(nt); }
 });
+let draggedShot = '';
+sheet.addEventListener('dragstart', e => {
+  const handle = e.target.closest('.shot-handle');
+  if (!handle) return;
+  const card = handle.closest('.p-shot'); draggedShot = card.dataset.id;
+  e.dataTransfer.setData('text/x-shot', draggedShot); e.dataTransfer.effectAllowed = 'move'; card.classList.add('dragging');
+});
+sheet.addEventListener('dragover', e => {
+  const card = e.target.closest('.p-shot');
+  if (!draggedShot || !card) return;
+  e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+  $$('.drag-over').forEach(el => el.classList.remove('drag-over')); card.classList.add('drag-over');
+});
+sheet.addEventListener('drop', e => {
+  const card = e.target.closest('.p-shot');
+  if (!draggedShot || !card || e.dataTransfer.getData('text/x-shot') !== draggedShot) return;
+  e.preventDefault(); DOC = collect();
+  const from = DOC.shots.findIndex(s => s.id === draggedShot), to = DOC.shots.findIndex(s => s.id === card.dataset.id);
+  if (from >= 0 && to >= 0 && from !== to) { const id = draggedShot; DOC.shots.splice(to, 0, DOC.shots.splice(from, 1)[0]); refreshShotList(id); }
+  draggedShot = ''; $$('.dragging, .drag-over').forEach(el => el.classList.remove('dragging', 'drag-over'));
+});
+sheet.addEventListener('dragend', () => { draggedShot = ''; $$('.dragging, .drag-over').forEach(el => el.classList.remove('dragging', 'drag-over')); });
 sheet.addEventListener('dragover', e => { if ([...e.dataTransfer.types].includes('text/x-asset')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
 sheet.addEventListener('drop', e => {
   const a = A[e.dataTransfer.getData('text/x-asset')];
@@ -1717,11 +1719,15 @@ document.addEventListener('selectionchange', () => {
 });
 document.addEventListener('mousedown', e => { if (AT && !pop.contains(e.target)) closeAt(); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { const lb = $('.lb'); if (lb) lb.click(); } });
-addEventListener('pagehide', () => { if (READY && dirty()) { const text = serialize(collect()); if (text !== LASTTEXT) fetch(api(PROMPT), { method: 'PUT', headers: HDR, body: text, keepalive: true }); } });   // 关页面前最后存一次
+addEventListener('pagehide', () => { if (READY && dirty()) rememberDraft(); });
+addEventListener('beforeunload', e => { if (READY && (dirty() || SAVING || CONFLICT)) { rememberDraft(); e.preventDefault(); e.returnValue = ''; } });
 $('#as-q').addEventListener('input', paintAssets);
 $('#askAll').onclick = () => askAI('');
 $('#askOne').onclick = () => { if (!LAST_SHOT) return toast('先点一下要批的那一镜'); askAI(LAST_SHOT); };
-$('#railBtn').onclick = () => { document.body.classList.toggle('norail'); $$('.wr-ta').forEach(grow); };
+$('#railBtn').onclick = () => { document.body.classList.toggle('norail'); $('#railBtn').textContent = document.body.classList.contains('norail') ? '展开侧栏' : '收起侧栏'; $$('.wr-ta').forEach(grow); };
+$('#previewBtn').onclick = previewDraft;
+$('#saveBtn').onclick = () => { if (READY) { touch(); save(); } };
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (READY) { touch(); save(); } } });
 $('#sendNotes').onclick = sendNotes;
 $('#tipX').onclick = () => { $('#tip').hidden = true; try { localStorage.setItem('xiegao:tip', '1'); } catch (e) { /* 记不住就下回再提示 */ } };
 addEventListener('resize', () => $$('.wr-ta').forEach(grow));
@@ -1736,18 +1742,19 @@ async function findDrafts() {
     for (const seg of await FS.list([HOME, pj.name, '提示词'])) {
       if (seg.kind !== 'directory' || !/^第.+段$/.test(seg.name)) continue;
       const files = await FS.list([HOME, pj.name, '提示词', seg.name]), names = new Set(files.map(f => f.name));
-      for (const f of files) { const m = /^(.*视频提示词)_写稿\.json$/i.exec(f.name); if (m && names.has(m[1] + '.txt')) out.push([pj.name, '提示词', seg.name, m[1] + '.txt']); }
+      for (const f of files) if (/视频提示词\.txt$/i.test(f.name)) out.push([pj.name, '提示词', seg.name, f.name]);
     }
   }
   return out;
 }
 function chooser(list) {
   setStatus(list.length ? '选一份稿' : '还没有稿');
-  $('#canvas').replaceChildren(h('div', { class: 'fail', style: 'border-color:var(--dai-line)' }, h('b', { style: 'color:var(--dai)' }, list.length ? '写哪一份？' : '还没有铺好底的稿。'),
-    h('p', null, list.length ? '这几份 AI 已经铺好底，点一份开始写：' : '在对话里跟 AI 说给哪一段铺底，铺好了这里就列出来。'),
+  $('#canvas').replaceChildren(h('div', { class: 'fail', style: 'border-color:var(--dai-line)' }, h('b', { style: 'color:var(--dai)' }, list.length ? '写哪一份？' : '还没有提示词稿。'),
+    h('p', null, list.length ? '点一份继续写：' : '到流水线的「提示词」页面，选择一种写法开始。'),
     h('div', { style: 'display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:12px' }, list.map(p => h('button', { class: 'btn', onclick: () => { location.hash = 'open=' + p.map(encodeURIComponent).join('/'); } }, p[0] + ' ／ ' + p[2] + ' ／ ' + p[3].replace(/_?视频提示词\.txt$/i, '').replace(/_/g, ' · '))))));
 }
 async function boot() {
+  let draftConflict = false;
   if (innerWidth && innerWidth < 1040) document.body.classList.add('norail');   // 窗格窄：先把右栏收起来，写的地方宽一点
   paintSteps(); setGuide(null); paintTabs();
   let open = [];
@@ -1765,16 +1772,21 @@ async function boot() {
   try {
     const r = await FS.text(PROMPT);
     MTIME = r.mtime; DOC = parsePrompt(r.text); LASTTEXT = r.text;
-    if (!DOC.has.shots) return fail('这份稿不是「本段事件、素材、基础设定、本段、分镜、保持一致」这套写法，试用版只认这一套。');
     await loadSide();
+    BASE_EDITOR = structuredClone(editorPart(SIDE));
+    const draft = readEditorDraft(r.text, SIDE);
+    MODE = draft.mode; FREE = draft.free; DOC = draft.doc; draftConflict = draft.conflict;
     ASSETS = await scanAssets(); A = Object.fromEntries(ASSETS.map(a => [a.path, a]));
     await loadRefs();
     await loadFlow();
+    DOC = hydrateShots(DOC, SIDE.镜头信息, !SIDE.写法);
   } catch (e) { return fail(e.message); }
   render(); READY = true;
-  if (serialize(collect()) !== LASTTEXT) LASTTEXT = serialize(DOC);   // 文件的排法和这里写回去的不一样：等你动了字再照这里的排法存
-  setStatus(savedText()); setAsk(); paintMarks(); showRail('cmp'); paintCmp();
-  try { $('#tip').hidden = localStorage.getItem('xiegao:tip') === '1'; } catch (e) { $('#tip').hidden = false; }
+  setStatus(savedText()); setAsk(); paintMarks(); showRail('suggest'); paintCmp();
+  $('#tip').hidden = true;
+  $('#railBtn').textContent = document.body.classList.contains('norail') ? '展开侧栏' : '收起侧栏';
+  await offerRecovery();
+  if (draftConflict) reportConflict('文件和分镜草稿有不同的修改，请核对后保存');
   await loadNotes();
   await loadHNotes();
   setInterval(poll, 2500);

@@ -19,8 +19,8 @@
 /* ============================================================
    流水线 · 提示词（一场的第四道工序）
    这一场的图都确认可用了才开。一场的戏分成几条（一条视频最多 15 秒），一条一份提示词；镜头在提示词的「分镜」里设计（镜头表那一步 2026-11-12 取消了）。
-   每一条两种写法：你来写（本段事件和每一镜你写，素材、基础设定、本段、保持一致和每镜的关键词由 AI 铺底；写稿那一页整页盖上来）；
-   或者 AI 先写一版，你打开看、写批注、交给 AI 改。
+   分镜部分可选逐镜编辑或自由文本；素材、基础设定、本段、保持一致等公共内容由两种写法共用，AI 建议在侧边按需请求。
+   也可以主动让 AI 先写一版，再打开看、写批注、交给 AI 改。
    写好以后：让 AI 批一批（只批不改）→ 生成出片任务书 → 你点「批准出片」才交给 Codex 去即梦出样片。
    出片要花积分：页面只在你点了「批准出片」、又确认了一次以后才发出去。
    前面（剧本、资产）在这一条写好以后又动过的，标「待核对」：看一眼，沿用或者改。
@@ -29,7 +29,7 @@
 'use strict';
 const X = { tasks: new Set(), notes: new Map(), open: new Set() };   // 这一场的出片任务书、AI 批注（稿名 → 总评和各条）、展开着的批注
 const PROMPT_BTN = true;   // 「写一条提示词」的入口。2026-11-12 他先说「先收起」，当晚资产确认完想在网页上写，问「为什么没有办法在网页上写」，就放回来了。改成 false 就又收起（已经有的稿照样列）
-const SIDE_NOTE = '写稿页的过程文件，不是提示词。关键词、拼音、参考稿由 AI 写；挂图是页面记的（你在镜头里新 @ 的资产）。关键词每条不超过 10 个字，只给最要紧的。';
+const SIDE_NOTE = '写稿页的过程文件，不是提示词。写法仅作用于分镜；素材、基础设定、本段、保持一致等公共内容共用。写法、写法范围、分镜稿、自由稿、镜头信息由页面保存；分镜建议、基础建议、镜头关键词由 AI 按需提供，用户采用后才写入正文。挂图由页面记录。关键词每条不超过 10 个字。';
 const labelOf = name => name.replace(/_?视频提示词\.txt$/i, '') || '整场';
 const taskOf = name => (labelOf(name) === '整场' ? '' : labelOf(name) + '_') + '出片任务.txt';
 const sideOf = name => name.replace(/\.txt$/i, '') + '_写稿.json';
@@ -57,12 +57,17 @@ async function loadExtra() {
   }
   X.notes = notes;
 }
-/* 你来写的那一份：只有分区名，和一个段落一镜的标题（镜头不够自己再加）。本段事件、每一镜你写；素材、基础设定、本段、保持一致交给 AI 铺底 */
-function skeleton(paras, a, b) {
-  const out = ['本段事件：', '', '素材', '', '基础设定', '', '本段', '', '分镜', ''];
-  for (let k = a; k <= b; k++) out.push('镜头 ' + two(k) + '｜' + paras[k - 1], '');
-  out.push('保持一致：');
-  return out.join('\r\n') + '\r\n';
+/* 两种写法都保留公共分区；分镜部分留空，由用户逐镜添加或自由填写。 */
+function skeleton() {
+  return ['本段事件：', '', '素材', '', '基础设定', '', '本段', '', '分镜', '', '保持一致：', ''].join('\r\n');
+}
+/* 新建用独占写入，避免两个页面同时创建时后写的覆盖先写的。 */
+async function createPromptFile(parts, text) {
+  const response = await fetch('/api/fs/' + parts.map(encodeURIComponent).join('/'), {
+    method: 'PUT', headers: { 'X-Antou': '1', 'If-None-Match': '*' }, body: C.encodeText(text), cache: 'no-store',
+  });
+  if (!response.ok) throw new Error(response.status === 412 ? '同名文件已经存在，已保留原文件' : (await response.text()) || '新建失败');
+  return response.json();
 }
 /* 新写一条：选这一条写哪几个段落的戏、谁来写。镜头在提示词的「分镜」里设计，没有另外的镜头表 */
 async function newPrompt(s) {
@@ -76,22 +81,26 @@ async function newPrompt(s) {
   if (a > n) a = 1;
   const opt = (v, cur) => h('option', { value: String(v), selected: v === cur ? '' : null }, '段落' + v + '　' + (shots[v - 1] || ''));
   const from = h('select', { class: 'inp' }, shots.map((_, i) => opt(i + 1, a))), to = h('select', { class: 'inp' }, shots.map((_, i) => opt(i + 1, n)));
-  const who = window.UI.chips([['me', '我来写，AI 铺底、批注'], ['ai', 'AI 先写一版，我批注']], 'me', () => paint());
+  const who = window.UI.chips([['me', '我来写'], ['ai', 'AI 先写一版，我批注']], 'me', () => paint());
+  const mode = window.UI.chips([['分镜', '分镜模式'], ['自由', '自由模式']], '分镜', () => {});
+  const modeField = h('div', { class: 'fld' }, h('span', null, '分镜写法'), mode,
+    h('em', null, '分镜模式：自由添加、排序、编辑每一镜。自由模式：只把分镜部分换成一个大输入框。素材、基础设定、本段、保持一致等公共内容共用，切换时保留。'));
   const err = h('div', { class: 'fld-err' }), nameEl = h('div', { class: 'fname-prev' }), okBtn = h('button', { class: 'btn ink' }, '开始');
   const nameNow = () => { const x = +from.value, y = +to.value; return x === 1 && y === n ? '视频提示词.txt' : (x === y ? '段落' + x : '段落' + x + '-' + y) + '_视频提示词.txt'; };
   const paint = () => {
     err.textContent = have.has(nameNow()) ? '这几段已经有一条了：回去点它接着写，或者换一个范围' : '';
     nameEl.textContent = '存成：提示词 / ' + segName(s.段) + ' / ' + nameNow();
     okBtn.textContent = who.get() === 'me' ? '开始写' : '让 ' + chName() + ' 先写一版';
+    modeField.hidden = who.get() !== 'me';
   };
   from.addEventListener('change', () => { if (+to.value < +from.value) to.value = from.value; paint(); });
   to.addEventListener('change', () => { if (+to.value < +from.value) from.value = to.value; paint(); });
   paint();
   const r = await dialog(close => {
-    okBtn.onclick = () => { if (!have.has(nameNow())) close({ name: nameNow(), a: +from.value, b: +to.value, who: who.get() }); };
-    return dlgShell('写一条提示词 · 第' + s.段 + '场', '一条视频最多十五秒，戏多就分几条写。选这一条从哪个段落写到哪个段落，再选谁来写。镜头在提示词的「分镜」里设计。',
+    okBtn.onclick = () => { if (!have.has(nameNow())) close({ name: nameNow(), a: +from.value, b: +to.value, who: who.get(), mode: mode.get() }); };
+    return dlgShell('写一条提示词 · 第' + s.段 + '场', '选这一条覆盖的剧本段落。段落只表示写哪部分戏，镜头数量和顺序由你决定。',
       [field('从', from), field('到', to), h('div', { class: 'fld' }, h('span', null, '谁来写'), who,
-        h('em', null, '我来写：本段事件和每一镜你写，素材、基础设定、本段、保持一致和每镜的关键词 ' + chName() + ' 铺好。AI 先写：整份它写，你批注。')), nameEl, err],
+        h('em', null, '我来写：从空白开始，AI 在侧边按需给建议。AI 先写：主动生成一份初稿，之后你批注。')), modeField, nameEl, err],
       [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'), okBtn]);
   });
   if (!r) return;
@@ -103,16 +112,17 @@ async function newPrompt(s) {
   }
   const p = [...dirOf(s), r.name], side = [...dirOf(s), sideOf(r.name)];
   await flush();
+  let created = false;
   try {
     if (await hasFile(F.name, p.slice(1))) throw new Error('「' + r.name + '」已经有了');
-    await FS.write(at(p), C.encodeText(skeleton(shots, r.a, r.b)));
-    if (!(await hasFile(F.name, side.slice(1)))) await FS.write(at(side), C.encodeText(JSON.stringify({ 说明: SIDE_NOTE,
-      流水线: '这一份是从「流水线」开的稿：全片的梗概、人物、场景、道具（各自引用了哪张图），和这一场（' + segName(s.段) + '）出场的人物道具、主要表达什么、剧本段落，都写在 定稿的剧本/流水线.json 里；这一场定稿的剧本在 定稿的剧本/' + segName(s.段) + ' 里。铺底、给关键词、批注都照它们。',
-      关键词: {} }, null, 2) + '\n'));
-  } catch (e) { toast('没建成：' + e.message, 'err'); return; }
+    if (await hasFile(F.name, side.slice(1))) throw new Error('已有同名写稿资料，请先检查原稿');
+    await createPromptFile(at(p), skeleton());
+    created = true;
+    await createPromptFile(at(side), JSON.stringify({ 说明: SIDE_NOTE,
+      流水线: '这一份是从「流水线」开的稿：全片的梗概、人物、场景、道具（各自引用了哪张图），和这一场（' + segName(s.段) + '）出场的人物道具、主要表达什么、剧本段落，都写在 定稿的剧本/流水线.json 里；这一场定稿的剧本在 定稿的剧本/' + segName(s.段) + ' 里。AI 建议、关键词、批注都照它们，镜头不必与剧本段落一一对应。',
+      写法: r.mode, 写法范围: '分镜', 分镜稿: skeleton(), 自由稿: '', 镜头信息: [], 关键词: {}, 段落范围: [r.a, r.b] }, null, 2) + '\n');
+  } catch (e) { toast((created ? '正文已创建并保留，但写稿资料未保存：' : '没建成：') + e.message, 'err'); return; }
   await loadSides(); await loadExtra();
-  if (AI.ok) await startJob({ 事: '铺底', 段: s.段, 名: r.name }, true);   // 底让 AI 先铺着，你这边可以先写起来
-  else await sendAI('铺底 ' + flowRef() + '｜' + segName(s.段) + '｜' + r.name, '跟 AI 说了：素材、基础设定、本段、关键词它来铺');
   rerender();
   openWrite(s.段, r.name);
 }
@@ -176,11 +186,11 @@ function rowOf(s, e) {
   const btn = (label, fn, cls, title, off) => h('button', { class: 'btn sm ' + (cls || ''), type: 'button', title: title || null, disabled: !!off, onclick: fn }, label);
   const see = () => openShell(at([...dirOf(s), e.name]), '第' + s.段 + '场 · ' + e.label);
   return h('div', { class: 'wf-item' },
-    h('div', { class: 'wf-item-h' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), e.draft ? h('span', { class: 'fs-state', title: '本段事件和每一镜是你写的，别的 AI 铺底' }, '你写的') : null,
+    h('div', { class: 'wf-item-h' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), e.draft ? h('span', { class: 'fs-state', title: '可在分镜模式或自由模式里继续写，AI 按需提供建议' }, '手写稿') : null,
       stale ? [h('span', { class: 'fs-state', style: 'color:var(--zhu);border-color:var(--zhu-line)', title: '这一条写好以后，前面（剧本、资产）又动过。打开看一眼还对不对得上' }, '待核对'),
         h('button', { class: 'fl-link', type: 'button', title: '看过了，还对得上，就用这一版', onclick: () => { keepAsIs(s, '提示词/' + e.name); rerender(); } }, '还对得上，沿用')] : null,
       h('span', { class: 'sp' }),
-      e.draft ? btn('接着写', () => openWrite(s.段, e.name), 'ink', '打开写稿：本段事件和每一镜你写，AI 铺底、给关键词、批注')
+      e.draft ? btn('接着写', () => openWrite(s.段, e.name), 'ink', '打开分镜或自由写稿，侧栏查看 AI 建议、关键词和批注')
         : btn('打开看、写批注', see, '', '在这里看提示词、点一段写批注，再交给 AI 改；@图片 点一下能看图'),
       e.draft ? h('button', { class: 'fl-link', type: 'button', title: '看排好的样子、历史版本；@图片 点一下能看图', onclick: see }, '看排好的') : null,
       btn('让 AI 批一批', () => startJob({ 事: '批注提示词', 段: s.段, 名: e.name }).then(rerender), '', '让 ' + chName() + ' 对着剧本和提示词的规矩看一遍，最多批 8 条。只批不改', busy || !AI.ok),

@@ -1,0 +1,126 @@
+'use strict';
+/* 双模式写稿的保存边界。编辑器字段做乐观锁，AI 字段在提交时合并。
+   两个文件先暂存；第二次替换失败时恢复第一次替换。退出前未提交的输入由页面恢复稿保留。 */
+const fs = require('fs');
+const path = require('path');
+const { randomUUID } = require('crypto');
+const { isDeepStrictEqual } = require('util');
+
+const EDITOR_FIELDS = ['写法', '写法范围', '分镜稿', '自由稿', '镜头信息', '挂图'];
+const own = (x, k) => Object.prototype.hasOwnProperty.call(x, k);
+const object = x => x !== null && typeof x === 'object' && !Array.isArray(x);
+const error = (status, message) => Object.assign(new Error(message), { status });
+const decode = buf => buf.toString('utf8');
+const mtime = st => Math.floor(st.mtimeMs);
+const pickEditor = side => Object.fromEntries(EDITOR_FIELDS.filter(k => own(side, k)).map(k => [k, side[k]]));
+
+module.exports = function makeDraftStore({ ROOT, io = fs.promises, now = () => new Date() }) {
+  const pending = new Map();
+  const keyOf = p => path.resolve(p).toLowerCase();
+
+  // 普通 PUT 和草稿事务共用此锁。多文件按固定顺序取锁，避免相互等待。
+  function withLocks(paths, work) {
+    const keys = [...new Set(paths.map(keyOf))].sort();
+    const previous = keys.map(k => pending.get(k)).filter(Boolean);
+    const result = Promise.all(previous.map(p => p.catch(() => {}))).then(work);
+    const tail = result.catch(() => {});
+    for (const k of keys) pending.set(k, tail);
+    tail.then(() => { for (const k of keys) if (pending.get(k) === tail) pending.delete(k); });
+    return result;
+  }
+
+  function pathsFor(abs) {
+    const parts = path.relative(ROOT, abs).split(path.sep);
+    if (parts.length !== 5 || parts[0] !== '项目' || !parts[1] || parts[2] !== '提示词' || !/^第[0-9]+(?:-[0-9]+)*段$/.test(parts[3]) || !/视频提示词\.txt$/i.test(parts[4])) {
+      throw error(400, '草稿保存只支持 项目/项目名/提示词/第N段/视频提示词.txt');
+    }
+    return { side: abs.replace(/\.txt$/i, '_写稿.json'), hist: path.join(ROOT, '项目', parts[1], '历史记录', ...parts.slice(2, -1)) };
+  }
+  async function optionalRead(p) {
+    try { return await io.readFile(p); } catch (e) { if (e.code === 'ENOENT') return null; throw e; }
+  }
+  function parseSide(buf) {
+    if (buf === null) return {};
+    let side;
+    try { side = JSON.parse(decode(buf).replace(/^\uFEFF/, '')); } catch (e) { throw error(409, '写稿记录不是有效 JSON，已停止保存，原文件未改动'); }
+    if (!object(side)) throw error(409, '写稿记录格式不对，已停止保存，原文件未改动');
+    return side;
+  }
+  async function tempFor(p, content) {
+    const tmp = p + '.antou-draft-' + randomUUID() + '.tmp';
+    try { await io.writeFile(tmp, content, { flag: 'wx' }); return tmp; }
+    catch (e) { await io.unlink(tmp).catch(() => {}); throw e; }
+  }
+  async function restore(p, old) {
+    if (old === null) return io.unlink(p);
+    const tmp = await tempFor(p, old);
+    try { await io.rename(tmp, p); } finally { await io.unlink(tmp).catch(() => {}); }
+  }
+  async function archive(abs, sidePath, hist, oldText, oldSide) {
+    await io.mkdir(hist, { recursive: true });
+    const date = now(), two = x => String(x).padStart(2, '0');
+    for (let i = 0; i < 120; i++) {
+      const d = new Date(date.getTime() + i * 1000);
+      const stamp = d.getFullYear() + two(d.getMonth() + 1) + two(d.getDate()) + '-' + two(d.getHours()) + two(d.getMinutes()) + two(d.getSeconds());
+      const history = p => path.join(hist, path.basename(p, path.extname(p)) + '__' + stamp + path.extname(p));
+      const textHistory = history(abs), sideHistory = history(sidePath);
+      if (await optionalRead(textHistory) !== null || await optionalRead(sideHistory) !== null) continue;
+      try { await io.writeFile(textHistory, oldText, { flag: 'wx' }); }
+      catch (e) { if (e.code === 'EEXIST') continue; throw e; }
+      // 写稿 JSON 归档失败时不提交正文；已经保存的原文备份保留。
+      if (oldSide !== null) await io.writeFile(sideHistory, oldSide, { flag: 'wx' });
+      return;
+    }
+    throw error(409, '历史记录重名太多，未保存；请稍后再试');
+  }
+
+  async function save(abs, body) {
+    const { side: sidePath, hist } = pathsFor(abs);
+    if (!object(body) || typeof body.text !== 'string' || typeof body.baseText !== 'string' || !object(body.sidePatch) || !object(body.baseEditor)) throw error(400, '缺少 text、baseText、sidePatch 或 baseEditor');
+    if (Object.keys(body.sidePatch).some(k => !EDITOR_FIELDS.includes(k)) || Object.keys(body.baseEditor).some(k => !EDITOR_FIELDS.includes(k))) throw error(400, '草稿保存不能改 AI 建议等非编辑器字段');
+    if (own(body.sidePatch, '写法') && !['分镜', '自由'].includes(body.sidePatch.写法)) throw error(400, '写法只能是分镜或自由');
+    if (own(body.sidePatch, '写法范围') && body.sidePatch.写法范围 !== '分镜') throw error(400, '写法范围只能是分镜');
+    for (const k of ['分镜稿', '自由稿']) if (own(body.sidePatch, k) && typeof body.sidePatch[k] !== 'string') throw error(400, k + '必须是文字');
+    if (own(body.sidePatch, '镜头信息') && !Array.isArray(body.sidePatch.镜头信息)) throw error(400, '镜头信息必须是列表');
+    if (own(body.sidePatch, '挂图') && !object(body.sidePatch.挂图)) throw error(400, '挂图必须是对象');
+
+    return withLocks([abs, sidePath], async () => {
+      const oldText = await io.readFile(abs), oldSide = await optionalRead(sidePath);
+      const current = parseSide(oldSide);
+      if (decode(oldText) !== body.baseText) throw error(409, '提示词已在别处修改；未覆盖文件，页面输入已保留');
+      if (!isDeepStrictEqual(pickEditor(current), body.baseEditor)) throw error(409, '写稿记录已在别处修改；未覆盖文件，页面输入已保留');
+      const merged = { ...current, ...body.sidePatch };
+      const newText = Buffer.from(body.text), newSide = Buffer.from(JSON.stringify(merged, null, 2) + '\n');
+      const textChanged = !oldText.equals(newText), sideChanged = oldSide === null || !oldSide.equals(newSide);
+      if (!textChanged && !sideChanged) return { mtime: mtime(await io.stat(abs)), sideMtime: mtime(await io.stat(sidePath)), side: merged };
+      let textTmp, sideTmp, textCommitted = false;
+      try {
+        if (textChanged) textTmp = await tempFor(abs, newText);
+        if (sideChanged) sideTmp = await tempFor(sidePath, newSide);
+        if (body.archive === true) await archive(abs, sidePath, hist, oldText, oldSide);
+        // 文件系统外部写入者不经过队列，提交前再检查一次，冲突时留下它的新内容。
+        const checkText = await io.readFile(abs), checkSide = await optionalRead(sidePath);
+        if (!checkText.equals(oldText) || !isDeepStrictEqual(checkSide, oldSide)) throw error(409, '保存期间文件又被修改；未覆盖文件，页面输入已保留');
+        if (textTmp) { await io.rename(textTmp, abs); textCommitted = true; }
+        if (sideTmp) await io.rename(sideTmp, sidePath);
+      } catch (e) {
+        if (textCommitted) {
+          try {
+            // 只恢复本事务写下的版本，不覆盖事务外的新改动。
+            if (!(await io.readFile(abs)).equals(newText)) throw new Error('正文又在别处变化');
+            await restore(abs, oldText);
+          } catch (rollback) {
+            throw error(500, '保存中断且无法自动恢复（' + rollback.message + '）；请保留页面输入并重新核对正文与写稿记录');
+          }
+        }
+        throw e;
+      } finally {
+        for (const tmp of [textTmp, sideTmp]) if (tmp) await io.unlink(tmp).catch(() => {});
+      }
+      return { mtime: mtime(await io.stat(abs)), sideMtime: mtime(await io.stat(sidePath)), side: merged };
+    });
+  }
+  return { save, withLocks };
+};
+module.exports.EDITOR_FIELDS = EDITOR_FIELDS;
+module.exports.pickEditor = pickEditor;

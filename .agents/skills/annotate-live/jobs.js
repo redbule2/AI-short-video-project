@@ -22,7 +22,7 @@ const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
 
-module.exports = function makeJobs({ ROOT, TOOLS, log }) {
+module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (paths, fn) => fn() }) {
   const SKILLS = path.resolve(__dirname, '..');   // .agents/skills
   const HOME = path.join(ROOT, '项目');
   const RW = path.join(TOOLS, '剧本读写.js');
@@ -419,7 +419,10 @@ module.exports = function makeJobs({ ROOT, TOOLS, log }) {
     /* ---------- 工序四：提示词 ---------- */
     写提示词: {
       title: j => '写提示词 · 第' + j.段 + '场 ' + str(j.名).replace(/_?视频提示词\.txt$/, ''), need: ['段'], key: j => j.段 + '/' + j.名, file: j => j.段 + '/' + j.名,
-      async prep(j) { if (!nameOk(str(j.名)) || !/(^|_)视频提示词\.txt$/.test(j.名)) throw fail('提示词的文件名要以「视频提示词.txt」结尾'); },
+      async prep(j) {
+        if (!nameOk(str(j.名)) || !/(^|_)视频提示词\.txt$/.test(j.名)) throw fail('提示词的文件名要以「视频提示词.txt」结尾');
+        if (await exists(vpPath(j))) throw fail('这份提示词已经存在，请打开接着写；AI 初稿不会覆盖它');
+      },
       async book(j) {
         const flow = await readFlow(j.项目), s = sceneOf(flow, j.段), sp = scriptPath(j.项目, j.段);
         if (!s) throw fail('流水线里没有第' + j.段 + '场');
@@ -434,7 +437,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log }) {
         j.images = gp.images;
         const range = pa ? '这一条只写段落 ' + pa[0] + (pa[1] > pa[0] ? ' 到段落 ' + pa[1] : '') + ' 的戏（一条视频最多 15 秒），别的段落留给别的条，不要写进来。' : '这一条写这一场全部段落的戏。';
         return ['# 任务：给一场戏写 Seedance 视频提示词', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面有定稿的剧本、人写的剧本段落、全片设定、这一场能用的资产图。请照 sd25-pe 和 seedance-prompt-format 两个技能写视频提示词。' + range,
-          '', '## 要求', '1. 骨架、写法照两个技能；两个冲突时以 sd25-pe 为准。这个项目不另出镜头表：镜头由你照剧本、照每个段落要起的作用来设计，写在「分镜」里，镜头号从 01 起连着编，一镜只讲一两件事。', '2. 素材行里用 @图片1、@图片2……引用资产图，只能用下面「能用的资产图」里的，镜头里看得见的人物、道具、场景都要挂。',
+          '', '## 要求', '1. 骨架、写法照两个技能；两个冲突时以 sd25-pe 为准。镜头由剧情需要来设计，不按剧本段落机械地一段一镜。写在「分镜」里，镜头号从 01 起连着编，一镜只讲一两件事。', '2. 素材行里用 @图片1、@图片2……引用资产图，只能用下面「能用的资产图」里的，镜头里看得见的人物、道具、场景都要挂。',
           '3. 不写时长秒数（时长在生成参数里设），不写画面里没有的东西。', '4. ' + gp.rule, '5. 回复' + (gp.make ? '三块（最前面是【GEO底稿】）' : '两块') + '，照这个样子：', ...(gp.make ? ['【GEO底稿】', '（照 scene-geo 第五节模板写的底稿）'] : []), '【提示词】', '（整份提示词，从「本段事件：」开始）', '【素材登记】', '[{"ref": "@图片1", "name": "叫法", "path": "资产/……png"}]',
           '', '## 能用的资产图', assets.join('\n') || '（没有）', '', '## 全片的设定', settingText(flow), tone ? '\n## 全片的光影总基调（基础设定里的影像风格、光色基调照它写）\n' + tone : '', gp.text,
           '', '## 这一场：第' + j.段 + '段｜' + str(s.名).trim(), sceneText(flow, s),
@@ -443,14 +446,15 @@ module.exports = function makeJobs({ ROOT, TOOLS, log }) {
       async apply(j, text) {
         const t = text.replace(/\r\n/g, '\n'), a = t.indexOf('【提示词】'), z = t.indexOf('【素材登记】');
         if (a < 0) throw fail('AI 没按要的格式回（没有【提示词】）');
-        const g0 = t.indexOf('【GEO底稿】');
-        const geoAt = g0 >= 0 && g0 < a ? await saveGeo(j, t.slice(g0 + 7, a)) : '';
         const prompt = body(t.slice(a + 5, z > a ? z : undefined), /^本段事件/);
         if (prompt.length < 80) throw fail('AI 写的提示词太短了');
         const rel = ['提示词', segDir(j.段), j.名];
-        await archive(j.项目, rel);
         const buf = Buffer.from(prompt + '\n', 'utf8');
-        await writeFile(pj(j.项目, ...rel), buf);
+        await fsp.mkdir(path.dirname(vpPath(j)), { recursive: true });
+        try { await fsp.writeFile(vpPath(j), buf, { flag: 'wx' }); }
+        catch (e) { if (e.code === 'EEXIST') throw fail('等待 AI 时这份稿已被创建，保留现有内容；AI 答卷可在任务记录里查看'); throw e; }
+        const g0 = t.indexOf('【GEO底稿】');
+        const geoAt = g0 >= 0 && g0 < a ? await saveGeo(j, t.slice(g0 + 7, a)) : '';
         let refs = [];
         try { const m = /\[[\s\S]*\]/.exec(z > a ? t.slice(z) : ''); refs = m ? JSON.parse(m[0]) : []; } catch (e) { refs = []; }
         const list = [];
@@ -555,8 +559,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log }) {
     },
   });
 
-  /* ---------- 工序四：你来写提示词，AI 铺底、给关键词、批注、按批注改 ----------
-     一份提示词分几区：本段事件、素材、基础设定、本段、分镜（一镜一块）、保持一致。本段事件和每一镜归人写；素材、基础设定、本段、保持一致归 AI。
+  /* ---------- 工序四：你来写提示词，AI 给建议、关键词、批注、按批注改 ----------
+     只有分镜部分可在逐镜编辑、自由文本间切换；其余公共区共用。铺底任务仅更新侧栏建议，不改正文。
      读成几区、照原样写回去，和写稿页（通用工具/项目管理_写稿试用.html）是同一套读法 */
   const SEC_OF = { 素材: 'refs', 基础设定: 'basic', 本段: 'seg', 分镜: 'shots' }, BOMCH = String.fromCharCode(0xFEFF);
   function parsePrompt(text) {
@@ -697,7 +701,43 @@ module.exports = function makeJobs({ ROOT, TOOLS, log }) {
     }
     return out;
   };
-  async function sideOf(j) { try { return JSON.parse(unbom(await fsp.readFile(vpPath(j).replace(/\.txt$/, '_写稿.json'), 'utf8'))); } catch (e) { return {}; } }
+  async function sideOf(j) {
+    try {
+      const value = JSON.parse(unbom(await fsp.readFile(vpPath(j).replace(/\.txt$/, '_写稿.json'), 'utf8')));
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('不是对象');
+      return value;
+    } catch (e) { if (e.code === 'ENOENT') return {}; throw fail('写稿资料读不了，为保护现有内容没有改动：' + e.message); }
+  }
+  const recordOf = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  // 新格式的自由稿只含分镜；无范围标记的旧自由稿仍按原语义读取，避免截断旧内容。
+  const freeShotText = (side, raw) => side.写法范围 === '分镜' ? str(side.自由稿) : raw;
+  const shotInfo = side => Array.isArray(side.镜头信息) ? side.镜头信息 : [];
+  const shotSignature = sh => JSON.stringify([sh.no, sh.title, sh.lines]);
+  function keywordTargets(cur, side) {
+    return cur.shots.map(sh => {
+      const info = shotInfo(side).find(x => x && String(x.no) === String(sh.no));
+      return { no: sh.no, id: info ? str(info.id) : '', signature: shotSignature(sh) };
+    });
+  }
+  function applyKeywords(side, cur, targets, words) {
+    let count = 0;
+    for (const target of targets || []) {
+      const got = kwNorm(words[target.no] || words[String(+target.no)] || words['镜头' + target.no] || words['镜头 ' + target.no]);
+      if (!Object.keys(got).length) continue;
+      if (target.id) {
+        if (!shotInfo(side).some(x => x && x.id === target.id)) continue;
+        side.镜头关键词 = recordOf(side.镜头关键词);
+        side.镜头关键词[target.id] = got;
+      } else {
+        // 老稿没有稳定 ID 时，镜头内容和编号都未变化才接受旧请求的返回。
+        if (!cur.shots.some(sh => shotSignature(sh) === target.signature)) continue;
+        side.关键词 = recordOf(side.关键词);
+        side.关键词[target.no] = got;
+      }
+      count++;
+    }
+    return count;
+  }
   const blockOf = (t, name, next) => { const a = t.indexOf('【' + name + '】'); if (a < 0) return null; const rest = t.slice(a + name.length + 2); let z = rest.length; for (const n of next) { const i = rest.indexOf('【' + n + '】'); if (i >= 0 && i < z) z = i; } return rest.slice(0, z); };
   const linesOf = t => (t || '').split('\n').map(l => l.trim()).filter(l => l && !/^\x60\x60\x60/.test(l));
   /* 不是从流水线做起来的项目：没有「这一场出场的」可查，就把全局资产和这一段文件夹里的图都列给 AI 挑 */
@@ -716,76 +756,97 @@ module.exports = function makeJobs({ ROOT, TOOLS, log }) {
   }
   Object.assign(KINDS, {
     铺底: {
-      title: j => 'AI 铺底 · 第' + j.段 + '场 ' + vpLabel(j), need: ['段'], key: j => j.段 + '/' + j.名, file: j => j.段 + '/' + j.名,
+      title: j => 'AI 建议 · 第' + j.段 + '场 ' + vpLabel(j), need: ['段'], key: j => j.段 + '/' + j.名, file: j => j.段 + '/' + j.名,
       prep: vpNeed,
       async book(j) {
         const ctx = await ctxOf(j), assets = ctx.assets;
-        const cur = parsePrompt(await fsp.readFile(vpPath(j), 'utf8')), other = await basicOfOthers(j);
-        const tone = await toneOf(j.项目), lessons = await lessonsOf(j.项目);
-        const flow0 = await readFlow(j.项目).catch(() => null), s0 = flow0 ? sceneOf(flow0, j.段) : null, gp = await geoPart(j, s0 ? s0.场景图 : []);
-        j.images = gp.images;
+        const raw = await fsp.readFile(vpPath(j), 'utf8'), side = await sideOf(j);
+        const cur = parsePrompt(side.写法 === '自由' ? str(side.分镜稿) : raw), other = await basicOfOthers(j);
+        j.keywordTargets = side.写法 === '自由' ? [] : keywordTargets(cur, side);
+        j.suggestionMode = side.写法 === '自由' ? '自由' : '分镜';
         j.assets = assets.map(x => x.path);
-        return ['# 任务：给一份人来写的视频提示词铺底', '', '今天 ' + today() + '。这是一个 AI 短视频项目。这一场的 Seedance 视频提示词由人自己写「本段事件」和「分镜」里的每一镜；请你把另外四区写好（素材、基础设定、本段、保持一致），再给每一镜几个关键词提示。',
-          '', '## 要求', '1. 骨架和写法照下面两个技能；冲突时以 sd25-pe 为准。' + gp.rule,
-          '2. 不要写、不要改「本段事件」和任何一镜的内容，那是人写的。人已经写了的，你写的四区要和它对得上。',
-          '3. 素材：这一场镜头里看得见的人物、道具、场景，一样一行，用 @图片1、@图片2……引用，只能用下面「能用的资产图」里的图；人物、道具在分镜里用称谓写，不写 @图片。',
-          other ? '4. 基础设定：全片各段照抄，下面给了本项目别的段现成的，原样用（只有明显不适用这一场的才改）。' : '4. 基础设定：本项目别的段还没有现成的，照技能和全片设定写，全片不变的东西放这里。' + (tone ? '影像风格、光色基调照下面「全片的光影总基调」写，别自己另起一套。' : ''),
-          '5. 本段：只写这一段拍得到的地方（哪一块、从哪往哪看、站位）、时间、光、声音这些本段不变的东西。保持一致：一行。',
-          '6. 关键词：每一镜给六七条，分三组：机位两条、动作三四条、台词一条（这一镜没有台词就不要「台词」这一组）。每条不超过 10 个字，只给最要紧的。台词超过 10 个字时写成 {"show": "某某的台词", "t": "台词原话", "tip": "出处"}。镜头号照下面「这份稿现在的样子」里的写法（比如 "01"）。',
-          '7. 不写时长秒数，不写画面里没有的东西。', '8. 回复照这个样子，六块都要有' + (gp.make ? '，最前面另加一块【GEO底稿】' : '') + '：', ...(gp.make ? ['【GEO底稿】', '（照 scene-geo 第五节模板写的底稿）'] : []), '【素材】', '（一行一条）', '【基础设定】', '（一行一条）', '【本段】', '（一行一条）', '【保持一致】', '（一行）', '【关键词】',
-          '{"01": {"机位": ["…", "…"], "动作": ["…", "…", "…"], "台词": ["…"]}}', '【素材登记】', '[{"ref": "@图片1", "name": "称谓", "path": "资产/……png"}]',
-          '', '## 这份稿现在的样子（镜头标题已经定了；空着的地方是人还没写）', serializePrompt({ ...cur, bom: false, eol: '\n' }),
-          '', '## 能用的资产图', assets.map(x => x.line).join('\n') || '（没有）', other ? '\n## 本项目别的段的基础设定（' + other.from + '）\n' + other.lines.join('\n') : '',
-          tone ? '\n## 全片的光影总基调（基础设定里的影像风格、光色基调，本段的光，照它写）\n' + tone : '', gp.text,
-          '', ctx.text, lessons ? '\n## 这个项目的历史教训（写的时候记着）' + lessons : '', '', '## 技能：sd25-pe', await skill('sd25-pe'), '', '## 技能：seedance-prompt-format', await skill('seedance-prompt-format'), '', '## 技能：scene-geo', await skill('scene-geo'), TAIL].join('\n');
+        const tone = await toneOf(j.项目), lessons = await lessonsOf(j.项目), geo = await geoOf(j.项目, j.段);
+        return ['# 任务：给正在写的提示词提供侧栏建议', '', '今天 ' + today() + '。用户只在分镜部分采用' + j.suggestionMode + '模式，自行决定镜头数量、顺序、标题、作用和正文。本段事件、素材、基础设定、本段、保持一致是共用的公共内容，不随分镜写法切换。你只提供备选建议，用户点击采用以后才进入正文。',
+          '', '## 要求', '1. 不重写整份稿，不要求用户按固定段落或镜头数量写，不把剧本段落机械映射成镜头。建议照 sd25-pe；结构化示例可参考 seedance-prompt-format。',
+          '2. 分镜建议给二到四个有帮助的思路，每项包含标题、作用和可采用的正文，以及按机位、动作、台词分组的关键词；不要复述已有内容。对空白稿也只提供建议，不预填或代替用户定结构。',
+          '3. 基础建议给公共区的本段事件、素材、基础设定、本段、保持一致提供可选文本。可留空。现有公共内容已合适就不必改，不因分镜采用自由文本而忽略或重建公共区。资产只能选下面给出的文件；素材登记记录建议里使用的素材，不能自行改用户已用的编号。',
+          '4. 关键词每条不超过十个字。台词只用剧本里已有原话，长句写成 {"show":"台词提示","t":"台词原话","tip":"出处"}，没有台词就不提供。已有镜头的关键词以当前镜头号为键；自由分镜以“自由”为键。自由分镜不要求逐镜编号或作用字段，公共区仍共用。',
+          '5. 回复一个 JSON 对象，不附加说明。结构如下：',
+          '{"分镜建议":[{"标题":"建议标题","作用":"想达到什么效果","正文":"可以插入的文字","关键词":{"机位":["…"],"动作":["…"]}}],"基础建议":{"本段事件":"","素材":"","基础设定":"","本段":"","保持一致":""},"关键词":{"01":{"动作":["…"]}},"素材登记":[{"ref":"@图片1","name":"称谓","path":"资产/……png"}]}',
+          '', '## 当前草稿（原样保留，仅供参考）', raw || '（空白稿）',
+          shotInfo(side).length ? '\n## 用户自定的镜头作用\n' + JSON.stringify(shotInfo(side).map(x => ({ no: x.no, 作用: x.作用 }))) : '',
+          '', '## 能用的资产', assets.map(x => x.line).join('\n') || '（没有）', other ? '\n## 本项目其他段的基础设定参考\n' + other.lines.join('\n') : '',
+          tone ? '\n## 全片光影总基调\n' + tone : '', geo.length ? '\n## 已有场景空间资料\n' + geo.map(x => x.text).join('\n') : '',
+          '', ctx.text, lessons ? '\n## 项目历史教训\n' + lessons : '', '', '## 技能：sd25-pe', await skill('sd25-pe'), '', '## 技能：seedance-prompt-format', await skill('seedance-prompt-format'), TAIL].join('\n');
       },
       async apply(j, text) {
-        const t = text.replace(/\r\n/g, '\n'), names = ['GEO底稿', '素材', '基础设定', '本段', '保持一致', '关键词', '素材登记'];
-        const blk = n => blockOf(t, n, names.filter(x => x !== n));
-        const refs = linesOf(blk('素材')), basic = linesOf(blk('基础设定')), seg = linesOf(blk('本段')), keep = linesOf(blk('保持一致')).join('').replace(/^保持一致[：:]\s*/, '');
-        if (!basic.length || !seg.length) throw fail('AI 没按要的格式回（基础设定、本段没写出来）');
-        const rel = ['提示词', segDir(j.段), j.名], cur = parsePrompt(await fsp.readFile(vpPath(j), 'utf8'));   // 重新读一遍：这几分钟里人可能又写了几句
-        const strip = (l, n) => l.replace(new RegExp('^' + n + '\\s*$'), '').trim();
-        Object.assign(cur, { refs: refs.map(l => strip(l, '素材')).filter(Boolean), basic: basic.map(l => strip(l, '基础设定')).filter(Boolean), seg: seg.map(l => strip(l, '本段')).filter(Boolean), keep: keep || cur.keep });
-        cur.has.refs = cur.has.refs || cur.refs.length > 0;
-        await keepCopy(j.项目, rel);
-        await writeFile(vpPath(j), serializePrompt(cur));
-        const geoAt = await saveGeo(j, blk('GEO底稿'));
-        let kw = {};
-        try { kw = jsonIn(blk('关键词') || ''); } catch (e) { kw = {}; }
-        const side = await sideOf(j), all = side.关键词 && typeof side.关键词 === 'object' ? side.关键词 : {};
-        let n = 0;
-        for (const sh of cur.shots) { const got = kwNorm(kw[sh.no] || kw[String(+sh.no)] || kw['镜头' + sh.no] || kw['镜头 ' + sh.no]); if (Object.keys(got).length) { all[sh.no] = got; n++; } }
-        side.关键词 = all;
-        await writeFile(vpPath(j).replace(/\.txt$/, '_写稿.json'), JSON.stringify(side, null, 2) + '\n');
-        const list = await refsIn(j, blk('素材登记') || '', j.assets || []);
-        await resha(j.项目, rel, list);
-        return { 结果: '底铺好了：素材 ' + cur.refs.length + ' 行、基础设定 ' + cur.basic.length + ' 行、本段 ' + cur.seg.length + ' 行，' + n + ' 镜有关键词' + (geoAt ? '；AI 看图新建了一份 GEO 底稿，等你审' : ''), 产出: [rel.join('/'), ...(geoAt ? [geoAt] : [])] };
+        const data = recordOf(jsonIn(text));
+        const suggestions = (Array.isArray(data.分镜建议) ? data.分镜建议 : []).filter(x => x && typeof x === 'object').map(x => ({ 标题: str(x.标题).trim(), 作用: str(x.作用).trim(), 正文: str(x.正文).trim(), 关键词: kwNorm(x.关键词) })).filter(x => x.正文 || x.标题).slice(0, 8);
+        const basic = {};
+        for (const key of ['本段事件', '素材', '基础设定', '本段', '保持一致']) {
+          const value = recordOf(data.基础建议)[key];
+          basic[key] = Array.isArray(value) ? value.filter(x => typeof x === 'string').join('\n') : str(value);
+        }
+        const words = recordOf(data.关键词);
+        if (!suggestions.length && !Object.values(basic).some(Boolean) && !Object.keys(words).length) throw fail('AI 没有返回可用的建议');
+        const refs = await refsIn(j, JSON.stringify(data.素材登记 || []), j.assets || []);
+        return withFileLocks([vpPath(j), vpPath(j).replace(/\.txt$/, '_写稿.json')], async () => {
+          // 与页面保存共用文件锁；仅改 AI 字段，正文、写法、快照与镜头信息保持原样。
+          const raw = await fsp.readFile(vpPath(j), 'utf8'), side = await sideOf(j);
+          const cur = parsePrompt(side.写法 === '自由' ? str(side.分镜稿) : raw);
+          side.分镜建议 = suggestions;
+          side.基础建议 = basic;
+          side.建议素材 = refs;
+          applyKeywords(side, cur, j.keywordTargets, words);
+          if (j.suggestionMode === '自由' && words.自由) {
+            side.关键词 = recordOf(side.关键词);
+            side.关键词.自由 = kwNorm(words.自由);
+          }
+          await writeFile(vpPath(j).replace(/\.txt$/, '_写稿.json'), JSON.stringify(side, null, 2) + '\n');
+          return { 结果: 'AI 建议已放到侧栏，正文保持原样', 产出: [] };
+        });
       },
     },
     要关键词: {
-      title: j => '给关键词 · 第' + j.段 + '场 ' + vpLabel(j) + ' 镜头' + j.镜头号, need: ['段'], key: j => j.段 + '/' + j.名 + '/' + j.镜头号, file: j => j.段 + '/' + j.名,
-      async prep(j) { await vpNeed(j); if (!/^[0-9]{1,3}$/.test(str(j.镜头号))) throw fail('要说清是哪一镜'); },
+      title: j => '给关键词 · 第' + j.段 + '场 ' + vpLabel(j) + (j.镜头号 === '自由' ? ' 自由分镜' : ' 镜头' + j.镜头号), need: ['段'], key: j => j.段 + '/' + j.名 + '/' + (j.镜头ID || j.镜头号), file: j => j.段 + '/' + j.名,
+      async prep(j) {
+        await vpNeed(j);
+        if (j.镜头号 !== '自由' && !/^[0-9]{1,6}$/.test(str(j.镜头号))) throw fail('要说清是哪一镜');
+        if (j.镜头ID && !/^[A-Za-z0-9_-]{1,100}$/.test(j.镜头ID)) throw fail('镜头标识不正确');
+      },
       async book(j) {
-        const ctx = await ctxOf(j);
-        const cur = parsePrompt(await fsp.readFile(vpPath(j), 'utf8')), sh = cur.shots.find(x => +x.no === +j.镜头号);
-        if (!sh) throw fail('这份稿里没有镜头 ' + j.镜头号);
-        const side = await sideOf(j), old = (side.关键词 || {})[sh.no];
-        return ['# 任务：给一镜几个关键词提示', '', '今天 ' + today() + '。这是一个 AI 短视频项目。人在自己写这一场的视频提示词，写到「镜头 ' + sh.no + '｜' + sh.title + '」，想要几个关键词提示（点一下就插进他写的那一镜）。',
-          '', '## 要求', '1. 分三组：机位两条、动作三四条、台词一条（这一镜没有台词就不给）。每条不超过 10 个字，只给最要紧的，照剧本里这一镜的戏来。',
-          '2. 台词超过 10 个字时写成 {"show": "某某的台词", "t": "台词原话", "tip": "出处"}。', old ? '3. 这一镜已经给过的（换一批不一样的）：' + JSON.stringify(old) : '3. 这一镜还没给过。',
-          '4. 回复一段 JSON，像这样：', '{"机位": ["…", "…"], "动作": ["…", "…", "…"], "台词": ["…"]}',
-          '', '## 这份稿现在的样子', serializePrompt({ ...cur, bom: false, eol: '\n' }), '', ctx.text, TAIL].join('\n');
+        const ctx = await ctxOf(j), side = await sideOf(j), raw = await fsp.readFile(vpPath(j), 'utf8');
+        const free = j.镜头号 === '自由', cur = parsePrompt(side.写法 === '自由' ? str(side.分镜稿) : raw);
+        const info = j.镜头ID ? shotInfo(side).find(x => x && x.id === j.镜头ID) : null;
+        if (j.镜头ID && !info) throw fail('这个镜头已经删除，请重新选择');
+        const sh = free ? null : cur.shots.find(x => +x.no === +(info ? info.no : j.镜头号));
+        if (!free && !sh) throw fail('这份稿里没有镜头 ' + j.镜头号);
+        j.keywordTargets = sh ? [{ no: sh.no, id: j.镜头ID || '', signature: shotSignature(sh) }] : [];
+        const old = free ? recordOf(side.关键词).自由 : info ? recordOf(side.镜头关键词)[info.id] : recordOf(side.关键词)[sh.no];
+        return ['# 任务：给提示词几个可选关键词', '', '今天 ' + today() + '。用户在写' + (free ? '自由分镜文本' : '镜头 ' + sh.no + '｜' + sh.title) + '，想要几个关键词提示。只提供选项，由用户主动采用。素材、基础设定、本段、保持一致等公共区不随分镜写法切换。',
+          '', '## 要求', '1. 分机位、动作、台词几组，每组一到四条，每条不超过十个字。以剧本和当前文字为准，不要求用户调整镜头数量或套固定格式。',
+          '2. 台词只用剧本里已有原话，超过十个字时写成 {"show":"台词提示","t":"台词原话","tip":"出处"}。没有台词就不提供。', old ? '3. 已给过的关键词，换一批有用的：' + JSON.stringify(old) : '',
+          '4. 回复 JSON 对象，如 {"机位":["…"],"动作":["…"]}。',
+          info && str(info.作用) ? '\n## 用户写的本镜作用\n' + info.作用 : '',
+          '', '## 当前文字', free ? freeShotText(side, raw) || '（分镜尚未填写）' : sh.lines.join('\n') || '（尚未填写正文）',
+          free && side.写法范围 === '分镜' ? '\n## 整份提示词（公共区供对照）\n' + raw : '', '', ctx.text, TAIL].join('\n');
       },
       async apply(j, text) {
         const got = kwNorm(jsonIn(text));
         if (!Object.keys(got).length) throw fail('AI 没给出关键词');
-        const cur = parsePrompt(await fsp.readFile(vpPath(j), 'utf8')), sh = cur.shots.find(x => +x.no === +j.镜头号);
-        const side = await sideOf(j);
-        side.关键词 = side.关键词 && typeof side.关键词 === 'object' ? side.关键词 : {};
-        side.关键词[sh ? sh.no : j.镜头号] = got;
-        await writeFile(vpPath(j).replace(/\.txt$/, '_写稿.json'), JSON.stringify(side, null, 2) + '\n');
-        return { 结果: '镜头 ' + j.镜头号 + ' 的关键词给好了', 产出: [] };
+        return withFileLocks([vpPath(j), vpPath(j).replace(/\.txt$/, '_写稿.json')], async () => {
+          const raw = await fsp.readFile(vpPath(j), 'utf8'), side = await sideOf(j);
+          if (j.镜头号 === '自由') {
+            side.关键词 = recordOf(side.关键词);
+            side.关键词.自由 = got;
+          } else {
+            const cur = parsePrompt(side.写法 === '自由' ? str(side.分镜稿) : raw);
+            const target = (j.keywordTargets || [])[0];
+            if (!target || !applyKeywords(side, cur, [target], { [target.no]: got })) return { 结果: '原镜头已删除或改变，这次建议保留在任务记录中', 产出: [] };
+          }
+          await writeFile(vpPath(j).replace(/\.txt$/, '_写稿.json'), JSON.stringify(side, null, 2) + '\n');
+          return { 结果: '关键词已放到侧栏', 产出: [] };
+        });
       },
     },
     /* AI 批注：只批不改。写成写稿页认的格式（总评一行，一条一节），最多 8 条 */
@@ -794,11 +855,12 @@ module.exports = function makeJobs({ ROOT, TOOLS, log }) {
       prep: vpNeed,
       async book(j) {
         const flow = await readFlow(j.项目).catch(() => null), s = flow && sceneOf(flow, j.段), sp = scriptPath(j.项目, j.段), hp = shotsPath(j.项目, j.段);
+        const side = await sideOf(j);
         let lessons = '';
         try { for (const g of await fsp.readdir(pj(j.项目, '历史教训'))) if (/\.(md|txt)$/i.test(g)) lessons += '\n### ' + g + '\n' + unbom(await fsp.readFile(pj(j.项目, '历史教训', g), 'utf8')).slice(0, 6000); } catch (e) { /* 这个项目没有历史教训 */ }
         return ['# 任务：给一份视频提示词写批注（只批不改）', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是一场戏的 Seedance 视频提示词（本段事件和分镜多半是人自己写的），和这一场的剧本（老项目有镜头表的也带上）。请你当一个懂 Seedance 的编辑，给它写批注。' + (j.只批 ? '这一回只批「镜头 ' + j.只批 + '」这一镜。' : ''),
           '', '## 怎么批', '1. 最多 8 条，要紧的排在前面。只批不改：稿子一个字都不动，你只写批注。写得好的地方不用夸，没问题就少写。',
-          '2. 看这几样：和剧本对不对得上（漏戏、加戏、顺序）；人物想干什么、为什么这么反应写清楚没有（前因后果连不连得上）；一镜是不是只讲一两件事；有没有写一直不变的表情姿势、画面里没有的东西、时长秒数；骨架和写法合不合两个技能。',
+          '2. 看这几样：和剧本对不对得上（漏戏、加戏、顺序）；人物想干什么、为什么这么反应写清楚没有（前因后果连不连得上）；一镜是不是只讲一两件事；有没有写一直不变的表情姿势、画面里没有的东西、时长秒数。' + (side.写法 === '自由' ? '用户只把分镜写成自由文本，不因分镜未逐镜分栏、缺少编号或作用字段批评格式。素材、基础设定、本段、保持一致等公共区仍然共用，照实际内容核对。' : '镜头数量、顺序、标题和作用由用户决定，不要求镜头与剧本段落一一对应。'),
           '3. 每条要具体、能照着改，用大白话，批注和原因各一句。能给出替换的句子就写「改成」（只写一行：替换「原文」那句话的新句子，照抄就能用）；只是提醒就不写「改成」这一行。',
           '4. 「原文」要从稿子里一字不差地抄：「本段事件：」后面的话、某一镜标题下面正文里的一句、或者素材、基础设定、本段、保持一致里的一整行，好让页面找到它在哪。不要抄镜头标题那一行（「镜头 01｜……」），不要抄「本段事件：」这几个字。',
           '   这一处还空着、没有原文可抄的（比如某一镜只有标题、本段事件没写）：不写「原文」和「改成」，在「批注」里直接给一句建议的写法。是对整份的意见，位置写「整体」，不写原文。',
@@ -946,7 +1008,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log }) {
     if ((K.need || []).includes('段') && !segOk(j.段)) throw fail('要说清是第几场');
     for (const k of ['人物', '道具']) if (Array.isArray(b[k])) j[k] = b[k].map(str).filter(Boolean);
     if (b.批注) j.批注 = str(b.批注);
-    for (const k of ['类别', '名', '状态名', '要求', '视频', '批准', '只批', '镜头号', '重写']) if (b[k] != null) j[k] = str(b[k]);
+    for (const k of ['类别', '名', '状态名', '要求', '视频', '批准', '只批', '镜头号', '镜头ID', '重写']) if (b[k] != null) j[k] = str(b[k]);
     if (Array.isArray(b.镜头)) j.镜头 = b.镜头.map(Number).filter(n => n > 0);
     if (Array.isArray(b.段落)) j.段落 = b.段落.map(Number).filter(n => n > 0);
     if (b.参数 && typeof b.参数 === 'object') j.参数 = b.参数;
