@@ -16,7 +16,8 @@ bash E:/AI短视频项目/.agents/skills/codex-chat/codex-chat.sh read [会话ID
 ```
 
 - 输出：`=== Codex 回复 ===` 下面是回复正文，**最后一行一定是 `RESULT_JSON {...}`**。
-    - 字段：ok、status（done / running / aborted / sent）、error、thread_id、rollout、model（输入框选的模型）、seconds、warnings。
+    - 字段：ok、status（done / running / aborted / sent）、error、thread_id、rollout、model（输入框选的模型）、effort 和 model_id（这一回合实际用的推理深度和模型，从会话记录读）、seconds、warnings。
+    - 推理深度和模型都没法从这里定：深链接没有这一项；临时改项目 `.codex\config.toml` 试过（11-14），输入框会记住改过的那一档，下一个对话也跟着错，别再用。
     - 退出码：0 成功，1 失败，2 参数错误，124 等超时（Codex 还在跑，之后用 `read` 取）。
 - `--timeout` 默认 1800 秒。预计超过 2 分钟的任务，用 Bash 后台执行（run_in_background），或者 `--no-wait` 之后再 `read`。
 - 提示词用单引号，或者用 `-f 文件` / `-f -`。Git Bash 的双引号里，`$` 和反引号会被 shell 先替换。

@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-/* 右边批注联动：项目管理.html 在 Claude 应用右边窗格里打开，经这里读写项目文件；
+/* 右边批注联动：项目管理就是流水线（通用工具\流水线 那几页），在 Claude 应用右边窗格里打开，经这里读写项目文件；
+   看剧本、提示词、图、样片的那一页（通用工具\项目管理.html）嵌在流水线里用，不单独打开。
    用户点「交给 AI 改」就排进队列，AI 在后台跑 `node server.js wait` 等着，收到就改。
    批注分两种，各排各的队：剧本（剧本、镜头表）和提示词（各段的视频提示词）。
      node server.js                     开服务
-     node server.js open [文件]         服务没开就开起来，打印要在右边窗格打开的网址和接着等批注的命令
+     node server.js open [文件]         服务没开就开起来，打印要在右边窗格打开的流水线网址（写了文件就把它盖上来看）和接着等批注的命令
      node server.js wait [剧本|提示词]   等用户点「交给 AI 改」，收到就打印出来退出；不写哪种就两种都等 */
 'use strict';
 const http = require('http');
@@ -16,7 +17,7 @@ const ROOT = process.env.ANTOU_ROOT ? path.resolve(process.env.ANTOU_ROOT) : pat
 const TOOLS = process.env.ANTOU_TOOLS ? path.resolve(process.env.ANTOU_TOOLS) : path.join(ROOT, '通用工具');   // 页面放在这里；ANTOU_TOOLS：总文件夹用试验的、页面用正式的时候用
 const PAGE = process.env.ANTOU_PAGE || path.join(TOOLS, '项目管理.html');   // ANTOU_PAGE：试新版页面时用
 const PORT = Number(process.env.ANTOU_PORT) || 8766;
-const VERSION = 6;             // 6：双模式草稿的冲突保护与正文/写稿记录联合保存；5：AI 任务
+const VERSION = 11;            // 11：用 AI 的地方都有两种（「AI 用」里选「给我提示词」，或者直接调；直接调 Claude、DeepSeek 开看得见的窗口，handoff.js）；10：资产页「从电脑里找」（/api/pc，pc-files.js）；9：自己交给 AI（任务复制出来贴进自己开的对话，回复写进 回复.md 或跑 reply 命令）；8：审片以后让 AI 出修改方案、照方案改（另存 _改N）；7：流水线「网盘」那一页（/api/wangpan/）；6：双模式草稿的冲突保护与正文/写稿记录联合保存；5：AI 任务
 const STATIC = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png' };   // 通用工具 里只发这几种
 const ONLINE_MS = 15 * 60e3;   // 这么久之内 AI 来等过，就算它在
 const WAIT_MS = 4 * 60e3;      // 一次最多挂这么久，没有就让等的那头再来一次
@@ -33,6 +34,11 @@ const log = (...a) => console.log(new Date().toLocaleTimeString('zh-CN', { hour1
 const httpErr = (status, msg) => Object.assign(new Error(msg), { status });
 const drafts = require('./draft-store.js')({ ROOT });
 const jobs = require('./jobs.js')({ ROOT, TOOLS, log, withFileLocks: drafts.withLocks });   // AI 任务与页面共用文件锁
+const pc = require('./pc-files.js')({ ROOT, log, resolveParts, withLocks: drafts.withLocks });   // 资产页「从电脑里找」：整台电脑找图、复制进项目（11-14 加）
+/* 流水线「网盘」那一页：项目文件夹在阿里云网盘上的那一份（通用工具\网盘同步\网盘管理.js）。没装好不碍别的 */
+let wangpan = null;
+try { wangpan = require(path.join(TOOLS, '网盘同步', '网盘管理.js'))({ local: path.join(ROOT, '项目'), log }); }
+catch (e) { log('网盘那一页没装上：' + e.message); }
 
 function send(res, status, body, headers) {
   res.writeHead(status, { 'Cache-Control': 'no-store', ...headers });
@@ -177,10 +183,12 @@ async function handle(req, res) {
       if (req.headers['x-antou'] !== '1') throw httpErr(403, '缺少 X-Antou');
       const origin = req.headers.origin;
       if (origin && !HOSTS.has(origin.replace(/^https?:\/\//, ''))) throw httpErr(403, 'Origin 不对');
-      if (url.pathname === '/api/ping') return json(res, { root: path.basename(ROOT), v: VERSION, abs: ROOT, draftSave: true });
+      if (url.pathname === '/api/ping') return json(res, { root: path.basename(ROOT), v: VERSION, abs: ROOT, draftSave: true, wangpan: !!wangpan });
       if (url.pathname === '/api/fs' || url.pathname.startsWith('/api/fs/')) return await onFs(req, res, url);
       if (url.pathname.startsWith('/api/ai')) return await onAi(req, res, url);
       if (url.pathname === '/api/job' || url.pathname.startsWith('/api/job/') || url.pathname === '/api/jimeng') return await jobs.handle(req, res, url, { json, readBody, httpErr });
+      if (url.pathname === '/api/pc') return await pc.handle(req, res, url, { json, readBody });
+      if (url.pathname.startsWith('/api/wangpan/')) { if (!wangpan) throw httpErr(404, '网盘那一页没装上，看服务的输出'); return await wangpan.handle(req, res, url); }
       throw httpErr(404, '没有这个接口');
     }
     const p = decodeURIComponent(url.pathname);
@@ -229,6 +237,35 @@ function get(pathname, timeout) {
     req.on('error', reject);
   });
 }
+function post(pathname, text) {
+  return new Promise((resolve, reject) => {
+    const buf = Buffer.from(text || '', 'utf8');
+    const req = http.request({ host: '127.0.0.1', port: PORT, path: pathname, method: 'POST', headers: { 'X-Antou': '1', Host: `127.0.0.1:${PORT}`, 'Content-Type': 'text/plain; charset=utf-8', 'Content-Length': buf.length } }, res => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => resolve({ status: res.statusCode, text: Buffer.concat(chunks).toString('utf8').trim() }));
+      res.on('error', reject);
+    });
+    req.on('error', reject);
+    req.end(buf);
+  });
+}
+/* 交给 AI 等回复的任务（给我提示词、Claude 桌面版、DeepSeek 窗口），AI 做完告诉这边：node server.js reply <任务号> [回复文件]。
+   不带回复文件，服务去看这一回该写的那个回复文件（回复.md，核图这类是 回复_核图.md）。等这边落完盘才回话：收到了、格式不对（改好再跑一次）、没接上 */
+async function reply(id, file) {
+  if (!/^[a-z0-9]+$/.test(id || '')) { console.error('要写任务号：node server.js reply <任务号> [回复文件]'); return 3; }
+  let text = '';
+  if (file) { try { text = fs.readFileSync(path.resolve(file), 'utf8'); } catch (e) { console.error('读不了回复文件：' + e.message); return 3; } }
+  let r;
+  try { r = await post('/api/job/' + id + '?reply', text); } catch (e) { console.error(`项目管理服务没开着（端口 ${PORT}）：${e.message}。回复文件留着就行，服务开起来会接着收`); return 2; }
+  let j = null;
+  try { j = JSON.parse(r.text); } catch (e) { /* 不是 JSON：照原样说 */ }
+  if (r.status !== 200 || !j) { console.error('项目没接上：' + r.text); return 3; }
+  if (j.格式错) { console.error('项目还没接上：' + j.格式错 + '。改好以后（回复照任务书「回复的格式」写），再跑一次这一句'); return 4; }
+  if (j.状态 === '做完') { console.log('项目收到了：' + j.结果); return 0; }
+  if (j.状态 === '没成' || j.状态 === '停了') { console.error('项目没接上：' + (j.错误 || j.状态)); return 3; }
+  console.log('项目收到了，还在存盘，结果在页面上看'); return 0;
+}
 /* 服务开着就返回 { root, v }（改前开的没有 v）；端口上是别的程序返回 {}；没开返回 null */
 async function ping() {
   let r;
@@ -273,7 +310,7 @@ function relParts(file) {
 function fileKind(parts) {
   const name = parts[parts.length - 1];
   if (parts[1] === '定稿的剧本' && /\.docx$/i.test(name)) return '剧本';
-  if (parts[1] === '提示词' && /(^|_)视频提示词\.txt$/i.test(name) && parts.slice(2, -1).some(d => /第.+段/.test(d))) return '提示词';
+  if (parts[1] === '提示词' && /(^|_)视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i.test(name) && parts.slice(2, -1).some(d => /第.+段/.test(d))) return '提示词';   // 一场几条：视频提示词.txt、视频提示词_02.txt……
   if (/\.(mp4|m4v|mov|webm)$/i.test(name)) return '审片';
   if (/\.(png|jpe?g|webp|gif|avif)$/i.test(name)) return '图片';
   return null;
@@ -286,13 +323,15 @@ function cwdProject() {
 }
 /* 服务没开就开起来（开在后台，这条命令退出后它还在），再打印网址 */
 async function open(file) {
-  let hash = '', kind = '';
+  let hash = '', kind = '', pj = cwdProject();
   if (file) {
     const parts = relParts(file);
     kind = fileKind(parts);
     if (!kind) { console.error('项目管理里只批剧本、镜头表、各段的视频提示词、视频和图片，这一份不在里面：' + parts.join('/')); return 3; }
-    hash = '#open=' + parts.map(encodeURIComponent).join('/');
-  } else if (cwdProject()) hash = '#open=' + encodeURIComponent(cwdProject());
+    if (!fs.existsSync(path.join(ROOT, '项目', parts[0]))) { console.error('流水线只认 项目 下面的项目，这一份不在里面：' + parts.join('/')); return 3; }
+    pj = parts[0];
+    hash = '#open=' + parts.slice(1).map(encodeURIComponent).join('/');   // 流水线打开这个项目，把这一份盖上来看
+  }
   let p = await ping();
   if (!p) {
     spawn(process.execPath, [__filename], { cwd: ROOT, detached: true, stdio: 'ignore', windowsHide: true }).unref();   // cwd 放总文件夹：不占着项目文件夹
@@ -301,7 +340,7 @@ async function open(file) {
   if (!p) { console.error(`项目管理服务没开起来（端口 ${PORT}）`); return 2; }
   if (p.root !== path.basename(ROOT)) { console.error(`端口 ${PORT} 被别的程序占着`); return 2; }
   if (!p.v) console.error(OLD_NOTE);
-  console.log(`http://localhost:${PORT}/${hash}`);
+  console.log(`http://localhost:${PORT}/${encodeURI('通用工具/流水线/总览.html')}${pj ? '?p=' + encodeURIComponent(pj) : ''}${hash}`);
   if (kind === '审片' || kind === '图片') console.log(`（${kind}的批注不排队：用户点「交给 AI」复制一句话，贴进对话）`);
   else console.log(`等批注：node "${__filename.replace(/\\/g, '/')}" wait${kind ? ' ' + kind : ''}`);
   return 0;
@@ -310,4 +349,5 @@ async function open(file) {
 const [cmd, arg] = process.argv.slice(2);
 if (cmd === 'wait') wait(arg).then(code => process.exit(code));
 else if (cmd === 'open') open(arg).then(code => process.exit(code), e => { console.error(e.message); process.exit(3); });
+else if (cmd === 'reply') reply(arg, process.argv[4]).then(code => process.exit(code), e => { console.error(e.message); process.exit(3); });
 else serve();

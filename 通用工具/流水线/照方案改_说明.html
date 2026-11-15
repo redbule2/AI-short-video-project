@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>照方案改 · 一次改到位</title>
+<style>
+:root { --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --line: #d6cab6; --zhu: #a83a2c; --dai: #3e5c5e; --huang: #fff4c9; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.85 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif; }
+main { max-width: 780px; margin: 0 auto; padding: 32px 22px 120px; }
+h1 { margin: 0 0 4px; font: 600 26px/1.4 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .08em; }
+.sub { margin: 0 0 20px; font-size: 14.5px; color: var(--ink-2); }
+h2 { margin: 34px 0 10px; font: 600 19px/1.5 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .1em; }
+.card { margin: 12px 0; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+.card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 600; }
+.card h3 .no { display: inline-block; min-width: 1.9em; color: var(--dai); }
+.card p { margin: 3px 0; color: var(--ink-2); }
+.opts { margin: 8px 0 2px; }
+.opts label { display: block; margin: 5px 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opts label:hover { background: #faf5ea; }
+.opts input { margin-right: 8px; }
+.opts .rec { color: var(--dai); font-size: 13px; margin-left: 4px; }
+textarea { display: block; width: 100%; margin-top: 8px; min-height: 2.6em; padding: 7px 10px; border: 1px dashed #c8b99f; border-radius: 8px; background: #fffef9; font: 15px/1.7 'Noto Sans SC', 'Microsoft YaHei', sans-serif; color: var(--ink); resize: vertical; }
+textarea:focus { outline: none; border-style: solid; border-color: var(--dai); background: #fff; }
+textarea.has { border-style: solid; border-color: #b9822f; background: var(--huang); }
+table.ex { width: 100%; border-collapse: collapse; margin: 6px 0 2px; font-size: 14.5px; }
+table.ex td { padding: 6px 8px; border-top: 1px solid #ece3d3; vertical-align: top; color: var(--ink-2); }
+table.ex td:first-child { white-space: nowrap; color: var(--ink); }
+.k { display: inline-block; padding: 0 8px; border-radius: 10px; font-size: 13px; line-height: 1.7; white-space: nowrap; }
+.k.keep { background: #ece6da; color: var(--ink-2); } .k.fix { background: #fdf3e3; color: #8a6420; } .k.re { background: #e3efec; color: var(--dai); } .k.drop { background: #f6e3df; color: var(--zhu); }
+/* 改完那一屏的样子 */
+.mock { margin: 10px 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff; font-size: 14.5px; }
+.mock .h { font-weight: 600; color: var(--dai); }
+.mock .row { display: flex; gap: 10px; align-items: center; margin: 8px 0; }
+.mock .pic { width: 72px; height: 41px; border-radius: 4px; background: #d9d2c5; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #776d62; flex: none; }
+.mock .pic.new { background: #c9dbd7; color: #2e4a4b; }
+.mock .arr { color: var(--ink-3); }
+.mock .t { color: var(--ink-2); line-height: 1.6; }
+.mock .t b { color: var(--ink); font-weight: 600; }
+.mock .bad { color: var(--zhu); }
+.mock .btn { display: inline-block; padding: 1px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; color: var(--ink-2); margin-left: 6px; }
+.mock .lab { margin-top: 12px; font-size: 13px; color: var(--ink-3); letter-spacing: .1em; }
+.mock .run { color: var(--ink-2); line-height: 1.75; }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; background: rgba(255,253,249,.96); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; justify-content: center; }
+.bar button { padding: 6px 14px; border: 1px solid var(--dai); border-radius: 8px; background: #fff; color: var(--dai); font: inherit; cursor: pointer; }
+.bar button:hover { background: #eef5f3; }
+#st { color: var(--ink-2); }
+.foot { margin-top: 26px; font-size: 13px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<main>
+<h1>照方案改 · 一次改到位</h1>
+<p class="sub" id="sub"></p>
+<div id="sections"></div>
+<h2>其他意见</h2>
+<textarea data-k="其他" placeholder="还有什么想说的（可以不写）"></textarea>
+<p class="foot" id="foot"></p>
+</main>
+<div class="bar"><span id="st">选一选、写批注会自动存好</span><button id="copy" type="button">复制批注</button></div>
+<script>
+/* ===== 内容（改内容只改这一块） ===== */
+const ROUND = 1;
+const SUB = '审片以后点「照方案改」：字和关键帧一起改好，旧关键帧不会再挂着。白模页面改不了，会列出来，附一段话交给 Claude。看完选一选、写批注，你点头了我再动手。';
+const FOOT = '2026-11-15 Claude 写的设计稿，还没动手。';
+const EXAMPLE = '<table class="ex">'
+  + '<tr><td>@图片6 镜头1 开头</td><td><span class="k keep">留着</span>（多半）开头那一刻没变，变的是拉开以后。</td></tr>'
+  + '<tr><td>@图片7 镜头2 开头</td><td><span class="k keep">留着</span>图里没有沙袋。前排那串小火花像机枪打的，AI 可能提<span class="k fix">小改</span>去掉。</td></tr>'
+  + '<tr><td>@图片8 镜头3 开头</td><td><span class="k keep">留着</span>这一镜没改。</td></tr>'
+  + '<tr><td>@图片9 镜头4 开头</td><td><span class="k re">重出</span>机位改到炮尾后面，人改成低头看。截新白模第 8 秒当图1。</td></tr>'
+  + '<tr><td>@图片10 镜头5 开头</td><td><span class="k re">重出</span>机位放低侧拍，炮组握刀。截新白模第 12 秒当图1。</td></tr>'
+  + '<tr><td>白模</td><td>方案说的递射、镜头4和5的机位，11-14 晚已经重渲过，不再列。</td></tr></table>';
+const MOCK = '<div class="mock">'
+  + '<div class="h">✓ 改好了</div>'
+  + '<div class="row"><div class="t"><b>新稿</b>　第2条 改2（原稿没动）<span class="btn">看改了哪儿</span></div></div>'
+  + '<div class="lab">关键帧</div>'
+  + '<div class="row"><div class="pic">旧图</div><span class="arr">→</span><div class="pic new">新图</div><div class="t"><b>@图片9 镜头4 开头</b>　重出<br>为什么：机位改到炮尾后面了　核图：没看出问题</div></div>'
+  + '<div class="row"><div class="pic">旧图</div><span class="arr">→</span><div class="pic new">新图</div><div class="t"><b>@图片10 镜头5 开头</b>　重出<br>核图：<span class="bad">握刀的人少了两个</span>（自动再出了一回）</div></div>'
+  + '<div class="row"><div class="t"><b>@图片6、@图片7、@图片8</b>　留着（点开看为什么）</div></div>'
+  + '<div class="lab">白模</div>'
+  + '<div class="row"><div class="t">这 2 处要改白模，页面改不了<span class="btn">复制给 Claude 的话</span><br>镜头1：拉开以后身后的炮一门接一门开炮　镜头5：去掉远处那条橙色火线</div></div>'
+  + '<div class="lab">下一步</div>'
+  + '<div class="row"><div class="t">回「提示词」那一步看一眼新关键帧、生成任务书，你点「批准出片」才出。<span class="btn">AI 做了什么</span></div></div>'
+  + '</div>';
+const RUN = '<div class="mock"><div class="h">在照方案改…　3:12</div><div class="run">'
+  + '字改好了（照方案 4 处，照你说的 2 处）<br>关键帧：AI 看完了，重出 2 张、留着 3 张<br>'
+  + '　@图片9 镜头4 开头 · Codex 在出图<br>　@图片10 镜头5 开头 · 在核图<br>白模：不用改</div></div>';
+const SECTIONS = [
+  { h: '点一下以后，做这五步', cards: [
+    { id: 's1', no: '①', t: '改字', p: [
+      '和现在一样：你同意的照方案换上，「我来说」的交给 AI 改。' ] },
+    { id: 's2', no: '②', t: '看关键帧', p: [
+      'AI 对着改好的字，一张一张看这一条挂的关键帧，定一种做法：留着、小改、重出、拿掉（下面细说）。都对得上，就一张不动。',
+      '要重出的，AI 同一回把字（出图提示词）写好。挂了白模的镜头，先截新白模那一秒给它看。' ] },
+    { id: 's3', no: '③', t: '出图', p: [
+      '小改、重出的那几张，同时开几个 Codex 对话一起出，最多 3 个。',
+      '重出照「出关键帧」那一套：图1 是新白模那一秒，人物、道具照资产图。小改以原图为底，只改说到的地方。' ] },
+    { id: 's4', no: '④', t: '核图', p: [
+      'AI 把新图一张张核：和字对不对；和白模那一秒对不对得上；有没有画进爆炸、火光、烟（画进去会被钉住不动）。' ] },
+    { id: 's5', no: '⑤', t: '换上、存好', p: [
+      '新图用原来的名字，旧图连它的字、批注进历史记录。新稿另存「_改N」，素材登记照新图。原稿不动。',
+      '出视频照旧，你点「批准出片」才出。' ] },
+  ] },
+  { h: '四种做法，怎么定', cards: [
+    { id: 'k1', no: '留着', t: '', p: [ '这一刻的画面没变，图还对得上。' ] },
+    { id: 'k2', no: '小改', t: '', p: [ '机位、构图都对，只差一两样（比如多画了沙袋）。以原图为底改，最像原来那张。你在图上批注过的，走这条。' ] },
+    { id: 'k3', no: '重出', t: '', p: [ '机位、动作、站位变了，或者你弃用了这张。白模那一秒变了的，一律重出，不在旧图上改。' ] },
+    { id: 'k4', no: '拿掉', t: '', p: [ '新稿这一镜不该再有关键帧。你弃用时理由里写了「这一镜不要关键帧」的，走这条。' ] },
+    { id: 'k5', no: '不做', t: '', p: [ '原来没有关键帧、AI 觉得该加一张的：只列出来，不自动加（加了要挪编号）。你到「提示词」那一步点「出关键帧…」加。' ] },
+  ] },
+  { h: '拿 3-4 第2条 套一下', note: '举例，实际是 AI 看图定的。', html: EXAMPLE },
+  { h: '白模', cards: [
+    { id: 'b1', no: '', t: '页面改不了白模', p: [
+      '方案说要回白模改、白模在方案出了以后又没重渲过的：结果里列成「这几处要改白模」，带一段话，点「复制」贴给 Claude。',
+      '这几镜的关键帧先不出（照旧白模出会对不上），先从新稿里拿掉。白模改好，到「提示词」那一步点「出关键帧…」补。',
+      '白模在方案以后重渲过的，就当改好了，照新白模截。' ] },
+  ] },
+  { h: '做的时候，你看到的', html: RUN, note: 'AI 每一步的任务书和回复都留在 历史记录 / AI任务 里，改完那一屏点得开。' },
+  { h: '改完，一屏摆给你看', html: MOCK },
+  { h: '要你定的', cards: [
+    { id: 'd1', no: '甲', t: '出不了的关键帧（出图没成，或者核图说不行）', p: [], opts: [
+      { v: 'A', t: '从新稿里拿掉，编号往前挪，结果里标红写为什么；你到「提示词」那一步补。和 11-15 你定的一样', rec: true },
+      { v: 'B', t: '留在新稿里标红，生成任务书时挡住，补好才放行' } ] },
+    { id: 'd2', no: '乙', t: '核图说不行', p: [], opts: [
+      { v: 'A', t: '自动再出一回，把核图说的毛病带上；还不行再照甲办', rec: true },
+      { v: 'B', t: '不再出，直接照甲办' } ] },
+  ] },
+  { h: '要改的东西', cards: [
+    { id: 'c1', no: '1', t: '本机服务', p: [
+      '「照方案改」加上关键帧这一段。要重开 8766 才生效，重开前先问你。' ] },
+    { id: 'c2', no: '2', t: 'codex-chat 加一道「发送排队」', p: [
+      '几个对话同时出图时，一个一个发出去，再一起等，输入框不会填错。别处用 Codex 也跟着受益。' ] },
+    { id: 'c3', no: '3', t: '审片台', p: [
+      '「方案」那一页最后一步：加上做的时候的进度，和改完那一屏。' ] },
+    { id: 'c4', no: '4', t: '先在试验服务上点通', p: [
+      '拿假 AI 走一遍，不碰真项目。' ] },
+    { id: 'c5', no: '注', t: '要按几次', p: [
+      'AI 用 Claude 桌面版的：要按两三次发送（改字、看关键帧、核图各一次；没有「我来说」就少一次）。出图是 Codex 自己出，不用按。想全程不管，「AI 用」选 Codex。',
+      '选「给我提示词」的：关键帧一张一张交，不同时出。' ] },
+  ] },
+];
+
+/* ===== 下面是页面本身 ===== */
+const FILE = '/api/fs/' + ['通用工具', '流水线', '照方案改_说明_批注.json'].map(encodeURIComponent).join('/');
+const LS = 'antou:fix-plan-kf:r' + ROUND;
+const HDR = { 'X-Antou': '1' };
+let S = { 轮: ROUND, 时间: '', 批注: {}, 选择: {}, 其他: '' };
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const now = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()); };
+const cards = () => SECTIONS.flatMap(s => s.cards || []);
+
+function cardHtml(c) {
+  const opts = c.opts ? '<div class="opts">' + c.opts.map(o => '<label><input type="radio" name="' + c.id + '" value="' + esc(o.v) + '">' + esc(o.v + '　' + o.t) + (o.rec ? '<span class="rec">（推荐）</span>' : '') + '</label>').join('') + '</div>' : '';
+  return '<div class="card"><h3>' + (c.no ? '<span class="no">' + esc(c.no) + '</span>' : '') + esc(c.t) + '</h3>' + c.p.map(x => '<p>' + esc(x) + '</p>').join('') + opts
+    + '<textarea data-k="' + c.id + '" placeholder="批注（可以不写）"></textarea></div>';
+}
+function paint() {
+  $('#sub').textContent = SUB;
+  $('#foot').textContent = FOOT;
+  $('#sections').innerHTML = SECTIONS.map(s => '<h2>' + esc(s.h) + '</h2>' + (s.note ? '<p class="sub">' + esc(s.note) + '</p>' : '') + (s.html || '') + (s.cards || []).map(cardHtml).join('')).join('');
+  document.querySelectorAll('textarea').forEach(t => {
+    const k = t.dataset.k; t.value = (k === '其他' ? S.其他 : S.批注[k]) || ''; mark(t);
+    t.addEventListener('input', () => { if (k === '其他') S.其他 = t.value; else S.批注[k] = t.value; mark(t); changed(); });
+  });
+  document.querySelectorAll('.opts input').forEach(r => {
+    if (S.选择[r.name] === r.value) r.checked = true;
+    r.addEventListener('change', () => { S.选择[r.name] = r.value; changed(); });
+  });
+}
+const mark = t => t.classList.toggle('has', !!t.value.trim());
+let timer = 0;
+function changed() {
+  S.时间 = now();
+  try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { /* 存不了就算了 */ }
+  clearTimeout(timer); timer = setTimeout(save, 700);
+  $('#st').textContent = '正在存…';
+}
+async function save() {
+  try {
+    const r = await fetch(FILE, { method: 'PUT', headers: HDR, body: JSON.stringify(S, null, 2) + '\n' });
+    if (!r.ok) throw new Error(r.status);
+    $('#st').textContent = '已存好（' + S.时间.slice(11, 16) + '）。批完回到对话说一声「批完了」';
+  } catch (e) { $('#st').textContent = '没连上本机服务，只存在这个浏览器里。批完点「复制批注」贴给我'; }
+}
+async function load() {
+  try {
+    const r = await fetch(FILE, { headers: HDR });
+    if (r.ok) { const t = JSON.parse(await r.text()); if (t && t.轮 === ROUND) S = Object.assign(S, t); }
+  } catch (e) { /* 没有就是还没批 */ }
+  try { const t = JSON.parse(localStorage.getItem(LS) || 'null'); if (t && t.轮 === ROUND && (t.时间 || '') > (S.时间 || '')) S = Object.assign(S, t); } catch (e) { /* 不管 */ }
+  paint();
+}
+function text() {
+  const out = ['照方案改设计稿 · 第 ' + ROUND + ' 轮批注（' + (S.时间 || now()) + '）'];
+  for (const c of cards()) {
+    const n = (S.批注[c.id] || '').trim(), v = S.选择[c.id];
+    if (!n && !v) continue;
+    const o = v && c.opts ? c.opts.find(x => x.v === v) : null;
+    out.push((c.no + ' ' + c.t).trim() + (v ? '　选了 ' + v + (o ? '：' + o.t : '') : '') + (n ? '\n　' + n.replace(/\n/g, '\n　') : ''));
+  }
+  if ((S.其他 || '').trim()) out.push('其他意见：' + S.其他.trim());
+  return out.join('\n');
+}
+$('#copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(text()); $('#st').textContent = '复制好了，贴到对话里就行'; }
+  catch (e) { prompt('复制下面这段：', text()); }
+});
+load();
+</script>
+</body>
+</html>

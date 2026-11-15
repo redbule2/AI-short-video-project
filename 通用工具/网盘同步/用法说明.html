@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>项目网盘：一键推送、挑着拉取、网页管理</title>
+<style>
+  :root { color-scheme: light; }
+  html, body { background: #fff; }
+  body { font: 17px/1.75 "Microsoft YaHei", "PingFang SC", sans-serif; color: #222; max-width: 820px; margin: 32px auto; padding: 0 20px; }
+  h1 { font-size: 26px; margin-bottom: 4px; }
+  h2 { font-size: 20px; margin-top: 36px; border-left: 5px solid #2f6fdf; padding-left: 10px; }
+  .sub { color: #666; margin-top: 0; }
+  ol li, ul li { margin: 6px 0; }
+  code { background: #f2f4f7; padding: 1px 6px; border-radius: 4px; font-family: Consolas, "Microsoft YaHei", monospace; }
+  .box { background: #f6f9ff; border: 1px solid #d6e2fb; border-radius: 8px; padding: 12px 18px; }
+  .warn { background: #fff8ec; border-color: #f3d9a6; }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+  th { background: #f6f6f6; }
+  svg { display: block; margin: 18px auto; max-width: 100%; }
+</style>
+</head>
+<body>
+
+<h1>项目网盘：一键推送、挑着拉取、网页管理</h1>
+<p class="sub">「项目」文件夹存在阿里云 OSS 上，只有你自己能看。工具在 <code>E:\AI短视频项目\通用工具\网盘同步</code>。</p>
+
+<svg width="720" height="190" viewBox="0 0 720 190" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdf"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1d9a6c"/></marker>
+  </defs>
+  <rect x="20" y="40" width="220" height="110" rx="12" fill="#f6f9ff" stroke="#2f6fdf"/>
+  <text x="130" y="88" text-anchor="middle" font-size="19">这台电脑</text>
+  <text x="130" y="116" text-anchor="middle" font-size="15" fill="#555">E:\AI短视频项目\项目</text>
+  <rect x="480" y="40" width="220" height="110" rx="12" fill="#f3fbf7" stroke="#1d9a6c"/>
+  <text x="590" y="88" text-anchor="middle" font-size="19">阿里云 OSS 网盘</text>
+  <text x="590" y="116" text-anchor="middle" font-size="15" fill="#555">只有你自己能看</text>
+  <line x1="250" y1="75" x2="470" y2="75" stroke="#2f6fdf" stroke-width="3" marker-end="url(#a)"/>
+  <text x="360" y="62" text-anchor="middle" font-size="16" fill="#2f6fdf">推送.bat：改动传上去</text>
+  <line x1="470" y1="118" x2="250" y2="118" stroke="#1d9a6c" stroke-width="3" marker-end="url(#b)"/>
+  <text x="360" y="145" text-anchor="middle" font-size="16" fill="#1d9a6c">拉取.bat：挑着拿下来</text>
+</svg>
+
+<h2>平时怎么用</h2>
+<ul>
+  <li><b>改完东西：</b>双击 <code>推送.bat</code>。新的、改过的传上去；本机删掉的，网盘上也删。</li>
+  <li><b>要别的电脑的改动：</b>双击 <code>拉取.bat</code>，输入要拉的项目编号。大项目还能只挑一个文件夹，历史记录可以不拉。拉之前会先告诉你要花多少钱，回车才开始。</li>
+  <li><b>想看看网盘里有什么、单独传几个、下几个、删几个：</b>打开项目管理，点右上角 <b>网盘</b>（双击 <code>网盘管理.bat</code> 也是打开这一页）。只管当前这个项目：每个文件标出本机和网盘上一不一样，勾上就能上传、下载、删网盘上的。网盘上有、这台电脑没有的项目，也能在这一页整个拉下来。</li>
+  <li>推送、拉取都只传有变化的文件，没变的不动。</li>
+</ul>
+
+<h2>第一次开通（这台电脑做一次）</h2>
+<ol>
+  <li>照 <a href="阿里云OSS开通教程.html">阿里云 OSS 开通教程</a> 做：注册实名、开通 OSS、充点钱、建一把只能管 OSS 的钥匙。</li>
+  <li>双击 <code>设置网盘.bat</code>，把钥匙粘进去（屏幕上只显示星号），直接回车 = 网盘建在杭州。</li>
+  <li>双击 <code>推送.bat</code>，把整个项目传上去。第一次有 33GB，要一个多小时。窗口别关；中途关了也没事，下次再双击会接着传。</li>
+</ol>
+
+<h2>换一台电脑</h2>
+<ol>
+  <li>装 <a href="https://nodejs.org">Node.js</a> 和 Git，从 GitHub 拉下这个仓库（工具都在里面，项目文件不在）。</li>
+  <li>双击 <code>设置网盘.bat</code>：没有 rclone 会问你要不要下载；粘贴<b>同一把钥匙</b>，它会自己找到网盘。</li>
+  <li>双击 <code>拉取.bat</code>，挑要的项目。</li>
+</ol>
+
+<h2>花多少钱</h2>
+<table>
+  <tr><th>做什么</th><th>价钱</th></tr>
+  <tr><td>存放</td><td>每 GB 每月约 1 角 2 分（官网标价 0.12 元）。33GB 一个月约 4 元。</td></tr>
+  <tr><td>推送（上传）</td><td>不要钱</td></tr>
+  <tr><td>拉取（下载）</td><td>每 GB 0.5 元；北京时间半夜 0～8 点半价，0.25 元</td></tr>
+</table>
+
+<h2>放心的地方</h2>
+<div class="box">
+<ul>
+  <li>网盘上被替换、被删掉的文件，先存进网盘的「旧版」文件夹（按时间分开），能找回。旧版挪进历史记录的，直接在网盘里复制，不重传，也不重复存。</li>
+  <li>在「网盘」那一页删网盘上的东西，默认也先放进「旧版」；勾了「彻底删掉」才真删。「旧版」占地方了，在那一页下面的「旧版」里删掉就行。</li>
+  <li>在「网盘」那一页下载，本机原来那份先挪进这个项目的「历史记录」（名字后面加时间），不会丢。</li>
+  <li>推送、拉取在跑的时候，「网盘」那一页只能看；那一页在传、在删的时候，推送、拉取会让你等它做完再来。</li>
+  <li>两台电脑都改过同一个文件，不会悄悄覆盖，会先问你用哪边的。</li>
+  <li>只拉了一部分的电脑推送时，不会删网盘上它没拉过的东西。</li>
+  <li>不传的：Blender 自动备份（.blend1）、Office/WPS 临时文件（~$ 开头）、__pycache__。</li>
+</ul>
+</div>
+
+<h2>钥匙</h2>
+<div class="box warn">
+<ul>
+  <li>钥匙存在 <code>C:\Users\li\AppData\Roaming\rclone\rclone.conf</code>，别发给别人，也别放进项目文件夹。</li>
+  <li>钥匙丢了：去 RAM 里把这把钥匙禁用，再建一把，重新双击 <code>设置网盘.bat</code>。</li>
+  <li>这台电脑的对账记录在 <code>C:\Users\li\AppData\Roaming\aivideo-wangpan</code>，别删。删了也不会丢文件，只是下次要多核对一会儿。</li>
+</ul>
+</div>
+
+</body>
+</html>

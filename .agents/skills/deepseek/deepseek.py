@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""deepseek.py — Claude Code 调用 DeepSeek 的通道。模型固定 deepseek-flash（DeepSeek-V4.1-Flash-1017）。
+"""deepseek.py — Claude Code 调用 DeepSeek 的通道。模型默认 deepseek-flash（DeepSeek-V4.1-Flash-1017），
+--model deepseek-v4-pro 换 V4 Pro（看不了图，贵三四倍）。
 
   bash E:/AI短视频项目/.agents/skills/deepseek/ds.sh --effort high "问题"
   bash E:/AI短视频项目/.agents/skills/deepseek/ds.sh --effort max -f 任务书.md --out 答卷.md
@@ -37,10 +38,19 @@ KEY_FILE = os.environ.get("DEEPSEEK_KEY_FILE") or "E:/ai-bridge/deepseek.key"  #
 URL = "https://api.deepseek.com/chat/completions"
 PRICING_PAGE = "https://api-docs.deepseek.com/quick_start/pricing/"  # 末尾斜杠不能丢，否则跳到首页
 
-# 用户指定固定这个模型。2026-10-29 实测 80 次响应的 system_fingerprint 全是下面这个值，背后换版本时它会变。
+# 用户指定默认用这个模型。2026-10-29 实测 80 次响应的 system_fingerprint 全是下面这个值，背后换版本时它会变。
 MODEL = "deepseek-flash"
 PINNED_VERSION = "DeepSeek-V4.1-Flash-1017"
-KNOWN_FINGERPRINTS = {"bc19ba97cbe016479903222bb1578db6": PINNED_VERSION}
+# 2026-11-14 用户要能换模型：价格页上另有 deepseek-v4-pro（V4-Pro-0813），看不了图。
+# vision＝能不能看图；price＝每百万 token 美元价（2026-11-14 价格页）：(输入缓存命中, 输入未命中, 输出)
+MODELS = {
+    "deepseek-flash": dict(version=PINNED_VERSION, vision=True,
+                           price={"peak": (0.006, 0.3, 1.2), "offpeak": (0.003, 0.15, 0.6)}),
+    "deepseek-v4-pro": dict(version="DeepSeek-V4-Pro-0813", vision=False,
+                            price={"peak": (0.044, 1.32, 3.96), "offpeak": (0.022, 0.66, 1.98)}),
+}
+KNOWN_FINGERPRINTS = {"deepseek-flash": {"bc19ba97cbe016479903222bb1578db6": PINNED_VERSION},  # 没登记的模型不核对指纹
+                      "deepseek-v4-pro": {"a307abda487cd1b463329ccb945ce396": "DeepSeek-V4-Pro-0813"}}  # 11-14 实测 3 次
 
 EFFORTS = ("none", "low", "high", "max")
 EFFORT_ALIASES = {"minimal": "low", "medium": "high", "xhigh": "high", "ultra": "max"}  # API 实际就是这么映射的
@@ -48,8 +58,7 @@ MAX_TOKENS = {"none": 65536, "low": 131072, "high": 131072, "max": 393216}  # �
 MAX_TOKENS_LIMIT = 393216
 CONTEXT_TOKENS = 1048576
 BODY_LIMIT_MB = 46  # API 请求体上限 48 MiB，留点余量
-# 每百万 token 美元价（2026-10-19 价格页）：(输入缓存命中, 输入未命中, 输出)；高峰 = 北京时间工作日 9–12、14–18 点
-PRICE = {"peak": (0.006, 0.3, 1.2), "offpeak": (0.003, 0.15, 0.6)}
+# 价钱在上面 MODELS 里；高峰 = 北京时间工作日 9–12、14–18 点
 
 
 # ---------- 输入 ----------
@@ -320,10 +329,10 @@ def stream_once(key, payload, run):
     return st
 
 
-def call(key, wire, effort, max_tokens, run):
+def call(key, wire, model, effort, max_tokens, run):
     """一次完整调用：429、5xx、断线、数据流中断最多重试 2 次。返回 (st, 这次调用里的重试次数)。
     全都失败时，交回拿到正文最多的那次，免得半截内容被后面的空结果顶掉。"""
-    payload = {"model": MODEL, "messages": wire, "max_tokens": max_tokens, "reasoning_effort": effort,
+    payload = {"model": model, "messages": wire, "max_tokens": max_tokens, "reasoning_effort": effort,
                "stream": True, "stream_options": {"include_usage": True}}
     partial = None
     for attempt in range(3):
@@ -338,12 +347,12 @@ def call(key, wire, effort, max_tokens, run):
         time.sleep(wait)
 
 
-def totals(usages, start):
+def totals(usages, start, model):
     """各次尝试的用量和费用加总。失败的请求如果没回传用量，这部分算不进来。"""
     if not usages:
         return dict(tokens_in=None, tokens_out=None, reasoning_tokens=None, cost_usd=None)
     peak = start.weekday() < 5 and (1 <= start.hour < 4 or 6 <= start.hour < 10)
-    hit_p, miss_p, out_p = PRICE["peak" if peak else "offpeak"]
+    hit_p, miss_p, out_p = MODELS[model]["price"]["peak" if peak else "offpeak"]
     t = dict(tokens_in=0, tokens_out=0, reasoning_tokens=0, cost_usd=0.0)
     for u in usages:
         h = u.get("prompt_cache_hit_tokens") or 0
@@ -360,9 +369,10 @@ def totals(usages, start):
 # ---------- 主流程 ----------
 
 def main():
-    ap = argparse.ArgumentParser(prog="ds", description="Claude Code → DeepSeek（固定 deepseek-flash = V4.1-Flash-1017）")
+    ap = argparse.ArgumentParser(prog="ds", description="Claude Code → DeepSeek（默认 deepseek-flash = V4.1-Flash-1017）")
     ap.add_argument("text", nargs="*", help="提示词（也可用 -f）")
     ap.add_argument("-f", "--file", help="从文件读提示词（UTF-8；- 表示标准输入）")
+    ap.add_argument("--model", help="deepseek-flash（默认，能看图）| deepseek-v4-pro（看不了图，贵三四倍）；续问不写就沿用那次的")
     ap.add_argument("--effort", default="high", help="none|low|high|max（默认 high）")
     ap.add_argument("--system", help="系统提示（文本）")
     ap.add_argument("--system-file", help="系统提示（UTF-8 文件）")
@@ -382,6 +392,8 @@ def main():
         sys.exit("--effort 只能是 none|low|high|max（收到 %s）" % a.effort)
     if effort != requested:
         print("（%s 在 DeepSeek 上等于 %s，按 %s 发）" % (requested, effort, effort), file=sys.stderr)
+    if a.model and a.model.strip().lower() not in MODELS:
+        sys.exit("--model 只能是 %s（收到 %s）" % ("|".join(MODELS), a.model))
     if a.timeout <= 0:
         sys.exit("--timeout 必须大于 0")
     if a.max_tokens is not None and not 1 <= a.max_tokens <= MAX_TOKENS_LIMIT:
@@ -406,6 +418,14 @@ def main():
     history, resumed = ([], None)
     if a.resume:
         history, resumed = load_history(a.resume)
+    model = (a.model or "").strip().lower()
+    if not model and resumed:  # 续问没写 --model：接着用那次的模型，别半路换人
+        try:
+            with open(os.path.join(resumed, "request.json"), encoding="utf-8") as f:
+                model = json.load(f).get("model") or ""
+        except (OSError, ValueError):
+            model = ""
+    model = model if model in MODELS else MODEL
     if system:
         history = [m for m in history if m["role"] != "system"]
         history.insert(0, {"role": "system", "content": system})
@@ -416,6 +436,8 @@ def main():
 
     # 先按文件大小估算，超限就别去编码图片
     imgs = image_paths(messages)
+    if imgs and not MODELS[model]["vision"]:
+        sys.exit("%s 看不了图（这次带了 %d 张），要看图换 deepseek-flash" % (model, len(imgs)))
     for p in imgs:
         if not os.path.isfile(p):
             sys.exit("图片不存在：%s" % p + ("（续问要重新发送历史里的图）" if p not in images else ""))
@@ -443,21 +465,21 @@ def main():
         for p in images:
             f.write("\n[图] %s" % p)
     with open(os.path.join(run_dir, "request.json"), "w", encoding="utf-8") as f:
-        json.dump({"model": MODEL, "effort": effort, "max_tokens": max_tokens, "messages": messages},
+        json.dump({"model": model, "effort": effort, "max_tokens": max_tokens, "messages": messages},
                   f, ensure_ascii=False, indent=1)
     run = Run(run_dir, time.time() + a.timeout)
     start = datetime.now(timezone.utc)
-    print("[DeepSeek] %s（%s）/%s · 记录 %s" % (MODEL, PINNED_VERSION, effort, fwd(run_dir)), flush=True)
+    print("[DeepSeek] %s（%s）/%s · 记录 %s" % (model, MODELS[model]["version"], effort, fwd(run_dir)), flush=True)
 
-    st, _ = call(key, wire, effort, max_tokens, run)
+    st, _ = call(key, wire, model, effort, max_tokens, run)
     fallback = None
     # 有思考没正文：同档再来一次；max 还空就降 high（2026-09-05 V4-Pro 的 max 档翻过车）
     if not st["error"] and not st["answer"] and st["finish"] != "length":
         run.say("有思考没正文（finish=%s），同档重试一次" % st["finish"])
-        st, _ = call(key, wire, effort, max_tokens, run)
+        st, _ = call(key, wire, model, effort, max_tokens, run)
         if effort == "max" and not st["error"] and not st["answer"]:
             run.say("还是没有正文，降到 high 重答")
-            st, _ = call(key, wire, "high", min(a.max_tokens or MAX_TOKENS["high"], room), run)
+            st, _ = call(key, wire, model, "high", min(a.max_tokens or MAX_TOKENS["high"], room), run)
             fallback = "max→high"
 
     answer = st["answer"]
@@ -466,11 +488,11 @@ def main():
         f.write(answer)
     with open(run.path("reasoning.md"), "w", encoding="utf-8") as f:
         f.write(st["reasoning"])
-    fp = st["fingerprint"]
-    res = {"ok": False, "seconds": round(time.time() - run.t0, 1), "model": st["model"],
-           "version": KNOWN_FINGERPRINTS.get(fp, "未知（指纹变了）" if fp else None), "fingerprint": fp,
-           "effort": effort, "finish_reason": st["finish"]}
-    res.update(totals(run.usages, start))
+    fp, known = st["fingerprint"], KNOWN_FINGERPRINTS.get(model)
+    res = {"ok": False, "seconds": round(time.time() - run.t0, 1), "model": st["model"] or model,
+           "version": (known.get(fp, "未知（指纹变了）") if known else MODELS[model]["version"]) if fp else None,
+           "fingerprint": fp, "effort": effort, "finish_reason": st["finish"]}
+    res.update(totals(run.usages, start, model))
     res.update(answer_chars=len(answer), run_dir=fwd(run_dir))
     if requested != effort:
         res["effort_requested"] = requested
@@ -488,8 +510,8 @@ def main():
         res["error"] = "没有正文（finish=%s）" % st["finish"]
     else:
         res["ok"] = True
-    if fp and fp not in KNOWN_FINGERPRINTS:
-        print("⚠️ 服务端指纹变了（%s）：deepseek-flash 背后可能已换版本，去 %s 看 MODEL VERSION" % (fp, PRICING_PAGE),
+    if known and fp and fp not in known:
+        print("⚠️ 服务端指纹变了（%s）：%s 背后可能已换版本，去 %s 看 MODEL VERSION" % (fp, model, PRICING_PAGE),
               file=sys.stderr)
 
     if res["ok"]:

@@ -31,8 +31,8 @@ module.exports = function makeDraftStore({ ROOT, io = fs.promises, now = () => n
 
   function pathsFor(abs) {
     const parts = path.relative(ROOT, abs).split(path.sep);
-    if (parts.length !== 5 || parts[0] !== '项目' || !parts[1] || parts[2] !== '提示词' || !/^第[0-9]+(?:-[0-9]+)*段$/.test(parts[3]) || !/视频提示词\.txt$/i.test(parts[4])) {
-      throw error(400, '草稿保存只支持 项目/项目名/提示词/第N段/视频提示词.txt');
+    if (parts.length !== 5 || parts[0] !== '项目' || !parts[1] || parts[2] !== '提示词' || !/^第[0-9]+(?:-[0-9]+)*段$/.test(parts[3]) || !/视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i.test(parts[4])) {
+      throw error(400, '草稿保存只支持 项目/项目名/提示词/第N段/视频提示词.txt（第二条起 视频提示词_02.txt……；照修改方案改出来的 视频提示词_改1.txt……）');
     }
     return { side: abs.replace(/\.txt$/i, '_写稿.json'), hist: path.join(ROOT, '项目', parts[1], '历史记录', ...parts.slice(2, -1)) };
   }

@@ -6,20 +6,22 @@
 <title>案头 · 写稿（试用版）</title>
 <style>
 /* 写稿 · 试用版：人写提示词、AI 批注。读写真文件，走 annotate-live 的本机服务（另开一个端口）。
-   样式照 项目管理.html：纸、墨、朱、黛、赭。定下来以后再并进 项目管理.html 当第五项菜单。 */
+   样式照 项目管理.html 起家。2026-11-13 换配色：暖白底、白卡片、字加深；青＝你写的和选中，靛＝AI 写的和 AI 批注，朱＝你的批注和警告。
+   现在由「流水线」提示词那一步整页盖上来用（流水线.js 的 openWrite），不再并进 项目管理.html。
+   2026-11-13 晚：@ 白模视频（名字里有「白模」的视频）时，素材里补的是 sd25-pe 白模那两句。 */
 :root {
-  --paper: #f4efe6; --paper-2: #ece5d8; --paper-3: #e4dbca; --sheet: #fffdf9;
-  --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --ink-4: #b2a89b;
-  --line: #e5dccd; --line-2: #d6cab6;
-  --zhu: #a83a2c; --zhu-soft: rgba(168, 58, 44, .065); --zhu-line: rgba(168, 58, 44, .26);
-  --dai: #3e5c5e; --dai-soft: rgba(62, 92, 94, .075); --dai-line: rgba(62, 92, 94, .28);
-  --zhe: #8d6a3c; --zhe-soft: rgba(141, 106, 60, .085); --zhe-line: rgba(141, 106, 60, .3);
-  --jin: #b39256;
-  --tc: var(--zhe); --tc-soft: var(--zhe-soft); --tc-line: var(--zhe-line);
+  --paper: #f5f3ef; --paper-2: #ebe8e2; --paper-3: #e0ddd5; --sheet: #ffffff;
+  --ink: #1f1c19; --ink-2: #4d4842; --ink-3: #736c64; --ink-4: #a39d95;
+  --line: #e6e2db; --line-2: #d4cfc6;
+  --zhu: #b8382b; --zhu-soft: rgba(184, 56, 43, .07); --zhu-line: rgba(184, 56, 43, .3);
+  --qing: #1f6b69; --qing-soft: rgba(31, 107, 105, .08); --qing-line: rgba(31, 107, 105, .32);
+  --dian: #4a53a6; --dian-soft: rgba(74, 83, 166, .075); --dian-line: rgba(74, 83, 166, .3);
+  --jin: #b8892f;
+  --tc: var(--qing); --tc-soft: var(--qing-soft); --tc-line: var(--qing-line);
   --serif: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
   --sans: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --kai: 'KaiTi', 'STKaiti', 'Kaiti SC', 'BiauKai', 'Noto Serif SC', serif;
-  --shadow: 0 1px 2px rgba(60, 45, 30, .05), 0 10px 32px -14px rgba(60, 45, 30, .2);
+  --shadow: 0 1px 2px rgba(30, 28, 24, .05), 0 10px 32px -14px rgba(30, 28, 24, .2);
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
@@ -27,9 +29,9 @@ body { margin: 0; overflow: hidden; display: flex; flex-direction: column; color
 button, input { font: inherit; color: inherit; }
 p { margin: 0; }
 [hidden] { display: none !important; }
-::selection { background: rgba(168, 58, 44, .18); }
+::selection { background: rgba(31, 107, 105, .18); }
 ::-webkit-scrollbar { width: 11px; height: 11px; }
-::-webkit-scrollbar-thumb { background: rgba(140, 118, 92, .22); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb { background: rgba(60, 55, 48, .22); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-track { background: transparent; }
 .faint { color: var(--ink-3); }
 .small { font-size: 12.5px; }
@@ -39,52 +41,52 @@ kbd { display: inline-block; padding: 0 6px; border: 1px solid var(--line-2); bo
   display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border-radius: 6px; cursor: pointer; white-space: nowrap;
   font: 13.5px/1.2 var(--sans); letter-spacing: .08em; color: var(--ink); background: var(--sheet); border: 1px solid var(--line-2); transition: background .15s, border-color .15s;
 }
-.btn:hover { background: #fff; border-color: var(--ink-4); }
-.btn.dai { background: var(--dai); border-color: var(--dai); color: #f3fbfa; }
-.btn.dai:hover { background: #33504f; }
+.btn:hover { background: var(--paper); border-color: var(--ink-4); }
+.btn.dian { background: var(--dian); border-color: var(--dian); color: #fff; }
+.btn.dian:hover { background: #3c4590; border-color: #3c4590; }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
-.btn.ghost:hover { background: rgba(80, 60, 40, .06); }
+.btn.ghost:hover { background: rgba(40, 36, 30, .06); }
 .btn.sm { padding: 5px 11px; font-size: 12.5px; }
 .btn:disabled { opacity: .45; cursor: default; }
-.linkb { padding: 0 4px; border: 0; background: none; cursor: pointer; color: var(--dai); font-size: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.linkb { padding: 0 4px; border: 0; background: none; cursor: pointer; color: var(--qing); font-size: inherit; text-decoration: underline; text-underline-offset: 3px; }
 
 /* ---------- 顶栏、三步 ---------- */
 #main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-.top { flex: none; min-height: 56px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; padding: 6px 18px 6px 24px; border-bottom: 1px solid var(--line); background: rgba(250, 246, 239, .6); }
+.top { flex: none; min-height: 56px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; padding: 6px 18px 6px 24px; border-bottom: 1px solid var(--line); background: var(--sheet); }
 .crumb { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 12px; }
 .ptitle { font: 600 18px/1.3 var(--serif); letter-spacing: .08em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .crumb-seg { min-width: 0; font: 14.5px var(--kai); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .crumb-seg::before { content: '／'; margin-right: 10px; color: var(--ink-4); }
-.tag-try { flex: none; align-self: center; padding: 0 8px; border-radius: 999px; background: var(--zhu); color: #fff8f2; font: 11px/1.7 var(--sans); letter-spacing: .1em; }
+.tag-try { flex: none; align-self: center; padding: 0 8px; border-radius: 999px; background: var(--zhu); color: #fff; font: 11px/1.7 var(--sans); letter-spacing: .1em; }
 .top-right { flex: none; display: flex; align-items: center; gap: 8px; }
 .status { display: flex; align-items: center; gap: 6px; margin-right: 4px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
 .status.err { color: var(--zhu); font-weight: 600; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-2); }
-.steps { flex: none; display: flex; align-items: center; gap: 6px; padding: 7px 18px 7px 22px; border-bottom: 1px solid var(--line); background: rgba(250, 246, 239, .45); font-size: 12.5px; color: var(--ink-3); white-space: nowrap; overflow-x: auto; }
+.steps { flex: none; display: flex; align-items: center; gap: 6px; padding: 7px 18px 7px 22px; border-bottom: 1px solid var(--line); background: rgba(255, 255, 255, .6); font-size: 12.5px; color: var(--ink-3); white-space: nowrap; overflow-x: auto; }
 .step { display: flex; align-items: center; gap: 7px; padding: 2px 12px 2px 4px; border-radius: 999px; border: 1px solid transparent; }
 .step i { width: 20px; height: 20px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line-2); background: var(--sheet); font: normal 11.5px/1 var(--sans); }
 .step small { font-size: 11.5px; color: var(--ink-4); }
-.step.me i { border-color: var(--zhe-line); color: var(--zhe); }
-.step.ai i { border-color: var(--dai-line); color: var(--dai); }
+.step.me i { border-color: var(--qing-line); color: var(--qing); }
+.step.ai i { border-color: var(--dian-line); color: var(--dian); }
 .step.done { color: var(--ink-2); }
-.step.now { background: var(--sheet); border-color: var(--line-2); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(60, 45, 30, .08); }
+.step.now { background: var(--sheet); border-color: var(--line-2); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(30, 28, 24, .08); }
 .step.now small { font-weight: 400; color: var(--ink-3); }
-.step.now.me i { background: var(--zhe); border-color: var(--zhe); color: #fff9f1; }
-.step.now.ai i { background: var(--dai); border-color: var(--dai); color: #f3fbfa; }
+.step.now.me i { background: var(--qing); border-color: var(--qing); color: #fff; }
+.step.now.ai i { background: var(--dian); border-color: var(--dian); color: #fff; }
 .step-arrow { color: var(--ink-4); }
 
 /* ---------- 工作区 ---------- */
 .stage { flex: 1; min-height: 0; display: flex; }
 .col { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .canvas { flex: 1; min-height: 0; overflow: auto; padding: 22px 34px 80px; }
-.tip { position: relative; max-width: 800px; margin: 0 auto 18px; padding: 12px 40px 12px 18px; border-radius: 8px; background: rgba(62, 92, 94, .07); border: 1px solid var(--dai-line); font-size: 13px; line-height: 1.9; color: var(--ink-2); }
-.tip b { color: var(--dai); }
+.tip { position: relative; max-width: 800px; margin: 0 auto 18px; padding: 12px 40px 12px 18px; border-radius: 8px; background: var(--qing-soft); border: 1px solid var(--qing-line); font-size: 13px; line-height: 1.9; color: var(--ink-2); }
+.tip b { color: var(--qing); }
 .tip ol { margin: 4px 0 0; padding-left: 20px; }
 .tip .x { position: absolute; right: 8px; top: 4px; border: 0; background: none; cursor: pointer; color: var(--ink-3); font-size: 18px; }
 .fail { max-width: 640px; margin: 80px auto; padding: 24px 28px; border-radius: 10px; background: var(--sheet); border: 1px solid var(--zhu-line); color: var(--ink-2); line-height: 1.9; }
 .fail b { color: var(--zhu); }
 
-.sheet { position: relative; max-width: 800px; margin: 0 auto; padding: 46px 60px 36px; border-radius: 3px; background: var(--sheet); border: 1px solid rgba(214, 202, 182, .7); box-shadow: var(--shadow); }
+.sheet { position: relative; max-width: 800px; margin: 0 auto; padding: 46px 60px 36px; border-radius: 3px; background: var(--sheet); border: 1px solid rgba(212, 207, 198, .7); box-shadow: var(--shadow); }
 .sheet::after { content: ''; position: absolute; inset: 11px; border: 1px solid var(--tc-line); border-radius: 2px; pointer-events: none; opacity: .55; }
 .doc-title { position: relative; z-index: 1; text-align: center; margin-bottom: 20px; }
 .doc-kicker { font: 13px var(--kai); color: var(--tc); letter-spacing: .4em; margin-right: -.4em; margin-bottom: 10px; }
@@ -94,8 +96,8 @@ kbd { display: inline-block; padding: 0 6px; border: 1px solid var(--line-2); bo
 .ornament::before, .ornament::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, transparent, var(--line-2)); }
 .ornament::after { background: linear-gradient(to left, transparent, var(--line-2)); }
 .ornament span { width: 6px; height: 6px; margin: 0 10px; border: 1px solid var(--tc); transform: rotate(45deg); opacity: .75; }
-.laid { position: relative; z-index: 1; padding: 6px 14px; border-radius: 8px; border: 1px dashed var(--dai-line); background: rgba(62, 92, 94, .05); font-size: 12.5px; line-height: 1.8; color: var(--ink-2); text-align: center; }
-.laid b { color: var(--dai); font-weight: 600; }
+.laid { position: relative; z-index: 1; padding: 6px 14px; border-radius: 8px; border: 1px dashed var(--dian-line); background: rgba(74, 83, 166, .05); font-size: 12.5px; line-height: 1.8; color: var(--ink-2); text-align: center; }
+.laid b { color: var(--dian); font-weight: 600; }
 .sheet-foot { position: relative; z-index: 1; margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--line); text-align: center; font-size: 11.5px; color: var(--ink-4); letter-spacing: .03em; word-break: break-all; }
 
 .sec { position: relative; z-index: 1; margin-top: 26px; }
@@ -104,87 +106,87 @@ kbd { display: inline-block; padding: 0 6px; border: 1px solid var(--line-2); bo
 .sec-name { font: 15px var(--kai); color: var(--tc); letter-spacing: .3em; white-space: nowrap; }
 .sec-line { flex: 1; min-width: 12px; height: 1px; background: linear-gradient(to right, var(--line-2), transparent); }
 .who { flex: none; padding: 0 9px; border-radius: 999px; font: 11.5px/1.75 var(--sans); letter-spacing: .06em; white-space: nowrap; }
-.who.me { background: var(--zhe-soft); color: var(--zhe); border: 1px solid var(--zhe-line); }
-.who.ai { background: var(--dai-soft); color: var(--dai); border: 1px solid var(--dai-line); }
+.who.me { background: var(--qing-soft); color: var(--qing); border: 1px solid var(--qing-line); }
+.who.ai { background: var(--dian-soft); color: var(--dian); border: 1px solid var(--dian-line); }
 /* AI 写好的几区：平时收成一行，点开看全文 */
-.sum { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 6px 12px; border-radius: 7px; background: rgba(62, 92, 94, .045); box-shadow: inset 2px 0 0 rgba(62, 92, 94, .26); font: 13.5px/1.9 var(--sans); color: var(--ink-2); cursor: pointer; }
-.sum:hover { background: rgba(62, 92, 94, .085); }
+.sum { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 6px 12px; border-radius: 7px; background: rgba(74, 83, 166, .045); box-shadow: inset 2px 0 0 rgba(74, 83, 166, .26); font: 13.5px/1.9 var(--sans); color: var(--ink-2); cursor: pointer; }
+.sum:hover { background: rgba(74, 83, 166, .085); }
 .sec.fold .blist, .sec.fold .rw { display: none; }
 .sec:not(.fold) .sum { display: none; }
 .rw { display: flex; align-items: center; gap: 6px; margin: 0 0 10px; }
 .rw input { flex: 1; min-width: 0; }
 .blist { display: flex; flex-direction: column; }
 .blk { position: relative; display: flex; align-items: baseline; gap: 10px; margin: 0 -12px; padding: 3px 12px; border-radius: 6px; font: 15px/1.9 var(--serif); transition: background .15s, box-shadow .15s; }
-.blk:hover { background: rgba(120, 98, 70, .035); }
-.blk:focus-within { background: rgba(141, 106, 60, .055); box-shadow: inset 2px 0 0 var(--zhe); }
-.blk.ai { box-shadow: inset 2px 0 0 rgba(62, 92, 94, .26); }
-.blk.ai.mine { box-shadow: inset 2px 0 0 var(--zhe-line); }
-.blk.ai:focus-within { background: rgba(62, 92, 94, .05); box-shadow: inset 2px 0 0 var(--dai); }
+.blk:hover { background: rgba(40, 36, 30, .03); }
+.blk:focus-within { background: rgba(31, 107, 105, .055); box-shadow: inset 2px 0 0 var(--qing); }
+.blk.ai { box-shadow: inset 2px 0 0 rgba(74, 83, 166, .26); }
+.blk.ai.mine { box-shadow: inset 2px 0 0 var(--qing-line); }
+.blk.ai:focus-within { background: rgba(74, 83, 166, .05); box-shadow: inset 2px 0 0 var(--dian); }
 .lab { flex: none; font: 14px/2 var(--kai); color: var(--tc); letter-spacing: .1em; }
-.geo { flex: none; align-self: baseline; margin-left: -4px; padding: 0 6px; border-radius: 4px; background: var(--dai); color: #f3fbfa; font: 600 10px/1.7 var(--sans); letter-spacing: .08em; cursor: help; }
+.geo { flex: none; align-self: baseline; margin-left: -4px; padding: 0 6px; border-radius: 4px; background: var(--dian); color: #fff; font: 600 10px/1.7 var(--sans); letter-spacing: .08em; cursor: help; }
 .ed { flex: 1; min-width: 0; min-height: 1.9em; outline: none; white-space: pre-wrap; word-break: break-word; cursor: text; }
 .ed.ro { cursor: pointer; }
 .blk.nt { cursor: pointer; }
-.blk.nt:hover { background: rgba(168, 58, 44, .04); }
+.blk.nt:hover { background: rgba(184, 56, 43, .04); }
 .blk.noted { box-shadow: inset 2px 0 0 var(--zhu); }
-.blk.red { box-shadow: inset 2px 0 0 var(--zhu); background: rgba(168, 58, 44, .035); }
-/* 你写给 AI 的批注：朱笔，跟在那一行下面（AI 写给你的批注是黛色） */
-.hnote { position: relative; margin: 2px 0 6px; padding: 5px 12px 6px 34px; border-radius: 4px; background: rgba(168, 58, 44, .05); color: var(--zhu); font: 14.5px/1.8 var(--kai); white-space: pre-wrap; word-break: break-word; cursor: pointer; }
-.hnote::before { content: '批'; position: absolute; left: 10px; top: 9px; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 3px; background: var(--zhu); color: #fff8f2; font: 11px/1 var(--kai); }
+.blk.red { box-shadow: inset 2px 0 0 var(--zhu); background: rgba(184, 56, 43, .035); }
+/* 你写给 AI 的批注：朱笔，跟在那一行下面（AI 写给你的批注是靛色） */
+.hnote { position: relative; margin: 2px 0 6px; padding: 5px 12px 6px 34px; border-radius: 4px; background: rgba(184, 56, 43, .05); color: var(--zhu); font: 14.5px/1.8 var(--kai); white-space: pre-wrap; word-break: break-word; cursor: pointer; }
+.hnote::before { content: '批'; position: absolute; left: 10px; top: 9px; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 3px; background: var(--zhu); color: #fff; font: 11px/1 var(--kai); }
 .hnote.edit { cursor: default; padding-right: 10px; }
-.hn-ta { display: block; width: 100%; min-height: 58px; padding: 6px 10px; border: 1px solid var(--zhu-line); border-radius: 6px; background: #fffefc; color: var(--ink); outline: none; resize: none; overflow: hidden; font: 15px/1.8 var(--kai); }
+.hn-ta { display: block; width: 100%; min-height: 58px; padding: 6px 10px; border: 1px solid var(--zhu-line); border-radius: 6px; background: #fff; color: var(--ink); outline: none; resize: none; overflow: hidden; font: 15px/1.8 var(--kai); }
 .hn-ta:focus { box-shadow: 0 0 0 3px var(--zhu-soft); }
 .hn-acts { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 6px; font-family: var(--sans); }
 .hn-acts .faint { margin-right: auto; }
-.btn.zhu { background: var(--zhu); border-color: var(--zhu); color: #fff8f2; }
-.btn.zhu:hover { background: #95301f; }
+.btn.zhu { background: var(--zhu); border-color: var(--zhu); color: #fff; }
+.btn.zhu:hover { background: #9c2d22; border-color: #9c2d22; }
 #gnote:empty { display: none; }
 #gnote { position: relative; z-index: 1; margin-top: 6px; }
 /* 你写好的可以收起来：只留开头两行 */
 .peek { display: none; }
-.fold > .peek { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; padding: 6px 14px; border-radius: 8px; background: var(--zhe-soft); box-shadow: inset 2px 0 0 var(--zhe-line); font: 14.5px/1.8 var(--serif); color: var(--ink-2); cursor: pointer; }
-.fold > .peek:hover { background: rgba(141, 106, 60, .14); }
+.fold > .peek { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; padding: 6px 14px; border-radius: 8px; background: var(--qing-soft); box-shadow: inset 2px 0 0 var(--qing-line); font: 14.5px/1.8 var(--serif); color: var(--ink-2); cursor: pointer; }
+.fold > .peek:hover { background: rgba(31, 107, 105, .14); }
 section.sec.fold > .wr, .p-shot.fold > .wr, .p-shot.fold > .kw { display: none; }
 .p-shot.fold > .shot-h { margin-bottom: 6px; padding-bottom: 6px; }
 .ed:empty::before { content: attr(data-ph); color: var(--ink-4); }
 .flash { animation: flash 1.2s ease; }
-@keyframes flash { 0%, 35% { background: rgba(179, 146, 86, .28); } 100% { background: transparent; } }
+@keyframes flash { 0%, 35% { background: rgba(214, 160, 50, .26); } 100% { background: transparent; } }
 
 /* 你写的地方：真的文字框，底下垫一层只画标记的影子（字是透明的，只留底色和下划线） */
-.wr { position: relative; flex: 1; min-width: 0; border: 1px solid var(--line-2); border-radius: 8px; background: #fffefc; transition: border-color .15s, box-shadow .15s; }
-.wr:focus-within { border-color: var(--zhe); box-shadow: 0 0 0 3px var(--zhe-soft); }
+.wr { position: relative; flex: 1; min-width: 0; border: 1px solid var(--line-2); border-radius: 8px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+.wr:focus-within { border-color: var(--qing); box-shadow: 0 0 0 3px var(--qing-soft); }
 .wr-bg, .wr-ta { margin: 0; padding: 10px 14px; border: 0; font: 16px/1.95 var(--serif); letter-spacing: normal; text-align: left; white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; tab-size: 4; }
 .wr-bg { position: absolute; inset: 0; overflow: hidden; color: transparent; pointer-events: none; user-select: none; }
-.wr-ta { position: relative; display: block; width: 100%; resize: none; overflow: hidden; background: transparent; color: var(--ink); outline: none; caret-color: var(--zhu); }
+.wr-ta { position: relative; display: block; width: 100%; resize: none; overflow: hidden; background: transparent; color: var(--ink); outline: none; caret-color: var(--qing); }
 .wr-ta::placeholder { color: var(--ink-4); }
-.m-say { background: rgba(168, 58, 44, .1); border-radius: 3px; }
-.m-sfx { background: rgba(62, 92, 94, .12); border-radius: 3px; }
-.m-nm { border-bottom: 1px dotted #8d6a3c; }
-.m-ref { background: var(--zhe-soft); border-bottom: 1px solid var(--zhe-line); }
-.m-lint { text-decoration: underline wavy #a83a2c; text-underline-offset: 4px; }
-.m-ai { background: rgba(62, 92, 94, .18); }
+.m-say { background: rgba(44, 122, 76, .12); border-radius: 3px; }
+.m-sfx { background: rgba(176, 116, 32, .14); border-radius: 3px; }
+.m-nm { border-bottom: 1px dotted var(--qing); }
+.m-ref { background: var(--qing-soft); border-bottom: 1px solid var(--qing-line); }
+.m-lint { text-decoration: underline wavy #b8382b; text-underline-offset: 4px; }
+.m-ai { background: rgba(74, 83, 166, .18); }
 
 /* AI 写的几区里的资产名牌：文件里还是 @图片N，这里带上小图和名字 */
 .ref {
   display: inline-flex; align-items: center; gap: 5px; margin: 0 2px; padding: 0 8px 0 2px; border-radius: 999px; vertical-align: 1px; cursor: zoom-in; white-space: nowrap;
-  border: 1px solid var(--zhe-line); background: var(--zhe-soft); color: var(--zhe); font: 600 12px/1.75 var(--sans); letter-spacing: .02em;
+  border: 1px solid var(--qing-line); background: var(--qing-soft); color: var(--qing); font: 600 12px/1.75 var(--sans); letter-spacing: .02em;
 }
 .ref::before { content: ''; width: 17px; height: 17px; flex: none; border-radius: 50%; background: var(--paper-3) var(--th) top center / cover no-repeat; }
 .ref.av::before { content: '♪'; display: grid; place-items: center; font-size: 11px; color: var(--ink-3); }
 .ref.vid::before { content: '▶'; display: grid; place-items: center; font-size: 9px; color: var(--ink-3); }
 .ref::after { content: attr(data-name); font-weight: 400; color: var(--ink-2); max-width: 12em; overflow: hidden; text-overflow: ellipsis; }
 [data-sec="refs"] .blist .ref::after { content: none; }
-.ref:hover { border-color: var(--zhe); }
-::highlight(say) { color: #8a3324; background-color: rgba(168, 58, 44, .07); }
-::highlight(sfx) { color: #3e5c5e; background-color: rgba(62, 92, 94, .09); }
-::highlight(ph) { color: #7a5b2b; background-color: rgba(179, 146, 86, .2); }
-::highlight(lint) { text-decoration: underline wavy #a83a2c; text-underline-offset: 4px; }
+.ref:hover { border-color: var(--qing); }
+::highlight(say) { color: #23663f; background-color: rgba(44, 122, 76, .09); }
+::highlight(sfx) { color: #8a5714; background-color: rgba(176, 116, 32, .11); }
+::highlight(ph) { color: #6b4d0c; background-color: rgba(232, 184, 60, .32); }
+::highlight(lint) { text-decoration: underline wavy #b8382b; text-underline-offset: 4px; }
 
 /* 分镜、关键词 */
 .pshots { display: flex; flex-direction: column; gap: 18px; margin-top: 12px; }
-.p-shot { position: relative; padding: 12px 18px 16px; border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(to bottom, rgba(244, 239, 230, .6), rgba(255, 253, 249, 0) 80px); }
+.p-shot { position: relative; padding: 12px 18px 16px; border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(to bottom, rgba(245, 243, 239, .6), rgba(255, 255, 255, 0) 80px); }
 .shot-h { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; padding: 0 0 9px; border-bottom: 1px solid var(--line); }
-.shot-no { flex: none; padding: 1px 10px; border-radius: 4px; background: var(--tc); color: #fff9f1; font: 13.5px/1.6 var(--kai); letter-spacing: .15em; }
+.shot-no { flex: none; padding: 1px 10px; border-radius: 4px; background: var(--tc); color: #fff; font: 13.5px/1.6 var(--kai); letter-spacing: .15em; }
 .shot-title { flex: 1; min-width: 40px; padding: 0; border: 0; background: transparent; outline: none; font: 600 16px/1.5 var(--serif); letter-spacing: .05em; }
 .shot-title::placeholder { color: var(--ink-4); font-weight: 400; }
 .shot-meta { flex: none; font-size: 11.5px; color: var(--ink-4); white-space: nowrap; }
@@ -192,11 +194,11 @@ section.sec.fold > .wr, .p-shot.fold > .wr, .p-shot.fold > .kw { display: none; 
 .shot-x { flex: none; padding: 0 6px; border: 0; background: none; cursor: pointer; color: var(--ink-4); font-size: 12px; }
 .shot-x:hover { color: var(--zhu); }
 .kw { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 5px 6px; margin: 0 0 10px; padding: 0 0 0 34px; }
-.kw::before { content: 'AI'; position: absolute; left: 2px; top: 3px; width: 22px; height: 17px; display: grid; place-items: center; border-radius: 3px; background: var(--dai); color: #f3fbfa; font: 600 10.5px/1 var(--sans); }
-.kw-g { margin-left: 6px; font: 12.5px var(--kai); color: var(--dai); letter-spacing: .14em; }
+.kw::before { content: 'AI'; position: absolute; left: 2px; top: 3px; width: 22px; height: 17px; display: grid; place-items: center; border-radius: 3px; background: var(--dian); color: #fff; font: 600 10.5px/1 var(--sans); }
+.kw-g { margin-left: 6px; font: 12.5px var(--kai); color: var(--dian); letter-spacing: .14em; }
 .kw-g:first-child { margin-left: 0; }
-.k { max-width: 100%; padding: 0 10px; border: 1px dashed var(--dai-line); border-radius: 999px; background: rgba(62, 92, 94, .04); color: var(--dai); cursor: pointer; font: 12.5px/1.8 var(--sans); text-align: left; }
-.k:hover { background: rgba(62, 92, 94, .12); border-style: solid; }
+.k { max-width: 100%; padding: 0 10px; border: 1px dashed var(--dian-line); border-radius: 999px; background: rgba(74, 83, 166, .04); color: var(--dian); cursor: pointer; font: 12.5px/1.8 var(--sans); text-align: left; }
+.k:hover { background: rgba(74, 83, 166, .12); border-style: solid; }
 .k.hit { border-color: var(--line); background: none; color: var(--ink-4); }
 .k.hit::before { content: '✓ '; }
 .kw-more { margin-left: auto; padding: 0 4px; border: 0; background: none; cursor: pointer; color: var(--ink-3); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
@@ -204,44 +206,50 @@ section.sec.fold > .wr, .p-shot.fold > .wr, .p-shot.fold > .kw { display: none; 
 .add-shot { display: block; width: 100%; margin-top: 14px; padding: 9px; border: 1px dashed var(--line-2); border-radius: 9px; background: none; cursor: pointer; color: var(--ink-3); font-size: 13px; letter-spacing: .1em; }
 .add-shot:hover { color: var(--ink); border-color: var(--ink-4); }
 
-/* AI 批注：黛色（人写的批注是朱色） */
-.ainote { position: relative; margin: 10px 0 0; padding: 9px 12px 10px 42px; border-radius: 6px; background: rgba(62, 92, 94, .06); border: 1px solid var(--dai-line); font: 13px/1.7 var(--sans); color: var(--ink-2); cursor: pointer; }
-.ainote::before { content: 'AI'; position: absolute; left: 10px; top: 11px; width: 22px; height: 17px; display: grid; place-items: center; border-radius: 3px; background: var(--dai); color: #f3fbfa; font: 600 10.5px/1 var(--sans); }
-.ainote.soft { background: rgba(62, 92, 94, .03); border-style: dashed; }
-.an-tag { font: 12px var(--kai); color: var(--dai); letter-spacing: .14em; }
-.an-say { font: 15px/1.7 var(--kai); color: var(--dai); }
+/* AI 批注：靛色（人写的批注是朱色） */
+.ainote { position: relative; margin: 10px 0 0; padding: 9px 12px 10px 42px; border-radius: 6px; background: rgba(74, 83, 166, .06); border: 1px solid var(--dian-line); font: 13px/1.7 var(--sans); color: var(--ink-2); cursor: pointer; }
+.ainote::before { content: 'AI'; position: absolute; left: 10px; top: 11px; width: 22px; height: 17px; display: grid; place-items: center; border-radius: 3px; background: var(--dian); color: #fff; font: 600 10.5px/1 var(--sans); }
+.ainote.soft { background: rgba(74, 83, 166, .03); border-style: dashed; }
+.an-tag { font: 12px var(--kai); color: var(--dian); letter-spacing: .14em; }
+.an-say { font: 15px/1.7 var(--kai); color: var(--dian); }
 .an-why { font-size: 12.5px; color: var(--ink-3); }
-.an-diff { margin-top: 7px; padding: 6px 10px; border-radius: 5px; background: var(--sheet); border: 1px dashed var(--dai-line); font: 14px/1.8 var(--serif); }
-.an-diff del { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--dai); }
-.an-diff ins { margin-left: 4px; color: var(--dai); text-decoration: none; font-family: var(--kai); font-size: 1.04em; }
+.an-diff { margin-top: 7px; padding: 6px 10px; border-radius: 5px; background: var(--sheet); border: 1px dashed var(--dian-line); font: 14px/1.8 var(--serif); }
+.an-diff del { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--dian); }
+.an-diff ins { margin-left: 4px; color: var(--dian); text-decoration: none; font-family: var(--kai); font-size: 1.04em; }
 .an-acts { display: flex; gap: 6px; margin-top: 8px; }
 .ainote.done { padding-top: 5px; padding-bottom: 5px; background: none; border-style: dashed; color: var(--ink-3); cursor: default; }
 .ainote.done::before { top: 8px; opacity: .45; }
 
 /* 底部引导条 */
-.guide { flex: none; display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 6px 18px 6px 24px; border-top: 1px solid var(--line); background: rgba(250, 246, 239, .9); font-size: 12.5px; color: var(--ink-2); }
-.guide b { flex: none; font: 14px var(--kai); color: var(--zhe); letter-spacing: .12em; white-space: nowrap; }
+.guide { flex: none; display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 6px 18px 6px 24px; border-top: 1px solid var(--line); background: var(--sheet); font-size: 12.5px; color: var(--ink-2); }
+.guide b { flex: none; font: 14px var(--kai); color: var(--qing); letter-spacing: .12em; white-space: nowrap; }
 .g-list { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 6px; }
 .g { padding: 0 10px; border-radius: 999px; background: var(--sheet); border: 1px solid var(--line); white-space: nowrap; }
 .g-keys { flex: none; color: var(--ink-3); white-space: nowrap; }
 
 /* ---------- 右栏 ---------- */
-.rail { flex: none; width: 340px; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: rgba(246, 241, 233, .6); }
+.rail { flex: none; width: 340px; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--sheet); }
 body.norail .rail { display: none; }
 .rail-tabs { flex: none; display: flex; gap: 2px; padding: 8px 12px 0; border-bottom: 1px solid var(--line); }
 .rail-tab { flex: 1; margin-bottom: -1px; padding: 8px 0 9px; border: 0; border-bottom: 2px solid transparent; background: none; cursor: pointer; font-size: 12.5px; color: var(--ink-3); letter-spacing: .04em; white-space: nowrap; }
 .rail-tab:hover { color: var(--ink); }
 .rail-tab.on { color: var(--ink); border-bottom-color: var(--tc); }
 .rail-tab.has { color: var(--zhu); }
-.rail-tab.has-ai { color: var(--dai); font-weight: 600; }
-.pin { flex: none; padding: 10px 14px 8px; border-bottom: 1px solid var(--line); background: rgba(255, 253, 249, .7); }
+.rail-tab.has-ai { color: var(--dian); font-weight: 600; }
+.pin { flex: none; padding: 10px 14px 8px; border-bottom: 1px solid var(--line); background: var(--sheet); }
 .pin img { display: block; width: 100%; max-height: 240px; object-fit: contain; border-radius: 6px; background: var(--paper-2); cursor: zoom-in; }
+.pin video { display: block; width: 100%; max-height: 240px; border-radius: 6px; background: #000; }
+.pin-n.vid { flex-wrap: wrap; row-gap: 5px; }
+.pin-n.vid > span { flex: 1 1 100%; }   /* 名字单占一行，按钮在下面一行 */
+.pin-n .push { margin-left: auto; }
+.rail-body img:not([src]), .at-pop img:not([src]) { visibility: hidden; }   /* 图还没做好时别露出替代文字 */
+.pin-wait { padding: 26px 0; text-align: center; font-size: 12.5px; color: var(--ink-3); }
 .pin-n { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12.5px; }
-.pin-n b { color: var(--zhe); }
+.pin-n b { color: var(--qing); }
 .pin-n span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rail-body { flex: 1; min-height: 0; overflow: auto; padding: 14px 14px 40px; }
 .as-q { width: 100%; padding: 7px 11px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--sheet); outline: none; font-size: 13px; }
-.as-q:focus { border-color: var(--zhe-line); box-shadow: 0 0 0 3px var(--zhe-soft); }
+.as-q:focus { border-color: var(--qing-line); box-shadow: 0 0 0 3px var(--qing-soft); }
 .as-h { display: flex; align-items: baseline; gap: 8px; margin: 16px 0 8px; font: 13px var(--kai); color: var(--ink-2); letter-spacing: .26em; }
 .as-h em { font: normal 11px var(--sans); color: var(--ink-4); letter-spacing: 0; }
 .as-h.tog { cursor: pointer; }
@@ -249,11 +257,11 @@ body.norail .rail { display: none; }
 .as-h.tog.open::before { content: '▾'; }
 .used-list { display: flex; flex-direction: column; gap: 2px; }
 .used-row, .av-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 7px; cursor: grab; }
-.used-row:hover, .av-row:hover { background: rgba(255, 253, 249, .9); }
+.used-row:hover, .av-row:hover { background: rgba(40, 36, 30, .045); }
 .u-th { width: 36px; height: 36px; flex: none; border-radius: 6px; object-fit: cover; object-position: top; border: 1px solid var(--line); background: var(--paper-2); cursor: zoom-in; }
 .ph { display: grid; place-items: center; background: var(--paper-3); color: var(--ink-3); font-size: 14px; }
 .u-n { flex: 1; min-width: 0; font-size: 13px; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.u-n b { color: var(--zhe); font: 600 12px var(--sans); }
+.u-n b { color: var(--qing); font: 600 12px var(--sans); }
 .u-n span { display: block; font-size: 11.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; }
 .u-n span.warn { color: var(--zhu); }
 .mini-b { flex: none; padding: 1px 9px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--sheet); cursor: pointer; font: 11.5px/1.6 var(--sans); color: var(--ink-2); white-space: nowrap; }
@@ -264,28 +272,45 @@ body.norail .rail { display: none; }
 .as-t { position: relative; min-width: 0; cursor: grab; }
 .as-t img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; object-position: top; border-radius: 6px; border: 1px solid var(--line); background: var(--paper-2); cursor: zoom-in; }
 .as-t:hover img { border-color: var(--ink-4); }
-.as-t .no { position: absolute; left: 4px; top: 4px; padding: 0 6px; border-radius: 999px; background: var(--zhe); color: #fff9f1; font: 600 10.5px/1.6 var(--sans); }
+.as-t .no { position: absolute; left: 4px; top: 4px; padding: 0 6px; border-radius: 999px; background: var(--qing); color: #fff; font: 600 10.5px/1.6 var(--sans); }
 .as-acts { position: absolute; left: 0; right: 0; top: calc(100% - 46px); display: none; justify-content: center; gap: 4px; }
 .as-t:hover .as-acts { display: flex; }
-.as-acts button { padding: 0 8px; border: 0; border-radius: 999px; background: rgba(42, 38, 34, .82); color: #fbf5ea; cursor: pointer; font-size: 11px; line-height: 1.8; }
-.as-acts button:hover { background: var(--zhe); }
+.as-acts button { padding: 0 8px; border: 0; border-radius: 999px; background: rgba(31, 28, 25, .82); color: #fff; cursor: pointer; font-size: 11px; line-height: 1.8; }
+.as-acts button:hover { background: var(--qing); }
 .as-n { margin-top: 3px; font-size: 11.5px; line-height: 1.4; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+.av-row { cursor: pointer; }
 .av-ic { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--paper-3); color: var(--ink-3); font-size: 12px; cursor: pointer; }
+.as-hint { margin: 8px 2px 0; font-size: 12px; line-height: 1.7; color: var(--ink-3); }
+/* 视频一张卡：左边封面，右边名字、时长、按钮 */
+.vc { display: flex; gap: 10px; margin-bottom: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); cursor: grab; }
+.vc:hover { border-color: var(--line-2); }
+.vc-pic { position: relative; flex: none; width: 128px; aspect-ratio: 16 / 9; display: grid; place-items: center; overflow: hidden; border-radius: 6px; background: #2b2924; cursor: pointer; }
+.vc-pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.vc-play { position: relative; z-index: 1; width: 30px; height: 30px; display: grid; place-items: center; padding-left: 2px; border-radius: 50%; background: rgba(31, 28, 25, .62); color: #fff; font-size: 12px; }
+.vc-pic:hover .vc-play { background: var(--qing); }
+.vc-dur { position: absolute; z-index: 1; right: 4px; bottom: 3px; padding: 0 5px; border-radius: 3px; background: rgba(31, 28, 25, .75); color: #fff; font: 11px/1.6 var(--sans); }
+.vc-dur:empty { display: none; }
+.vc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.vc-n { font: 600 13px/1.5 var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vc-n b { margin-right: 6px; color: var(--qing); font-weight: 600; }
+.vc-m { font-size: 11.5px; line-height: 1.5; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; }
+.vc-m.warn { color: var(--zhu); }
+.vc-acts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: auto; padding-top: 4px; }
+.mini-b.on { border-color: var(--qing); color: var(--qing); }
 .av-n { flex: 1; min-width: 0; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.av-row b { color: var(--zhe); font: 600 11.5px var(--sans); }
+.av-row b { color: var(--qing); font: 600 11.5px var(--sans); }
 
 .ai-empty { padding: 8px 2px; font-size: 13px; line-height: 1.9; color: var(--ink-2); }
 .ai-empty ol { margin: 6px 0 14px; padding-left: 20px; }
 .ai-wait { padding: 30px 6px; text-align: center; color: var(--ink-2); line-height: 2; }
-.spin { width: 22px; height: 22px; flex: none; margin: 0 auto 10px; border-radius: 50%; border: 2px solid var(--dai-line); border-top-color: var(--dai); animation: spin .8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.ai-sum { margin-bottom: 10px; padding: 9px 12px; border-radius: 7px; background: rgba(62, 92, 94, .08); font: 14.5px/1.75 var(--kai); color: var(--dai); }
+.ai-wait .wt-ring { --wt-w: 2.5px; display: block; margin: 0 auto 12px; font-size: 24px; color: var(--dian); }
+.ai-sum { margin-bottom: 10px; padding: 9px 12px; border-radius: 7px; background: rgba(74, 83, 166, .08); font: 14.5px/1.75 var(--kai); color: var(--dian); }
 .ai-sum small { display: block; font: 12px var(--sans); color: var(--ink-3); }
 .nlist { display: flex; flex-direction: column; gap: 8px; }
 .nl-i { width: 100%; display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; cursor: pointer; text-align: left; border: 1px solid var(--line); border-radius: 7px; background: var(--sheet); font-size: 12.5px; color: var(--ink-2); }
-.nl-i:hover { border-color: var(--dai-line); }
+.nl-i:hover { border-color: var(--dian-line); }
 .nl-w { font: 12px var(--kai); color: var(--ink-3); letter-spacing: .08em; }
-.nl-n { font: 14px/1.7 var(--kai); color: var(--dai); }
+.nl-n { font: 14px/1.7 var(--kai); color: var(--dian); }
 .nl-i.done { opacity: .55; }
 .nl-i.done .nl-n { text-decoration: line-through; }
 .lint { display: flex; flex-direction: column; gap: 6px; }
@@ -294,50 +319,87 @@ body.norail .rail { display: none; }
 .issue em { display: block; font-style: normal; color: var(--ink-3); }
 .lv { flex: none; width: 6px; height: 6px; margin-top: 7px; border-radius: 50%; background: var(--zhu); }
 .issue.info .lv { background: var(--jin); }
-.cmp-h { margin: 14px 0 6px; font: 13px var(--kai); color: var(--ink-3); letter-spacing: .3em; }
-.cmp-h:first-child { margin-top: 0; }
-.cmp-h em { margin-left: 8px; font: normal 11px var(--sans); color: var(--ink-4); letter-spacing: 0; }
+/* 校对、批注、剧本这几页顶上的一句话：这一页是干什么的 */
+.tab-intro { margin: 0 0 12px; padding: 8px 12px; border-radius: 7px; background: var(--paper-2); font-size: 12.5px; line-height: 1.75; color: var(--ink-2); }
+.tab-intro b { color: var(--ink); font-weight: 600; }
+.tab-intro small { display: block; margin-top: 2px; font-size: 12px; color: var(--ink-3); }
+/* 剧本页：每一块可以折起来 */
+.cmp-fold { margin-bottom: 8px; }
+.cmp-fold > summary { cursor: pointer; list-style: none; padding: 6px 0; font: 13px var(--kai); color: var(--ink-2); letter-spacing: .3em; }
+.cmp-fold > summary::-webkit-details-marker { display: none; }
+.cmp-fold > summary::before { content: '▸'; margin-right: 6px; font: 11px var(--sans); color: var(--ink-4); letter-spacing: 0; }
+.cmp-fold[open] > summary::before { content: '▾'; }
+.cmp-fold > summary em { margin-left: 8px; font: normal 11px var(--sans); color: var(--ink-4); letter-spacing: 0; }
 .cmp-box { padding: 10px 14px; border: 1px solid var(--line); border-radius: 7px; background: var(--sheet); font: 13.5px/1.9 var(--serif); word-break: break-word; }
 .cmp-box p + p { margin-top: 2px; }
-.cmp-box b { font-family: var(--kai); font-weight: 400; color: var(--dai); }
-.cmp-box .say { padding-left: 1em; color: #8a3324; }
+.cmp-box b { font-family: var(--kai); font-weight: 400; color: var(--qing); }
+.cmp-box .say { padding-left: 1em; color: #23663f; }
 .cmp-box .on { color: var(--ink); font-weight: 600; }
 .cmp-box .off { color: var(--ink-4); }
+.cmp-box .sc-title { font: 600 15px/1.7 var(--serif); color: var(--ink); }
+.cmp-box .sc-meta { font-size: 13px; line-height: 1.8; color: var(--ink-2); }
+.cmp-box .sc-h { margin-top: 8px; font: 12.5px var(--kai); letter-spacing: .3em; color: var(--ink-3); }
 .cmp-box.long { max-height: 320px; overflow: auto; font: 12.5px/1.8 var(--sans); white-space: pre-wrap; }
-.cmp-copy { margin-top: 6px; }
 
 /* @ 选资产 */
-.at-pop { position: fixed; z-index: 50; width: 320px; max-height: 330px; overflow: auto; padding: 5px; border-radius: 10px; background: var(--sheet); border: 1px solid var(--line-2); box-shadow: 0 18px 50px -12px rgba(60, 45, 30, .38); }
+.at-pop { position: fixed; z-index: 50; width: 320px; max-height: 330px; overflow: auto; padding: 5px; border-radius: 10px; background: var(--sheet); border: 1px solid var(--line-2); box-shadow: 0 18px 50px -12px rgba(30, 28, 24, .38); }
 .at-h { padding: 4px 8px 2px; font: 11.5px var(--kai); color: var(--ink-3); letter-spacing: .25em; }
 .at-i { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 7px; cursor: pointer; }
-.at-i.on { background: var(--zhe-soft); box-shadow: inset 0 0 0 1px var(--zhe-line); }
+.at-i.on { background: var(--qing-soft); box-shadow: inset 0 0 0 1px var(--qing-line); }
 .at-i img, .at-i .ph { width: 40px; height: 40px; flex: none; border-radius: 6px; object-fit: cover; object-position: top; border: 1px solid var(--line); background: var(--paper-2); }
 .at-n { flex: 1; min-width: 0; line-height: 1.4; }
 .at-n b { display: block; font: 600 13.5px var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .at-n span { display: block; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.at-r { flex: none; font: 600 11.5px var(--sans); color: var(--zhe); }
-.at-r.new { color: var(--dai); }
+.at-r { flex: none; font: 600 11.5px var(--sans); color: var(--qing); }
+.at-r.new { color: #8f6420; }
 .at-f { margin-top: 4px; padding: 5px 8px 3px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--ink-4); }
 
 /* 悬停看图、大图、提示 */
-.hov { position: fixed; z-index: 60; width: 260px; padding: 8px; border-radius: 10px; background: var(--sheet); border: 1px solid var(--line-2); box-shadow: 0 18px 50px -12px rgba(60, 45, 30, .38); pointer-events: none; }
+.hov { position: fixed; z-index: 60; width: 260px; padding: 8px; border-radius: 10px; background: var(--sheet); border: 1px solid var(--line-2); box-shadow: 0 18px 50px -12px rgba(30, 28, 24, .38); pointer-events: none; }
 .hov img { display: block; width: 100%; max-height: 300px; min-height: 60px; object-fit: contain; border-radius: 6px; background: var(--paper-2); }
 .hov-av { padding: 18px 0; text-align: center; border-radius: 6px; background: var(--paper-2); color: var(--ink-3); }
 .hov-n { margin-top: 6px; font: 600 13px var(--sans); }
-.hov-n b { color: var(--zhe); }
+.hov-n b { color: var(--qing); }
 .hov-p { font-size: 11.5px; color: var(--ink-3); word-break: break-all; line-height: 1.5; }
-.lb { position: fixed; inset: 0; z-index: 80; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(25, 23, 20, .82); cursor: zoom-out; }
-.lb img, .lb video { max-width: 92vw; max-height: 82vh; border-radius: 6px; box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .5); }
-.lb audio { width: min(560px, 92vw); }
-.lb-cap { font-size: 12.5px; color: #f5eee3; letter-spacing: .04em; }
-#toast { position: fixed; left: 50%; bottom: 64px; z-index: 90; transform: translate(-50%, 12px); max-width: 80vw; padding: 9px 18px; border-radius: 18px; background: rgba(42, 38, 34, .92); color: #fbf5ea; font-size: 13px; line-height: 1.6; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+.hov-tip { margin-top: 4px; color: var(--qing); }
+/* 大窗：看大图、看视频、听音频。点黑底或按 Esc 关；图点一下放到原尺寸；有一组的，左右键或两边的箭头翻 */
+.lb { position: fixed; inset: 0; z-index: 80; display: flex; flex-direction: column; background: rgba(25, 23, 20, .88); cursor: zoom-out; }
+.lb-stage { flex: 1; min-height: 0; display: flex; overflow: auto; padding: 56px 76px 8px; }
+.lb-stage > * { flex: none; margin: auto; }
+.lb-stage img, .lb-stage video { max-width: calc(100vw - 152px); max-height: calc(100vh - 176px); border-radius: 6px; background: #000; box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .5); }
+.lb-stage img { cursor: zoom-in; }
+.lb-stage.zoom img { max-width: none; max-height: none; cursor: zoom-out; }
+.lb-stage video, .lb-stage audio { cursor: default; }
+.lb-stage audio { width: min(560px, 92vw); }
+.lb-bar { flex: none; padding: 8px 20px 18px; text-align: center; color: #f3f1ed; cursor: default; }
+.lb-title { font: 600 14px/1.5 var(--sans); }
+.lb-title b { margin-right: 8px; color: #8fd3cf; }
+.lb-n { margin-left: 10px; font-weight: 400; color: #b9b3a8; }
+.lb-meta { margin-top: 2px; font-size: 12px; color: #b9b3a8; word-break: break-all; }
+.lb-acts { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.lb-b { padding: 2px 14px; border: 1px solid rgba(255, 255, 255, .3); border-radius: 999px; background: rgba(255, 255, 255, .08); color: #f3f1ed; cursor: pointer; font: 12.5px/1.8 var(--sans); }
+.lb-b:hover { background: rgba(255, 255, 255, .2); }
+.lb-b.on { background: var(--qing); border-color: var(--qing); }
+.lb-x, .lb-nav { position: absolute; z-index: 1; border: 0; background: rgba(255, 255, 255, .12); color: #fff; cursor: pointer; line-height: 1; }
+.lb-x:hover, .lb-nav:hover { background: rgba(255, 255, 255, .26); }
+.lb-x { right: 18px; top: 12px; width: 36px; height: 36px; border-radius: 50%; font-size: 22px; }
+.lb-nav { top: 50%; width: 44px; height: 64px; margin-top: -40px; border-radius: 8px; font-size: 30px; }
+.lb-nav.prev { left: 14px; }
+.lb-nav.next { right: 14px; }
+#toast { position: fixed; left: 50%; bottom: 64px; z-index: 90; transform: translate(-50%, 12px); max-width: 80vw; padding: 9px 18px; border-radius: 18px; background: rgba(31, 28, 25, .92); color: #fff; font-size: 13px; line-height: 1.6; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
 #toast.on { opacity: 1; transform: translate(-50%, 0); }
 /* 左下角：AI 正在做的任务 */
 #jobs { position: fixed; left: 16px; bottom: 16px; z-index: 80; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
-.jobrow { pointer-events: auto; display: inline-flex; align-items: center; gap: 9px; padding: 6px 14px 6px 11px; border: 1px solid var(--line-2, #d9cfbd); border-radius: 999px; background: var(--sheet, #fffdf8); box-shadow: 0 4px 14px rgba(60, 48, 30, .12); font-size: 12.5px; color: var(--ink-2, #4a4238); }
+.jobrow { pointer-events: auto; display: inline-flex; align-items: center; gap: 9px; padding: 6px 14px 6px 11px; border: 1px solid var(--line-2, #d9cfbd); border-radius: 999px; background: var(--sheet, #fffdf8); box-shadow: 0 4px 14px rgba(30, 28, 24, .12); font-size: 12.5px; color: var(--ink-2, #4a4238); }
 .jobrow b { font: 600 12.5px ui-monospace, Consolas, monospace; min-width: 2.6em; }
-.jobspin { width: 14px; height: 14px; flex: none; border: 2px solid rgba(160, 120, 60, .3); border-top-color: #a0783c; border-radius: 50%; animation: jobspin .9s linear infinite; }
-@keyframes jobspin { to { transform: rotate(360deg); } }
+.jobrow .wt-ring { font-size: 13px; color: var(--dian); }
+.jobacts { display: contents; }
+/* AI 铺底（2026-11-15 从流水线提示词页挪进来）：分区按钮那一行最右边一个按钮；铺的时候按钮上转个圈，进度和「停掉」在左下角那一条里，这一页照样能写 */
+.section-nav .lay-b { margin-left: auto; }
+.lay-b .wt-ring { margin-right: 6px; }
+.lay-dlg { width: min(480px, 90vw); }
+.lay-dlg p { margin-top: 12px; line-height: 1.85; color: var(--ink-2); }
+.lay-dlg footer { flex-wrap: wrap; }
 
 @media (max-width: 1040px) {
   .rail { width: 286px; }
@@ -348,7 +410,7 @@ body.norail .rail { display: none; }
   .g-keys, .step small { display: none; }
 }
 /* >>> 流水线 · 作用 */
-.shot-why { margin: 0 0 8px; padding: 4px 12px; border-radius: 0 6px 6px 0; border-left: 2px solid var(--line-2); background: rgba(236, 229, 216, .55); font-size: 12.5px; line-height: 1.75; color: var(--ink-2); white-space: pre-wrap; }
+.shot-why { margin: 0 0 8px; padding: 4px 12px; border-radius: 0 6px 6px 0; border-left: 2px solid var(--line-2); background: var(--paper); font-size: 12.5px; line-height: 1.75; color: var(--ink-2); white-space: pre-wrap; }
 .shot-why b { margin-right: 10px; font: 400 12px var(--kai); color: var(--ink-3); letter-spacing: .24em; }
 .p-shot.fold > .shot-why { display: none; }
 /* <<< 流水线 · 作用 */
@@ -358,30 +420,31 @@ body.norail .rail { display: none; }
 <body>
 <main id="main">
   <div class="top">
-    <div class="crumb"><span class="ptitle" id="pj">写稿</span><span class="crumb-seg" id="crumb"></span><span class="tag-try" title="试用版：读写的是真文件。定下来以后并进项目管理，当左边第五项菜单。">试用版</span></div>
+    <div class="crumb"><span class="ptitle" id="pj">写稿</span><span class="crumb-seg" id="crumb"></span><span class="tag-try" title="试用版：读写的是真文件，边写边存。">试用版</span></div>
     <div class="top-right">
       <span class="status" id="save"><i class="dot"></i><span>正在打开…</span></span>
       <button class="btn sm zhu" id="sendNotes" title="把你写给 AI 那几区的批注交给 AI，它照着改，改好这里自动换上" hidden>把批注交给 AI 改</button>
       <button class="btn sm" id="previewBtn">预览全文</button>
-      <button class="btn sm" id="saveBtn">保存草稿</button>
-      <button class="btn sm ghost" id="railBtn" title="收起或展开右侧建议与资产">收起侧栏</button>
-      <button class="btn sm" id="askOne" title="只批光标所在的这一镜" disabled>只批这一镜</button>
-      <button class="btn dai" id="askAll" disabled>请 AI 批</button>
+      <button class="btn sm ghost" id="railBtn" title="收起或展开右侧资产、批注">收起侧栏</button>
+      <button class="btn zhu" id="revBtn" hidden>让 AI 反推剧本</button>
+      <button class="btn dian" id="askAll" title="AI 批整条提示词" disabled>请 AI 批</button>
     </div>
   </div>
   <div id="steps" hidden></div>
-  <div class="editor-mode" id="editor-mode"></div>
   <div class="stage">
-    <nav class="editor-outline" id="editor-outline" aria-label="提示词目录"></nav>
+    <div class="editor-side">
+      <div class="editor-mode" id="editor-mode"></div>
+      <nav class="editor-outline" id="editor-outline" aria-label="提示词目录"></nav>
+    </div>
     <div class="col">
       <div class="canvas" id="canvas">
         <div class="tip" id="tip" hidden>
           <button class="x" title="收起，以后不再提示" id="tipX">×</button>
-          <b>两种写法</b>　边写边自动保存，也可以按 Ctrl+S 保存。
+          <b>两种写法</b>　边写边自动保存。
           <ol>
             <li>分镜模式可以增删、复制和拖动镜头；标题、作用和正文都可以自己写。</li>
-            <li>两种写法只切换分镜部分。上方的本段事件、素材、基础设定、本段、保持一致是公共内容，两种写法共用。</li>
-            <li>右侧「建议」按分镜和关键词组织，点选才加入。输入 <kbd>@</kbd> 选资产；也可以查看剧本对照。</li>
+            <li>两种写法只切换分镜部分。上方的生成目标、素材、基础设定、主体与关系、保持一致，两种写法共用（旧稿叫本段事件、素材、基础设定、本段、保持一致）。</li>
+            <li>输入 <kbd>@</kbd> 选资产；右侧「资产」只列确认可用的，也可以在「剧本」页签对着看。</li>
             <li>写得差不多了点右上「请 AI 批」。AI 只写批注，你点「照改」才动稿子。</li>
           </ol>
         </div>
@@ -394,12 +457,10 @@ body.norail .rail { display: none; }
       <div class="rail-tabs" id="rail-tabs"></div>
       <div class="pin" id="pin" hidden></div>
       <div class="rail-body">
-        <div id="pane-suggest"></div>
-        <div id="pane-common" hidden></div>
-        <div id="pane-assets"><input class="as-q" id="as-q" placeholder="搜资产：名字或拼音首字母" spellcheck="false"><div id="as-list"></div></div>
+        <div id="pane-assets"><input class="as-q" id="as-q" placeholder="搜资产：名字、拼音首字母、「白模」" spellcheck="false"><p class="as-hint">点图放大，点视频播放。「钉住」把它放在这一栏最上面，一边写一边看；「插入」挂到提示词里。</p><div id="as-list"></div></div>
         <div id="pane-ai" hidden></div>
         <div id="pane-lint" hidden></div>
-        <div id="pane-cmp" hidden></div>
+        <div id="pane-script" hidden></div>
       </div>
     </aside>
   </div>
@@ -407,6 +468,11 @@ body.norail .rail { display: none; }
 <div id="toast"></div>
 <script src="公用/写稿状态.js"></script>
 <script src="公用/写稿交互.js"></script>
+<script src="公用/关键帧写法.js"></script>
+<script src="公用/白模关键帧写法.js"></script>
+<script src="公用/点图.js"></script>
+<script src="公用/交给AI.js"></script>
+<script src="公用/等待.js"></script>
 <script>
 'use strict';
 const $ = (s, r) => (r || document).querySelector(s);
@@ -466,16 +532,26 @@ function jobBody(line, ch) {
   if ((m = /^要关键词 [^｜]+｜镜头 (\S+)$/.exec(line))) { const s = DOC.shots.find(s => s.no === m[1]); return { ...base, 事: '要关键词', 镜头号: m[1] === '自由' ? '自由' : String(parseInt(m[1], 10)), ...(s ? { 镜头ID: s.id } : {}) }; }
   if ((m = /^按批注修改 (.+)$/.exec(line))) return { 渠道: ch, 项目: PJ, 事: '按批注改提示词', 批注: m[1] };
   if (/^重新铺底 /.test(line)) return { ...base, 事: '铺底' };
+  if (/^直接铺底 /.test(line)) return { ...base, 事: '直接铺底' };   // AI 铺底：直接写进正文（不是右栏的建议）
+  if (/^反推剧本 /.test(line)) return { 渠道: ch, 项目: PJ, 段: base.段, 事: '反推剧本' };   // 照这一场所有的提示词反推，不只这一条
   return null;
 }
-async function tellAI(line) {
+async function tellAI(line, ch) {   // ch：这一回指定交给谁（AI 铺底里点了「复制任务，自己交给 AI」）；不写就照流水线顶栏「AI 用」选的
   if (SVC == null) { try { SVC = (await (await fetch('/api/ping', { headers: HDR })).json()).v || 0; } catch (e) { SVC = 0; } }
-  const body = SVC >= 5 ? jobBody(line, await channelNow()) : null;
+  const now = SVC >= 5 ? await channelNow() : '';
+  const body = SVC >= 5 ? jobBody(line, ch || now) : null;
   if (!body) return (await fetch('/api/ai', { method: 'POST', headers: HDR, body: line })).json();
+  let dp = '', md = ''; try { dp = localStorage.getItem('antou:flow:depth:' + body.渠道) || ''; md = localStorage.getItem('antou:flow:model:' + body.渠道) || ''; } catch (e) { /* 读不了就照默认 */ }
+  const ci = CHS.find(c => c.id === body.渠道);
+  if (dp && ci && (ci.深度 || []).some(d => d.id === dp)) body.深度 = dp;   // 推理深度：流水线顶栏选的
+  if (md && ci && (ci.模型 || []).some(d => d.id === md)) body.模型 = md;   // 模型：同上
+
   const r = await fetch('/api/job', { method: 'POST', headers: { ...HDR, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (!r.ok) throw new Error((await r.text()) || String(r.status));
-  watchJob(await r.json());
-  return { online: true };
+  const j = await r.json(), hand = (ci && ci.hand) || '';
+  watchJob(j);
+  if (hand === 'self' && window.HandAI) HandAI.wait(j, () => {});   // 给我提示词（流水线顶栏「AI 用」选的）：话备好就弹出来给你复制
+  return { online: true, say: { self: '要交给 AI 的话弹出来了：复制，贴进你自己开的对话。它做完这里自动换上', claude: '在 Claude 桌面版开了一个新对话，任务填好了：到 Claude 窗口里按发送。做完这里自动换上', deepseek: '交给 DeepSeek 了：它在自己的窗口里做，做完这里自动换上' }[hand] || '' };
 }
 /* 正在做的任务：左下角一行一个，转圈、在做什么、用了多久、停掉 */
 const jobLive = j => j.状态 === '排队' || j.状态 === '在做';
@@ -491,6 +567,8 @@ async function tickJobs() {
     Object.assign(j, n);
     if (jobLive(j)) continue;
     JOBS.live = JOBS.live.filter(x => x.id !== j.id);
+    if (layJob(j)) { layDone(j); continue; }   // AI 铺底完了：先把它写的换上，再放开这一页
+    if (j.事 === '反推剧本') { REV.st = ''; revCheck(); }   // 反推完了（没成也一样）：按钮照盘上的反推结果换
     if (j.状态 === '做完') toast(j.结果);
     else { toast(j.标题 + (j.状态 === '停了' ? ' 停掉了' : ' 没成：' + j.错误)); if (j.事 === '批注提示词' && AI.busy) { AI.busy = false; setAsk(); paintAi(); paintSteps(); } }
     poll();
@@ -498,16 +576,28 @@ async function tickJobs() {
   if (!JOBS.live.length) { clearInterval(JOBS.timer); JOBS.timer = 0; }
   paintJobs();
 }
-function paintJobs() {
+function paintJobs() {   // 一秒走一次表：每一行建一次，以后只换字（整行重建，转着的环每秒跳回原处）
   let box = $('#jobs');
   if (!box) { box = h('div', { id: 'jobs' }); document.body.append(box); }
-  box.replaceChildren(...JOBS.live.map(j => {
-    const sec = Math.max(0, Math.round((Date.now() - (j.开始 || j.建)) / 1000));
-    return h('div', { class: 'jobrow' }, h('i', { class: 'jobspin' }),
-      h('span', null, j.标题.replace(/ · .*/, '') + '：' + (j.状态 === '排队' ? j.渠道名 + ' 排着队' : j.步骤 || j.渠道名 + ' 在做')),
-      h('b', null, Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0')),
-      h('button', { class: 'linkb', tabindex: '-1', title: '不等了，停掉这个任务', onclick: () => fetch('/api/job/' + j.id + '?cancel', { method: 'POST', headers: HDR }).catch(() => {}) }, '停掉'));
-  }));
+  const live = JOBS.live;   // AI 铺底也摆在这里（11-15 他说等的时候要能接着干别的：不盖住页面）
+  for (const row of [...box.children]) if (!live.some(j => j.id === row.dataset.id)) row.remove();
+  for (const j of live) {
+    let row = [...box.children].find(r => r.dataset.id === j.id);
+    if (!row) box.append(row = h('div', { class: 'jobrow', 'data-id': j.id }, h('i', { class: 'wt-ring' }), h('span', { class: 'wt-t' }), h('b'), h('span', { class: 'jobacts' })));
+    row.children[1].textContent = j.标题.replace(/ · .*/, '') + '：' + jobSay(j);
+    row.children[2].textContent = jobClock(j);
+    jobActs(row.children[3], j);
+  }
+  paintLay();
+}
+const jobSay = j => j.状态 === '排队' ? j.渠道名 + ' 排着队' : j.步骤 || j.渠道名 + ' 在做';
+const jobClock = j => { const sec = Math.max(0, Math.round((Date.now() - (j.开始 || j.建)) / 1000)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); };
+function jobActs(box, j) {   // 交给 AI 的话、再开一次（等你交给 AI 的、Claude 等你按发送的）、停掉：样子变了才重摆
+  const sig = JSON.stringify([j.状态, j.交给 || null]);
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.replaceChildren(...(window.HandAI ? HandAI.buttons(j, () => {}) : []),
+    h('button', { class: 'linkb', tabindex: '-1', title: '不等了，停掉这个任务', onclick: () => fetch('/api/job/' + j.id + '?cancel', { method: 'POST', headers: HDR }).catch(() => {}) }, '停掉'));
 }
 /* 打开页面时，这份稿已经有任务在做（比如刚在流水线里点了铺底）：接着显示 */
 async function resumeJobs() {
@@ -516,8 +606,9 @@ async function resumeJobs() {
     if (SVC < 5) return;
     const seg = SEGDIR.replace(/^第|段$/g, ''), mine = HNF.join('/');
     for (const j of (await (await fetch('/api/job?p=' + encodeURIComponent(PJ), { headers: HDR })).json()).jobs) {
-      if (!jobLive(j) || !((j.段 === seg && j.名 === STEM + '.txt') || j.批注 === mine)) continue;
+      if (!jobLive(j) || !((j.段 === seg && j.名 === STEM + '.txt') || j.批注 === mine || (j.事 === '反推剧本' && j.段 === seg))) continue;
       watchJob(j);
+      if (j.事 === '反推剧本') { REV.st = 'run'; paintRev(); }
       if (j.事 === '批注提示词') { AI.busy = true; AI.since = j.开始 || j.建; setAsk(); paintAi(); paintSteps(); }
     }
   } catch (e) { /* 服务是老的，或者断了一下 */ }
@@ -559,11 +650,11 @@ function hydrateShots(d, metadata, legacy) {
   const list = Array.isArray(metadata) ? metadata : [];
   d.shots = d.shots.map(s => {
     const m = list.find(x => String(x.no) === String(s.no));
-    return { ...s, id: m && m.id || newShotId(), purpose: m ? String(m.作用 || '') : legacy ? flowWhy(s.no) : '', keywords: m && m.关键词 || SIDE.关键词 && (SIDE.关键词[s.no] || SIDE.关键词[String(+s.no)]) || {}, sourceNo: m ? String(m.原编号 || '') : legacy ? s.no : '' };
+    return { ...s, ...(d.fmt === 'pe' ? { title: m ? String(m.标题 || '') : '' } : {}), id: m && m.id || newShotId(), purpose: m ? String(m.作用 || '') : legacy ? flowWhy(s.no) : '', keywords: m && m.关键词 || SIDE.关键词 && (SIDE.关键词[s.no] || SIDE.关键词[String(+s.no)]) || {}, sourceNo: m ? String(m.原编号 || '') : legacy ? s.no : '' };
   });
   return d;
 }
-function shotMetadata(d) { return d.shots.map(s => ({ id: s.id, no: s.no, 作用: s.purpose || '', 关键词: s.keywords || {}, 原编号: s.sourceNo || '' })); }
+function shotMetadata(d) { return d.shots.map(s => ({ id: s.id, no: s.no, 作用: s.purpose || '', 关键词: s.keywords || {}, 原编号: s.sourceNo || '', ...(d.fmt === 'pe' ? { 标题: s.title || '' } : {}) })); }   // PE 稿的镜头标题不写进文件，记在这里
 function editorSnapshot() {
   const d = collect();
   return { 写法: MODE, 写法范围: '分镜', 分镜稿: serialize(d), 自由稿: MODE === '自由' ? freeText() : FREE, 镜头信息: shotMetadata(d), 挂图: { ...(SIDE.挂图 || {}) } };
@@ -591,16 +682,16 @@ async function scanAssets() {
   const base = [HOME, PJ, '资产'], out = [];
   for (const d of await FS.list([...base, '全局资产'])) {
     if (d.kind !== 'directory') continue;
-    for (const f of await FS.list([...base, '全局资产', d.name])) if (f.kind === 'file') { const a = assetOf([...base, '全局资产', d.name, f.name], d.name); if (a) out.push(a); }
+    for (const f of await FS.list([...base, '全局资产', d.name])) if (f.kind === 'file') { const a = assetOf([...base, '全局资产', d.name, f.name], d.name); if (a) { a.mtime = f.mtime || 0; out.push(a); } }   // mtime：确认以后图重出过没有（okPaths）
   }
   const walk = async (parts, depth) => {
     for (const f of await FS.list(parts)) {
-      if (f.kind === 'file') { const a = assetOf([...parts, f.name], '本段'); if (a) out.push(a); }
+      if (f.kind === 'file') { const a = assetOf([...parts, f.name], '本段'); if (a) { a.mtime = f.mtime || 0; out.push(a); } }
       else if (depth < 1) await walk([...parts, f.name], depth + 1);   // 只看这一段的文件夹和它下面一层；再深的（白模一帧一帧的图）不列
     }
   };
   await walk([...base, SEGDIR], 0);
-  return out.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+  return out.sort((a, b) => a.name.localeCompare(b.name, 'zh', { numeric: true }));   // 镜头2 排在镜头10 前面
 }
 const isNamed = a => a.type === '图片' && (a.kind === 'person' || a.kind === 'prop');   // 镜头里用称谓写的两类
 /* 缩小图：一次做两张，做好的留着 */
@@ -624,18 +715,63 @@ async function makeThumb(a) {
   c.getContext('2d').drawImage(bmp, 0, 0); bmp.close();
   return URL.createObjectURL(await c.convertToBlob({ type: 'image/jpeg', quality: .82 }));
 }
-/* 露出来才去做缩小图 */
-const SEEN = new IntersectionObserver(list => { for (const e of list) if (e.isIntersecting) { SEEN.unobserve(e.target); thumbUrl(e.target._a).then(u => { e.target.src = u; }, () => {}); } }, { rootMargin: '200px' });
+/* 露出来才去做缩小图、视频封面 */
+const SEEN = new IntersectionObserver(list => {
+  for (const e of list) if (e.isIntersecting) {
+    SEEN.unobserve(e.target);
+    const a = e.target._a, vid = a.type === '视频';
+    (vid ? posterOf(a) : thumbUrl(a)).then(u => { e.target.src = u; if (vid) paintVideoMeta(a); },
+      () => { if (vid && e.target.classList.contains('u-th')) e.target.replaceWith(h('span', { class: 'ph u-th' }, '▶')); });   // 封面做不出来（读不了、解不开）：留一个播放记号
+  }
+}, { rootMargin: '200px' });
 function thumb(a, cls) {
+  if (a.type === '称谓') return h('span', { class: 'ph ' + (cls || '') }, a.kind === 'person' ? '人' : '物');
   if (a.type !== '图片') return h('span', { class: 'ph ' + (cls || '') }, a.type === '音频' ? '♪' : '▶');
   const img = h('img', { class: cls || null, alt: a.name, draggable: 'false' });
   img._a = a; SEEN.observe(img);
   return img;
 }
+/* 视频的封面小图（资产栏里用）：露出来才去做 */
+function posterEl(a, cls) {
+  const img = h('img', { class: cls || null, alt: a.name, draggable: 'false' });
+  img._a = a; SEEN.observe(img);
+  return img;
+}
+/* 视频封面：读一遍文件，取靠前的一帧，顺便记下时长和尺寸；一次做一个，做好的留着 */
+const POSTER = new Map(), PQ = [];
+let PBUSY = 0;
+function posterOf(a) {
+  if (!POSTER.has(a.path)) POSTER.set(a.path, new Promise((res, rej) => { PQ.push({ a, res, rej }); pumpPoster(); }));
+  return POSTER.get(a.path);
+}
+function pumpPoster() {
+  while (PBUSY < 1 && PQ.length) {
+    const job = PQ.shift(); PBUSY++;
+    makePoster(job.a).then(job.res, job.rej).finally(() => { PBUSY--; pumpPoster(); });
+  }
+}
+async function makePoster(a) {
+  const blob = await blobOf(a), url = URL.createObjectURL(blob);
+  try {
+    const v = document.createElement('video');
+    v.muted = true; v.preload = 'auto'; v.playsInline = true;
+    const ready = new Promise((ok, no) => { v.onloadeddata = ok; v.onerror = () => no(new Error('这段视频读不出画面')); });
+    v.src = url; await ready;
+    a.dur = v.duration; a.nw = v.videoWidth; a.nh = v.videoHeight; a.size = blob.size;
+    if (v.duration > 0.6) {   // 第一帧常是黑的：取靠前一点的画面
+      const seeked = new Promise(ok => { v.onseeked = ok; setTimeout(ok, 4000); });
+      v.currentTime = Math.min(v.duration * 0.08, 1.5); await seeked;
+    }
+    const w = Math.min(520, v.videoWidth), c = document.createElement('canvas');
+    c.width = w; c.height = Math.round(w * v.videoHeight / v.videoWidth);
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+    return await new Promise((ok, no) => c.toBlob(b => b ? ok(URL.createObjectURL(b)) : no(new Error('封面没做出来')), 'image/jpeg', .82));
+  } finally { URL.revokeObjectURL(url); }
+}
 
 /* ---------- 编号：@图片N 对的是哪个文件。登记在 资产\参考素材映射.json（AI 管）；你新挂的先记在过程文件里 ---------- */
 let NUM = { 图片: [], 音频: [], 视频: [] }, REFNAME = {}, SIDE = {}, SIDE_MT = 0;
-const refOf = a => { const i = NUM[a.type].indexOf(a.path); return i < 0 ? null : '@' + a.type + (i + 1); };
+const refOf = a => { const L = NUM[a.type]; if (!L) return null; const i = L.indexOf(a.path); return i < 0 ? null : '@' + a.type + (i + 1); };   // 称谓（还没有图的人物、道具）不排号
 const assetOfRef = ref => { const m = /^@(图片|视频|音频)([0-9]+)$/.exec(ref); return (m && A[NUM[m[1]][m[2] - 1]]) || null; };
 const nameOf = a => REFNAME[a.path] && REFNAME[a.path].length <= 8 ? REFNAME[a.path] : a.name;
 async function readSideState() {
@@ -661,7 +797,43 @@ async function loadRefs() {
   } catch (e) { /* 还没有登记 */ }
   for (const [ref, path] of Object.entries(SIDE.挂图 || {})) put(ref, path);
 }
-/* 挂上：排下一个号；不是在「素材」里写的，就替你在「素材」补一行；记进过程文件 */
+/* 挂上：排下一个号；不是在「素材」里写的，就替你在「素材」补一行；记进过程文件。
+   PE 稿照 sd2.5PE 的句式：写法一「@图片N用于……，不采用……」，写法二「称谓对应@图片N，只采用……」，写进对应的分组 */
+const REF_LINE_PE = {
+  person: (n, r, two) => two ? `${n}对应${r}，只采用五官、发型和服装。` : `${r}用于${n}的五官、发型和服装，不采用图片背景。`,
+  prop: (n, r, two) => two ? `${n}对应${r}，只采用〔结构、材质、颜色〕。` : `${r}用于${n}的〔结构、材质、颜色〕，不采用图中人物和背景。`,
+  fx: (n, r, two) => two ? `${n}对应${r}，只采用〔形态、颜色、规模〕。` : `${r}用于${n}的〔形态、颜色、规模〕，不采用图片背景。`,
+  scene: (n, r, two) => two ? `〔场景叫法〕参考${r}，只采用〔空间布局、材质和光线〕，不采用图中人物。` : `${r}用于〔场景叫法〕的〔空间布局、陈设、材质、灯光〕，不采用图中人物。`,
+  frame: (n, r) => /尾帧/.test(n) ? [`${r}作为尾帧。`, '该尾帧定义〔视频结束时的构图、人物位置、姿态和镜头方向〕。'] : /首帧/.test(n) ? [`${r}作为首帧。`, '该首帧定义〔视频开始时的构图、人物位置、姿态和镜头方向〕。'] : `${r}定义〔第几个〕关键帧：〔这一刻看得见的状态〕。`,
+  audio: (n, r) => `${r}用于〔称谓〕的音色和说话特征，台词以事件脚本为准。`,
+  video: (n, r) => /白模/.test(n) ? [`${r}是粗粒度白模参考，仅提供〔动作路径、主体站位、机位、运镜和切镜〕，不采用其中的白模外观、材质和场景。`, `${r}中的〔哪个白模几何体〕对应〔哪个人物或道具〕。`]
+    : `${r}用于〔动作、运镜或节奏〕，不采用视频中的人物身份、服装和场景。`,
+};
+const PE_GROUP = { person: '【人物】', prop: '【道具】', fx: '【道具】', scene: '【场景】', frame: '【场景】', audio: '【动作与声音】', video: '【动作与声音】' };
+/* PE 稿在素材里补行：写法一插在【未采用素材】前面；写法二插进自己那一组（首帧、尾帧排在【场景】最前面，其余排在组末），
+   没有这一组就按 人物、道具、场景、动作与声音、未采用素材 的顺序补上组名 */
+const PE_RANK = h => /^【主体设定/.test(h) ? 1 : PromptDraft.PE_REFS.indexOf(h);
+const IS_FRAME_LINE = t => /作为[首尾]帧|^该[首尾]帧定义|关键帧/.test(t);
+function addPeRefLines(a, ref, makers = REF_LINE_PE) {
+  const list = $('section[data-sec="refs"] .blist');
+  if (list.children.length === 1 && !lineOf(list.firstElementChild)) list.replaceChildren();
+  const blocks = [...list.children].filter(b => b.classList.contains('blk')), headOf = b => { const t = lineOf(b).replace(/\s+/g, ''); return PromptDraft.isPeRefHead(t) ? t : ''; };
+  const two = peTwo(), made = makers[a.kind](a.name, ref, two), lines = Array.isArray(made) ? made : [made];
+  let before = null, lead = [];
+  if (two) {
+    const g = PE_GROUP[a.kind], gi = blocks.findIndex(b => headOf(b) === g);
+    if (gi >= 0 && a.kind === 'frame') { let k = gi + 1; while (k < blocks.length && !headOf(blocks[k]) && IS_FRAME_LINE(lineOf(blocks[k]))) k++; before = blocks[k] || null; }
+    else if (gi >= 0) before = blocks.slice(gi + 1).find(headOf) || null;
+    else { lead = [g]; before = blocks.find(b => headOf(b) && PE_RANK(headOf(b)) > PE_RANK(g)) || null; }
+  } else {
+    before = blocks.find(b => headOf(b) === '【未采用素材】') || null;
+    if (!blocks.length || !headOf(blocks[0])) list.prepend(blockEl({ t: '【参考素材职责】' }, 'refs'));
+    if (a.kind === 'frame') before = list.querySelector(':scope > .blk').nextElementSibling;   // 写法一的首帧、尾帧放【参考素材职责】最前面（sd25-pe 的例子就是这样）
+  }
+  const els = [...lead, ...lines].map(t => blockEl({ t }, 'refs'));
+  els.forEach(el => before ? list.insertBefore(el, before) : list.append(el));
+  flash(els[els.length - 1]);
+}
 const REF_LINE = {
   person: (n, r) => `${n}对应${r}，外貌、发型和服装以${r}为准。`,
   prop: (n, r) => `${n}对应${r}，只采用〔结构、材质、颜色〕。`,
@@ -669,19 +841,103 @@ const REF_LINE = {
   scene: (n, r) => `${r}是〔总场景或哪个分场景〕从〔哪〕往〔哪〕看的样子，只采用〔空间布局、陈设、材质、灯光〕。`,
   frame: (n, r) => `${r}定义镜头〔编号〕在〔阶段〕的关键状态：〔该刻可见状态〕。`,
   audio: (n, r) => `〔称谓〕的声音参考${r}，只采用音色和说话特征，台词以分镜为准。`,
-  video: (n, r) => `${r}是参考视频，只采用〔运镜或动作〕。`,
+  video: (n, r) => /白模/.test(n) ? `${r}是白模参考，只采用〔动作路径、站位、机位、运镜和切镜〕，不采用白模外观、材质和场景；〔哪个几何体〕对应〔哪个人物或道具〕。` : `${r}是参考视频，只采用〔运镜或动作〕。`,
 };
+/* PE 稿挂关键帧（11-13 夜）：素材里的关键帧句子整组照 sd25-pe 重排（顺序句、首帧、第几个关键帧、尾帧），填过的照旧带上；
+   和流水线「提示词」那一步「挂关键帧」同一套写法（公用/关键帧写法.js）。还没有关键帧句子的，照原来的位置放（写法二【场景】最前面） */
+function addPeFrame(a, ref) {
+  const list = $('section[data-sec="refs"] .blist'), blocks = [...list.children].filter(b => b.classList.contains('blk'));
+  const sc = KeyFrames.scan(blocks.map(lineOf)), made = { ...REF_LINE_PE, frame: () => KeyFrames.lines([{ ref, name: a.name }]) };
+  if (!sc.rows.size) return addPeRefLines(a, ref, made);
+  const items = KeyFrames.order([...sc.refs.map(r => ({ ref: r, name: (assetOfRef(r) || {}).name || '', desc: sc.desc.get(r) || '' })), { ref, name: a.name, desc: '' }]);
+  const old = [...sc.rows.keys()].sort((x, y) => x - y).map(i => blocks[i]), spare = [...old], mark = document.createComment('');
+  list.insertBefore(mark, old[0]);
+  const els = KeyFrames.lines(items).map(t => { const i = spare.findIndex(b => lineOf(b) === t); return i >= 0 ? spare.splice(i, 1)[0] : blockEl({ t }, 'refs'); });   // 一字没变的那几行原样留着
+  for (const el of els) list.insertBefore(el, mark);
+  for (const b of spare) b.remove();
+  mark.remove();
+  flash(els[els.length - 1]);
+}
+/* 白模＋关键帧（2026-11-14 他定：和普通写法分开，照官方《Seedance 2.5 提示词指南》「粗粒度白模 + 阶段关键帧」；和流水线、本机服务同一套，公用/白模关键帧写法.js）：
+   PE 稿同时挂了白模和关键帧，素材里写白模、关键帧、收尾三句，不用 sd25-pe 的锚点句和白模那一句；每一镜开头写它在白模里的整秒和参考哪张。
+   白模：名字带「白模」的视频，或者素材里已经当白模写了的那段视频 */
+function bmkVid() {
+  const lines = $$('section[data-sec="refs"] .blist > .blk').map(lineOf), refs = NUM.视频.map((p, i) => ({ ref: '@视频' + (i + 1), a: A[p] })).filter(x => x.a);
+  return refs.find(x => /白模/.test(x.a.name)) || refs.find(x => lines.some(l => l.startsWith('以' + x.ref + '作为整支视频') || (l.startsWith(x.ref + '是') && BmKey.RE_ROLE.test(l)))) || null;
+}
+const bmkFrames = () => KeyFrames.order(NUM.图片.map((p, i) => ({ ref: '@图片' + (i + 1), a: A[p] })).filter(x => x.a && x.a.kind === 'frame').map(x => ({ ref: x.ref, name: x.a.name })));
+const bmkOn = () => isPe() && !!bmkVid() && bmkFrames().length > 0;
+/* 白模旁边「_说明.md」里的切点（一镜一行「镜头1：0-4秒」），读一次记着；没有说明是空的 */
+const BMK_CUTS = new Map();
+function bmkCuts(a) {
+  if (!BMK_CUTS.has(a.path)) BMK_CUTS.set(a.path, (async () => {
+    const p = [HOME, PJ, ...(a.path.replace(/\.[^.]+$/, '') + '_说明.md').split('/')];
+    try { return (await has(p)) ? BmKey.cutsOf((await FS.text(p)).text) : []; } catch (e) { return []; }
+  })().then(c => { a.cuts = c; return c; }));
+  return BMK_CUTS.get(a.path);
+}
+/* 素材换成白模＋关键帧的三句（一字没变的行原样留着）；要删你填过的句子先问一声。换了返回 true */
+function bmkRefs() {
+  const v = bmkVid(), fr = bmkFrames();
+  if (!v || !fr.length) return false;
+  const list = $('section[data-sec="refs"] .blist');
+  if (list.children.length === 1 && !lineOf(list.firstElementChild)) list.replaceChildren();
+  const blocks = [...list.children].filter(b => b.classList.contains('blk')), lines = blocks.map(lineOf), r = BmKey.refsLines(lines, { vid: v.ref, frames: fr });
+  if (r.lines.join('\n') === lines.join('\n')) return true;
+  const mine = r.removed.filter(l => !/〔[^〔〕]*〕/.test(l) && !/^以@图片.*的顺序作为关键帧。?$/.test(l) && !/^@图片\d+作为[首尾]帧。?$/.test(l));   // 你填过的（不是页面补的空句）
+  if (mine.length && !confirm('挂了白模又挂了关键帧，素材要照官方「白模＋关键帧」的写法。这几句会删掉：\n\n' + mine.join('\n') + '\n\n换过去？')) return false;
+  const spare = [...blocks], mark = document.createComment('');
+  list.insertBefore(mark, blocks[0] || null);
+  const els = r.lines.map(t => { const i = spare.findIndex(b => lineOf(b) === t); return i >= 0 ? spare.splice(i, 1)[0] : blockEl({ t }, 'refs'); });
+  for (const el of els) list.insertBefore(el, mark);
+  for (const b of spare) b.remove();
+  mark.remove();
+  flash(els[0]);
+  return true;
+}
+/* 校对里点一下：素材换过去，每一镜开头补上秒数和参考哪张（秒数照白模说明；没有说明留〔起〕〔止〕，原来填过的照旧） */
+async function bmkFix() {
+  if (MODE === '自由') return toast('自由模式的事件脚本页面不替你改：每一镜开头自己写「0-4秒，首帧参考@图片1。」这样的');
+  if (!bmkRefs()) return;
+  const v = bmkVid(), pl = BmKey.plan(await bmkCuts(v.a), bmkFrames()), tas = $$('#sheet .wr-ta[data-kind="shot"]');
+  tas.forEach((ta, k) => {
+    const t = BmKey.tagOf(ta.value), next = BmKey.makeTag(pl[k] || null, k, t) + (t ? ta.value.slice(t.len) : ta.value);
+    if (next !== ta.value) { ta.value = next; ta.dispatchEvent(new Event('input', { bubbles: true })); }
+  });
+  touch(); paintMarks();
+  toast(pl.length > tas.length ? '白模有 ' + pl.length + ' 个镜头，这里只有 ' + tas.length + ' 镜：后面几镜自己加上' : '换好了：看一眼每一镜开头的秒数' + (v.a.cuts && v.a.cuts.length ? '' : '，〔起〕〔止〕填成整秒'));
+}
+/* 校对用：素材是不是照这一套写的、每一镜开头的秒数（白模多长、切点读好了再查一遍） */
+function bmkLint() {
+  const v = bmkVid(), tas = $$('#sheet .wr-ta[data-kind="shot"]'), byTa = new Map(), doc = [];
+  if (!BmKey.isBmk($$('section[data-sec="refs"] .blist > .blk').map(lineOf))) doc.push({ msg: '挂了白模又挂了关键帧：素材要照官方「白模＋关键帧」的写法，点这一条换过去', fix: bmkFix });
+  if (!BMK_CUTS.has(v.a.path)) bmkCuts(v.a).then(() => paintMarks());
+  if (!v.a.dur && !v.a.durAsked) { v.a.durAsked = true; posterOf(v.a).then(() => paintMarks(), () => {}); }
+  const issues = BmKey.check(tas.map((ta, i) => ({ no: +(ta.closest('.p-shot') || ta).dataset.no || i + 1, body: ta.value })), v.a.dur || 0, v.a.cuts || null);
+  if (issues.some(x => /开头没写/.test(x.msg))) doc.push({ msg: '点这一条：每一镜开头一下补上秒数和参考哪张', fix: bmkFix });
+  for (const x of issues) {
+    const ta = tas[x.i];
+    if (!ta) continue;
+    const t = BmKey.tagOf(ta.value);
+    if (!byTa.has(ta)) byTa.set(ta, []);
+    byTa.get(ta).push({ msg: x.msg, s: 0, e: t ? t.len : Math.min(2, ta.value.length) });
+  }
+  return { byTa, doc };
+}
 function bind(a, quiet) {
   let ref = refOf(a);
   if (ref) return ref;
   NUM[a.type].push(a.path); ref = refOf(a);
-  if (!quiet) { const blk = blockEl({ t: REF_LINE[a.kind](a.name, ref) }, 'refs'); $('section[data-sec="refs"] .blist').append(blk); flash(blk); }
+  const bmkHit = () => bmkOn() && (a.kind === 'frame' || (a.type === '视频' && (bmkVid() || {}).a === a));   // 挂上它以后白模、关键帧都有了：素材换成白模＋关键帧的写法
+  if (!quiet && isPe() && bmkHit() && bmkRefs()) toast('挂了白模又挂了关键帧：素材照官方「白模＋关键帧」的写法换好了。每一镜开头写秒数和参考哪张，「校对」里能一下补上');
+  else if (!quiet && isPe()) (a.kind === 'frame' ? addPeFrame : addPeRefLines)(a, ref);
+  else if (!quiet) { const blk = blockEl({ t: REF_LINE[a.kind](a.name, ref) }, 'refs'); $('section[data-sec="refs"] .blist').append(blk); flash(blk); }
   paintSum(); saveBind(ref, a.path);
   return ref;
 }
 async function saveBind(ref, path) {
   SIDE.挂图 = { ...(SIDE.挂图 || {}), [ref]: path };
-  touch(); paintCommonContent();
+  touch();
 }
 
 /* ---------- 你写的地方：真的文字框。打字、回车、撤销都和记事本一样；底下垫一层影子只画标记 ---------- */
@@ -734,7 +990,8 @@ function indexAt(ta, x, y) {
 
 /* ---------- 画正文 ---------- */
 const CN = ['一', '二', '三', '四', '五', '六'];
-const SECS = [
+/* 旧的六区稿 */
+const SECS_OLD = [
   { key: 'event', name: '本段事件', by: 'me' },
   { key: 'refs', name: '素材', by: 'ai', fold: true },
   { key: 'basic', name: '基础设定', by: 'ai', fold: true },
@@ -742,6 +999,21 @@ const SECS = [
   { key: 'keep', name: '保持一致', by: 'ai', fold: true },
   { key: 'shots', name: '分镜', by: 'me', who: '自由增删 · 拖动排序' },
 ];
+/* 照 sd2.5PE 写的稿（2026-11-13 起新写的都是）：顺序照文件里的顺序。写法二（素材按人物、道具、场景分组）不单列主体与关系。
+   基础设定（2026-11-14 起风格写在事件脚本前面）这一格也管事件脚本最后「声音包括……」那一行，存的时候那一行仍跟在镜头后面 */
+const SECS_PE = [
+  { key: 'event', name: '生成目标', by: 'me' },
+  { key: 'refs', name: '素材', by: 'ai', fold: true },
+  { key: 'basic', name: '基础设定', by: 'ai', fold: true },
+  { key: 'seg', name: '主体与关系', by: 'ai', fold: true },
+  { key: 'keep', name: '保持一致', by: 'ai', fold: true },
+  { key: 'shots', name: '事件脚本', by: 'me', who: '一镜一行 · 自由增删 · 拖动排序' },
+];
+let SECS = SECS_OLD;
+const isPe = () => !!DOC && DOC.fmt === 'pe';
+const peTwo = () => isPe() && (DOC.refs || []).some(l => /^【(人物|道具|场景|动作与声音)】$/.test(String(l).replace(/\s+/g, '')));
+const evName = () => isPe() ? '生成目标' : '本段事件';
+function pickSecs() { SECS = !isPe() ? SECS_OLD : SECS_PE.filter(s => s.key !== 'seg' || !peTwo() || (DOC.seg || []).length); }
 const OPEN = new Set();   // 展开着的 AI 区
 function chip(ref) {
   const a = assetOfRef(ref);
@@ -751,7 +1023,7 @@ function chip(ref) {
   return el;
 }
 function fill(ed, text) { ed.replaceChildren(...text.split(/(@(?:图片|视频|音频)[0-9]+)/).filter(Boolean).map(t => /^@(图片|视频|音频)[0-9]+$/.test(t) ? chip(t) : document.createTextNode(t))); }
-/* AI 写的一行（左边一道黛色细线）：不在这里直接改，点一下写批注，交给 AI 改，和「提示词」那边一样。
+/* AI 写的一行（左边一道靛色细线）：不在这里直接改，点一下写批注，交给 AI 改，和「提示词」那边一样。
    还带着没填的〔 〕的行（你新挂资产时页面补的那一行）可以直接填 */
 function blockEl(b, sec, ai) {
   const ro = !!ai && !!b.t.trim() && !/〔[^〕]*〕/.test(b.t);
@@ -763,25 +1035,30 @@ function blockEl(b, sec, ai) {
 
 /* ---------- 你给 AI 写的那几区写批注：存成稿子旁边的「原文件名_批注.md」，和 项目管理.html 是同一个格式，AI 照 AGENTS.md「按批注修改」改 ---------- */
 let HN = { general: '', by: new Map(), lost: [] }, HN_MT = 0, HNF = [], HN_T, HN_Q = Promise.resolve();
-const fullOf = blk => (blk.dataset.sec === 'keep' ? '保持一致：' : '') + lineOf(blk);   // 这一行在文件里的原话
+const fullOf = blk => (blk.dataset.sec === 'keep' && !isPe() ? '保持一致：' : '') + lineOf(blk);   // 这一行在文件里的原话（PE 稿的保持一致在段名下面另起一行）
 const hnCount = () => HN.by.size + HN.lost.length + (HN.general ? 1 : 0);
 /* 全文一行一行按文件里的先后排出来：批注靠「原文＋第几处」对回去 */
 function allLines() {
-  const out = [{ text: '本段事件：' + $('[data-sec="event"] .wr-ta').value.replace(/\s*\n+\s*/g, '').trim(), where: '本段事件' }];
-  const ai = k => $$('section[data-sec="' + k + '"] .blist > .blk').forEach(blk => out.push({ text: fullOf(blk), where: SECS.find(s => s.key === k).name, blk }));
-  ai('refs'); ai('basic'); ai('seg');
-  if (MODE === '自由') out.push(...freeText().split(/\r?\n/).map(text => ({ text, where: '分镜' })));
+  const pe = isPe(), ev = $('[data-sec="event"] .wr-ta').value.replace(/\s*\n+\s*/g, '').trim();
+  const out = [{ text: pe ? ev : '本段事件：' + ev, where: evName() }];
+  const ai = (k, only) => $$('section[data-sec="' + k + '"] .blist > .blk').forEach(blk => { if (!only || only(blk)) out.push({ text: fullOf(blk), where: SECS.find(s => s.key === k).name, blk }); });
+  const look = blk => PromptDraft.isLook(lineOf(blk));   // PE 稿基础设定里「声音包括……」那一行在文件里跟在镜头后面
+  if (pe) { ai('refs'); ai('basic', blk => !look(blk)); ai('seg'); } else { ai('refs'); ai('basic'); ai('seg'); }
+  if (MODE === '自由') out.push(...freeText().split(/\r?\n/).map(text => ({ text, where: pe ? '事件脚本' : '分镜' })));
   for (const el of $$('.p-shot')) {
+    const ls = $('.wr-ta', el).value.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    if (pe) { ls.forEach((t, i) => out.push({ text: i ? t : '镜头' + el.dataset.no + '：' + t, where: '事件脚本 · 镜头' + el.dataset.no })); continue; }   // PE 稿一镜一行，正文和镜头号在同一行
     out.push({ text: '镜头 ' + el.dataset.no + '｜' + $('.shot-title', el).value.trim(), where: '分镜' });
-    $('.wr-ta', el).value.split(/\n+/).map(s => s.trim()).filter(Boolean).forEach(t => out.push({ text: t, where: '分镜 · 镜头' + el.dataset.no }));
+    ls.forEach(t => out.push({ text: t, where: '分镜 · 镜头' + el.dataset.no }));
   }
+  if (pe) ai('basic', look);
   ai('keep');
   return out;
 }
 function hnMd() {
   const seen = new Map(), items = [];
   for (const l of allLines()) { const n = (seen.get(l.text) || 0) + 1; seen.set(l.text, n); const note = l.blk && HN.by.get(l.text); if (note) items.push({ where: l.where, text: l.text, n, note }); }
-  const out = ['# 批注｜' + SEGDIR + ' 提示词 ' + STEM.replace(/_?视频提示词$/, ''), '', '文件：' + PROMPT.join('/'), '',
+  const out = ['# 批注｜' + SEGDIR + ' 提示词 ' + vpShort(STEM), '', '文件：' + PROMPT.join('/'), '',
     'AI 照 AGENTS.md 的「按批注修改」来改：只改批注说到的地方，别的一字不动；改版前原文件移进 历史记录，改完这份批注也移进去。', ''];
   if (HN.general) out.push('## 整体', '批注：' + HN.general, '');
   [...items, ...HN.lost].forEach((x, i) => out.push(`## ${i + 1}｜${x.where}`, `原文${x.n > 1 ? `（第${x.n}处）` : ''}：${x.text}`, '批注：' + x.note, ''));
@@ -866,7 +1143,7 @@ function editHNote(blk) {
 function editGNote() {
   const g = $('#gnote');
   if ($('.hnote.edit', g)) return;
-  const box = noteBox(HN.general, '对 AI 写的这几区整体的意见，比如：基础设定太长；本段少写了道具……', v => { HN.general = v; box.remove(); paintHNotes(); saveHNotes(); });
+  const box = noteBox(HN.general, isPe() ? '对 AI 写的这几区整体的意见，比如：素材写多了；主体与关系少写了道具……' : '对 AI 写的这几区整体的意见，比如：基础设定太长；本段少写了道具……', v => { HN.general = v; box.remove(); paintHNotes(); saveHNotes(); });
   g.replaceChildren(box);
 }
 /* 右上那个朱色按钮：有批注才出来 */
@@ -878,7 +1155,7 @@ async function sendNotes() {
   try {
     await saveHNotes(); clearTimeout(ST); if (!await save()) return;
     const r = await tellAI('按批注修改 ' + HNF.join('/'));
-    toast(r.online ? '交给 AI 了。改好这里自动换上，改过的行左边有一道红线' : 'AI 这会儿没在等。去对话里说一声「看右边」，它就来改');
+    toast(r.online ? r.say || '交给 AI 了。改好这里自动换上，改过的行左边有一道红线' : 'AI 这会儿没在等。去对话里说一声「看右边」，它就来改');
   } catch (e) { toast('没交上：' + e.message); }
 }
 function toBlock(line, key) {
@@ -913,7 +1190,7 @@ function useKw(b) {
   typeInto(ta, s, e, (before && !/[，。；：、！？\s]$/.test(before) ? '，' : '') + t);   // 前面有字又没断句的，先补一个逗号
 }
 async function moreKw(no) {
-  try { if (!await save()) return; const r = await tellAI('要关键词 ' + OPENPATH + '｜镜头 ' + (no || '自由')); toast(r.online ? '跟 AI 说了，给好这里自动添上' : 'AI 这会儿没在等。去对话里说一声「看右边」'); }
+  try { if (!await save()) return; const r = await tellAI('要关键词 ' + OPENPATH + '｜镜头 ' + (no || '自由')); toast(r.online ? r.say || '跟 AI 说了，给好这里自动添上' : 'AI 这会儿没在等。去对话里说一声「看右边」'); }
   catch (e) { toast('没交上：' + e.message); }
 }
 /* 流水线里这一场写的：主要表达什么、每个剧本段落起什么作用。项目管理「流水线」页写的，这里只看 */
@@ -933,15 +1210,188 @@ async function loadFlow() {
     if (names.includes(mf)) { const m = JSON.parse((await FS.text([...dir, mf])).text.replace(BOM, '')); if (m && Array.isArray(m.对应)) FLOW_MAP = m.对应.map(x => (Array.isArray(x) ? x : [x]).map(Number)); }
   } catch (e) { /* 读不了就不摆 */ }
 }
+/* 先写提示词的场（流水线里这一场选了「先写提示词」、剧本还没定稿）：写好了就在这里让 AI 反推剧本，不用回流水线（2026-11-14 用户要的）。
+   照这一场所有的提示词反推；反推好了，按钮换成「去看剧本」，到流水线的剧本页看、点「采用」 */
+const REV = { st: '', at: '' };   // st：'' 不是这种场；'go' 能反推；'run' AI 在反推；'ok' 反推好了、还没采用。at：盘上那一份反推的时间
+const revOn = () => !!(FLOW && FLOW.先写提示词 === true && !FLOW.剧本定稿);
+const revSeg = () => SEGDIR.replace(/^第|段$/g, '');
+const revEdited = t => { const ms = Date.parse(String(t).replace(' ', 'T')); return !!ms && MTIME > ms + 999; };   // 这一份稿在那次反推以后又存过
+async function revCheck() {
+  if (!revOn()) { REV.st = ''; return paintRev(); }
+  let v = null;
+  const p = [HOME, PJ, '定稿的剧本', SEGDIR, SEGDIR + '_反推.json'];
+  try { if (await has(p)) v = JSON.parse((await FS.text(p)).text.replace(BOM, '')); } catch (e) { /* 读不了当没有 */ }
+  if (REV.st === 'run') return paintRev();   // 读的工夫里任务开了：照在做显示
+  REV.at = v && typeof v.时间 === 'string' && Array.isArray(v.段落) && v.段落.length ? v.时间 : '';
+  REV.st = REV.at && REV.at > String(FLOW.反推采用 || '') ? 'ok' : 'go';
+  paintRev();
+}
+function paintRev() {
+  const b = $('#revBtn');
+  if (!b) return;
+  if (REV.st === 'ok' && revEdited(REV.at)) REV.st = 'go';
+  b.hidden = !REV.st;
+  b.disabled = !READY || REV.st === 'run';
+  b.classList.toggle('dian', REV.st === 'ok'); b.classList.toggle('zhu', REV.st !== 'ok');
+  b.textContent = REV.st === 'run' ? 'AI 在反推剧本…' : REV.st === 'ok' ? '反推好了，去看剧本 →' : REV.at || (FLOW && FLOW.反推采用) ? '照提示词再反推' : '让 AI 反推剧本';
+  b.title = REV.st === 'run' ? '左下角能看到它做到哪了；好了这里会变成「去看剧本」'
+    : REV.st === 'ok' ? '到流水线的剧本页，看 AI 照提示词写的剧本、段落和出场的，点「采用」才算数'
+    : '照这一场写好的几条提示词写剧本、分段落，列出出场的人物、场景、道具；你写的提示词一个字不动。提示词里新写的人物不用先加，采用时打勾就补进全片设定';
+}
+async function revRun() {
+  if (!revOn() || REV.st === 'run') return;
+  try {
+    if (!await save()) return toast('稿子还没存上，先存好再反推');
+    if (SVC == null) { try { SVC = (await (await fetch('/api/ping', { headers: HDR })).json()).v || 0; } catch (e) { SVC = 0; } }
+    if (SVC < 5) return toast('本机服务是老版本，开不了这个任务：回流水线去点「让 AI 反推剧本」');
+    REV.st = 'run'; paintRev();
+    await tellAI('反推剧本 ' + revSeg());
+    toast('AI 在照这一场的提示词反推剧本，一两分钟。好了这里的按钮会变成「去看剧本」');
+  } catch (e) { REV.st = ''; revCheck(); toast('没交上：' + e.message); }
+}
+async function revGo() {
+  if (!await save()) return toast('稿子还没存上，先存好再走');
+  const P = window.parent !== window ? window.parent : null;
+  if (P && typeof P.go === 'function') return P.go('剧本', { s: revSeg() });   // 盖在流水线上：照流水线自己的走法换页（它先存好自己的）
+  location.href = '/' + ['通用工具', '流水线', '剧本.html'].map(encodeURIComponent).join('/') + '?p=' + encodeURIComponent(PJ) + '&s=' + encodeURIComponent(revSeg());
+}
+/* ---------- AI 铺底（2026-11-15 他要的：从流水线「提示词」那一步挪进写稿页，在分区按钮那一行最右边）----------
+   AI 照定稿的剧本和这一场的资产，把素材、基础设定、主体与关系、保持一致写进正文；你写的生成目标、事件脚本不动，原来那一版先进历史记录。
+   铺过的，AI 先判断要不要改，对得上一个字不动（本机服务的「直接铺底」，和原来流水线里那个按钮同一个任务）。
+   点了二选一：让流水线顶栏「AI 用」选的 AI 直接铺；或者复制任务，贴进你自己开的对话。
+   铺的时候不挡人（11-15 他说：等的时候要能接着干别的、能换项目）：任务和别的 AI 任务一样摆在左下角，这一页照样能写，也能回流水线干别的。
+   AI 写进文件那一下你还有没存的字：AI 只动了它那几块、你只动了你那两块，就把 AI 写的换进这一页、和你写的一起存，不算冲突（layMerge）；
+   两边动了同一块，照旧摆冲突条 ---------- */
+const SELF_CH = '自己交给 AI';   // 「给我提示词」的渠道号（和 流水线.js 一样）
+const LAY = { fin: false, sync: false, grace: 0 };   // fin：剧本定稿了（打开时、点的时候各查一次）；sync：铺完了、正在把 AI 写的换上；grace：铺完以后再照看一会儿，晚到的存盘撞上了也照样合
+const layJob = j => !!j && j.事 === '直接铺底' && j.段 === revSeg() && j.名 === STEM + '.txt';
+const layLive = () => JOBS.live.find(layJob) || null;
+const layOn = () => !!layLive() || LAY.sync;
+const layWatch = () => layOn() || Date.now() < LAY.grace;
+const timeOf = t => { const n = Date.parse(String(t || '').trim().replace(' ', 'T')); return isNaN(n) ? 0 : n; };
+const humanOf = d => ({ event: String(d.event || '').trim(), shots: PromptDraft.shotText(d).split(/\r\n|\n|\r/).map(l => l.trim()).filter(l => l && !PromptDraft.isLook(l)) });   // 你写的两块
+const layLaid = d => !!d && (!!String(d.keep || '').trim() || (d.basic || []).some(l => !PromptDraft.isLook(l)));   // 铺过了：基础设定、保持一致有字（和本机服务一个算法）
+async function layFinal(s) {   // 剧本定稿了没有，和流水线、本机服务一个算法：定稿时间不早于段落定下来的时间，也不早于剧本最后改的时间。不给 s 就现读流水线
+  if (s === undefined) {
+    s = FLOW;
+    try { const j = JSON.parse((await FS.text([HOME, PJ, '定稿的剧本', '流水线.json'])).text.replace(BOM, '')); s = (Array.isArray(j.场) ? j.场 : []).find(x => x && '第' + x.段 + '段' === SEGDIR) || null; } catch (e) { /* 读不了照打开时读的 */ }
+  }
+  const fin = timeOf(s && s.剧本定稿);
+  if (!fin || fin < timeOf(s.定稿)) return false;
+  const st = await FS.stat([HOME, PJ, '定稿的剧本', SEGDIR, SEGDIR + '_剧本.docx']).catch(() => null);
+  return !!st && fin + 999 >= st.mtime;
+}
+const layWhyNot = () => FLOW && FLOW.先写提示词 === true ? '剧本定稿以后才能铺。这一场先写提示词：写好了先「让 AI 反推剧本」，剧本头一回定稿时 AI 自动铺' : '剧本定稿以后才能铺：回流水线，到剧本那一步点「剧本定稿」';
+function layNav() {   // 分区按钮那一行，最右边摆「AI 铺底」；旧格式的稿（走右栏「获取建议」）、没有流水线的老项目不摆
+  const nav = commonControls();
+  if (isPe() && FLOW) nav.append(h('button', { id: 'layBtn', class: 'btn sm lay-b', type: 'button', onclick: layAsk }, 'AI 铺底'));
+  return nav;
+}
+function paintLay() {   // 按钮的样子：在铺的时候按钮上转个圈（进度、停掉在左下角那一条里）
+  setAsk();
+  const b = $('#layBtn');
+  if (!b) return;
+  const on = layOn();
+  b.disabled = !READY || on || !LAY.fin;
+  b.classList.toggle('dian', !b.disabled && !layLaid(DOC));   // 你写好了、AI 那几块还空着：这一步就该点它
+  b.title = on ? 'AI 在铺底：进度和「停掉」在左下角。这一页照样能写，铺好自动换上'
+    : !LAY.fin ? layWhyNot() : 'AI 照定稿的剧本和这一场的资产，把素材、基础设定、主体与关系、保持一致写进正文；你写的生成目标、事件脚本不动。铺过的，AI 先看要不要改，对得上一个字不动';
+  if (b.dataset.on !== String(on)) { b.dataset.on = String(on); b.replaceChildren(...(on ? [h('i', { class: 'wt-ring' }), 'AI 在铺底'] : ['AI 铺底'])); }   // 变了才换：每秒都来，换了转着的环会跳回原处
+}
+async function layAsk() {
+  if (!READY || layOn()) return;
+  if (CONFLICT) return toast('这份稿有修改冲突：先在上面处理好，再铺');
+  const d = PromptDraft.parse(activeText()), hm = humanOf(d);
+  if (!hm.event && !hm.shots.length) return toast('生成目标、事件脚本都还空着：先写好再铺底');
+  LAY.fin = await layFinal(); paintLay();
+  if (!LAY.fin) return toast(layWhyNot());
+  if (SVC == null) { try { SVC = (await (await fetch('/api/ping', { headers: HDR })).json()).v || 0; } catch (e) { SVC = 0; } }
+  if (SVC < 5) return toast('本机服务是老版本，铺不了：重开本机服务再试');
+  const now = await channelNow(), name = (CHS.find(c => c.id === now) || { 名: 'AI' }).名;
+  const pick = await layDialog(layLaid(d), CHS.some(c => c.id === SELF_CH), now === SELF_CH, name);
+  if (!pick || layOn()) return;
+  try {
+    clearTimeout(ST); if (!await save()) return toast('稿子还没存上，先存好再铺');
+    const r = await tellAI('直接铺底 ' + OPENPATH, pick === 'self' ? SELF_CH : now);
+    toast(r.say || '交给 ' + name + ' 了：进度在左下角，铺好自动换上。这一页照样能写，也能先去干别的');   // 给我提示词、Claude 桌面版、DeepSeek 窗口：说一句去哪儿看
+  } catch (e) { toast('没交上：' + e.message); }
+}
+function layDialog(laid, selfOk, viaSelf, name) {   // 二选一：让 AI 直接铺／复制任务自己交给 AI（顶栏选的就是「给我提示词」时只摆复制）
+  return new Promise(done => {
+    let pick = null;
+    const pickAs = v => () => { pick = v; dlg.close(); };
+    const dlg = h('dialog', { class: 'editor-dialog lay-dlg' }, h('b', null, 'AI 铺底 · ' + vpShort(STEM)),
+      h('p', null, laid ? '这一条铺过了：AI 先看现在这几块和剧本、资产还对不对得上，对得上一个字不动；对不上才改，改前原来那一版先进历史记录。'
+        : 'AI 照定稿的剧本和这一场的资产，把素材、基础设定、主体与关系、保持一致写进正文，原来那一版先进历史记录。'),
+      h('p', null, '你写的生成目标、事件脚本不动。铺的时候不用等：照样能写，也能先去干别的，铺好自动换上，一般一两分钟。'),
+      h('footer', null,
+        h('button', { class: 'btn ghost', type: 'button', onclick: pickAs(null) }, '取消'),
+        selfOk ? h('button', { class: 'btn' + (viaSelf ? ' dian' : ''), type: 'button', autofocus: viaSelf, title: '不在这里调 AI：把任务复制出来，贴进你自己在 Codex、Claude 里开的对话。它做完，这里自动写进正文', onclick: pickAs('self') }, '复制任务，自己交给 AI') : null,
+        viaSelf ? null : h('button', { class: 'btn dian', type: 'button', autofocus: true, title: '调流水线顶栏「AI 用」选的那个，做完自动写进正文', onclick: pickAs('ai') }, '让 ' + name + ' 直接铺')));
+    dlg.addEventListener('close', () => { dlg.remove(); done(pick); });
+    document.body.append(dlg); dlg.showModal();
+  });
+}
+async function layDone(j) {   // 铺完了（没成、停掉也一样）：把 AI 写的换进这一页
+  LAY.sync = true; LAY.grace = Date.now() + 20e3; paintLay();
+  try {
+    for (let i = 0; i < 80 && (POLLING || PULLING || SAVING); i++) await new Promise(r => setTimeout(r, 100));   // 正在读、正在存的先让它做完
+    if (CONFLICT) { if (await layHeal()) await save(); }   // 存盘撞上了 AI 写文件的那一下：合上接着存
+    else await poll();   // 文件变了就换上；你有没存的字，走 layMerge 只换 AI 那几块
+  } finally {
+    LAY.sync = false; paintLay();
+    toast(j.状态 === '做完' ? j.结果 : j.标题 + (j.状态 === '停了' ? ' 停掉了' : ' 没成：' + j.错误));
+  }
+}
+/* AI 写进文件了，这一页还是它写之前的底：AI 只动了它那几块、你只动了你那两块，就把 AI 写的换进来（你在写的地方不重画、光标不丢），你没存的字接着存。
+   返回 true：换好了，或者文件本来就和这一页的底一样（是一笔过时的存盘撞上的），接着存就行；false：两边动了同一块，照旧摆冲突条 */
+const AI_KEYS = ['refs', 'basic', 'seg', 'keep'];
+const aiSig = d => JSON.stringify(AI_KEYS.map(k => [].concat(d[k] || []).map(l => String(l).trim()).filter(Boolean)));
+async function layMerge(r, ss) {
+  if (!r) [r, ss] = await Promise.all([FS.text(PROMPT), readSideState()]);
+  if (r.text === LASTTEXT) return JSON.stringify(editorPart(ss.side)) === JSON.stringify(BASE_EDITOR);
+  const scoped = MODE !== '自由' || (ss.side.写法 === '自由' && ss.side.写法范围 === '分镜' && typeof ss.side.分镜稿 === 'string');
+  if (!scoped) return false;   // 老的整页自由稿：照原来的办法整页换
+  const base = parsePrompt(LASTTEXT), disk = parsePrompt(r.text), mine = parsePrompt(activeText());
+  if (JSON.stringify(humanOf(disk)) !== JSON.stringify(humanOf(base)) || aiSig(mine) !== aiSig(base)) return false;
+  const src = MODE === '自由' ? parsePrompt(ss.side.分镜稿) : disk;   // 自由写法：AI 那几块照写稿资料里的结构化稿取（和整页换上时一样）
+  const wrote = dirty(), binding = editorSnapshot().挂图;   // 你刚挂、还没存的图留着
+  LASTTEXT = r.text; MTIME = r.mtime; SIDE = { ...ss.side, 挂图: { ...ss.side.挂图, ...binding } }; SIDE_MT = ss.mtime; BASE_EDITOR = structuredClone(editorPart(ss.side));
+  for (const k of AI_KEYS) DOC[k] = src[k];
+  layPaintAi();
+  if (wrote) touch();   // 你写的两块还没存：和 AI 写的几块一起存
+  await loadRefs(); paintMarks(); paintAssets();
+  return true;
+}
+async function layHeal() {   // 冲突条是 AI 铺底写文件撞出来的：能合就合上、收起冲突条
+  try { if (!await layMerge()) return false; } catch (e) { return false; }
+  CONFLICT = false; $('#saveConflict')?.remove(); setStatus('正在保存…');
+  return true;
+}
+function layPaintAi() {   // 只换 AI 那几区；生成目标、事件脚本不重画
+  const keys = SECS.map(s => s.key).join(), box = $('.shared-settings'), ev = box && $('section[data-sec="event"]', box);
+  if (!ev) return;
+  pickSecs();
+  for (const el of [...box.children]) if (el !== ev) el.remove();
+  ev.after(...SECS.filter(s => s.key !== 'shots').map((s, i) => s.key === 'event' ? null : secEl(s, i)).filter(Boolean));
+  if (SECS.map(s => s.key).join() !== keys) {   // 写法一、写法二换了（主体与关系那一区有没有）：分区按钮、事件脚本的序号跟着换
+    $('#sheet .section-nav').replaceWith(layNav());
+    const no = $('section[data-sec="shots"] .sec-no'); if (no) no.textContent = CN[SECS.findIndex(s => s.key === 'shots')];
+  }
+  paintSum(); updateCommonSections(); paintHNotes(); paintLay();
+}
 /* 这一场的剧本段落（早先叫「镜头」，里面的「写什么」早先叫「拍什么」） */
+/* 提示词的叫法：一场几条（2026-11-13），第一条 视频提示词、第二条起 视频提示词_02……显示成「第N条」；老稿（段落a-b_…、镜头a-b_…）照旧 */
+const vpShort = stem => { const v = (/_改([0-9]+)$/.exec(stem) || [])[1], b = stem.replace(/_改[0-9]+$/, ''), m = /^视频提示词(?:_([0-9]+))?$/.exec(b); return (m ? '第' + (+(m[1] || 1)) + '条' : b.replace(/_?视频提示词$/, '')) + (v ? ' 改' + v : ''); };   // 审片以后照修改方案另存的 _改1、_改2……（2026-11-14）
+const flowFree = () => /^视频提示词(_[0-9]+)?(_改[0-9]+)?$/.test(STEM);   // 一场几条的稿：写哪段戏人定，镜头不对段落
 const flowParas = () => !FLOW ? [] : Array.isArray(FLOW.段落) && FLOW.段落.length ? FLOW.段落 : Array.isArray(FLOW.镜头) ? FLOW.镜头 : [];
 /* 这一镜对着你的哪一个段落：没扩写时一段当一镜；扩写以后照「镜头对应」找，找不到就不摆 */
 const flowAt = no => {
   const n = parseInt(no, 10), cnt = flowParas().length;
-  if (!cnt) return -1;
-  const m = /^段落(\d+)(?:-(\d+))?_?视频提示词$/.exec(STEM);
-  if (m || STEM === '视频提示词') {   // 流水线里按段落建的稿（镜头表那一步取消以后）：一个段落先摆一镜，镜头号就是段落号
-    const a = m ? +m[1] : 1, b = m ? +(m[2] || m[1]) : cnt;
+  if (!cnt || flowFree()) return -1;
+  const m = /^段落(\d+)(?:-(\d+))?_?视频提示词$/.exec(STEM.replace(/_改[0-9]+$/, ''));
+  if (m) {   // 老稿：按段落建的（11-12～13），一个段落先摆一镜，镜头号就是段落号
+    const a = +m[1], b = +(m[2] || m[1]);
     return n >= a && n <= b && n <= cnt ? n - 1 : -1;
   }
   if (FLOW_MAP) return FLOW_MAP.findIndex(x => x.includes(n));
@@ -958,10 +1408,10 @@ function shotEl(sh) {
         h('button', { type: 'button', class: 'mini-b fold-me', onclick: () => foldMine(el) }, '收起'),
         h('button', { type: 'button', class: 'mini-b', onclick: () => delShot(el) }, '删除'))),
     h('div', { class: 'peek', title: '点一下展开', onclick: () => foldMine(el, false) }),
-    h('label', { class: 'purpose-field' }, '作用', h('input', { class: 'shot-purpose', value: sh.purpose || '', placeholder: '这一镜想起什么作用？自由填写，也可留空' })),
+    h('label', { class: 'purpose-field' }, '作用', h('input', { class: 'shot-purpose', value: sh.purpose || '', placeholder: '这一镜想起什么作用？自由填写，也可留空' + (isPe() ? '（标题和作用只给你看，不写进提示词）' : '') })),
     h('div', { class: 'shot-caption' }, '镜头正文', h('span', null, '自由写 · 输入 @ 引用素材')),
     writer('shot', 4, '写画面、动作、台词……', sh.lines.join('\n')),
-    h('div', { class: 'shot-bottom' }, h('span', { class: 'shot-meta' }), h('button', { class: 'mini-b', onclick: () => { selectShot(sh.id); document.body.classList.remove('norail'); showRail('suggest'); } }, '查看本镜建议 ↗')));
+    h('div', { class: 'shot-bottom' }, h('span', { class: 'shot-meta' })));
   return el;
 }
 /* 你写好的可以收起来，省地方：本段事件那一区、每一镜。收起来只留开头两行，点一下再展开；记在这台电脑的浏览器里 */
@@ -995,10 +1445,10 @@ function secEl(s, i) {
   const ai = s.by === 'ai', fold = s.fold && !OPEN.has(s.key);
   const sec = h('section', { class: 'sec' + (fold ? ' fold' : ''), 'data-sec': s.key },
     h('div', { class: 'sec-h' }, h('span', { class: 'sec-no' }, CN[i]), h('span', { class: 'sec-name' }, s.name),
-      h('span', { class: 'who ' + s.by }, s.who || (ai ? 'AI 公共内容' : '你写')), h('span', { class: 'sec-line' }),
+      h('span', { class: 'who ' + s.by }, s.who || (ai ? 'AI 铺底' : '你写')), h('span', { class: 'sec-line' }),
       s.fold ? h('button', { class: 'mini-b fold-b', tabindex: '-1', onclick: () => toggleFold(sec) }, fold ? '展开看' : '收起') : null,
       s.key === 'event' ? h('button', { class: 'mini-b fold-me', tabindex: '-1', title: '写好了就收起来，只留开头两行', onclick: () => foldMine(sec) }, '收起') : null));
-  if (s.key === 'event') sec.append(h('div', { class: 'peek', title: '点一下展开', onclick: () => foldMine(sec, false) }), writer('event', 3, '谁要什么，所以发生了什么；结束时什么样。两人的情绪从哪来，也写在这里。', DOC.event));
+  if (s.key === 'event') sec.append(h('div', { class: 'peek', title: '点一下展开', onclick: () => foldMine(sec, false) }), writer('event', 3, isPe() ? '这条视频拍什么：谁要什么，所以发生了什么；结束时什么样。情绪从哪来，也写在这里。' : '谁要什么，所以发生了什么；结束时什么样。两人的情绪从哪来，也写在这里。', DOC.event));
   else if (s.key === 'shots') sec.append(h('div', { id: 'shot-editor' }));
   else {
     if (s.fold) sec.append(h('div', { class: 'sum', title: '点一下展开看全文', onclick: e => { if (!e.target.closest('.ref')) toggleFold(sec, true); } }, s.key === 'refs' ? null : sumText(s)));
@@ -1011,21 +1461,30 @@ function paintSum() {
   const el = $('section[data-sec="refs"] .sum');
   if (el) el.replaceChildren(...['图片', '音频', '视频'].flatMap(t => NUM[t].map((p, i) => chip('@' + t + (i + 1)))));
 }
+/* 标题和分区按钮那一条钉在正文顶上（2026-11-15）：往下滚不走；滚动时下沿加一道影子；跳到哪一区时让开这一条的高度，不被它盖住 */
+const headRO = new ResizeObserver(() => { const hd = $('#sheet .sheet-head'); $('#canvas').style.scrollPaddingTop = hd ? Math.ceil(hd.offsetHeight) + 12 + 'px' : ''; });
+function pinHead() {
+  const c = $('#canvas');
+  c.classList.toggle('stuck', $('#sheet').getBoundingClientRect().top < c.getBoundingClientRect().top - 1);
+}
 function render() {
-  const short = STEM.replace(/_?视频提示词$/, '');
-  $('#editor-mode').replaceChildren(h('b', { class: 'editor-title' }, '分镜提示词'), modeControls());
+  pickSecs();
+  const short = vpShort(STEM);
+  $('#editor-mode').replaceChildren(h('b', { class: 'editor-title' }, '分镜提示词'), modeControls());   // 在左栏最上面（2026-11-15 从顶上那一行挪过来）
   $('#sheet').replaceChildren(
-    h('header', { class: 'doc-title' }, h('div', { class: 'doc-kicker' }, '视 频 提 示 词'), h('div', { class: 'doc-seg' }, SEGDIR), short ? h('div', { class: 'doc-name' }, short.replace(/_/g, ' · ')) : null, h('div', { class: 'ornament' }, h('span'))),
-    commonControls(),
+    h('div', { class: 'sheet-head' },
+      h('header', { class: 'doc-title' }, h('div', { class: 'doc-kicker' }, '视 频 提 示 词'), h('div', { class: 'doc-seg' }, SEGDIR), short ? h('div', { class: 'doc-name' }, short.replace(/_/g, ' · ')) : null, h('div', { class: 'ornament' }, h('span'))),
+      layNav()),
     h('div', { id: 'gnote' }),
     h('div', { id: 'general-notes' }),
     h('div', { class: 'shared-settings' }, SECS.filter(s => s.key !== 'shots').map((s, i) => secEl(s, i))),
-    secEl(SECS.find(s => s.key === 'shots'), 5),
+    secEl(SECS.find(s => s.key === 'shots'), SECS.findIndex(s => s.key === 'shots')),
     h('div', { class: 'sheet-foot' }, OPENPATH.split('/').join(' / ')));
-  renderShotEditor(); paintSum(); restoreFolds(); updateCommonSections(); $$('.wr-ta').forEach(grow); paintHNotes(); renderNotes(); paintSuggestions(); paintCommonContent();
+  renderShotEditor(); paintSum(); restoreFolds(); updateCommonSections(); $$('.wr-ta').forEach(grow); paintHNotes(); renderNotes(); paintSuggestions(); paintLay();
+  headRO.disconnect(); headRO.observe($('#sheet .sheet-head')); pinHead();
 }
 async function sendLine(line, okMsg) {
-  try { clearTimeout(ST); if (!await save()) return; const r = await tellAI(line); toast(r.online ? okMsg : 'AI 这会儿没在等。去对话里说一声「看右边」，它就来'); }
+  try { clearTimeout(ST); if (!await save()) return; const r = await tellAI(line); toast(r.online ? r.say || okMsg : 'AI 这会儿没在等。去对话里说一声「看右边」，它就来'); }
   catch (e) { toast('没交上：' + e.message); }
 }
 function addShot() {
@@ -1044,7 +1503,13 @@ const savedText = () => SAVED_AT ? '已保存 ' + two(SAVED_AT.getHours()) + ':'
 function touch() { if (!READY) return; VER++; rememberDraft(); setStatus(CONFLICT ? '有修改冲突，输入已保留' : '正在保存…', CONFLICT); clearTimeout(ST); ST = setTimeout(save, 700); }
 let PULLING = false;   // 正在把外面改的换上：这时候不存（页面上 AI 那几区还是旧的，存了就把 AI 刚写的盖掉）
 async function save() {
-  return saveEditor();
+  if (READY && !CONFLICT && !SAVING && layWatch()) {   // AI 铺底刚写进文件：先把它写的换进来再存，免得拿旧底去存、闪一下冲突条
+    try { if ((await FS.stat(PROMPT)).mtime !== MTIME) await layMerge(); } catch (e) { /* 看不了就照常存，撞上了下面再合 */ }
+  }
+  let ok = await saveEditor();
+  if (!ok && CONFLICT && layWatch() && await layHeal()) ok = await saveEditor();   // 撞上了 AI 铺底写文件的那一下：合上再存一次
+  if (ok) paintRev();   // 先写提示词的场：反推以后又改了稿，按钮换回「再反推」
+  return ok;
 }
 async function pullExternal(saving) {   // saving：存盘的半路上调的（这时你写的两处一定以页面为准，换完由存盘那边接着写）
   PULLING = true;
@@ -1054,6 +1519,10 @@ async function pullExternal0(saving) {
   const version = VER;
   const [r, ss] = await Promise.all([FS.text(PROMPT), readSideState()]);
   if (r.text === LASTTEXT && JSON.stringify(editorPart(ss.side)) === JSON.stringify(BASE_EDITOR)) { MTIME = r.mtime; return; }
+  if (layWatch()) {   // AI 铺底写进来了：正在存的，等存盘那边（撞上了 save 会合）；能合就只换 AI 那几块，你在写的地方不动
+    if (saving || SAVING) return;
+    if (await layMerge(r, ss)) return;
+  }
   if (saving || dirty() || VER !== version || SAVING) return reportConflict();
   SIDE = ss.side; SIDE_MT = ss.mtime;
   BASE_EDITOR = structuredClone(editorPart(SIDE));
@@ -1121,16 +1590,29 @@ function go(x) {
 }
 
 /* ---------- 即时标记：台词、音效、称谓、校对、AI 批到的那一句、用过的关键词 ---------- */
-const LINT_RULES = [
+const LINT_OLD = [
   { re: /[（(][^（()）]*[）)]|[“”"‘’「」『』]/g, msg: '提示词里不用括号和引号' },
   { re: /[0-9０-９]+(?:\.[0-9]+)?\s*秒/g, msg: '不写秒数，时长在生成参数里设' },
   { re: /(?<!其)[她他](?!们)/g, msg: '分镜里用称谓指人，不用他、她', shot: true },
 ];
+/* PE 稿：() 是音乐、<> 是音效、{} 是台词、【】是字幕，这几样都能用；台词别用引号，说明别加中文圆括号 */
+const LINT_PE = [
+  { re: /[“”"‘’「」『』]/g, msg: '台词放进 {}，不用引号' },
+  { re: /（[^（）]*）/g, msg: '圆括号在 Seedance 里是音乐的记号：音乐写成 (……)，别的说明不加括号' },
+  { re: /[0-9０-９]+(?:\.[0-9]+)?\s*秒/g, msg: '不写秒数，时长在生成参数里设', id: 'secs' },
+  { re: /首帧参考|参考首帧|首帧构图参考|尾帧参考|参考尾帧/g, msg: '固定首帧、尾帧单独写一句「@图片N作为首帧。」「@图片N作为尾帧。」', id: 'head' },
+  { re: /(?<!其)[她他](?!们)/g, msg: '镜头里用称谓指人，不用他、她', shot: true },
+];
+/* 白模＋关键帧的 PE 稿（11-14）：每一镜开头本来就要写整秒和「首帧参考@图片N」，不查这两条；另查素材和每一镜开头（bmkLint） */
+const LINT_BMK = LINT_PE.filter(r => r.id !== 'secs' && r.id !== 'head');
+let LINT_RULES = LINT_OLD;
 let LINT = [];
 function paintMarks() {
   if (!READY) return;
+  const bmk = bmkOn() ? bmkLint() : null;
+  LINT_RULES = isPe() ? (bmk ? LINT_BMK : LINT_PE) : LINT_OLD;
   const sets = { say: [], sfx: [], ph: [], lint: [] };
-  LINT = [];
+  LINT = bmk ? bmk.doc.slice() : [];
   let phN = 0, phFirst = null, changed = false;
   for (const ed of $$('#sheet .ed')) for (const run of runsOf(ed)) {   // AI 写的几区
     const each = (re, fn) => { for (const m of run.t.matchAll(re)) fn(rangeIn(run, m.index, m.index + m[0].length), m[0]); };
@@ -1148,6 +1630,7 @@ function paintMarks() {
     if (shot) for (const a of named) add(new RegExp(reEsc(a.name), 'g'), 'm-nm', mk => { mk.aid = a.path; });
     add(/@(?:图片|视频|音频)[0-9]+/g, 'm-ref', (mk, t) => { const a = assetOfRef(t); if (!a) { LINT.push({ msg: t + ' 还没挂上图', text: '', ta, s: mk.s, e: mk.e }); mk.c = 'm-lint'; return; } mk.aid = a.path; });
     for (const rule of LINT_RULES) if (MODE !== '自由' && (!rule.shot || shot)) add(rule.re, 'm-lint', (mk, t) => { LINT.push({ msg: rule.msg, text: t, ta, s: mk.s, e: mk.e }); });
+    for (const x of (bmk && shot && MODE !== '自由' && bmk.byTa.get(ta)) || []) { marks.push({ s: x.s, e: x.e, c: 'm-lint' }); LINT.push({ msg: x.msg, text: '', ta, s: x.s, e: x.e }); }   // 白模＋关键帧：每一镜开头
     for (const n of NOTES) {
       if (boxOf(n) !== ta || !n.find) continue;
       if (n.state === 'done' && n.to && !v.includes(n.to) && v.includes(n.find)) { n.state = null; keepStates(); changed = true; }   // 照改以后你按 Ctrl+Z 撤了：这条批注回到没处理
@@ -1202,11 +1685,24 @@ const hitAsset = (a, s) => !s || a.name.toLowerCase().includes(s) || pyOf(a).som
 const usedAssets = () => ['图片', '音频', '视频'].flatMap(t => NUM[t].map(p => A[p])).filter(Boolean);
 const CAT_RANK = a => { const i = ['人物', '道具', '特效', '本段', '场景'].indexOf(a.cat); return i < 0 ? 9 : i; };
 function closeAt() { AT = null; pop.hidden = true; }
+/* 全片设定里还没有图的人物、道具（11-14 先写提示词：人物先加、图以后才有）：@ 里也摆出来，插进去就是叫法，不挂图、不排号。这一场选上的排前面 */
+function castOnly() {
+  if (!FLOW_ALL) return [];
+  const have = new Set(ASSETS.map(a => a.path)), mine = FLOW ? [...(Array.isArray(FLOW.人物) ? FLOW.人物 : []), ...(Array.isArray(FLOW.道具) ? FLOW.道具 : [])] : [], out = [];
+  for (const [cat, kind] of [['人物', 'person'], ['道具', 'prop']]) for (const e of Array.isArray(FLOW_ALL[cat]) ? FLOW_ALL[cat] : []) {
+    const name = e && typeof e.名 === 'string' ? e.名.trim() : '';
+    if (!name) continue;
+    const files = (Array.isArray(e.资产) ? e.资产 : [e.资产]).filter(f => typeof f === 'string' && f.trim()).map(f => f.trim().split(String.fromCharCode(92)).join('/'));
+    if (files.some(f => have.has(f))) continue;   // 有图的照旧摆图
+    out.push({ type: '称谓', kind, cat, name, file: '', sub: '', parts: [], path: '称谓:' + cat + '/' + name, mine: mine.includes(name) ? 1 : 0 });
+  }
+  return out.sort((a, b) => b.mine - a.mine);
+}
 function checkAt() {
   const q = atQuery();
   if (!q) return closeAt();
   const s = q.q.toLowerCase(), used = usedAssets().filter(a => hitAsset(a, s));
-  const all = ASSETS.filter(a => !refOf(a) && hitAsset(a, s)).sort((a, b) => CAT_RANK(a) - CAT_RANK(b)), rest = all.slice(0, 24);   // 人物、道具排前面；太多就先列二十来个
+  const all = [...castOnly(), ...ASSETS].filter(a => !refOf(a) && hitAsset(a, s)).sort((a, b) => CAT_RANK(a) - CAT_RANK(b)), rest = all.slice(0, 24);   // 人物、道具排前面；太多就先列二十来个
   if (!used.length && !rest.length) return closeAt();
   AT = { ...q, items: [...used, ...rest], nUsed: used.length, more: all.length - rest.length, i: AT && AT.q === q.q ? Math.min(AT.i, used.length + rest.length - 1) : 0 };
   paintAt();
@@ -1216,10 +1712,10 @@ function paintAt() {
   AT.items.forEach((a, k) => {
     if (k === 0 && AT.nUsed) kids.push(h('div', { class: 'at-h' }, '这份已用'));
     if (k === AT.nUsed) kids.push(h('div', { class: 'at-h' }, '资产里还有'));
-    const ref = refOf(a);
+    const ref = refOf(a), word = a.type === '称谓';
     kids.push(h('div', { class: 'at-i' + (k === AT.i ? ' on' : ''), onclick: () => pick(a), onmousemove: () => { if (AT && AT.i !== k) { AT.i = k; $$('.at-i', pop).forEach((el, j) => el.classList.toggle('on', j === k)); } } },
-      thumb(a), h('div', { class: 'at-n' }, h('b', null, a.name), h('span', null, (a.cat === '本段' ? '这一段 · ' : '') + KIND_NAME[a.kind] + ' · ' + (ref ? '已是 ' + ref : '还没挂，选了自动排号'))),
-      h('span', { class: 'at-r' + (ref ? '' : ' new') }, inShot && isNamed(a) ? '写称谓' : ref || '排 @' + a.type + (NUM[a.type].length + 1))));
+      thumb(a), h('div', { class: 'at-n' }, h('b', null, a.name), h('span', null, (a.cat === '本段' ? '这一段 · ' : '') + KIND_NAME[a.kind] + ' · ' + (word ? '还没有图，插入叫法' : ref ? '已是 ' + ref : '还没挂，选了自动排号'))),
+      h('span', { class: 'at-r' + (ref || word ? '' : ' new') }, word || (inShot && isNamed(a)) ? '写称谓' : ref || '排 @' + a.type + (NUM[a.type].length + 1))));
   });
   kids.push(h('div', { class: 'at-f' }, (AT.more ? '还有 ' + AT.more + ' 个，接着打名字就找到了　' : '') + '↑↓ 选　回车插入　Esc 关　可以打名字或拼音首字母'));
   pop.replaceChildren(...kids); pop.hidden = false;
@@ -1241,10 +1737,15 @@ function pick(a) {
 }
 /* where：镜头文字框里的一段 { ta, s, e }，或者 AI 那几行里的一个位置（Range） */
 function insertAsset(a, where) {
+  if (where.ta && a.type === '称谓') {   // 还没有图的人物、道具：只写叫法
+    if (!['shot', 'free'].includes(where.ta.dataset.kind)) return toast(evName() + '里不挂图，写清谁要什么就行');
+    typeInto(where.ta, where.s, where.e, a.name);
+    return toast('写了称谓「' + a.name + '」。还没有图：剧本定稿、图出好以后再挂');
+  }
   if (where.ta) {
     const ta = where.ta;
     if (ta.dataset.kind === 'free') { const ref = bind(a); typeInto(ta, where.s, where.e, ref); return toast('插入了 ' + ref + '　' + a.name); }
-    if (ta.dataset.kind !== 'shot') return toast('本段事件里不挂图，写清谁要什么就行');
+    if (ta.dataset.kind !== 'shot') return toast(evName() + '里不挂图，写清谁要什么就行');
     const fresh = !refOf(a), ref = bind(a), asName = isNamed(a);   // 镜头里的人和道具写称谓，别的插 @编号
     typeInto(ta, where.s, where.e, asName ? a.name : ref);
     return toast(asName ? (fresh ? `镜头里写称谓「${a.name}」。它排成了 ${ref}，「素材」里补了一行` : `镜头里写称谓「${a.name}」，素材里它是 ${ref}`) : fresh ? `排成了 ${ref}，「素材」里补了一行` : `插入了 ${ref}　${a.name}`);
@@ -1255,6 +1756,15 @@ function insertAsset(a, where) {
   const ed = host.closest('.ed');
   if (!ed) return toast('先点一下正文里要插的位置');
   if (!ed.isContentEditable) return toast('这一行是 AI 写的，不在这里直接改；点它写批注');
+  if (a.type === '称谓') {   // 还没有图的：只写叫法，不挂编号
+    range.deleteContents();
+    const tn = document.createTextNode(a.name);
+    range.insertNode(tn); ed.focus();
+    const r = new Range(); r.setStartAfter(tn); r.collapse(true);
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    afterEdit();
+    return toast('写了称谓「' + a.name + '」。还没有图，不挂编号');
+  }
   const inRefs = !!ed.closest('section[data-sec="refs"]'), fresh = !refOf(a), ref = bind(a, inRefs), node = chip(ref);
   range.deleteContents(); range.insertNode(node);
   let tail = node.nextSibling;
@@ -1325,18 +1835,24 @@ function onKey(e) {
 
 /* ---------- 引导条 ---------- */
 let AT_T;
-function afterEdit() { touch(); paintMarks(); paintCommonContent(); clearTimeout(AT_T); AT_T = setTimeout(paintAssets, 400); }
+function afterEdit() { touch(); paintMarks(); clearTimeout(AT_T); AT_T = setTimeout(paintAssets, 400); }
 const GUIDE = {
   /* 提示每条不超过 10 个字，只留最要紧的两三条 */
   event: ['本段事件 · 你写', ['谁要什么', '发生了什么', '情绪从哪来']],
-  refs: ['素材 · 公共内容', ['点一行写批注', '输入 @ 引用素材']],
-  basic: ['基础设定 · 公共内容', ['点一行写批注']],
-  seg: ['本段 · 公共内容', ['点一行写批注']],
+  refs: ['素材 · AI 铺底', ['点一行写批注', '输入 @ 引用素材']],
+  basic: ['基础设定 · AI 铺底', ['点一行写批注']],
+  seg: ['本段 · AI 铺底', ['点一行写批注']],
   shots: ['分镜 · 你写', ['一镜只写一两件事', '一句台词配一个动作', '听的人要有反应']],
-  keep: ['保持一致 · 公共内容', ['点一行写批注']],
+  keep: ['保持一致 · AI 铺底', ['点一行写批注']],
+};
+const GUIDE_PE = {
+  event: ['生成目标 · 你写', ['拍什么', '谁要什么', '结束时什么样']],
+  seg: ['主体与关系 · AI 铺底', ['点一行写批注']],
+  basic: ['基础设定 · AI 铺底', ['风格写在镜头前面', '点一行写批注']],
+  shots: ['事件脚本 · 你写', ['一镜一行', '台词 {} 音效 <>', '听的人要有反应']],
 };
 function setGuide(key) {
-  const g = GUIDE[key];
+  const g = (isPe() && GUIDE_PE[key]) || GUIDE[key];
   $('#guide').replaceChildren(h('b', null, g ? g[0] : '写稿'),
     h('div', { class: 'g-list' }, g ? g[1].map(t => h('span', { class: 'g' }, t)) : h('span', { class: 'faint' }, '写到哪一区，这里提醒那一区怎么写。')),
     h('span', { class: 'g-keys' }, h('kbd', null, '@'), ' 插资产'));
@@ -1376,7 +1892,7 @@ function boxOf(n) {
   if (n.shotId) { const el = $$('.p-shot').find(x => x.dataset.id === n.shotId); return el ? $('.wr-ta', el) : null; }
   const m = /镜头\s*0*([0-9]+)/.exec(n.where);
   if (m) { const el = $$('.p-shot').find(x => parseInt(x.dataset.no, 10) === +m[1]); return el ? $('.wr-ta', el) : null; }
-  return /本段事件/.test(n.where) ? $('[data-sec="event"] .wr-ta') : null;
+  return /本段事件|生成目标/.test(n.where) ? $('[data-sec="event"] .wr-ta') : null;
 }
 function homeOf(n) {   // 批注卡片挂在哪
   const ta = boxOf(n);
@@ -1424,10 +1940,10 @@ function undoNote(n) {
   n.state = null; afterNotes();
 }
 let LASTF = null, LAST = null, LAST_SHOT = '';   // 最后一次光标在哪：文字框（LASTF）或 AI 那几行里的位置（LAST）
-const setAsk = () => { $('#askAll').disabled = !READY || AI.busy; $('#askOne').disabled = !READY || AI.busy || MODE === '自由' || !LAST_SHOT; $('#askAll').textContent = AI.busy ? 'AI 正在看稿…' : '请 AI 批'; };
+const setAsk = () => { const off = !READY || AI.busy || layOn(); $('#askAll').disabled = off; $('#askAll').textContent = AI.busy ? 'AI 正在看稿…' : '请 AI 批'; };   // AI 在铺底时也先不批：稿子马上要换
 async function askAI(shotNo) {
   if (AI.busy || !READY) return;
-  if (!$$('#sheet .wr-ta').some(t => t.value.trim())) return toast('本段事件和分镜都还空着，先写一点再请 AI 批');
+  if (!$$('#sheet .wr-ta').some(t => t.value.trim())) return toast(evName() + '和' + (isPe() ? '事件脚本' : '分镜') + '都还空着，先写一点再请 AI 批');
   AI.busy = true; AI.since = Date.now(); setAsk();
   try {
     clearTimeout(ST); if (!await save()) { AI.busy = false; setAsk(); return; }
@@ -1437,21 +1953,22 @@ async function askAI(shotNo) {
     NOTES = []; NOTES_MT = 0; NOTES_SUM = ''; renderNotes(); paintMarks();
     const r = await tellAI('请批注 ' + OPENPATH + (shotNo ? '｜只批镜头 ' + shotNo : ''));
     AI.online = r.online; showRail('ai');
-    toast(r.online ? '交给 AI 了，批好这里自动出现' : 'AI 这会儿没在等。去对话里说一声「看右边」，它就来批');
+    toast(r.online ? r.say || '交给 AI 了，批好这里自动出现' : 'AI 这会儿没在等。去对话里说一声「看右边」，它就来批');
   } catch (e) { AI.busy = false; toast('没交上：' + e.message); }
   setAsk(); paintAi(); paintSteps();
 }
 function paintAi() {
   const pane = $('#pane-ai'), left = NOTES.filter(n => !n.state);
-  if (AI.busy) return pane.replaceChildren(h('div', { class: 'ai-wait' }, h('div', { class: 'spin' }), h('p', null, AI.online ? 'AI 正在看稿，一般一两分钟。' : 'AI 这会儿没在等。'),
+  if (AI.busy) return pane.replaceChildren(h('div', { class: 'ai-wait' }, h('i', { class: 'wt-ring' }), h('p', { class: AI.online ? 'wt-t' : null }, AI.online ? 'AI 正在看稿，一般一两分钟。' : 'AI 这会儿没在等。'),
     AI.online ? h('p', { class: 'faint small' }, '批好这里自动出现，你可以接着写。') : h('p', { class: 'faint small' }, '去对话里说一声「看右边」，它就来批。'),
     h('p', { style: 'margin-top:10px' }, h('button', { class: 'linkb', onclick: () => { AI.busy = false; setAsk(); paintAi(); paintSteps(); } }, '不等了'))));
   if (!NOTES.length) return pane.replaceChildren(h('div', { class: 'ai-empty' },
-    h('p', null, '写到一半也可以请 AI 批。AI 只写批注，不动你的稿子；你点「照改」才改。'),
-    h('p', { style: 'margin-top:10px' }, 'AI 看三样，要紧的排前面，一轮最多 8 条：'),
-    h('ol', null, h('li', null, '和剧本、镜头表对不对得上'), h('li', null, '写戏规矩，和这个项目踩过的坑'), h('li', null, '素材、站位和格式')),
-    h('p', { class: 'faint small' }, '括号、秒数这类机器能查的，在「校对」里随写随提醒，不占 AI 的条数。每批一轮，稿子先留一版在历史记录里。'),
-    h('p', { style: 'margin-top:14px' }, h('button', { class: 'btn dai', onclick: () => askAI('') }, '请 AI 批'))));
+    h('p', null, h('b', null, 'AI 把这一条从头看一遍，给你意见。'), '点下面的「请 AI 批」（右上角也有），写到一半也行，等一两分钟。'),
+    h('p', { style: 'margin-top:10px' }, '一轮最多 8 条，要紧的排前面，看这三样：'),
+    h('ol', null, h('li', null, '和剧本对不对得上（漏戏、加戏、顺序）'), h('li', null, '有没有犯写戏的老毛病'), h('li', null, '素材、站位、格式')),
+    h('p', null, 'AI 只提意见，不改你的字。每条你自己选：「照改」就替你改，「不改」就算了。'),
+    h('p', { class: 'faint small' }, '引号、秒数这类小毛病不占条数，在「校对」里自动查。每批一轮，稿子先存一份到历史记录。'),
+    h('p', { style: 'margin-top:14px' }, h('button', { class: 'btn dian', onclick: () => askAI('') }, '请 AI 批'))));
   const fix = left.filter(n => n.lv === '要改').length, soft = left.length - fix, rank = n => (n.state ? 2 : 0) + (n.lv === '要改' ? 0 : 1);
   pane.replaceChildren(
     h('div', { class: 'ai-sum' }, NOTES_SUM ? '总评：' + NOTES_SUM : left.length ? 'AI 批好了。' : '这一轮都处理完了。',
@@ -1460,22 +1977,30 @@ function paintAi() {
       h('div', { class: 'nl-w' }, [n.where, n.lv, n.tag, n.state ? (n.state === 'done' ? '已照改' : n.state === 'ok' ? '知道了' : '不改') : ''].filter(Boolean).join('　·　')), h('div', { class: 'nl-n' }, n.say)))));
 }
 
-/* ---------- 右栏：资产、AI 批注、校对、对照 ---------- */
-const RAIL_TABS = [['suggest', '分镜 / 关键词'], ['common', '公共内容'], ['assets', '资产'], ['ai', '批注'], ['lint', '校对'], ['cmp', '对照']];
-let RAIL = 'suggest', PIN = null;
-const GOPEN = new Set(['人物', '道具', '特效']);   // 资产栏里展开着的类别；图多的（场景、这一段）先收着
-function showRail(k) { RAIL = k; for (const [x] of RAIL_TABS) $('#pane-' + x).hidden = x !== k; paintTabs(); if (k === 'ai') paintAi(); if (k === 'lint') paintLint(); if (k === 'assets') paintAssets(); if (k === 'suggest') paintSuggestions(); if (k === 'common') paintCommonContent(); }
+/* ---------- 右栏：资产、AI 批注、校对、剧本（「分镜 / 关键词」11-15 他说不要了） ---------- */
+const RAIL_TABS = [['assets', '资产'], ['ai', '批注'], ['lint', '校对'], ['script', '剧本']];
+let RAIL = 'assets', PIN = null;
+const GOPEN = new Set(['本段', '人物', '道具', '特效']);   // 资产栏里展开着的类别；场景图大、先收着
+function showRail(k) { RAIL = k; for (const [x] of RAIL_TABS) $('#pane-' + x).hidden = x !== k; paintTabs(); if (k === 'ai') paintAi(); if (k === 'lint') paintLint(); if (k === 'assets') paintAssets(); if (k === 'script') paintScript(); }
 function paintTabs() {
   const nAi = NOTES.filter(n => !n.state).length, nLint = LINT.filter(x => !x.info).length;
-  $('#rail-tabs').replaceChildren(...RAIL_TABS.map(([k, label]) => h('button', { class: 'rail-tab' + (RAIL === k ? ' on' : '') + (k === 'ai' && (nAi || AI.busy) ? ' has-ai' : '') + (k === 'lint' && nLint ? ' has' : ''), onclick: () => showRail(k) },
-    label + (k === 'ai' && nAi ? ' ' + nAi : k === 'lint' && nLint ? ' ' + nLint : ''))));
+  const box = $('#rail-tabs');
+  if (box.children.length !== RAIL_TABS.length) box.replaceChildren(...RAIL_TABS.map(([k]) => h('button', { class: 'rail-tab', onclick: () => showRail(k) })));   // 按钮只建一次，以后只改字和颜色：重画的瞬间点下去，点击不会丢
+  RAIL_TABS.forEach(([k, label], i) => {
+    const b = box.children[i], text = label + (k === 'ai' && nAi ? ' ' + nAi : k === 'lint' && nLint ? ' ' + nLint : '');
+    b.className = 'rail-tab' + (RAIL === k ? ' on' : '') + (k === 'ai' && (nAi || AI.busy) ? ' has-ai' : '') + (k === 'lint' && nLint ? ' has' : '');
+    if (b.textContent !== text) b.textContent = text;
+  });
 }
 function paintLint() {
   if (RAIL !== 'lint') return;
   const pane = $('#pane-lint');
-  if (!LINT.length) return pane.replaceChildren(h('p', { class: 'faint', style: 'padding:30px 0;text-align:center' }, '按固定格式查过一遍，没发现问题。'));
-  pane.replaceChildren(h('p', { class: 'faint small', style: 'margin-bottom:10px' }, '机器随写随查，正文里画了波浪线。点一条跳过去。'),
-    h('div', { class: 'lint' }, LINT.map(x => h('button', { class: 'issue' + (x.info ? ' info' : ''), onclick: () => go(x) }, h('i', { class: 'lv' }), h('span', null, x.msg, x.text ? h('em', null, x.text) : null)))));
+  const intro = h('div', { class: 'tab-intro' }, h('b', null, '机器自动查格式，不用 AI。'), '写错的字下面会画红波浪线，点一条就跳到那一处。',
+    h('small', null, bmkOn() ? '查这几样：用了引号或圆括号、写了他／她、@ 编号没挂上图、〔 〕还没填。这一条挂了白模又挂了关键帧，还查素材是不是照官方「白模＋关键帧」的写法、每一镜开头的整秒和参考哪张。'
+      : '查这几样：用了引号或圆括号、写了几秒、写了他／她、@ 编号没挂上图、〔 〕还没填。'));
+  if (!LINT.length) return pane.replaceChildren(intro, h('p', { class: 'faint', style: 'padding:22px 0;text-align:center' }, '查过了，没发现问题。'));
+  pane.replaceChildren(intro,
+    h('div', { class: 'lint' }, LINT.map(x => h('button', { class: 'issue' + (x.info ? ' info' : ''), onclick: () => x.fix ? x.fix() : go(x) }, h('i', { class: 'lv' }), h('span', null, x.msg, x.text ? h('em', null, x.text) : null)))));
 }
 /* DOCX 里的字：只取正文一段一段的文字，够对照着看 */
 async function docxParas(buf) {
@@ -1508,33 +2033,47 @@ function flowWho() {
   row('场景', typeof FLOW_ALL.场景 === 'string' ? FLOW_ALL.场景 : typeof FLOW.场景 === 'string' ? FLOW.场景 : '');
   return out;
 }
-async function paintCmp() {
-  const pane = $('#pane-cmp'), out = [h('p', { class: 'faint small', style: 'margin-bottom:10px' }, '这一段的镜头表、剧本、AI 写的现行稿和场景 GEO，写的时候随时对着看；AI 写底子、批注也是照这些。')];
-  const box = (title, sub, body, cls) => out.push(h('div', { class: 'cmp-h' }, title, sub ? h('em', null, sub) : null), h('div', { class: 'cmp-box' + (cls ? ' ' + cls : '') }, body));
+/* 剧本这一页：这一场的剧本放最前面，写的时候对着看；流水线里写的表达和段落、旧流程的镜头表、AI 写的现行稿、场景 GEO 底稿收在下面，点开才看 */
+const CMP_OPEN = new Map();   // 点开过的折叠块，换页签再回来还开着
+const scriptLines = ps => ps.map((t, i) => {
+  const m = /^(场景|人物|梗概)[：:]\s*([\s\S]*)$/.exec(t);
+  if (i === 0 && /^第.+段/.test(t)) return h('p', { class: 'sc-title' }, t);
+  if (m) return h('p', { class: 'sc-meta' }, h('b', null, m[1]), '　' + m[2]);
+  if (t.trim() === '正文') return h('p', { class: 'sc-h' }, '正文');
+  return h('p', { class: /^[^△▲：:]{1,16}[：:]/.test(t) ? 'say' : null }, t.replace(/^[△▲]\s*/, ''));
+});
+async function paintScript() {
+  const pane = $('#pane-script'), out = [h('p', { class: 'tab-intro' }, h('b', null, '这一场的剧本。'), '写提示词时对着看；AI 批注也是照它批的。')];
+  const fold = (title, sub, body, open, cls) => out.push(h('details', { class: 'cmp-fold', open: (CMP_OPEN.has(title) ? CMP_OPEN.get(title) : open) || null, ontoggle: e => CMP_OPEN.set(title, e.currentTarget.open) },
+    h('summary', null, title, sub ? h('em', null, sub) : null), h('div', { class: 'cmp-box' + (cls ? ' ' + cls : '') }, body)));
   const mine = new Set(DOC.shots.map(s => parseInt(s.sourceNo, 10)).filter(Number.isFinite));
-  if (FLOW) box('这一场 · 流水线', '第' + FLOW.段 + '场' + (FLOW.名 ? '　' + FLOW.名 : ''), [...flowWho(), h('p', null, h('b', null, '表达'), '　' + (FLOW.表达 || '没写')),
-    ...flowParas().map((x, i) => h('p', { class: [...mine].some(n => flowAt(n) === i) ? 'on' : 'off' }, '段落' + (i + 1) + '｜' + (x.写什么 || x.拍什么 || '') + (x.作用 ? '　——　' + x.作用 : '')))]);
-  try {
-    const dir = [HOME, PJ, '定稿的剧本', SEGDIR], files = await FS.list(dir);
-    const shots = files.find(f => /镜头表\.docx$/i.test(f.name)), script = files.find(f => /剧本\.docx$/i.test(f.name));
-    if (shots) box('镜头表', shots.name, (await docxParas((await FS.read([...dir, shots.name])).buf)).filter(t => /^镜头/.test(t)).map(t => { const m = /^镜头\s*([0-9]+)/.exec(t); return h('p', { class: m && mine.has(+m[1]) ? 'on' : 'off' }, t); }));
-    if (script) {
+  const dir = [HOME, PJ, '定稿的剧本', SEGDIR];
+  let files = [];
+  try { files = await FS.list(dir); } catch (e) { out.push(h('p', { class: 'faint small' }, '剧本读不了：' + e.message)); }
+  const script = files.find(f => /剧本\.docx$/i.test(f.name)), shots = files.find(f => /镜头表\.docx$/i.test(f.name));
+  if (script) {
+    try {
       const ps = await docxParas((await FS.read([...dir, script.name])).buf), cut = ps.findIndex(t => t.trim() === '备注');
-      box('剧本', script.name, (cut < 0 ? ps : ps.slice(0, cut)).map(t => h('p', { class: /^[^△▲：:]{1,16}[：:]/.test(t) && !/^(场景|人物|梗概)[：:]/.test(t) ? 'say' : null }, t.replace(/^[△▲]\s*/, ''))));
-    }
-    if (!shots && !script && !FLOW) out.push(h('p', { class: 'faint small' }, '定稿的剧本 / ' + SEGDIR + ' 里还没有剧本和镜头表。'));
-  } catch (e) { out.push(h('p', { class: 'faint small' }, '剧本、镜头表读不了：' + e.message)); }
+      fold('剧本', script.name, scriptLines(cut < 0 ? ps : ps.slice(0, cut)), true, 'script');
+    } catch (e) { out.push(h('p', { class: 'faint small' }, '剧本读不了：' + e.message)); }
+  } else out.push(h('p', { class: 'faint small' }, '定稿的剧本 / ' + SEGDIR + ' 里还没有剧本文件。'));
+  if (FLOW) fold('这一场 · 流水线', '第' + FLOW.段 + '场' + (FLOW.名 ? '　' + FLOW.名 : '') + '　表达和段落', [...flowWho(), h('p', null, h('b', null, '表达'), '　' + (FLOW.表达 || '没写')),
+    ...flowParas().map((x, i) => h('p', { class: flowFree() ? null : [...mine].some(n => flowAt(n) === i) ? 'on' : 'off' }, '段落' + (i + 1) + '｜' + (x.写什么 || x.拍什么 || '') + (x.作用 ? '　——　' + x.作用 : '')))], !script);
+  if (shots) {
+    try { fold('镜头表', shots.name + '　旧流程留下的', (await docxParas((await FS.read([...dir, shots.name])).buf)).filter(t => /^镜头/.test(t)).map(t => { const m = /^镜头\s*([0-9]+)/.exec(t); return h('p', { class: m && mine.has(+m[1]) ? 'on' : 'off' }, t); })); }
+    catch (e) { out.push(h('p', { class: 'faint small' }, '镜头表读不了：' + e.message)); }
+  }
   if (SIDE.参考稿) {
     try {
       const d = parsePrompt((await FS.text([HOME, PJ, ...SIDE.参考稿.split('/')])).text);
-      box('AI 写的现行稿', SIDE.参考稿.split('/').pop(), [h('p', null, h('b', null, '本段事件'), '　' + d.event), ...d.shots.flatMap(s => [h('p', { style: 'margin-top:8px' }, h('b', null, '镜头 ' + s.no + '｜' + s.title)), ...s.lines.map(l => h('p', null, l))])]);
+      fold('AI 写的现行稿', SIDE.参考稿.split('/').pop(), [h('p', null, h('b', null, d.fmt === 'pe' ? '生成目标' : '本段事件'), '　' + d.event), ...d.shots.flatMap(s => [h('p', { style: 'margin-top:8px' }, h('b', null, '镜头 ' + s.no + (d.fmt === 'pe' ? '' : '｜' + s.title))), ...s.lines.map(l => h('p', null, l))])]);
     } catch (e) { /* 参考稿不在了就不摆 */ }
   }
   try {
-    for (const dir of [[HOME, PJ, '提示词', SEGDIR], [HOME, PJ, '提示词', '全局资产', '场景']]) {
-      const f = (await FS.list(dir)).find(x => /GEO.*底稿.*\.md$/i.test(x.name));
+    for (const gdir of [[HOME, PJ, '提示词', SEGDIR], [HOME, PJ, '提示词', '全局资产', '场景']]) {
+      const f = (await FS.list(gdir)).find(x => /GEO.*底稿.*\.md$/i.test(x.name));
       if (!f) continue;
-      box('场景 GEO 底稿', f.name + '　只给人看，不进提示词', (await FS.text([...dir, f.name])).text, 'long');
+      fold('场景 GEO 底稿', f.name + '　只给人看，不进提示词', (await FS.text([...gdir, f.name])).text, false, 'long');
       break;
     }
   } catch (e) { /* 没有 GEO 底稿 */ }
@@ -1550,49 +2089,121 @@ function usage(a) {
   return n;
 }
 const drag = (e, a) => { e.dataTransfer.setData('text/x-asset', a.path); e.dataTransfer.effectAllowed = 'copy'; };
+const canInsert = () => !!((LASTF && LASTF.isConnected) || (LAST && LAST.startContainer.isConnected));
 function insertFromRail(a) {
   if (LASTF && LASTF.isConnected) return insertAsset(a, { ta: LASTF, s: LASTF.selectionStart, e: LASTF.selectionEnd });
   if (LAST && LAST.startContainer.isConnected) return insertAsset(a, LAST.cloneRange());
   toast('先点一下正文里要插的位置');
 }
-function pin(a) {
-  if (a.type !== '图片') return lightbox(a);
-  PIN = a; const box = $('#pin'), img = h('img', { alt: a.name, onclick: () => lightbox(a) });
+/* 钉住：图片、视频放在右栏最上面，换页签也在，一边写一边看；音频没得钉，直接放 */
+let PIN_URL = '';
+function unpin() {
+  PIN = null;
+  if (PIN_URL) { URL.revokeObjectURL(PIN_URL); PIN_URL = ''; }
+  const box = $('#pin'); box.hidden = true; box.replaceChildren();
+}
+function pin(a, list) {
+  if (a.type === '音频') return lightbox(a, list);
+  if (a.type === '视频') return pinVideo(a);
+  PIN = a; const box = $('#pin'), img = h('img', { alt: a.name, title: '点击放大', onclick: () => lightbox(a) });
+  if (PIN_URL) { URL.revokeObjectURL(PIN_URL); PIN_URL = ''; }
   thumbUrl(a).then(u => { img.src = u; }, () => {});
   box.hidden = false;
-  box.replaceChildren(img, h('div', { class: 'pin-n' }, refOf(a) ? h('b', null, refOf(a)) : null, h('span', null, a.name), h('button', { class: 'mini-b', onclick: () => { PIN = null; box.hidden = true; } }, '取消钉住')));
+  box.replaceChildren(img, h('div', { class: 'pin-n' }, refOf(a) ? h('b', null, refOf(a)) : null, h('span', null, a.name), h('button', { class: 'mini-b', onclick: () => lightbox(a) }, '放大'), h('button', { class: 'mini-b', onclick: unpin }, '取消钉住')));
+}
+async function pinVideo(a) {
+  const box = $('#pin'); PIN = a;
+  if (PIN_URL) { URL.revokeObjectURL(PIN_URL); PIN_URL = ''; }
+  box.hidden = false; box.replaceChildren(h('div', { class: 'pin-wait' }, '正在打开 ' + a.name + ' …'));
+  let url;
+  try { url = URL.createObjectURL(await blobOf(a)); } catch (e) { if (PIN === a) unpin(); return toast('打不开：' + e.message); }
+  if (PIN !== a) return URL.revokeObjectURL(url);   // 等的时候又钉了别的
+  PIN_URL = url;
+  const v = h('video', { src: url, controls: true, loop: true, autoplay: true, playsinline: true, title: '边写边看；点画面暂停' });
+  v.muted = true;
+  const speed = [0.5, 1, 2].map(r => h('button', { class: 'mini-b' + (r === 1 ? ' on' : ''), 'data-rate': r, onclick: e => { v.playbackRate = r; $$('[data-rate]', box).forEach(b => b.classList.toggle('on', b === e.currentTarget)); } }, r + '×'));
+  box.replaceChildren(v, h('div', { class: 'pin-n vid' }, h('span', null, refOf(a) ? h('b', null, refOf(a) + '　') : null, a.name), ...speed, h('button', { class: 'mini-b push', onclick: () => lightbox(a) }, '放大'), h('button', { class: 'mini-b', onclick: unpin }, '取消钉住')));
+}
+
+/* ---------- 资产栏：这份已用、白模视频、其他视频、音频，再是各类图 ---------- */
+/* 确认可用（11-15 他要资产栏只列这些）：流水线资产那一步点的「确认可用」，记在 流水线.json 的「可用」（图 → 确认的时间）。
+   确认以后图又重出过（文件比确认的时间新）、或者引用它的那一行描写改过，就不算数，和流水线一个算法。
+   返回确认可用的路径；没有流水线、或者流水线里还没有「可用」这一项的老项目返回 null：照旧全列 */
+let OK = null;
+function okPaths() {
+  const ok = FLOW_ALL && FLOW_ALL.可用;
+  if (!ok || typeof ok !== 'object' || Array.isArray(ok)) return null;
+  const key = s => String(s).trim().split(String.fromCharCode(92)).join('/').toLowerCase(), since = new Map();
+  for (const cat of ['人物', '道具']) for (const e of Array.isArray(FLOW_ALL[cat]) ? FLOW_ALL[cat] : []) {
+    if (!e || typeof e !== 'object') continue;
+    for (const f of (Array.isArray(e.资产) ? e.资产 : [e.资产]).filter(f => typeof f === 'string' && f.trim())) since.set(key(f), Math.max(since.get(key(f)) || 0, timeOf(e.描写改)));
+  }
+  const at = new Map(Object.entries(ok).map(([k, v]) => [key(k), timeOf(v)]));
+  return new Set(ASSETS.filter(a => { const t = at.get(key(a.path)); return !!t && t + 999 >= Math.max(a.mtime || 0, since.get(key(a.path)) || 0); }).map(a => a.path));
+}
+const CAT_ORDER = ['本段', '人物', '道具', '特效', '场景', '别处'];
+const isBaimo = a => a.type === '视频' && /白模/.test(a.name);
+const byName = (a, b) => a.name.localeCompare(b.name, 'zh', { numeric: true });
+const VIEW_TIP = { 图片: '点击放大', 视频: '点击播放', 音频: '点击试听' };
+/* 视频的封面做好、或者播放时读出了时长，页面上各处的小字跟着换 */
+function paintVideoMeta(a) {
+  for (const el of $$('[data-vmeta]')) if (el.dataset.vmeta === a.path) el.textContent = mediaMeta(a) || el.textContent;
+  for (const el of $$('[data-vdur]')) if (el.dataset.vdur === a.path && a.dur) el.textContent = a.dur.toFixed(1) + ' 秒';
+}
+function usedRow(a, list) {
+  const n = usage(a), t = a.type === '视频' ? posterEl(a, 'u-th') : thumb(a, 'u-th'), bad = !!OK && a.type === '图片' && !OK.has(a.path);   // 挂上了、可没确认可用的图：标出来
+  t.title = VIEW_TIP[a.type]; t.addEventListener('click', () => lightbox(a, list));
+  return h('div', { class: 'used-row', draggable: 'true', title: a.path, ondragstart: e => drag(e, a) }, t,
+    h('div', { class: 'u-n' }, h('b', null, refOf(a)), ' ' + nameOf(a), h('span', { class: (n || a.type !== '图片') && !bad ? '' : 'warn' }, KIND_NAME[a.kind] + ' · ' + (n ? '正文用了 ' + n + ' 处' : a.type === '图片' ? '分镜里还没写到' : '只在素材里') + (bad ? ' · 还没确认可用' : ''))),
+    h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'), h('button', { class: 'mini-b', onclick: () => pin(a, list) }, a.type === '音频' ? '听' : '钉住'));
+}
+/* 视频一张卡：左边封面（点一下放大播放），右边名字、时长、插入、钉住 */
+function videoCard(a, list) {
+  const ref = refOf(a), n = ref ? usage(a) : 0;
+  return h('div', { class: 'vc', draggable: 'true', title: a.path, ondragstart: e => drag(e, a) },
+    h('div', { class: 'vc-pic', title: '点击放大播放', onclick: () => lightbox(a, list) }, posterEl(a), h('span', { class: 'vc-play' }, '▶'), h('span', { class: 'vc-dur', 'data-vdur': a.path }, a.dur ? a.dur.toFixed(1) + ' 秒' : '')),
+    h('div', { class: 'vc-info' },
+      h('div', { class: 'vc-n' }, ref ? h('b', null, ref) : null, a.name),
+      h('div', { class: 'vc-m', 'data-vmeta': a.path }, mediaMeta(a) || (a.cat === '本段' ? SEGDIR : '全局资产 / ' + a.cat)),
+      ref ? h('div', { class: 'vc-m' + (n ? '' : ' warn') }, n ? '正文用了 ' + n + ' 处' : '已挂上，正文还没写到') : null,
+      h('div', { class: 'vc-acts' }, h('button', { class: 'mini-b', onclick: () => lightbox(a, list) }, '播放'), h('button', { class: 'mini-b', title: '放在右栏最上面，一边写一边看', onclick: () => pin(a) }, '钉住'), h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'))));
+}
+function audioRow(a, list) {
+  const ref = refOf(a);
+  return h('div', { class: 'av-row', draggable: 'true', title: a.path + '　点击试听', ondragstart: e => drag(e, a), onclick: e => { if (!e.target.closest('button')) lightbox(a, list); } },
+    h('span', { class: 'av-ic' }, '♪'), h('span', { class: 'av-n' }, a.name), ref ? h('b', null, ref) : null,
+    h('button', { class: 'mini-b', onclick: () => lightbox(a, list) }, '听'), h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'));
+}
+function imageTile(a, list) {
+  const img = thumb(a); img.title = '点击放大'; img.addEventListener('click', () => lightbox(a, list));
+  return h('div', { class: 'as-t', draggable: 'true', title: a.path, ondragstart: e => drag(e, a) }, img, refOf(a) ? h('span', { class: 'no' }, refOf(a).slice(1)) : null,
+    h('div', { class: 'as-acts' }, h('button', { onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'), h('button', { onclick: () => pin(a) }, '钉住')),
+    h('div', { class: 'as-n' }, (a.sub ? a.sub + ' / ' : '') + a.name));
 }
 function paintAssets() {
   if (RAIL !== 'assets' || !READY) return;
-  const q = $('#as-q').value.trim().toLowerCase(), out = [], used = usedAssets().filter(a => hitAsset(a, q));
-  if (used.length) {
-    out.push(h('div', { class: 'as-h' }, h('span', null, '这份已用'), h('em', null, '编号页面自己管，不用记')));
-    out.push(h('div', { class: 'used-list' }, used.map(a => {
-      const n = usage(a), t = thumb(a, 'u-th'); t.addEventListener('click', () => lightbox(a));
-      return h('div', { class: 'used-row', draggable: 'true', title: a.path, ondragstart: e => drag(e, a) }, t,
-        h('div', { class: 'u-n' }, h('b', null, refOf(a)), ' ' + nameOf(a), h('span', { class: n || a.type !== '图片' ? '' : 'warn' }, KIND_NAME[a.kind] + ' · ' + (n ? '正文用了 ' + n + ' 处' : a.type === '图片' ? '分镜里还没写到' : '只在素材里')),
-        ),
-        h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'), h('button', { class: 'mini-b', onclick: () => pin(a) }, a.type === '图片' ? '钉住' : '听'));
-    })));
-  }
-  const cats = [...new Set(ASSETS.map(a => a.cat))].sort((a, b) => (a === '本段' || a === '别处') - (b === '本段' || b === '别处'));
-  for (const cat of cats) {
-    const list = ASSETS.filter(a => a.cat === cat && hitAsset(a, q));
+  OK = okPaths();
+  const hint = $('#pane-assets .as-hint');
+  if (!hint.dataset.base) hint.dataset.base = hint.textContent;
+  hint.textContent = (OK ? '只列确认可用的。' : '') + hint.dataset.base;
+  const q = $('#as-q').value.trim().toLowerCase(), out = [], hit = a => hitAsset(a, q), used = usedAssets().filter(hit);
+  const head = (label, sub) => h('div', { class: 'as-h' }, h('span', null, label), h('em', null, sub));
+  if (used.length) out.push(head('这份已用', '编号页面自己管，不用记'), h('div', { class: 'used-list' }, used.map(a => usedRow(a, used))));
+  // 只列确认可用的时候：白模没有确认这一步，照旧列；别的视频、音频不列（正文用了的在「这份已用」里）
+  const vids = ASSETS.filter(a => a.type === '视频' && hit(a)).sort(byName), bm = vids.filter(isBaimo), other = OK ? [] : vids.filter(a => !isBaimo(a));
+  if (bm.length) out.push(head('白模视频', bm.length + ' 个　资产 / ' + SEGDIR), ...bm.map(a => videoCard(a, bm)));
+  if (other.length) out.push(head('其他视频', other.length + ' 个'), ...other.map(a => videoCard(a, other)));
+  const auds = OK ? [] : ASSETS.filter(a => a.type === '音频' && hit(a)).sort(byName);
+  if (auds.length) out.push(head('音频', auds.length + ' 个'), ...auds.map(a => audioRow(a, auds)));
+  const imgs = ASSETS.filter(a => a.type === '图片' && (!OK || OK.has(a.path))), rank = c => (CAT_ORDER.indexOf(c) + 1) || 9;
+  for (const cat of [...new Set(imgs.map(a => a.cat))].sort((a, b) => rank(a) - rank(b))) {
+    const list = imgs.filter(a => a.cat === cat && hit(a)).sort(byName);
     if (!list.length) continue;
     const open = !!q || GOPEN.has(cat);
-    out.push(h('div', { class: 'as-h tog' + (open ? ' open' : ''), onclick: () => { GOPEN.has(cat) ? GOPEN.delete(cat) : GOPEN.add(cat); paintAssets(); } }, h('span', null, cat === '本段' ? '这一段的' : cat), h('em', null, list.length + ' 个　' + (cat === '本段' ? '资产 / ' + SEGDIR : cat === '别处' ? '登记过的别处的文件' : '资产 / 全局资产 / ' + cat))));
-    if (!open) continue;
-    const imgs = list.filter(a => a.type === '图片');
-    if (imgs.length) out.push(h('div', { class: 'as-grid' }, imgs.map(a => {
-      const img = thumb(a); img.addEventListener('click', () => lightbox(a));
-      return h('div', { class: 'as-t', draggable: 'true', title: a.path, ondragstart: e => drag(e, a) }, img, refOf(a) ? h('span', { class: 'no' }, refOf(a).slice(1)) : null,
-        h('div', { class: 'as-acts' }, h('button', { onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'), h('button', { onclick: () => pin(a) }, '钉住')),
-        h('div', { class: 'as-n' }, (a.sub ? a.sub + ' / ' : '') + a.name));
-    })));
-    list.filter(a => a.type !== '图片').forEach(a => out.push(h('div', { class: 'av-row', draggable: 'true', title: a.path, ondragstart: e => drag(e, a) },
-      h('span', { class: 'av-ic', title: a.type === '音频' ? '点开听' : '点开看', onclick: () => lightbox(a) }, a.type === '音频' ? '♪' : '▶'), h('span', { class: 'av-n' }, a.name), refOf(a) ? h('b', null, refOf(a)) : null, h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'))));
+    out.push(h('div', { class: 'as-h tog' + (open ? ' open' : ''), onclick: () => { GOPEN.has(cat) ? GOPEN.delete(cat) : GOPEN.add(cat); paintAssets(); } }, h('span', null, cat === '本段' ? '这一段的图' : cat), h('em', null, list.length + ' 张　' + (cat === '本段' ? '资产 / ' + SEGDIR : cat === '别处' ? '登记过的别处的文件' : '资产 / 全局资产 / ' + cat))));
+    if (open) out.push(h('div', { class: 'as-grid' }, list.map(a => imageTile(a, list))));
   }
-  if (!out.length) out.push(h('p', { class: 'faint small', style: 'padding:20px 0' }, '没找到。'));
+  if (!out.length) out.push(h('p', { class: 'faint small', style: 'padding:20px 0' }, OK && !q ? '还没有确认可用的图：回流水线「资产」那一步，看过能用的点「确认可用」。' : '没找到。'));
   $('#as-list').replaceChildren(...out);
 }
 
@@ -1600,14 +2211,14 @@ function paintAssets() {
 const hov = h('div', { class: 'hov', hidden: true });
 document.body.append(hov);
 let HOV = '', MM = 0;
-function showHov(a, rect) {
+function showHov(a, rect, tip) {   // tip：最底下再写一行小字
   const key = a.path + '|' + Math.round(rect.left) + '|' + Math.round(rect.top);
   if (HOV === key) return;
   HOV = key;
   let pic;
   if (a.type === '图片') { pic = h('img', { alt: a.name, style: a.w ? `aspect-ratio:${a.w}/${a.h}` : null }); thumbUrl(a).then(u => { pic.src = u; }, () => {}); }
   else pic = h('div', { class: 'hov-av' }, a.type === '音频' ? '♪ 音频，点开听' : '▶ 视频，点开看');
-  hov.replaceChildren(pic, h('div', { class: 'hov-n' }, refOf(a) ? h('b', null, refOf(a) + '　') : null, nameOf(a)), h('div', { class: 'hov-p' }, a.path));
+  hov.replaceChildren(pic, h('div', { class: 'hov-n' }, refOf(a) ? h('b', null, refOf(a) + '　') : null, nameOf(a)), h('div', { class: 'hov-p' }, a.path), tip ? h('div', { class: 'hov-p hov-tip' }, tip) : null);
   hov.hidden = false;
   const hh = Math.max(hov.offsetHeight, 220), x = Math.max(8, Math.min(rect.left, innerWidth - 270));
   hov.style.left = x + 'px'; hov.style.top = (rect.bottom + 8 + hh > innerHeight - 8 ? Math.max(8, rect.top - hh - 8) : rect.bottom + 8) + 'px';
@@ -1626,27 +2237,60 @@ document.addEventListener('mousemove', e => {
     const c = e.target.closest('.ref');
     if (c && A[c.dataset.aid]) return showHov(A[c.dataset.aid], c.getBoundingClientRect());
     const ta = e.target.closest('.wr-ta'), nm = ta ? markAt(ta, e.clientX, e.clientY) : null;
-    if (nm && nm.a) showHov(nm.a, nm.rect); else hideHov();
+    if (nm && nm.a) showHov(nm.a, nm.rect, nm.a.type === '图片' ? '按住 Ctrl 点一下，看大图' : '按住 Ctrl 点一下，打开'); else hideHov();
   });
 });
-/* 看原图、听音频、看视频：这时才去读原文件 */
-async function lightbox(a) {
-  hideHov();
-  const box = h('div', { class: 'lb' }, h('div', { class: 'lb-cap' }, '正在打开 ' + a.file + ' …'));
-  let url = '';
-  const close = () => { box.remove(); if (url) URL.revokeObjectURL(url); };
-  box.addEventListener('click', e => { if (!e.target.closest('audio, video')) close(); });
-  document.body.append(box);
-  try {
-    url = URL.createObjectURL(await blobOf(a));
-    if (!box.isConnected) return URL.revokeObjectURL(url);
-    const el = a.type === '图片' ? h('img', { src: url }) : a.type === '音频' ? h('audio', { src: url, controls: true, autoplay: true }) : h('video', { src: url, controls: true, autoplay: true, loop: true });
-    box.replaceChildren(el, h('div', { class: 'lb-cap' }, (refOf(a) ? refOf(a) + '　' : '') + nameOf(a) + '　·　' + a.path));
-  } catch (e) { close(); toast('打不开：' + e.message); }
+/* 看大图、看视频、听音频：这时才去读原文件。list：同一组里的几个，可以左右翻 */
+let LB = null;   // 开着的大窗
+const mbOf = n => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+const mediaMeta = a => [a.dur ? a.dur.toFixed(1) + ' 秒' : '', a.nw && a.nh ? a.nw + '×' + a.nh : '', a.size ? mbOf(a.size) : ''].filter(Boolean).join(' · ');
+async function lightbox(a, list) {
+  hideHov(); if (LB) LB.close();
+  const items = list && list.length > 1 && list.includes(a) ? list : [a];
+  let i = items.indexOf(a), url = '', turn = 0, media = null;
+  const stage = h('div', { class: 'lb-stage' }), title = h('div', { class: 'lb-title' }), meta = h('div', { class: 'lb-meta' }), acts = h('div', { class: 'lb-acts' });
+  const box = h('div', { class: 'lb', role: 'dialog', 'aria-label': '大图和视频' },
+    h('button', { class: 'lb-x', type: 'button', title: '关闭（Esc）', onclick: () => close() }, '×'),
+    items.length > 1 ? h('button', { class: 'lb-nav prev', type: 'button', title: '上一个（←）', onclick: () => step(-1) }, '‹') : null,
+    items.length > 1 ? h('button', { class: 'lb-nav next', type: 'button', title: '下一个（→）', onclick: () => step(1) }, '›') : null,
+    stage, h('div', { class: 'lb-bar' }, title, meta, acts));
+  box.addEventListener('click', e => { if (e.target === box || e.target === stage) close(); });
+  function close() { if (LB && LB.box === box) LB = null; turn++; box.remove(); if (url) URL.revokeObjectURL(url); url = ''; }
+  function step(d) { i = (i + d + items.length) % items.length; show(); }
+  async function show() {
+    const cur = items[i], mine = ++turn, ref = refOf(cur);
+    media = null; stage.classList.remove('zoom');
+    title.replaceChildren(h('span', null, ref ? h('b', null, ref) : null, nameOf(cur), items.length > 1 ? h('span', { class: 'lb-n' }, (i + 1) + ' / ' + items.length) : null));
+    meta.textContent = '正在打开 ' + cur.path + ' …'; acts.replaceChildren(); stage.replaceChildren();
+    let blob;
+    try { blob = await blobOf(cur); }
+    catch (e) { if (mine !== turn) return; toast('打不开：' + e.message); if (items.length === 1) close(); else meta.textContent = '打不开：' + e.message; return; }
+    if (mine !== turn) return;
+    if (url) URL.revokeObjectURL(url);
+    url = URL.createObjectURL(blob); cur.size = blob.size;
+    const info = () => { if (mine === turn) meta.textContent = [cur.path, mediaMeta(cur)].filter(Boolean).join('　·　'); };
+    if (cur.type === '图片') {
+      media = h('img', { src: url, alt: cur.name, title: '点击放大到原尺寸', onload: e => { cur.nw = e.currentTarget.naturalWidth; cur.nh = e.currentTarget.naturalHeight; info(); } });
+      media.addEventListener('click', e => {   // 点一下放到原尺寸，点哪儿就放大哪儿；再点缩回
+        const r = media.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height, z = stage.classList.toggle('zoom');
+        media.title = z ? '点击缩回' : '点击放大到原尺寸';
+        if (z) { const n = media.getBoundingClientRect(); stage.scrollLeft += n.left + fx * n.width - e.clientX; stage.scrollTop += n.top + fy * n.height - e.clientY; }
+      });
+    } else if (cur.type === '音频') media = h('audio', { src: url, controls: true, autoplay: true });
+    else {
+      media = h('video', { src: url, controls: true, autoplay: true, loop: true, playsinline: true, onloadedmetadata: e => { const v = e.currentTarget; cur.dur = v.duration; cur.nw = v.videoWidth; cur.nh = v.videoHeight; info(); paintVideoMeta(cur); } });
+      acts.append(...[0.5, 1, 2].map(r => h('button', { class: 'lb-b' + (r === 1 ? ' on' : ''), 'data-rate': r, title: '播放速度', onclick: e => { media.playbackRate = r; $$('[data-rate]', acts).forEach(b => b.classList.toggle('on', b === e.currentTarget)); } }, r + '×')));
+    }
+    stage.append(media); info();
+    acts.append(h('button', { class: 'lb-b', onclick: () => { if (!canInsert()) return toast('先点一下正文里要插的位置，再来插入'); insertFromRail(cur); close(); } }, '插入'));
+  }
+  LB = { box, close, step, media: () => media };
+  document.body.append(box); show();
 }
 
 /* ---------- 接上事件 ---------- */
 const sheet = $('#sheet');
+$('#canvas').addEventListener('scroll', pinHead, { passive: true });
 sheet.addEventListener('input', e => {
   const box = e.target.closest('.wr-ta, .shot-title, .shot-purpose'), ed = e.target.closest('.ed');
   if (!box && !ed) return;
@@ -1657,7 +2301,6 @@ sheet.addEventListener('input', e => {
   }
   if (MODE === '自由') $('#freeCount').textContent = $('#freeText').value.length + ' 字';
   touch(); paintMarks(); checkAt();
-  if (ed || box?.dataset.kind === 'event') paintCommonContent();
   if (box?.classList.contains('shot-title')) paintOutline();
   clearTimeout(AT_T); AT_T = setTimeout(paintAssets, 600);
 });
@@ -1676,6 +2319,8 @@ sheet.addEventListener('paste', e => { if (!e.target.closest('.ed')) return; e.p
 sheet.addEventListener('click', e => {
   const c = e.target.closest('.ref');
   if (c && A[c.dataset.aid]) return lightbox(A[c.dataset.aid]);
+  const wt = (e.ctrlKey || e.metaKey) && e.target.closest('.wr-ta'), wm = wt ? markAt(wt, e.clientX, e.clientY) : null;   // 文字框里按住 Ctrl 点 @图片N：看大图（光点一下照旧是放光标）
+  if (wm && wm.a) { hideHov(); return lightbox(wm.a); }
   const nt = e.target.closest('.blk.nt');   // AI 写的一行：点一下写批注（正选着字要复制的不算）
   if (nt && !String(getSelection())) { setGuide(nt.dataset.sec); editHNote(nt); }
 });
@@ -1718,22 +2363,27 @@ document.addEventListener('selectionchange', () => {
   if (ed && ed.isContentEditable) LAST = s.getRangeAt(0).cloneRange();
 });
 document.addEventListener('mousedown', e => { if (AT && !pop.contains(e.target)) closeAt(); }, true);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { const lb = $('.lb'); if (lb) lb.click(); } });
+document.addEventListener('keydown', e => {   // 大窗开着：Esc 关，左右键翻，空格播放或暂停
+  if (!LB) return;
+  const m = LB.media();
+  if (e.key === 'Escape') { e.preventDefault(); LB.close(); }
+  else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && document.activeElement !== m) { e.preventDefault(); LB.step(e.key === 'ArrowLeft' ? -1 : 1); }
+  else if (e.key === ' ' && m && m.play && document.activeElement !== m && !e.target.closest('button')) { e.preventDefault(); m.paused ? m.play() : m.pause(); }
+});
 addEventListener('pagehide', () => { if (READY && dirty()) rememberDraft(); });
 addEventListener('beforeunload', e => { if (READY && (dirty() || SAVING || CONFLICT)) { rememberDraft(); e.preventDefault(); e.returnValue = ''; } });
 $('#as-q').addEventListener('input', paintAssets);
 $('#askAll').onclick = () => askAI('');
-$('#askOne').onclick = () => { if (!LAST_SHOT) return toast('先点一下要批的那一镜'); askAI(LAST_SHOT); };
+$('#revBtn').onclick = () => REV.st === 'ok' ? revGo() : revRun();
 $('#railBtn').onclick = () => { document.body.classList.toggle('norail'); $('#railBtn').textContent = document.body.classList.contains('norail') ? '展开侧栏' : '收起侧栏'; $$('.wr-ta').forEach(grow); };
-$('#previewBtn').onclick = previewDraft;
-$('#saveBtn').onclick = () => { if (READY) { touch(); save(); } };
+$('#previewBtn').onclick = previewDraft;   // 「保存草稿」11-15 去掉了：边写边自动存（touch 停 0.7 秒就存），Ctrl+S 照旧能立刻存
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (READY) { touch(); save(); } } });
 $('#sendNotes').onclick = sendNotes;
 $('#tipX').onclick = () => { $('#tip').hidden = true; try { localStorage.setItem('xiegao:tip', '1'); } catch (e) { /* 记不住就下回再提示 */ } };
 addEventListener('resize', () => $$('.wr-ta').forEach(grow));
 
 /* ---------- 打开 ---------- */
-function fail(msg) { setStatus('没打开', true); $('#canvas').replaceChildren(h('div', { class: 'fail' }, h('b', null, '打不开。'), h('p', null, msg), h('p', { class: 'faint small', style: 'margin-top:10px' }, '这一页要经本机服务打开：http://localhost:8767/'))); }
+function fail(msg) { setStatus('没打开', true); $('#canvas').replaceChildren(h('div', { class: 'fail' }, h('b', null, '打不开。'), h('p', null, msg), h('p', { class: 'faint small', style: 'margin-top:10px' }, '请从流水线的「提示词」那一步进来写；本机服务要开着。'))); }
 /* AI 铺好底的稿：旁边有一份「…视频提示词_写稿.json」的就是 */
 async function findDrafts() {
   const out = [];
@@ -1742,16 +2392,16 @@ async function findDrafts() {
     for (const seg of await FS.list([HOME, pj.name, '提示词'])) {
       if (seg.kind !== 'directory' || !/^第.+段$/.test(seg.name)) continue;
       const files = await FS.list([HOME, pj.name, '提示词', seg.name]), names = new Set(files.map(f => f.name));
-      for (const f of files) if (/视频提示词\.txt$/i.test(f.name)) out.push([pj.name, '提示词', seg.name, f.name]);
+      for (const f of files) if (/视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i.test(f.name)) out.push([pj.name, '提示词', seg.name, f.name]);
     }
   }
   return out;
 }
 function chooser(list) {
   setStatus(list.length ? '选一份稿' : '还没有稿');
-  $('#canvas').replaceChildren(h('div', { class: 'fail', style: 'border-color:var(--dai-line)' }, h('b', { style: 'color:var(--dai)' }, list.length ? '写哪一份？' : '还没有提示词稿。'),
+  $('#canvas').replaceChildren(h('div', { class: 'fail', style: 'border-color:var(--qing-line)' }, h('b', { style: 'color:var(--qing)' }, list.length ? '写哪一份？' : '还没有提示词稿。'),
     h('p', null, list.length ? '点一份继续写：' : '到流水线的「提示词」页面，选择一种写法开始。'),
-    h('div', { style: 'display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:12px' }, list.map(p => h('button', { class: 'btn', onclick: () => { location.hash = 'open=' + p.map(encodeURIComponent).join('/'); } }, p[0] + ' ／ ' + p[2] + ' ／ ' + p[3].replace(/_?视频提示词\.txt$/i, '').replace(/_/g, ' · '))))));
+    h('div', { style: 'display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:12px' }, list.map(p => h('button', { class: 'btn', onclick: () => { location.hash = 'open=' + p.map(encodeURIComponent).join('/'); } }, p[0] + ' ／ ' + p[2] + ' ／ ' + vpShort(p[3].replace(/\.txt$/i, '')).replace(/_/g, ' · '))))));
 }
 async function boot() {
   let draftConflict = false;
@@ -1759,7 +2409,7 @@ async function boot() {
   paintSteps(); setGuide(null); paintTabs();
   let open = [];
   try { open = decodeURIComponent((/[#&]open=([^&]*)/.exec(location.hash) || [])[1] || '').split('/').filter(Boolean); } catch (e) { /* 网址不对 */ }
-  if (open.length < 3 || !/视频提示词\.txt$/i.test(open[open.length - 1])) {   // 网址里没写开哪一份：自己去找铺好底的稿，只有一份就直接开
+  if (open.length < 3 || !/视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i.test(open[open.length - 1])) {   // 网址里没写开哪一份：自己去找铺好底的稿，只有一份就直接开
     let list;
     try { list = await findDrafts(); } catch (e) { return fail('本机服务连不上：' + e.message); }
     if (list.length === 1) { location.hash = 'open=' + list[0].map(encodeURIComponent).join('/'); return; }   // 网址一变，页面自己重开
@@ -1767,7 +2417,7 @@ async function boot() {
   }
   PJ = open[0]; OPENPATH = open.join('/'); PROMPT = [HOME, ...open]; DIR = PROMPT.slice(0, -1); STEM = open[open.length - 1].replace(/\.txt$/i, ''); SEGDIR = DIR[DIR.length - 1]; KEY = open.slice(1).join('/');
   SIDEF = [...DIR, STEM + '_写稿.json']; NOTESF = [...DIR, STEM + '_AI批注.md']; HNF = [...DIR, STEM + '_批注.md']; HIST = [HOME, PJ, '历史记录', ...open.slice(1, -1)];
-  $('#pj').textContent = PJ; $('#crumb').textContent = SEGDIR + ' · ' + STEM.replace(/_?视频提示词$/, '').replace(/_/g, ' · ') + ' · 写稿';
+  $('#pj').textContent = PJ; $('#crumb').textContent = SEGDIR + ' · ' + vpShort(STEM).replace(/_/g, ' · ') + ' · 写稿';
   document.title = SEGDIR + ' ' + STEM + ' · 写稿';
   try {
     const r = await FS.text(PROMPT);
@@ -1779,10 +2429,12 @@ async function boot() {
     ASSETS = await scanAssets(); A = Object.fromEntries(ASSETS.map(a => [a.path, a]));
     await loadRefs();
     await loadFlow();
+    LAY.fin = await layFinal(FLOW);   // 剧本定稿了才能 AI 铺底
+    for (const f of FLOW && Array.isArray(FLOW.关键帧) ? FLOW.关键帧 : []) if (A[f] && A[f].type === '图片') A[f].kind = 'frame';   // 流水线资产那一步「关键帧」一块里挑的（名字不带首帧尾帧的也算）
     DOC = hydrateShots(DOC, SIDE.镜头信息, !SIDE.写法);
   } catch (e) { return fail(e.message); }
   render(); READY = true;
-  setStatus(savedText()); setAsk(); paintMarks(); showRail('suggest'); paintCmp();
+  setStatus(savedText()); setAsk(); paintLay(); paintMarks(); showRail('assets'); paintScript();
   $('#tip').hidden = true;
   $('#railBtn').textContent = document.body.classList.contains('norail') ? '展开侧栏' : '收起侧栏';
   await offerRecovery();
@@ -1791,6 +2443,8 @@ async function boot() {
   await loadHNotes();
   setInterval(poll, 2500);
   resumeJobs();
+  revCheck();
+  if (window.RefPic) RefPic.watch(ref => { const a = assetOfRef(ref); return a && a.type === '图片' ? { tip: ref + ' · ' + a.name + '　点开看大图', open: () => lightbox(a, NUM.图片.map(p => A[p]).filter(Boolean)) } : null; }, '.wr, .at-pop, .lb');   // 侧栏、批注里的 @图片N 也能点开看大图（公用/点图.js）；文字框里照旧
 }
 addEventListener('hashchange', () => location.reload());
 boot();

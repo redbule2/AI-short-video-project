@@ -6,7 +6,7 @@ function readEditorDraft(text, side) {
   const parsed = parsePrompt(text);
   const mode = side.写法 === '自由' || (!side.写法 && !parsed.has.shots) ? '自由' : '分镜';
   if (mode === '分镜') return { mode, doc: parsed, free: String(side.自由稿 || ''), conflict: false };
-  let doc = parsePrompt(side.分镜稿 || '本段事件：\n\n素材\n\n基础设定\n\n本段\n\n分镜\n\n保持一致：\n');
+  let doc = parsePrompt(side.分镜稿 || (parsed.fmt === 'pe' ? PromptDraft.skeleton('\n') : '本段事件：\n\n素材\n\n基础设定\n\n本段\n\n分镜\n\n保持一致：\n'));
   const scoped = side.写法范围 === '分镜';
   let free = scoped ? String(side.自由稿 || '') : text;
   // 标准旧稿可确认边界：采用当前文件的公共区，并继续保留备用结构化镜头。
@@ -19,12 +19,11 @@ function readEditorDraft(text, side) {
 
 let COMMON_SECTION = '';
 function commonControls() {
-  return h('nav', { class: 'section-nav', 'aria-label': '公共内容快捷入口' },
+  return h('nav', { class: 'section-nav', 'aria-label': '各区快捷入口' },
     SECS.filter(s => s.key !== 'shots').map(s => h('button', { class: 'mini-b', 'data-common': s.key, 'aria-expanded': 'false', onclick: () => {
       if (COMMON_SECTION === s.key) { COMMON_SECTION = ''; updateCommonSections(); }
       else openCommonSection(s.key);
     } }, s.name, h('span', { class: 'faint' }, ' ▾'))),
-    h('button', { class: 'mini-b', onclick: showCommonContent }, '侧栏查看公共内容'),
     h('button', { class: 'linkb', onclick: editGNote }, '＋ 整体批注'));
 }
 function updateCommonSections() {
@@ -47,21 +46,6 @@ function openCommonSection(key) {
   COMMON_SECTION = key; updateCommonSections();
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-function showCommonContent() {
-  document.body.classList.remove('norail'); $('#railBtn').textContent = '收起侧栏'; showRail('common');
-}
-function paintCommonContent() {
-  const pane = $('#pane-common');
-  if (!pane || !DOC || RAIL !== 'common' || !$('[data-sec="event"] .wr-ta')) return;
-  const d = collect();
-  pane.replaceChildren(h('p', { class: 'suggest-intro' }, '两种分镜写法共用这些内容。可以在这里对照阅读，展开后批注或编辑。'),
-    ...SECS.filter(s => s.key !== 'shots').map(s => {
-      const value = Array.isArray(d[s.key]) ? d[s.key].join('\n') : d[s.key];
-      return h('section', { class: 'common-card' },
-        h('h3', null, s.name, h('button', { class: 'mini-b', onclick: () => openCommonSection(s.key) }, s.by === 'ai' ? '展开 / 批注' : '展开 / 编辑')),
-        h('p', { class: 'common-copy' }, value || '还没有内容'));
-    }));
-}
 function paintOutline() {
   const nav = $('#editor-outline');
   if (!nav || !DOC) return;
@@ -70,8 +54,7 @@ function paintOutline() {
     h('button', { class: 'outline-link on', onclick: () => $('[data-sec="shots"]').scrollIntoView({ behavior: 'smooth', block: 'start' }) }, '分镜' + (MODE === '分镜' ? ' ' + $$('.p-shot').length : ' · 自由')),
     ...$$('.p-shot').map(el => h('button', { class: 'outline-link outline-shot' + (el.dataset.id === SELECTED_ID ? ' selected' : ''), onclick: () => {
       foldMine(el, false); selectShot(el.dataset.id); el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } }, el.dataset.no + ' ' + ($('.shot-title', el).value || '未命名镜头'))),
-    h('button', { class: 'outline-link', onclick: showCommonContent }, '查看 AI 公共内容'));
+    } }, el.dataset.no + ' ' + ($('.shot-title', el).value || $('.wr-ta', el).value.trim().slice(0, 14) || '未命名镜头'))));
 }
 
 function renderMode() {
@@ -83,17 +66,15 @@ function renderMode() {
   }
   if ($('#importStructured')) $('#importStructured').hidden = MODE !== '自由';
 }
-function modeControls() {
+function modeControls() {   // 摆在左栏最上面（2026-11-15）；说明收进鼠标悬停提示
   return h('div', { class: 'mode-bar' },
-    h('div', { class: 'mode-tabs', role: 'tablist', 'aria-label': '分镜写法' },
+    h('div', { class: 'mode-tabs', role: 'tablist', 'aria-label': '分镜写法', title: '只换分镜的写法；生成目标、素材等其他几块两种写法共用' },
       h('button', { id: 'modeStructured', class: 'mini-b', role: 'tab', onclick: () => switchMode('分镜') }, '分镜模式'),
       h('button', { id: 'modeFree', class: 'mini-b', role: 'tab', onclick: () => switchMode('自由') }, '自由模式')),
-    h('span', { class: 'mode-help' }, '只切换分镜写法，公共内容两种模式共用'),
-    h('button', { class: 'mini-b', onclick: showCommonContent }, '查看 AI 公共内容'),
-    h('button', { id: 'importStructured', class: 'mini-b', onclick: () => { const ta = $('#freeText'); typeInto(ta, ta.value.length, ta.value.length, (ta.value ? '\n\n' : '') + PromptDraft.shotText(collect())); } }, '带入分镜文字'));
+    h('button', { id: 'importStructured', class: 'mini-b', title: '把分镜模式里各镜的文字接到自由稿后面', onclick: () => { const ta = $('#freeText'); typeInto(ta, ta.value.length, ta.value.length, (ta.value ? '\n\n' : '') + PromptDraft.shotText(collect())); } }, '带入分镜文字'));
 }
 function renderFree() {
-  const wr = writer('free', 12, '在这里自由写分镜……\n\n可以写一整段，也可以自己分行、分镜。\n素材、基础设定等公共内容统一使用上方的设置。', FREE);
+  const wr = writer('free', 12, isPe() ? '在这里自由写事件脚本……\n\n可以一镜一行写「镜头1：……」，也可以写【阶段一】开始时、主要事件、结束时。\n素材、主体与关系等统一使用上方的设置。' : '在这里自由写分镜……\n\n可以写一整段，也可以自己分行、分镜。\n素材、基础设定等统一使用上方的设置。', FREE);
   $('.wr-ta', wr).id = 'freeText';
   $('.wr-ta', wr).setAttribute('aria-label', '自由提示词');
   $('#shot-editor').replaceChildren(h('div', { class: 'free-section' },
@@ -141,7 +122,7 @@ function updateShotControls() {
   selectShot(SELECTED_ID);
 }
 function refreshShotList(focusId) {
-  DOC.shots.forEach((s, i) => { s.no = two(i + 1); });
+  DOC.shots.forEach((s, i) => { s.no = DOC.fmt === 'pe' ? String(i + 1) : two(i + 1); });   // PE 稿写「镜头1：」，旧稿写「镜头 01｜」
   const list = $('.pshots');
   list.replaceChildren(...(DOC.shots.length ? DOC.shots.flatMap((s, i) => [shotEl(s), i < DOC.shots.length - 1 ? h('button', { class: 'mini-b insert-shot', onclick: () => insertShot(i + 1) }, '＋ 在这里插入一镜') : null]).filter(Boolean) : [h('p', { class: 'empty-shots' }, '还没有镜头，从空白开始写。')]));
   if (focusId) SELECTED_ID = focusId;
@@ -193,7 +174,7 @@ function paintSuggestions() {
   }).filter(Boolean);
   const basics = SIDE.基础建议 && typeof SIDE.基础建议 === 'object' ? Object.entries(SIDE.基础建议).map(([label, value]) => {
     const text = Array.isArray(value) ? value.join('\n') : String(value || '');
-    return h('section', { class: 'suggest-card' }, h('h3', null, label + ' · 公共内容'), h('p', null, text), btn('添加到公共分区', () => applyBasicSuggestion(label, text)));
+    return h('section', { class: 'suggest-card' }, h('h3', null, label + ' · AI 铺底建议'), h('p', null, text), btn('采用到「' + label + '」', () => applyBasicSuggestion(label, text)));
   }) : [];
   pane.replaceChildren(h('p', { class: 'suggest-intro' }, '根据剧本和你的草稿提供可选思路。点选才加入，加入后可以继续改。'),
     h('div', { class: 'suggest-head' }, MODE === '自由' ? '正在写：自由稿' : shot ? '正在写：镜头 ' + shot.no : '先添加一个空白镜头',
@@ -217,7 +198,8 @@ function applyBasicSuggestion(label, text) {
       SIDE.挂图 = { ...SIDE.挂图, [item.ref]: item.path };
     }
   }
-  const sec = SECS.find(s => s.name === label);
+  const KEY_OF = { 本段事件: 'event', 生成目标: 'event', 素材: 'refs', 基础设定: 'basic', 画面与声音: 'basic', 本段: 'seg', 主体与关系: 'seg', 保持一致: 'keep' };
+  const sec = SECS.find(s => s.name === label) || SECS.find(s => s.key === KEY_OF[label]);
   if (!sec || sec.key === 'shots') return insertSuggestion(text);
   const el = $('section[data-sec="' + sec.key + '"]');
   openCommonSection(sec.key);
@@ -226,10 +208,11 @@ function applyBasicSuggestion(label, text) {
   } else {
     const list = $('.blist', el);
     if (list.children.length === 1 && !lineOf(list.firstElementChild)) list.replaceChildren();
+    if (isPe() && sec.key === 'refs' && text.split(/\r?\n/).some(t => PromptDraft.isPeRefHead(t.replace(/\s+/g, '')))) list.replaceChildren();   // PE 稿的素材建议是整段（带段名）：整段换上
+    if (isPe() && sec.key === 'basic' && /^\s*影像风格\s*[：:]/m.test(text)) list.replaceChildren();   // PE 稿的基础设定建议是整份（风格三行加声音那行）：整份换上，老稿末尾「最终画面采用……」那行一起换掉
     text.split(/\r?\n/).forEach(t => list.append(blockEl(toBlock(t, sec.key), sec.key)));
     touch(); paintMarks();
   }
-  paintCommonContent();
 }
 function previewDraft() {
   showEditorDialog('当前草稿预览', activeText());

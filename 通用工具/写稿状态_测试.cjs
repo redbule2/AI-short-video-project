@@ -147,3 +147,139 @@ test('替换自由分镜不改变传入文档及备用结构化镜头', () => {
 test('自由分镜拒绝非字符串，避免误清空正文', () => {
   assert.throws(() => withShotText(parse(fixture), null), TypeError);
 });
+
+/* ---------- sd2.5PE 格式（2026-11-13 起新写的稿） ---------- */
+const { skeleton } = require('./公用/写稿状态.js');
+const PEBOM = String.fromCharCode(0xFEFF);
+const pe = PEBOM + '【生成目标】  \r\n生成咖啡师递咖啡的视频。  \r\n\r\n【参考素材职责】\r\n@图片1用于咖啡师的五官。  \r\n【未采用素材】\r\n@图片2未参与本任务。\r\n\r\n【主体与关系】\r\n咖啡师：  站在吧台内侧。\r\n\r\n【事件脚本】\r\n镜头1：  咖啡师注水。  \r\n镜头2：咖啡师递杯。\r\n最终画面采用写实质感，声音包括注水声。\r\n\r\n【保持一致】\r\n保持杯子只有一个。';
+test('PE 稿认得出格式和各区内容', () => {
+  const d = parse(pe);
+  assert.equal(d.fmt, 'pe');
+  assert.equal(d.event, '生成咖啡师递咖啡的视频。');
+  assert.deepEqual(d.refs, ['【参考素材职责】', '@图片1用于咖啡师的五官。', '【未采用素材】', '@图片2未参与本任务。']);
+  assert.deepEqual(d.seg, ['咖啡师：站在吧台内侧。']);
+  assert.deepEqual(d.shots.map(s => [s.no, s.title, s.lines]), [['1', '', ['咖啡师注水。']], ['2', '', ['咖啡师递杯。']]]);
+  assert.deepEqual(d.basic, ['最终画面采用写实质感，声音包括注水声。']);
+  assert.equal(d.keep, '保持杯子只有一个。');
+});
+test('PE 稿没改原样写回，改镜头标题、作用也不动文件', () => {
+  assert.equal(serialize(parse(pe)), pe);
+  const d = parse(pe); d.shots[0].title = '注水'; d.shots[0].purpose = '交代手法';
+  assert.equal(serialize(d), pe);
+});
+test('PE 稿改一镜只动这一行', () => {
+  const d = parse(pe); d.shots[1].lines = ['咖啡师双手递杯。'];
+  assert.equal(serialize(d), pe.replace('镜头2：咖啡师递杯。', '镜头2：咖啡师双手递杯。'));
+});
+test('PE 稿调换镜头重新编号，最终画面那一行留在最后', () => {
+  const d = parse(pe); d.shots.reverse(); d.shots.forEach((s, i) => { s.no = String(i + 1); });
+  const out = serialize(d), next = parse(out);
+  assert.deepEqual(next.shots.map(s => [s.no, s.lines[0]]), [['1', '咖啡师递杯。'], ['2', '咖啡师注水。']]);
+  assert.ok(out.includes('镜头1：咖啡师递杯。\r\n镜头2：  咖啡师注水。  \r\n最终画面采用'));
+  assert.deepEqual(next.basic, d.basic);
+});
+test('PE 稿加一镜接在最后一镜后面', () => {
+  const d = parse(pe); d.shots.push({ no: '3', title: '', lines: ['顾客接过。'] });
+  const out = serialize(d);
+  assert.ok(out.includes('镜头2：咖啡师递杯。\r\n镜头3：顾客接过。\r\n最终画面采用'));
+  assert.equal(parse(out).shots.length, 3);
+});
+test('PE 稿改生成目标、保持一致只动正文', () => {
+  const d = parse(pe); d.event = '生成咖啡师做手冲的视频。'; d.keep = '保持咖啡师和杯子不变。';
+  assert.equal(serialize(d), pe.replace('生成咖啡师递咖啡的视频。', '生成咖啡师做手冲的视频。').replace('保持杯子只有一个。', '保持咖啡师和杯子不变。'));
+});
+test('PE 稿 AI 写的段清空了，连段名一起去掉', () => {
+  const d = parse(pe); d.seg = [];
+  const out = serialize(d);
+  assert.ok(!out.includes('【主体与关系】') && out.includes('【未采用素材】\r\n@图片2未参与本任务。\r\n\r\n【事件脚本】'));
+});
+test('空骨架加上 AI 写的几段，段序和空行都对', () => {
+  const d = parse(skeleton('\n'));
+  assert.equal(d.fmt, 'pe');
+  d.event = '生成一段视频。'; d.refs = ['@图片1用于小磊的五官。']; d.seg = ['小磊坐在门边。'];
+  d.shots = [{ no: '1', title: '', lines: ['小磊抬头。'] }]; d.basic = ['最终画面采用冷灰写实，声音包括街声。']; d.keep = '保持小磊的校服。';
+  const out = serialize(d);
+  assert.equal(out, '【生成目标】\n生成一段视频。\n\n【参考素材职责】\n@图片1用于小磊的五官。\n\n【主体与关系】\n小磊坐在门边。\n\n【事件脚本】\n镜头1：小磊抬头。\n最终画面采用冷灰写实，声音包括街声。\n\n【保持一致】\n保持小磊的校服。');
+  const back = parse(out);
+  assert.deepEqual([back.event, back.refs, back.seg, back.shots[0].lines, back.basic, back.keep],
+    ['生成一段视频。', ['【参考素材职责】', '@图片1用于小磊的五官。'], ['小磊坐在门边。'], ['小磊抬头。'], ['最终画面采用冷灰写实，声音包括街声。'], '保持小磊的校服。']);
+});
+test('写法二的分组段名都归素材，前后不乱', () => {
+  const text = '【生成目标】\n甲给乙一本书。\n\n【人物】\n甲对应@图片1。\n【道具】\n书对应@图片2，只属于甲。\n【场景】\n书房参考@图片3。\n【动作与声音】\n@音频1用于乙的音色。\n【未采用素材】\n@图片4未参与本任务。\n\n【事件脚本】\n镜头1：甲递书。\n\n【保持一致】\n保持书只有一本。\n';
+  const d = parse(text);
+  assert.equal(d.refs.length, 10); assert.equal(d.refs[0], '【人物】'); assert.equal(d.refs[8], '【未采用素材】');
+  assert.equal(serialize(d), text);
+  d.refs.splice(4, 0, '桌子对应@图片5。');
+  assert.ok(serialize(d).includes('【道具】\n书对应@图片2，只属于甲。\n桌子对应@图片5。\n【场景】'));
+});
+test('写法二新补的分组名前面空一行，旧稿素材不加空行', () => {
+  const NL = String.fromCharCode(10), j = (...a) => a.join(NL);
+  const text = j('【生成目标】', '甲给乙一本书。', '', '【人物】', '甲对应@图片1。', '', '【场景】', '书房参考@图片3。', '', '【事件脚本】', '镜头1：甲递书。', '');
+  const d = parse(text);
+  d.refs.splice(2, 0, '【道具】', '书对应@图片2。');
+  assert.equal(serialize(d), text.replace(j('甲对应@图片1。', '', '【场景】'), j('甲对应@图片1。', '', '【道具】', '书对应@图片2。', '', '【场景】')));
+  const old = j('本段事件：来人', '', '素材', '@图片1是门。', '', '分镜', '镜头 01｜开门', '门开了。', '');
+  const o = parse(old);
+  o.refs.push('【未采用素材】');
+  assert.ok(serialize(o).includes(j('@图片1是门。', '【未采用素材】', '')));
+});
+test('PE 稿自由写分镜：只换事件脚本里的镜头，最终画面和保持一致不动', () => {
+  const d = parse(pe);
+  assert.equal(shotText(d), '镜头1：  咖啡师注水。  \r\n镜头2：咖啡师递杯。\r\n');
+  const out = withShotText(d, '【阶段一】\r\n开始时：杯子在吧台上。\r\n');
+  assert.equal(out, pe.replace('镜头1：  咖啡师注水。  \r\n镜头2：咖啡师递杯。\r\n', '【阶段一】\r\n开始时：杯子在吧台上。\r\n'));
+});
+test('旧稿素材里写了【参考素材职责】【未采用素材】，照旧按旧稿读', () => {
+  const text = '本段事件：来人\n\n素材\n【参考素材职责】\n@图片1是门。\n【未采用素材】\n@图片2不用。\n\n分镜\n镜头 01｜开门\n门开了。\n\n保持一致：门不变';
+  const d = parse(text);
+  assert.equal(d.fmt, 'merged'); assert.equal(d.refs.length, 4); assert.equal(d.shots[0].title, '开门');
+  assert.equal(serialize(d), text);
+});
+
+/* ---------- 2026-11-14：风格写成【基础设定】放在事件脚本前面，「声音包括……」仍跟在镜头后面 ---------- */
+const peNew = '【生成目标】\r\n生成咖啡师递咖啡的视频。\r\n\r\n【参考素材职责】\r\n@图片1用于咖啡师的五官。\r\n\r\n【基础设定】\r\n影像风格：王家卫电影风格，粗颗粒。\r\n摄影：广角贴脸。\r\n光色基调：墨绿昏黄；深夜，灯泡是主光。\r\n\r\n【主体与关系】\r\n咖啡师站在吧台内侧。\r\n\r\n【事件脚本】\r\n镜头1：咖啡师注水。\r\n镜头2：咖啡师递杯。\r\n声音包括注水声，(萨克斯)。\r\n\r\n【保持一致】\r\n保持杯子只有一个。';
+test('【基础设定】读成基础设定，事件脚本最后的「声音包括」也算进来；没改原样写回', () => {
+  const d = parse(peNew);
+  assert.equal(d.fmt, 'pe');
+  assert.deepEqual(d.basic, ['影像风格：王家卫电影风格，粗颗粒。', '摄影：广角贴脸。', '光色基调：墨绿昏黄；深夜，灯泡是主光。', '声音包括注水声，(萨克斯)。']);
+  assert.deepEqual(d.seg, ['咖啡师站在吧台内侧。']);
+  assert.deepEqual(d.shots.map(s => s.lines), [['咖啡师注水。'], ['咖啡师递杯。']]);
+  assert.equal(serialize(d), peNew);
+  assert.equal(parse('【基础设定】\n影像风格：写实。\n').fmt, 'pe');
+});
+test('改基础设定的一行、改声音那一行，都只动这一行', () => {
+  const d = parse(peNew); d.basic[1] = '摄影：长焦隔着玻璃。';
+  assert.equal(serialize(d), peNew.replace('摄影：广角贴脸。', '摄影：长焦隔着玻璃。'));
+  const e = parse(peNew); e.basic[3] = '声音包括注水声。';
+  assert.equal(serialize(e), peNew.replace('声音包括注水声，(萨克斯)。', '声音包括注水声。'));
+});
+test('老稿改了风格：写成【基础设定】放到主体与关系前面，「最终画面」那行换成声音那行', () => {
+  const d = parse(pe);
+  d.basic = ['影像风格：写实。', '摄影：中景。', '光色基调：暖黄；清晨，窗光。', '声音包括注水声。'];
+  const out = serialize(d);
+  assert.equal(out, pe.replace('【主体与关系】', '【基础设定】\r\n影像风格：写实。\r\n摄影：中景。\r\n光色基调：暖黄；清晨，窗光。\r\n\r\n【主体与关系】')
+    .replace('最终画面采用写实质感，声音包括注水声。', '声音包括注水声。'));
+  assert.deepEqual(parse(out).basic, d.basic);
+});
+test('老稿删掉最后那一行，镜头和【保持一致】之间还空一行', () => {
+  const d = parse(pe); d.basic = [];
+  assert.equal(serialize(d), pe.replace('最终画面采用写实质感，声音包括注水声。\r\n', ''));
+});
+test('空骨架加上基础设定：段在素材后面、主体与关系前面，声音那行紧跟最后一镜', () => {
+  const d = parse(skeleton('\n'));
+  d.event = '生成一段视频。'; d.refs = ['@图片1用于小磊的五官。']; d.seg = ['小磊坐在门边。'];
+  d.shots = [{ no: '1', title: '', lines: ['小磊抬头。'] }];
+  d.basic = ['影像风格：冷灰写实。', '摄影：手持。', '光色基调：冷灰；傍晚，路灯是主光。', '声音包括街声。']; d.keep = '保持小磊的校服。';
+  const out = serialize(d);
+  assert.equal(out, '【生成目标】\n生成一段视频。\n\n【参考素材职责】\n@图片1用于小磊的五官。\n\n【基础设定】\n影像风格：冷灰写实。\n摄影：手持。\n光色基调：冷灰；傍晚，路灯是主光。\n\n【主体与关系】\n小磊坐在门边。\n\n【事件脚本】\n镜头1：小磊抬头。\n声音包括街声。\n\n【保持一致】\n保持小磊的校服。');
+  assert.deepEqual(parse(out).basic, d.basic);
+});
+test('「声音包括」写在【基础设定】里：没改不动；改了风格，声音那行挪到最后一镜后面', () => {
+  const text = '【生成目标】\n甲递书。\n\n【基础设定】\n影像风格：写实。\n摄影：中景。\n声音包括翻书声。\n\n【事件脚本】\n镜头1：甲递书。\n\n【保持一致】\n保持书只有一本。\n';
+  const d = parse(text);
+  assert.deepEqual(d.basic, ['影像风格：写实。', '摄影：中景。', '声音包括翻书声。']);
+  d.shots[0].lines = ['甲把书递给乙。'];
+  assert.equal(serialize(d), text.replace('镜头1：甲递书。', '镜头1：甲把书递给乙。'));
+  const e = parse(text); e.basic[1] = '摄影：近景。';
+  assert.equal(serialize(e), '【生成目标】\n甲递书。\n\n【基础设定】\n影像风格：写实。\n摄影：近景。\n\n【事件脚本】\n镜头1：甲递书。\n声音包括翻书声。\n\n【保持一致】\n保持书只有一本。\n');
+});

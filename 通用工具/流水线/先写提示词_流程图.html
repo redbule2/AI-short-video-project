@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>先写提示词 · 流程图</title>
+<style>
+:root { --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --line: #d6cab6; --zhu: #a83a2c; --dai: #3e5c5e; --huang: #fff4c9; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.85 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif; }
+main { max-width: 780px; margin: 0 auto; padding: 32px 22px 120px; }
+h1 { margin: 0 0 4px; font: 600 26px/1.4 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .08em; }
+.sub { margin: 0 0 20px; font-size: 14.5px; color: var(--ink-2); }
+h2 { margin: 34px 0 10px; font: 600 19px/1.5 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .1em; }
+.fig { padding: 10px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); }
+.key { margin: 8px 4px 0; font-size: 13px; color: var(--ink-3); }
+.key i { display: inline-block; width: 14px; height: 10px; margin: 0 4px 0 12px; border: 1px solid; border-radius: 3px; vertical-align: -1px; }
+svg { display: block; width: 100%; height: auto; }
+svg text { font-family: 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif; }
+.th { font-size: 14px; font-weight: 600; fill: var(--ink); }
+.ts { font-size: 12px; fill: var(--ink-2); }
+.tl { font-size: 12.5px; font-weight: 600; fill: var(--ink-2); }
+.tn { font-size: 11px; fill: var(--zhu); }
+.tg { font-size: 11px; fill: var(--dai); }
+.box { fill: #fbf8f1; stroke: var(--line); }
+.arr { stroke: var(--ink-3); stroke-width: 1.5; fill: none; }
+.ok rect { fill: #e3efec; stroke: var(--dai); } .ok .th { fill: #24403f; } .ok .ts { fill: var(--dai); }
+.me rect { fill: #fdf3e3; stroke: #b9822f; } .me .th { fill: #6b4a12; } .me .ts { fill: #8a6420; }
+.back { stroke: var(--zhu); stroke-width: 1.2; fill: none; stroke-dasharray: 5 4; }
+.skip { stroke: var(--dai); stroke-width: 1.2; fill: none; stroke-dasharray: 5 4; }
+.card { margin: 12px 0; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+.card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 600; }
+.card h3 .no { display: inline-block; min-width: 1.7em; color: var(--dai); }
+.card p { margin: 3px 0; color: var(--ink-2); }
+.opts { margin: 8px 0 2px; }
+.opts label { display: block; margin: 5px 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opts label:hover { background: #faf5ea; }
+.opts input { margin-right: 8px; }
+.opts .rec { color: var(--dai); font-size: 13px; margin-left: 4px; }
+textarea { display: block; width: 100%; margin-top: 8px; min-height: 2.6em; padding: 7px 10px; border: 1px dashed #c8b99f; border-radius: 8px; background: #fffef9; font: 15px/1.7 'Noto Sans SC', 'Microsoft YaHei', sans-serif; color: var(--ink); resize: vertical; }
+textarea:focus { outline: none; border-style: solid; border-color: var(--dai); background: #fff; }
+textarea.has { border-style: solid; border-color: #b9822f; background: var(--huang); }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; background: rgba(255,253,249,.96); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; justify-content: center; font-size: 14px; }
+.bar button { padding: 6px 14px; border: 1px solid var(--dai); border-radius: 8px; background: #fff; color: var(--dai); font: inherit; cursor: pointer; }
+.bar button:hover { background: #eef5f3; }
+#st { color: var(--ink-2); }
+.foot { margin-top: 26px; font-size: 13px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<main>
+<h1>先写提示词 · 流程图</h1>
+<p class="sub" id="sub"></p>
+
+<div class="fig">
+<svg viewBox="0 0 700 806" role="img" aria-label="先写提示词的流程图">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+
+<g class="me">
+<rect x="190" y="16" width="320" height="56" rx="8"/>
+<text class="th" x="350" y="34" text-anchor="middle" dominant-baseline="central">工序一　先加人物</text>
+<text class="ts" x="350" y="54" text-anchor="middle" dominant-baseline="central">页面只摆人物：点名字选上，没有的就地加</text>
+</g>
+<line class="arr" x1="350" y1="72" x2="350" y2="106" marker-end="url(#arrow)"/>
+
+<rect x="150" y="120" width="400" height="322" rx="12" fill="none" stroke="#887e74" stroke-dasharray="5 5"/>
+<rect x="200" y="108" width="300" height="24" rx="12" fill="#fffdf9" stroke="#887e74"/>
+<text class="tl" x="350" y="120" text-anchor="middle" dominant-baseline="central">这一场选「先写提示词」，不先写段落</text>
+<line class="arr" x1="350" y1="132" x2="350" y2="144" marker-end="url(#arrow)"/>
+
+<g class="me">
+<rect x="190" y="146" width="320" height="52" rx="8"/>
+<text class="th" x="350" y="164" text-anchor="middle" dominant-baseline="central">① 你写提示词</text>
+<text class="ts" x="350" y="183" text-anchor="middle" dominant-baseline="central">只写【生成目标】【事件脚本】；分镜、自由模式都行</text>
+</g>
+<line class="arr" x1="350" y1="198" x2="350" y2="220" marker-end="url(#arrow)"/>
+
+<rect class="box" x="190" y="222" width="320" height="52" rx="8"/>
+<text class="th" x="350" y="240" text-anchor="middle" dominant-baseline="central">② AI 反推</text>
+<text class="ts" x="350" y="259" text-anchor="middle" dominant-baseline="central">写剧本，列段落和出场的人物、场景、道具</text>
+<line class="arr" x1="350" y1="274" x2="350" y2="296" marker-end="url(#arrow)"/>
+
+<g class="me">
+<rect x="190" y="298" width="320" height="52" rx="8"/>
+<text class="th" x="350" y="316" text-anchor="middle" dominant-baseline="central">③ 你看、采用、批注</text>
+<text class="ts" x="350" y="335" text-anchor="middle" dominant-baseline="central">剧本照旧批注；新的段落、场景、道具点采用</text>
+</g>
+<line class="arr" x1="350" y1="350" x2="350" y2="372" marker-end="url(#arrow)"/>
+
+<g class="ok">
+<rect x="190" y="374" width="320" height="52" rx="8"/>
+<text class="th" x="350" y="392" text-anchor="middle" dominant-baseline="central">④ 剧本定稿</text>
+<text class="ts" x="350" y="411" text-anchor="middle" dominant-baseline="central">挑拍摄风格；从这里起和正着走一样</text>
+</g>
+
+<path class="arr" d="M350 426 L350 452 M185 452 L533 452"/>
+<line class="arr" x1="185" y1="452" x2="185" y2="470" marker-end="url(#arrow)"/>
+<line class="arr" x1="533" y1="452" x2="533" y2="470" marker-end="url(#arrow)"/>
+<text class="tg" x="359" y="463" text-anchor="middle" dominant-baseline="central">两边同时做</text>
+
+<rect class="box" x="40" y="472" width="290" height="52" rx="8"/>
+<text class="th" x="185" y="490" text-anchor="middle" dominant-baseline="central">工序三　资产（照旧）</text>
+<text class="ts" x="185" y="509" text-anchor="middle" dominant-baseline="central">写字批字 → 出图批图 → 确认可用</text>
+
+<rect class="box" x="390" y="472" width="286" height="52" rx="8"/>
+<text class="th" x="533" y="490" text-anchor="middle" dominant-baseline="central">⑤ AI 铺底</text>
+<text class="ts" x="533" y="509" text-anchor="middle" dominant-baseline="central">你写的两块不动；图后到的再铺素材</text>
+
+<path class="skip" d="M330 500 L386 500" marker-end="url(#arrow)"/>
+<text class="tg" x="359" y="489" text-anchor="middle" dominant-baseline="central">图确认后</text>
+
+<line class="arr" x1="533" y1="524" x2="533" y2="548" marker-end="url(#arrow)"/>
+<rect class="box" x="390" y="550" width="286" height="52" rx="8"/>
+<text class="th" x="533" y="568" text-anchor="middle" dominant-baseline="central">要关键帧的那一条（照旧）</text>
+<text class="ts" x="533" y="587" text-anchor="middle" dominant-baseline="central">要用的图确认了再出；有白模照白模</text>
+
+<path class="arr" d="M185 524 L185 638 L340 638 L340 652" marker-end="url(#arrow)"/>
+<path class="arr" d="M533 602 L533 638 L360 638 L360 652" marker-end="url(#arrow)"/>
+
+<g class="ok">
+<rect x="190" y="654" width="320" height="56" rx="8"/>
+<text class="th" x="350" y="672" text-anchor="middle" dominant-baseline="central">你点头一条，出一条样片（照旧）</text>
+<text class="ts" x="350" y="692" text-anchor="middle" dominant-baseline="central">这一条的提示词、参考图都好了</text>
+</g>
+<line class="arr" x1="350" y1="710" x2="350" y2="732" marker-end="url(#arrow)"/>
+<rect class="box" x="190" y="734" width="320" height="56" rx="8"/>
+<text class="th" x="350" y="752" text-anchor="middle" dominant-baseline="central">工序五　审片（照旧）</text>
+<text class="ts" x="350" y="772" text-anchor="middle" dominant-baseline="central">满意选定；不满意重出，或回头改</text>
+
+<path class="back" d="M510 762 L690 762 L690 162 L512 162" marker-end="url(#arrow)"/>
+<path class="back" d="M690 400 L512 400" marker-end="url(#arrow)"/>
+<text class="tn" x="600" y="750" text-anchor="middle" dominant-baseline="central">要改戏</text>
+<text class="tn" x="600" y="152" text-anchor="middle" dominant-baseline="central">改提示词，再反推</text>
+<text class="tn" x="600" y="390" text-anchor="middle" dominant-baseline="central">或到剧本页改</text>
+</svg>
+<p class="key">颜色：<i style="background:#fbf8f1;border-color:#d6cab6"></i>AI 做 <i style="background:#fdf3e3;border-color:#b9822f"></i>你来写、来批 <i style="background:#e3efec;border-color:#3e5c5e"></i>定下来　红虚线：回头改</p>
+</div>
+
+<div id="sections"></div>
+
+<h2>其他意见</h2>
+<div class="card"><textarea data-k="其他" placeholder="还有什么想法，写在这里"></textarea></div>
+
+<p class="foot" id="foot"></p>
+</main>
+<div class="bar"><span id="st">在每一块下面的虚线框里写批注，自动存。</span><button id="copy">复制批注</button></div>
+
+<script>
+/* ===== 内容（改内容只改这一块） ===== */
+const ROUND = 1;
+const SUB = '和正着走只差前半段：你先加人物、写提示词里你写的两块，AI 照提示词倒推出剧本、场景、道具，剧本定稿以后再铺 AI 那几块。审片、改、重出都不变。（第 1 轮批注已照改，甲、乙都选 A）';
+const FOOT = '2026-11-14 Claude 画的。第 1 轮批注已经照改：先加人物那一步只摆人物、少点几下；分镜、自由模式都支持；甲、乙都照 A 办。流水线照这张图改。';
+const SECTIONS = [
+  { h: '每一步做什么', cards: [
+    { id: 's0', no: '一', t: '先加人物', p: [
+      '添加分场时选「先写提示词」。这一场的页面只摆人物：点名字就选上，人物表里没有的就地加一个（叫法、一两句描写，图可以先没有）。',
+      '场景、道具、这一场要表达什么都收起来，想先填点开就有；不填也行，反推时 AI 会列出来。梗概也可以先空着。',
+      '人物选好，点「开始写提示词」，直接进写稿页。' ] },
+    { id: 's1', no: '①', t: '你写提示词', p: [
+      '不用先写段落。',
+      '新稿只摆你写的两块：【生成目标】和【事件脚本】。分镜模式（一镜一行）、自由模式（一大段）都行，写的时候也能切换。',
+      '镜头里能 @ 人物表里的人；还没有图的也能 @，插进去的是叫法。',
+      'AI 写的几块（参考素材、基础设定、主体与关系、保持一致）先空着，不铺。',
+      '一场要几条就写几条。写的时候照旧能请 AI 给建议、批。' ] },
+    { id: 's2', no: '②', t: 'AI 反推', p: [
+      '你点「反推剧本」，AI 读这一场写好的几条。',
+      '写出剧本：先后照提示词，不加戏，不删戏。提示词没写、剧本又要有的（时间、地点这类），AI 补上，在剧本备注里一条条列出来。',
+      '同时列出：段落（几镜一段、起什么作用）、这一场要表达的、出场的人物、场景、道具。已有的场景、道具用原来的名字，新的写一句话。',
+      '提示词里有、人物表里没有的人，单独列出来。',
+      '后来又加了一条提示词，再点一次反推。' ] },
+    { id: 's3', no: '③', t: '你看、采用、批注', p: [
+      '剧本在剧本页看，写批注让 AI 改，也能自己改（照旧）。',
+      '段落、新的场景和道具、新的人，你点「采用」才进流水线，AI 不直接改（照旧）。' ] },
+    { id: 's4', no: '④', t: '剧本定稿', p: [
+      '满意了点「剧本定稿」，再挑拍摄风格（照旧）。',
+      '从这里起和正着走一样：剧本定稿了才出资产图。' ] },
+    { id: 's5', no: '⑤', t: 'AI 铺底', p: [
+      '剧本定稿后 AI 自动铺那几块，你写的两块一字不动。',
+      '照定稿的剧本、出场的人物场景道具、拍摄风格来铺：有图的挂图，没图的先用文字。',
+      '图后来才确认的，这一条标「待核对」，点一下再铺一次素材（照旧）。' ] },
+    { id: 's6', no: '后', t: '之后都照旧', p: [
+      '资产照文生资产走：写字、批字、出图、批图、确认可用。反推出来的场景、道具也在这里出图。',
+      '要关键帧、挂白模，照旧在提示词那一步做。你点头一条，出一条样片；审片、改、重出都不变。',
+      '要改戏：改你写的那两块再反推一次，或者到剧本页改。改完都要再定稿，照旧出影响清单，只重做受影响的。' ] },
+  ] },
+  { h: '你定了的（11-14 第 1 轮）', cards: [
+    { id: 'd1', no: '甲', t: '在哪选倒着走：A', p: [
+      '每一场自己选：添加分场时选先写段落，或先写提示词。' ] },
+    { id: 'd2', no: '乙', t: 'AI 什么时候铺底：A', p: [
+      '剧本定稿就铺；图后到的，确认后这一条标「待核对」，点一下再铺一次。' ] },
+  ] },
+  { h: '跟着要改的', cards: [
+    { id: 'c1', no: '1', t: '流水线页面', p: [
+      '添加分场：多一个选项，先写段落还是先写提示词（记住上回选的）。',
+      '分场页：先写提示词的场只摆人物和「开始写提示词」，别的收起来；写好点「让 AI 反推剧本」。',
+      '写稿页：新稿只摆你写的两块；@ 能选还没有图的人物。',
+      '剧本页：摆出反推出来的段落、出场的、新的人和道具，点「采用」；剧本定稿后自动铺底。',
+      '每场的步骤条：先写提示词的场，第一步叫「人物·提示词」。' ] },
+    { id: 'c2', no: '2', t: 'AI 任务', p: [
+      '新加「反推剧本」：写剧本；段落和出场的另存一份，等你采用。',
+      '新加「铺底」写进正文：剧本定稿后自动铺；后来标「待核对」的，点「重铺」。',
+      '先写提示词的场，剧本定稿以前提示词不标「待核对」。',
+      '这一半要重开 8766 才生效，到时候先问你。' ] },
+    { id: 'c3', no: '3', t: '工序图', p: [
+      '项目 / 工序图.html 加一句：一场也能先写提示词，照这张图走。' ] },
+  ] },
+];
+
+/* ===== 下面是页面本身 ===== */
+const FILE = '/api/fs/' + ['通用工具', '流水线', '先写提示词_流程图_批注.json'].map(encodeURIComponent).join('/');
+const LS = 'antou:xxtsc-flow:r' + ROUND;
+const HDR = { 'X-Antou': '1' };
+let S = { 轮: ROUND, 时间: '', 批注: {}, 选择: {}, 其他: '' };
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const now = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()); };
+const cards = () => SECTIONS.flatMap(s => s.cards);
+
+function paint() {
+  $('#sub').textContent = SUB;
+  $('#foot').textContent = FOOT;
+  $('#sections').innerHTML = SECTIONS.map(s => '<h2>' + esc(s.h) + '</h2>' + s.cards.map(c => '<div class="card"><h3><span class="no">' + esc(c.no) + '</span>' + esc(c.t) + '</h3>'
+    + c.p.map(x => '<p>' + esc(x) + '</p>').join('')
+    + (c.opts ? '<div class="opts">' + c.opts.map(o => '<label><input type="radio" name="' + c.id + '" value="' + esc(o.v) + '">' + esc(o.v + '　' + o.t) + (o.rec ? '<span class="rec">（推荐）</span>' : '') + '</label>').join('') + '</div>' : '')
+    + '<textarea data-k="' + c.id + '" placeholder="批注（可以不写）"></textarea></div>').join('')).join('');
+  document.querySelectorAll('textarea').forEach(t => {
+    const k = t.dataset.k; t.value = (k === '其他' ? S.其他 : S.批注[k]) || ''; mark(t);
+    t.addEventListener('input', () => { if (k === '其他') S.其他 = t.value; else S.批注[k] = t.value; mark(t); changed(); });
+  });
+  document.querySelectorAll('.opts input').forEach(r => {
+    if (S.选择[r.name] === r.value) r.checked = true;
+    r.addEventListener('change', () => { S.选择[r.name] = r.value; changed(); });
+  });
+}
+const mark = t => t.classList.toggle('has', !!t.value.trim());
+
+let timer = 0;
+function changed() {
+  S.时间 = now();
+  try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { /* 存不了就算了 */ }
+  clearTimeout(timer); timer = setTimeout(save, 700);
+  $('#st').textContent = '正在存…';
+}
+async function save() {
+  try {
+    const r = await fetch(FILE, { method: 'PUT', headers: HDR, body: JSON.stringify(S, null, 2) + '\n' });
+    if (!r.ok) throw new Error(r.status);
+    $('#st').textContent = '已存好（' + S.时间.slice(11, 16) + '）。批完回到对话说一声「批完了」';
+  } catch (e) { $('#st').textContent = '没连上本机服务，只存在这个浏览器里。批完点「复制批注」贴给我'; }
+}
+async function load() {
+  try {
+    const r = await fetch(FILE, { headers: HDR });
+    if (r.ok) { const t = JSON.parse(await r.text()); if (t && t.轮 === ROUND) S = Object.assign(S, t); }
+  } catch (e) { /* 没有就是还没批 */ }
+  try { const t = JSON.parse(localStorage.getItem(LS) || 'null'); if (t && t.轮 === ROUND && (t.时间 || '') > (S.时间 || '')) S = Object.assign(S, t); } catch (e) { /* 不管 */ }
+  paint();
+}
+function text() {
+  const out = ['先写提示词流程图 · 第 ' + ROUND + ' 轮批注（' + (S.时间 || now()) + '）'];
+  for (const c of cards()) {
+    const n = (S.批注[c.id] || '').trim(), v = S.选择[c.id];
+    if (!n && !v) continue;
+    const o = v && c.opts ? c.opts.find(x => x.v === v) : null;
+    out.push(c.no + ' ' + c.t + (v ? '　选了 ' + v + (o ? '：' + o.t : '') : '') + (n ? '\n　' + n.replace(/\n/g, '\n　') : ''));
+  }
+  if ((S.其他 || '').trim()) out.push('其他意见：' + S.其他.trim());
+  return out.join('\n');
+}
+$('#copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(text()); $('#st').textContent = '复制好了，贴到对话里就行'; }
+  catch (e) { prompt('复制下面这段：', text()); }
+});
+load();
+</script>
+</body>
+</html>

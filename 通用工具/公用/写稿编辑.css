@@ -1,17 +1,28 @@
 /* 草图的宽工作区布局；正文、公共内容及按钮继续使用原项目的字体字号。 */
 
-.editor-mode { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 14px 22px; padding: 20px 24px; }
+/* 2026-11-15：模式切换挪到左栏最上面，顶上那一整行不要了；标题和分区按钮那一条钉在正文顶上，往下滚不走。 */
+.stage { position: relative; gap: 20px; padding: 16px 24px 20px; }
+.editor-side { flex: 0 0 150px; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.editor-mode { flex: none; display: flex; flex-direction: column; align-items: stretch; gap: 12px; padding: 2px 0 14px; border-bottom: 1px solid var(--line); }
 .editor-title { flex: none; color: var(--ink); font: 600 18px/1.3 var(--serif); }
-.stage { position: relative; gap: 20px; padding: 0 24px 20px; }
-.editor-outline { flex: 0 0 150px; min-width: 0; overflow: auto; padding: 8px 0 24px; }
+.editor-outline { flex: 1; min-height: 0; overflow: auto; padding: 12px 0 24px; }
 .editor-outline .outline-link { display: block; width: 100%; padding: 8px 12px; border: 0; border-radius: 5px; background: none; color: var(--ink-2); font: inherit; text-align: left; cursor: pointer; }
-.editor-outline .outline-link:hover, .editor-outline .outline-link.on { background: var(--dai-soft); color: var(--dai); }
+.editor-outline .outline-link:hover, .editor-outline .outline-link.on { background: var(--qing-soft); color: var(--qing); }
 .editor-outline .outline-shot { display: block; width: 100%; padding: 6px 10px 6px 22px; border: 0; background: none; color: var(--ink-3); font: 12.5px/1.7 var(--sans); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-.editor-outline .outline-shot:hover, .editor-outline .outline-shot.on { color: var(--dai); background: var(--dai-soft); border-radius: 5px; }
+.editor-outline .outline-shot:hover, .editor-outline .outline-shot.on { color: var(--qing); background: var(--qing-soft); border-radius: 5px; }
 .canvas { padding: 0 0 40px; }
 .sheet { width: 100%; max-width: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 .sheet::after { display: none; }
-.doc-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 18px; text-align: left; }
+.doc-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 14px; margin: 0; text-align: left; }
+/* 钉在正文顶上的一条：宽的时候标题、分区按钮、「AI 铺底」一行摆下；窄了标题和「AI 铺底」一行、分区按钮一行 */
+.sheet-head { container-type: inline-size; position: sticky; top: 0; z-index: 20; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 16px; padding: 0 0 12px; background: var(--paper); }
+.sheet-head .doc-seg { font-size: 22px; }
+.sheet-head .section-nav { flex: 1 1 auto; margin: 0; }
+.canvas.stuck .sheet-head { box-shadow: 0 1px 0 var(--line), 0 12px 12px -12px rgba(30, 28, 24, .22); }
+@container (max-width: 820px) {
+  .sheet-head .section-nav { flex-basis: 100%; }
+  .sheet-head .lay-b { position: absolute; top: 0; right: 0; }
+}
 .doc-kicker, .ornament { display: none; }
 .doc-name { margin-top: 0; }
 .shared-settings > .sec { margin: 0 0 16px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 9px; background: var(--sheet); }
@@ -19,25 +30,23 @@
 .sheet-foot { margin-top: 24px; }
 .guide { border-radius: 7px; }
 
-.rail { flex: 0 0 clamp(340px, 24vw, 380px); width: clamp(340px, 24vw, 380px); border: 1px solid var(--dai-line); border-radius: 10px; overflow: hidden; background: var(--sheet); }
+.rail { flex: 0 0 clamp(340px, 24vw, 380px); width: clamp(340px, 24vw, 380px); border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; background: var(--sheet); }
 .rail-tabs { flex-wrap: wrap; padding-right: 10px; padding-left: 10px; }
 .rail-tab { flex: 1 0 auto; padding-right: 9px; padding-left: 9px; }
-.rail-body { background: var(--dai-soft); }
+.rail-body { background: #faf9f7; }
 
-/* 模式条放在工作区上方，模式仍只影响分镜；按钮字号沿用 .mini-b。 */
-.mode-bar { flex: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin: 0; }
-.mode-tabs { display: flex; align-items: center; gap: 3px; padding: 4px; border: 1px solid var(--line-2); border-radius: 9px; background: var(--paper-2); }
-.mode-tabs .mini-b { padding: 7px 18px; border-color: transparent; border-radius: 5px; background: none; }
-.mode-tabs .on { color: var(--ink); border-color: var(--line); background: var(--sheet); box-shadow: 0 1px 3px rgba(60, 45, 30, .08); }
-.mode-help { font-size: 12.5px; color: var(--ink-3); }
-.mode-spacer { flex: 1; }
+/* 模式切换在左栏，模式仍只影响分镜；两个按钮平分左栏宽度。 */
+.mode-bar { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 0; }
+.mode-tabs { align-self: stretch; display: flex; gap: 3px; padding: 3px; border: 1px solid var(--line-2); border-radius: 9px; background: var(--paper-2); }
+.mode-tabs .mini-b { flex: 1 1 0; min-width: 0; padding: 6px 0; border-color: transparent; border-radius: 6px; background: none; font-size: 12px; text-align: center; }
+.mode-tabs .on { color: var(--ink); border-color: var(--line); background: var(--sheet); box-shadow: 0 1px 3px rgba(30, 28, 24, .08); }
 .section-nav { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 16px; }
 .section-nav .mini-b { padding: 6px 11px; border-radius: 6px; }
 
 /* 镜头卡片回到草图的分区边界；输入框与标题的字体字号保留原值。 */
 .pshots { gap: 13px; }
-.p-shot { padding: 0; overflow: hidden; border-color: var(--line); border-radius: 9px; background: var(--sheet); box-shadow: 0 2px 4px rgba(60, 45, 30, .025); }
-.p-shot .shot-h { gap: 9px; margin: 0; padding: 12px 16px; background: var(--paper); }
+.p-shot { padding: 0; overflow: hidden; border-color: var(--line); border-radius: 9px; background: var(--sheet); box-shadow: 0 2px 4px rgba(30, 28, 24, .025); }
+.p-shot .shot-h { gap: 9px; margin: 0; padding: 12px 16px; background: #f9f8f5; }
 .p-shot .shot-title { padding: 3px 4px; border-bottom: 1px dashed var(--line-2); }
 .p-shot > .wr { margin: 0 18px 12px; }
 .p-shot > .peek { margin: 12px 18px; }
@@ -49,13 +58,13 @@
 .shot-ops button:disabled { opacity: .45; cursor: default; }
 .purpose-field { display: flex; align-items: center; gap: 10px; margin: 13px 18px 10px; color: var(--ink-3); font-size: 12.5px; }
 .shot-purpose { flex: 1; min-width: 0; padding: 5px 9px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--sheet); color: var(--ink-2); font: inherit; }
-.shot-purpose:focus { outline: none; border-color: var(--zhe); box-shadow: 0 0 0 3px var(--zhe-soft); }
+.shot-purpose:focus { outline: none; border-color: var(--qing); box-shadow: 0 0 0 3px var(--qing-soft); }
 .shot-caption { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 10px; margin: 0 18px 6px; color: var(--ink-3); font-size: 12.5px; }
 .shot-bottom { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 18px 12px; padding-top: 7px; border-top: 1px dashed var(--line); }
 .shot-bottom .mini-b { margin-left: auto; }
 .p-shot.fold > .purpose-field, .p-shot.fold > .shot-caption { display: none; }
-.p-shot.selected { border-color: var(--zhe-line); }
-.p-shot.drag-over { outline: 2px solid var(--dai-line); outline-offset: 2px; }
+.p-shot.selected { border-color: var(--qing-line); box-shadow: 0 0 0 3px var(--qing-soft); }
+.p-shot.drag-over { outline: 2px solid var(--qing-line); outline-offset: 2px; }
 .p-shot.dragging { opacity: .45; }
 .insert-shot { display: block; align-self: center; border: 0; background: none; color: var(--ink-3); font: 12.5px var(--sans); cursor: pointer; }
 .insert-shot:hover { color: var(--ink); }
@@ -63,20 +72,17 @@
 .empty-shots { padding: 24px 0; text-align: center; color: var(--ink-3); }
 
 /* 新建议区与原来的对照框使用同一组字形、颜色和间距。 */
-.rail-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px 0; color: var(--dai); font: 14px var(--kai); }
+.rail-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px 0; color: var(--dian); font: 14px var(--kai); }
 .rail-title small { color: var(--ink-3); font: 11.5px var(--sans); }
 .suggest-intro { margin: 0 0 12px; color: var(--ink-3); font-size: 12.5px; }
-.suggest-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; color: var(--dai); font-size: 12.5px; }
+.suggest-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; color: var(--dian); font-size: 12.5px; }
 .suggest-head .btn { margin-left: auto; }
 .suggest-card { margin-bottom: 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 7px; background: var(--sheet); color: var(--ink-2); font: 13.5px/1.9 var(--serif); }
-.suggest-card h3 { margin: 0 0 6px; color: var(--dai); font: 14px var(--kai); }
+.suggest-card h3 { margin: 0 0 6px; color: var(--dian); font: 14px var(--kai); }
 .suggest-card p { margin: 6px 0 10px; white-space: pre-wrap; }
 .suggest-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .suggest-card .kw { margin-top: 10px; }
 .suggest-empty { padding: 12px 0; color: var(--ink-3); font-size: 12.5px; }
-.common-card { margin-bottom: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); }
-.common-card h3 { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; color: var(--dai); font: 15px var(--kai); }
-.common-copy { margin: 0; white-space: pre-wrap; overflow-wrap: break-word; color: var(--ink); font: 15px/1.9 var(--serif); }
 
 /* 自由输入仍在原来的分镜分区，正文及影子层沿用原 .wr-ta/.wr-bg。 */
 .free-section { padding: 18px; border: 1px solid var(--line); border-radius: 9px; background: var(--sheet); }
@@ -87,18 +93,17 @@
 .save-conflict { margin: 0 0 16px; padding: 13px 16px; border: 1px solid var(--zhu-line); border-radius: 6px; background: var(--zhu-soft); color: var(--zhu); font: 13px/1.8 var(--sans); }
 .save-conflict .btn { margin: 8px 8px 0 0; }
 .editor-dialog { width: min(850px, 90vw); max-height: 85vh; padding: 24px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--sheet); color: var(--ink); }
-.editor-dialog::backdrop { background: rgba(42, 38, 34, .44); }
+.editor-dialog::backdrop { background: rgba(31, 28, 25, .44); }
 .editor-dialog pre { max-height: 58vh; overflow: auto; white-space: pre-wrap; font: 14px/1.9 var(--sans); }
 .editor-dialog footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 
 @media (max-width: 1200px) {
-  .editor-outline { display: none; }
+  .editor-side { flex-basis: 136px; }   /* 左栏有模式切换，窄了也不藏 */
   .stage { gap: 18px; }
 }
 @media (max-width: 1000px) {
-  .editor-mode { padding: 16px 20px; }
-  .stage { padding: 0 20px 16px; gap: 0; }
-  .rail { position: absolute; z-index: 30; top: 0; right: 20px; bottom: 16px; width: min(380px, calc(100% - 40px)); max-width: none; box-shadow: -8px 8px 26px rgba(60, 45, 30, .16); }
+  .stage { padding: 12px 20px 16px; gap: 16px; }
+  .rail { position: absolute; z-index: 30; top: 0; right: 20px; bottom: 16px; width: min(380px, calc(100% - 40px)); max-width: none; box-shadow: -8px 8px 26px rgba(30, 28, 24, .16); }
   .canvas { padding: 0 0 32px; }
   .sheet { padding: 0; }
   .p-shot { padding: 0; }
@@ -106,10 +111,12 @@
 @media (max-width: 650px) {
   .top { gap: 8px; }
   .top-right { flex-wrap: wrap; }
-  .editor-mode { gap: 10px; padding: 14px 12px; }
-  .mode-bar { gap: 8px; }
+  .stage { flex-direction: column; padding: 10px 12px 12px; gap: 10px; }   /* 手机宽：左栏变成正文上面一行，目录不摆 */
+  .editor-side { flex: none; }
+  .editor-mode { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 0 0 8px; }
+  .mode-bar { flex-direction: row; align-items: center; }
   .mode-tabs .mini-b { padding: 6px 12px; }
-  .stage { padding: 0 12px 12px; }
+  .editor-outline { display: none; }
   .rail { right: 12px; bottom: 12px; width: calc(100% - 24px); }
   .p-shot .shot-h { flex-wrap: wrap; padding: 10px 12px; }
   .shot-ops { width: 100%; justify-content: flex-end; }

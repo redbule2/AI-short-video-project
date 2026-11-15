@@ -17,12 +17,12 @@
 <script src="流水线.js"></script>
 <script>
 /* ============================================================
-   流水线 · 全片设定（梗概、人物、场景、道具）
-   全片的，写一次，各场共用。一次看一样，顶上四个分页换；人物、道具一行一个，场景是一段话。
+   流水线 · 全片设定（梗概、人物、场景、道具、风格）
+   全片的，写一次，各场共用。一次看一样，顶上五个分页换（风格 11-14 加：剧本定稿以后照剧本挑，个别场可以另选）；人物、道具一行一个，场景是一段话（一行写一处地方，分场里每一行都能选）。
    共用的东西（读写流水线.json、顶栏、弹窗里加人物道具、小部件）在 流水线.js。
    ============================================================ */
 'use strict';
-const TABS = ['梗概', '人物', '场景', '道具'];
+const TABS = ['梗概', '人物', '场景', '道具', '风格'];
 let TAB = (() => { let k = ''; try { k = decodeURIComponent(location.hash.slice(1)); } catch (e) { /* 网址不对就从头 */ } return TABS.includes(k) ? k : '梗概'; })();
 /* 表里这一行还没引用图，项目里又正好有一张叫这个名字的 */
 function hintFor(K, it) {
@@ -88,7 +88,7 @@ async function bulkAddDlg(K) {
 /* ---------- 场景：全片的，一段话；下面挂引用的场景图 ---------- */
 function sceneSection() {
   const d = F.doc;
-  const ta = h('textarea', { class: 'fl-ta', id: 'fl-scene-ta', spellcheck: 'false', placeholder: '全片有哪些地方，各是什么样：什么时候、在哪、有什么。比如：\n面摊：傍晚，菜市场外的马路边，一辆旧三轮改的面车，两张矮桌，头顶拉着一条横幅。' });
+  const ta = h('textarea', { class: 'fl-ta', id: 'fl-scene-ta', spellcheck: 'false', placeholder: '全片有哪些地方：什么时候、在哪、干什么用，会影响写戏的写上。比如：\n面摊：傍晚，菜市场外的马路边，一辆旧三轮改的面车，两张矮桌。' });
   ta.value = d.场景;
   const strip = h('div', { class: 'fs-as' }), aiBox = h('div');
   const paintAi = () => {
@@ -98,7 +98,7 @@ function sceneSection() {
       h('button', { class: 'btn sm', type: 'button', title: '把上面你写的那段换成这一版；换之前的留一版在历史记录', onclick: async () => {
         await flush();
         if (F.text) FS.write(at([F.name, '历史记录', '定稿的剧本', '流水线__' + stampNow() + '.json']), C.encodeText(F.text)).catch(() => {});
-        d.场景 = t; ta.value = t; fit(ta); setFold('场景', false); touch(); rerender();
+        setScene(t); ta.value = t; fit(ta); setFold('场景', false); touch(); rerender();
       } }, '采用'),
       h('button', { class: 'btn sm ghost', type: 'button', onclick: () => { sayNo('场景', '', t); paintAi(); } }, '不要')), h('p', null, t))] : []),
       ...(wait ? [h('p', { class: 'fn-note', style: 'margin-top:8px' }, wait + (t ? ' 又交给 AI 了，新的写好会换掉上面这一版。' : ' 交给 AI 了：它照 GEO 先出底稿，再写成场景段，写好这里出现。'))] : []));
@@ -113,12 +113,11 @@ function sceneSection() {
       h('button', { class: 'btn sm', type: 'button', title: '从 资产 / 全局资产 / 场景 里选全片用的场景图', onclick: pickSceneImgs }, icon('plus'), '引用场景图'));
   };
   const later = debounce(() => { if (strip.isConnected) paint(); }, 400);
-  ta.addEventListener('input', () => { d.场景 = ta.value; fit(ta); touch(); paintSteps(); later(); });
+  ta.addEventListener('input', () => { setScene(ta.value); fit(ta); touch(); paintSteps(); later(); });
   REPAINT.场景图 = paint;
   paint();
   const box = h('div', null, ta);
-  const askGeo = h('button', { class: 'btn sm', type: 'button', title: '把这一段交给 AI：照 GEO 的办法把空间关系核清楚，先出 GEO 底稿给你审，再写成场景段。写好摆在下面，你点「采用」才换上', onclick: () => batchSend({ 人物: [], 道具: [], 场景: true, 场: [] }) }, '让 AI 扩写（用 GEO）');
-  return h('section', { class: 'fl-sec fl-syn' }, secHead('三', '场　景', '全片的，一段话写清楚有哪些地方', askGeo, folder('场景', box, () => d.场景, () => ta.focus())), box, aiBox, strip);
+  return h('section', { class: 'fl-sec fl-syn' }, secHead('三', '场　景', '全片的，一行写一处地方，只写粗的；空间布局（GEO）剧本定稿后在资产那一步写', folder('场景', box, () => d.场景, () => ta.focus())), box, aiBox, strip);
 }
 
 async function pickSceneImgs() {
@@ -138,7 +137,7 @@ async function pickSceneImgs() {
   if (!ok) return;
   const shown = new Set(items.map(x => x.文件));
   d.场景图 = [...d.场景图.filter(f => !shown.has(f)), ...items.filter(x => picked.has(x.文件)).map(x => x.文件)];
-  for (const s of d.场) s.场景图 = s.场景图.filter(f => d.场景图.includes(f));
+  for (const s of d.场) s.场景图 = s.场景图.filter(f => d.场景图.includes(f) || segImg(s, f));   // 这一场自己文件夹里挑的图不归全片管，留着
   touch(); repaintRefs();
 }
 
@@ -152,27 +151,54 @@ function synSection() {
   return h('section', { class: 'fl-sec fl-syn' }, secHead('一', '梗　概', '全片的，你写', folder('梗概', box, () => d.梗概, () => syn.focus())), box);
 }
 
-/* ---------- 顶上四个分页：各写到什么样 ---------- */
+/* ---------- 风格：全片的拍摄风格。剧本定稿以后照剧本挑（第一场定稿时会弹出来）；个别场在那一场页面顶上另选 ---------- */
+function styleSection() {
+  const film = filmStyle(), box = h('div', null, h('p', { class: 'fn-note' }, '在读风格库…'));
+  const mine = F.doc.场.filter(s => str(s.风格).trim());
+  (async () => {
+    let st;
+    try { st = await loadStyles(); } catch (e) { box.replaceChildren(h('p', { class: 'fn-note warn' }, '风格库读不了：' + e.message)); return; }
+    const done = st.lib.list.filter(c => c.已定).map(c => c.名);
+    if (!film) {
+      box.replaceChildren(h('p', { class: 'fn-note' }, '还没定。剧本定稿以后照剧本挑一种：风格库里现在有 ' + st.lib.list.length + ' 种，' + done.join('、') + ' 有样片' + (st.own ? '；也可以用这个项目自己定的光影总基调' : '') + '。可以让 AI 看了剧本推荐，挑哪个你定。'));
+      return;
+    }
+    const c = film.名 === OWN_STYLE ? null : window.StyleLib.find(st.lib, film.名), media = h('div', { class: 'sty-media' });
+    const rows = c ? ['一句话', '一眼认出', '影像风格', '摄影', '光色基调', '声音', '表演', '分镜常用拍法', '容易跑偏', '比例', '原片参考'].map(k => [k, k === '一眼认出' ? window.StyleLib.marks(c[k]).join('\n') : k === '分镜常用拍法' ? String(c[k] || '').split('／').join('\n') : c[k]])   // 招牌、拍法一条一行
+      : film.名 === OWN_STYLE ? [['光影总基调', st.own || '（提示词/全局资产/全片_光影总基调.txt 不见了）']] : [['', '风格库里没有「' + film.名 + '」了，点右上角「换一个」']];
+    box.replaceChildren(h('div', { class: 'sty-now' },
+      h('dl', null, rows.filter(r => r[1]).flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)])),
+      h('div', null, media, c && c.样片 && st.vids.has(c.样片) ? sampleBtn(c.样片, media) : null)));
+  })();
+  const when = film ? '定于 ' + str(film.定).slice(5, 16) + (film.换 ? '（从别的风格换过来的）' : '') + '。出资产图、写提示词、铺底都照它写；审片对着「一眼认出」看像不像。' : '';
+  return h('section', { class: 'fl-sec fl-syn' },
+    secHead('五', film ? '风　格｜' + film.名 : '风　格', '全片的拍摄风格，剧本定稿以后照剧本挑', h('button', { class: 'btn sm' + (film ? '' : ' ink'), type: 'button', onclick: () => styleDlg(null) }, film ? '换一个' : '挑一个')),
+    when ? h('p', { class: 'fn-note', style: 'margin-bottom:10px' }, when) : null, box,
+    mine.length ? h('div', { class: 'sty-scenes' }, h('span', { class: 'fn-note' }, '另选了风格的场：'), mine.map(s => h('button', { class: 'chip', type: 'button', title: '点一下看、换', onclick: () => styleDlg(s) }, '第' + s.段 + '场：' + str(s.风格).trim()))) : null);
+}
+
+/* ---------- 顶上五个分页：各写到什么样 ---------- */
 function tabNote(k) {
   const d = F.doc;
   if (k === '梗概') return d.梗概.trim() ? '写了' : '还没写';
   if (k === '场景') return d.场景.trim() ? (d.场景图.length ? d.场景图.length + ' 张图' : '写了') : '还没写';
+  if (k === '风格') return filmStyle() ? filmStyle().名 : '还没定';
   return d[k].length ? d[k].length + ' ' + KIND[k].unit : '还没有';
 }
-const tabTodo = k => k === '梗概' ? !F.doc.梗概.trim() : k === '场景' ? !F.doc.场景.trim() : !F.doc[k].length;
-const tabsEls = () => TABS.map(k => h('button', { class: 'wf-tab' + (k === TAB ? ' on' : '') + (tabTodo(k) ? ' todo' : ''), type: 'button', onclick: () => setTab(k) }, k, h('small', null, tabNote(k))));
+const tabTodo = k => k === '梗概' ? !F.doc.梗概.trim() : k === '场景' ? !F.doc.场景.trim() : k === '风格' ? !filmStyle() && F.doc.场.some(s => s.定稿 && scriptState(s).st === 'final') : !F.doc[k].length;   // 风格：有一场剧本定稿了还没定才催
+const tabsEls = () => TABS.map(k => h('button', { class: 'wf-tab' + (KINDS.includes(k) ? ' ' + kindCls(k) : '') + (k === TAB ? ' on' : '') + (tabTodo(k) ? ' todo' : ''), type: 'button', onclick: () => setTab(k) }, k, h('small', null, tabNote(k))));
 function setTab(k) {
   TAB = k;
   history.replaceState(null, '', location.pathname + location.search + '#' + encodeURIComponent(k));
   rerender(0);
 }
 function render() {
-  const i = TABS.indexOf(TAB), next = TABS[i + 1];
+  const i = TABS.indexOf(TAB), next = TAB === '道具' || TAB === '风格' ? '' : TABS[i + 1];   // 风格要等剧本定稿以后挑：道具写完就回首页分场
   return [
     h('div', { class: 'fl-head' }, h('div', { class: 'fl-kicker' }, '全 片 设 定'), h('div', { class: 'wf-tabs', id: 'wf-tabs' }, tabsEls())),
-    TAB === '梗概' ? synSection() : TAB === '场景' ? sceneSection() : listSection(KIND[TAB]),
+    TAB === '梗概' ? synSection() : TAB === '场景' ? sceneSection() : TAB === '风格' ? styleSection() : listSection(KIND[TAB]),
     h('div', { class: 'wf-foot' },
-      h('span', { class: 'fn-note' }, '全片的，写一次，各场共用。边写边自动保存。'),
+      h('span', { class: 'fn-note' }, TAB === '风格' ? '全片的，各场共用；个别场在那一场页面顶上另选。' : '全片的，写一次，各场共用。边写边自动保存。'),
       i > 0 ? h('button', { class: 'btn ghost', onclick: () => setTab(TABS[i - 1]) }, '← ' + TABS[i - 1]) : null,
       next ? h('button', { class: 'btn ink', onclick: () => setTab(next) }, '下一步：' + next + ' →') : h('button', { class: 'btn ink', onclick: () => go('总览') }, '写好了，回首页分场 →')),
   ];

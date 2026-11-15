@@ -53,6 +53,18 @@ function Read-Events([string]$file) {
   }
 }
 function Message-Text($item) { (@($item.content) | ForEach-Object { $_.text }) -join '' }
+# 这一回合实际用的模型和推理深度：会话记录里这一回合的 turn_context（只读，2026-11-14 加）
+function Turn-Settings([string]$file, [string]$turn) {
+  try { $fs = [IO.File]::Open($file, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]'ReadWrite, Delete') } catch { return }
+  try { $text = (New-Object IO.StreamReader($fs, [Text.Encoding]::UTF8)).ReadToEnd() } finally { $fs.Dispose() }
+  foreach ($line in $text.Split("`n")) {
+    if ($line -notmatch '"type":"turn_context"' -or $line -notmatch ('"turn_id":"' + [regex]::Escape($turn) + '"')) { continue }
+    $e = $null; $m = $null
+    if ($line -match '"effort":"([A-Za-z]+)"') { $e = $Matches[1] } elseif ($line -match '"reasoning_effort":"([A-Za-z]+)"') { $e = $Matches[1] }
+    if ($line -match '"model":"([^"]+)"') { $m = $Matches[1] }
+    return @{ effort = $e; model = $m }
+  }
+}
 # 按会话 ID 找记录文件：没归档的在 sessions，归档了的在 archived_sessions
 function Find-Rollout([string]$id) {
   Get-ChildItem $Sessions, $Archived -Recurse -Filter "rollout-*-$id.jsonl" -ErrorAction SilentlyContinue |
@@ -210,6 +222,13 @@ try {
   }
   $want = Norm $sent
 
+  # 几个任务同时发（照方案改一次出几张图）：从切模式到在会话记录里认出这条消息，一次只让一个进，
+  # 免得两个深链接抢同一个输入框（11-15 加）。进程退出时系统会放开；等的那头收到 Abandoned 也算拿到。
+  $sendLock = New-Object Threading.Mutex($false, 'Local\codex-chat-send')
+  $locked = $false
+  try { $locked = $sendLock.WaitOne([TimeSpan]::FromSeconds(600)) } catch [Threading.AbandonedMutexException] { $locked = $true }
+  if (-not $locked) { Fail '别的任务一直在往 Codex 里发消息，等了 600 秒还没轮到，没有发送' }
+
   # chatgpt-mode-image 用完窗口会停在 ChatGPT 模式，提示词会发成 ChatGPT 的对话（11-07 出过两次）。
   # 新对话的深链接带了 mode=codex；续接旧对话的深链接不认 mode，先切回 Codex 模式。
   $surface = Get-Surface
@@ -294,8 +313,12 @@ try {
   if (-not $found) { Fail '已点发送，但 60 秒内没在会话记录里找到这条消息，请到 Codex 窗口里看一眼' }
   $result.thread_id = $found.thread
   $result.rollout = $found.file
+  $ts = $null
+  for ($i = 0; $i -lt 10 -and -not ($ts -and $ts.effort); $i++) { $ts = Turn-Settings $found.file $found.turn; if (-not ($ts -and $ts.effort)) { Start-Sleep -Milliseconds 500 } }
+  if ($ts) { $result.effort = $ts.effort; $result.model_id = $ts.model }
   New-Item -ItemType Directory -Force $StateDir | Out-Null
   Set-Content -Path $LastFile -Value $found.thread -Encoding ASCII
+  $sendLock.ReleaseMutex(); $locked = $false
 
   if ($NoWait) { $result.ok = $true; $result.status = 'sent'; Finish 0 }
 

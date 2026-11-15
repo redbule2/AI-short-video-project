@@ -2,7 +2,7 @@
    公用 · 底座（window.Base）
    流水线各页都靠它：经本机服务读写总文件夹里的文件、把事情交给 AI、认项目、几样小工具。
    路径一律是从总文件夹算起的一串名字，比如 ['项目', '童晓晓', '定稿的剧本', '流水线.json']。
-   这几页只在本机服务里用（在 Claude 里说「打开项目管理」）；直接双击文件打开时读不了项目。
+   这几页只在本机服务里用（在 Claude 里说「打开项目管理」，项目管理就是流水线）；直接双击文件打开时读不了项目。
    ============================================================ */
 (function () {
 'use strict';
@@ -48,6 +48,7 @@ const FS = {
   /* 改名、挪地方：那里已经有同名的就不动（服务会报错） */
   async move(from, to) { await LINK.req('POST', LINK.url(from) + '?move=' + encodeURIComponent(to.join('/'))); },
   async isDir(parts) { try { await FS.list(parts); return true; } catch (e) { return false; } },
+  async mkdir(parts) { await LINK.req('POST', LINK.url(parts) + '?mkdir'); },   // 建文件夹，上面几层没有的一起建
 };
 
 /* ---------- 交给 AI：排进本机服务的队，对话里的 AI 挂着等；返回 AI 在不在等 ---------- */
@@ -110,16 +111,20 @@ const isComposing = e => e.isComposing || e.keyCode === 229;
 const store = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* 存满了就不存 */ } };
 
 /* ---------- 网址：页面之间只靠它传话。p＝项目，s＝第几场 ---------- */
-const query = () => { const q = new URLSearchParams(location.search); return { p: q.get('p') || '', s: q.get('s') || '' }; };
-function pageUrl(page, { p, s } = {}, hash) {
+/* a＝资产那一页点开的一样东西（它的图的路径），from＝从哪一页点过来的，v＝哪一条提示词（关键帧）（11-14 加的，资产那一页用） */
+const MORE_Q = ['a', 'from', 'v'];
+const query = () => { const q = new URLSearchParams(location.search), o = { p: q.get('p') || '', s: q.get('s') || '' }; for (const k of MORE_Q) o[k] = q.get(k) || ''; return o; };
+function pageUrl(page, { p, s, ...more } = {}, hash) {
   const q = new URLSearchParams();
   if (p) q.set('p', p);
   if (s) q.set('s', s);
+  for (const k of MORE_Q) if (more[k]) q.set(k, more[k]);
   const qs = q.toString();
   return encodeURIComponent(page) + '.html' + (qs ? '?' + qs : '') + (hash ? '#' + encodeURIComponent(hash) : '');
 }
-/* 项目管理那一页（外壳）：直接打开某个文件；embed＝只要中间那一块，嵌在流水线的页面里用 */
-const shellUrl = (parts, embed) => '/' + (embed ? '?embed=1' : '') + (parts && parts.length ? '#open=' + parts.map(encodeURIComponent).join('/') : '');
+/* 看文件的那一页（通用工具/项目管理.html，本机服务的 /）：整页嵌在流水线里，看剧本、提示词、图、样片，写批注。
+   它只认嵌着打开（?embed=1）；不嵌着打开会转回流水线首页（老页面 2026-11-13 下掉了） */
+const shellUrl = parts => '/?embed=1' + (parts && parts.length ? '#open=' + parts.map(encodeURIComponent).join('/') : '');
 
 window.Base = { C, LINK, FS, askAI, HOME, at, projects, scanScripts, mimeOf, two, stampNow, nowText, timeOf, debounce, isComposing, store, query, pageUrl, shellUrl };
 })();

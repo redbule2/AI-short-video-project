@@ -1,0 +1,152 @@
+{
+ "网址": "http://localhost:8797/通用工具/流水线/",
+ "视口": [
+  1280,
+  720
+ ],
+ "倍数": 3,
+ "假接口": {
+  "/api/jimeng": {
+   "status": {
+    "ok": true,
+    "data": {
+     "loggedIn": true
+    },
+    "raw": ""
+   },
+   "account": {
+    "ok": true,
+    "data": {
+     "displayName": "我的即梦号"
+    },
+    "raw": ""
+   }
+  }
+ },
+ "步骤": [
+  {
+   "开": "总览.html?p=童晓晓",
+   "等": 2500
+  },
+  {
+   "截": "首页",
+   "整页": true,
+   "框": {
+    "顶栏": "header.wf-top",
+    "项目名": ".fl-trow .fl-title",
+    "换项目": "text:换项目",
+    "设定": ".wf-tiles",
+    "梗概格": ".wf-tile:nth-child(1)",
+    "人物格": ".wf-tile:nth-child(2)",
+    "风格格": ".wf-tile:nth-child(5)",
+    "设定标题": "#fl-body > section:nth-of-type(1)",
+    "分场": "#fl-body > section:nth-of-type(2)",
+    "分场表": ".wf-table",
+    "表头": ".wf-row.head",
+    "列段落": ".wf-row.head > span:nth-child(2)",
+    "列剧本": ".wf-row.head > span:nth-child(3)",
+    "列资产": ".wf-row.head > span:nth-child(4)",
+    "列提示词": ".wf-row.head > span:nth-child(5)",
+    "列审片": ".wf-row.head > span:nth-child(6)",
+    "第1-1场": ".wf-table > .wf-row:nth-child(2)",
+    "第1-3场": ".wf-table > .wf-row:nth-child(4)",
+    "打勾": ".wf-table > .wf-row:nth-child(2) .wf-pill.ok",
+    "红色": ".wf-table > .wf-row:nth-child(4) .wf-pill.you",
+    "虚线": ".wf-table > .wf-row:nth-child(4) .wf-pill.lock",
+    "添加分场": "text:添加分场",
+    "让AI写剧本": "text:让 AI 写剧本…",
+    "即梦": "section:has(#wf-jm)",
+    "AI用": ".top-right select",
+    "场景格": ".wf-tile:nth-child(3)",
+    "道具格": ".wf-tile:nth-child(4)",
+    "即梦状态": "#wf-jm .fs-state",
+    "第1-4场": ".wf-table > .wf-row:nth-child(5)"
+   }
+  },
+  {
+   "跑": "const q = s => document.querySelector(s).cloneNode(true);const ok = q('.wf-table > .wf-row:nth-child(2) .wf-pill.ok'), you = q('.wf-table > .wf-row:nth-child(4) .wf-pill.you'), lock = q('.wf-table > .wf-row:nth-child(4) .wf-pill.lock'), ai = q('.wf-table > .wf-row:nth-child(4) .wf-pill.you');ai.className = 'wf-pill ai'; ai.textContent = 'AI 在写';[ok, you, ai, lock].forEach((e, j) => e.id = 'p' + j);const d = document.createElement('div'); d.id = 'demo-pills'; d.style.cssText = 'position:fixed;left:30px;top:220px;display:flex;gap:22px;padding:18px 22px;background:#fffdf9;border-radius:10px;z-index:99';d.append(ok, you, ai, lock); document.body.appendChild(d);",
+   "等": 300
+  },
+  {
+   "截": "格子样例",
+   "框": {
+    "打勾": "#p0",
+    "红色": "#p1",
+    "黄色": "#p2",
+    "虚线": "#p3",
+    "一排": "#demo-pills"
+   }
+  },
+  {
+   "跑": "document.getElementById('demo-pills').remove();",
+   "等": 200
+  },
+  {
+   "跑": "[...document.querySelectorAll('button')].find(x => x.textContent.trim() === '换项目').click();",
+   "等": 700
+  },
+  {
+   "截": "换项目",
+   "框": {
+    "弹窗": ".dlg",
+    "项目列表": ".dlg .chips",
+    "新建项目": "text:＋ 新建项目",
+    "不换": "text:不换"
+   }
+  },
+  {
+   "跑": "[...document.querySelectorAll('#layer button')].find(x => x.textContent.trim() === '不换').click();",
+   "等": 400
+  },
+  {
+   "跑": "document.querySelector('.wf-tile:nth-child(2)').click();",
+   "等": 2200
+  },
+  {
+   "截": "设定页",
+   "框": {
+    "顶栏": "header.wf-top",
+    "分页": "#wf-tabs",
+    "人物分页": ".wf-tab.on",
+    "加人物": "text:加人物",
+    "人物列表": "js:[...document.querySelectorAll('div,section,ul')].filter(e => /食客/.test(e.textContent) && /童爸爸/.test(e.textContent) && /童磊/.test(e.textContent)).sort((a, b) => a.getBoundingClientRect().height * a.getBoundingClientRect().width - b.getBoundingClientRect().height * b.getBoundingClientRect().width)[0]"
+   }
+  },
+  {
+   "开": "总览.html?p=童晓晓",
+   "等": 2000
+  },
+  {
+   "跑": "document.querySelector('.wf-table > .wf-row:nth-child(4) .wf-pill.you').click();",
+   "等": 2600
+  },
+  {
+   "截": "剧本页",
+   "框": {
+    "顶栏": "header.wf-top",
+    "步骤条": "#wf-steps",
+    "当前步": ".wf-step.on",
+    "剧本定稿": "text:剧本定稿",
+    "剧本": "js:[...document.querySelectorAll('div,section,article')].filter(e => /收摊回家/.test(e.textContent) && e.getBoundingClientRect().width > 400 && e.getBoundingClientRect().left > 200).sort((a, b) => a.getBoundingClientRect().height * a.getBoundingClientRect().width - b.getBoundingClientRect().height * b.getBoundingClientRect().width)[0]"
+   }
+  },
+  {
+   "开": "总览.html?p=童晓晓",
+   "等": 2000
+  },
+  {
+   "跑": "[...document.querySelectorAll('button')].find(x => x.textContent.trim() === '添加分场').click();",
+   "等": 700
+  },
+  {
+   "截": "添加分场",
+   "框": {
+    "弹窗": ".dlg"
+   }
+  },
+  {
+   "跑": "[...document.querySelectorAll('#layer button')].find(x => x.textContent.trim() === '取消').click();",
+   "等": 300
+  }
+ ]
+}

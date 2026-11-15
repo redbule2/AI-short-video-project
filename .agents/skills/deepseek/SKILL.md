@@ -1,6 +1,6 @@
 ---
 name: deepseek
-description: 调 DeepSeek 要第二意见或审稿，模型固定 deepseek-flash。用户要让 DeepSeek 审、评、看图，或者要做重要判断、想要一个非 Claude 的独立意见时使用。不要自己临时写 curl 或 Python 去调 API。
+description: 调 DeepSeek 要第二意见或审稿，模型默认 deepseek-flash（--model deepseek-v4-pro 可换）。用户要让 DeepSeek 审、评、看图，或者要做重要判断、想要一个非 Claude 的独立意见时使用。不要自己临时写 curl 或 Python 去调 API。
 ---
 
 # DeepSeek 通道（项目内副本）
@@ -8,6 +8,8 @@ description: 调 DeepSeek 要第二意见或审稿，模型固定 deepseek-flash
 2026-11-07 用户同意后，从全局 deepseek 技能和 `E:/ai-bridge` 复制进来。`ds.sh`、`deepseek.py` 原样复制，只改了两处：
 - 密钥仍读 `E:/ai-bridge/deepseek.key` 或环境变量 `DEEPSEEK_API_KEY`，不放进本仓库；
 - 用法说明里的路径改成本目录。
+
+2026-11-14 用户要能换模型，`deepseek.py` 加了 `--model`：默认 `deepseek-flash`；`deepseek-v4-pro` 看不了图、贵三四倍。续问不写就沿用那次的。
 
 调用记录写在本目录的 `runs/`，已经 gitignore。
 

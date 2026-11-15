@@ -1,5 +1,4 @@
-/* 从 项目管理.html 里原样搬出来的核心逻辑（window.Core）。流水线各页用这一份。
-   外壳还没切过来以前，项目管理.html 里也有一份：改这里的时候两边一起改。 */
+/* 核心逻辑（window.Core）：流水线各页、看文件的那一页（项目管理.html）、剧本读写.js 都用这一份，别处没有副本。 */
 /* ============================================================
    案头 · 核心逻辑（不碰界面）
    ZIP 读写 · DOCX 读写 · 剧本 / 镜头表 / 提示词 的解析、生成与校对
@@ -595,7 +594,28 @@ const PROMPT_SECTIONS = [
   { key: 'shots', name: '分镜', alias: ['分镜'] },
   { key: 'keep', name: '保持一致', alias: ['保持一致'] },
 ];
-const PROMPT_BASIC = ['影像风格', '摄影与镜头', '光色基调', '核心氛围', '本段事件'];
+/* sd2.5PE 稿（2026-11-13 起新写的都是）：段名是独占一行的【】。
+   写法一（带参考素材的生成）：生成目标、参考素材职责、未采用素材（有才写）、基础设定、主体与关系、事件脚本、保持一致；
+   写法二（多素材组织，素材多于五份）：生成目标、人物、道具、场景、动作与声音、未采用素材、基础设定、事件脚本、保持一致。
+   基础设定写影像风格、摄影、光色基调（2026-11-14 用户定：风格放在事件脚本前面）。
+   事件脚本里一镜一行「镜头1：……」，最后一行「声音包括……」（老稿是「最终画面采用……，声音包括……」）；也可以写【阶段一】这样的阶段 */
+const PROMPT_SECTIONS_PE = [
+  { key: 'goal', name: '【生成目标】', alias: ['【生成目标】'] },
+  { key: 'refs', name: '【参考素材职责】', alias: ['【参考素材职责】'], optional: true },
+  { key: 'cast', name: '【人物】', alias: ['【人物】'], optional: true },
+  { key: 'props', name: '【道具】', alias: ['【道具】'], optional: true },
+  { key: 'scene', name: '【场景】', alias: ['【场景】'], optional: true },
+  { key: 'avs', name: '【动作与声音】', alias: ['【动作与声音】'], optional: true },
+  { key: 'unused', name: '【未采用素材】', alias: ['【未采用素材】'], optional: true },
+  { key: 'basic', name: '【基础设定】', alias: ['【基础设定】'], optional: true },
+  { key: 'rel', name: '【主体与关系】', alias: ['【主体与关系】'], optional: true },
+  { key: 'script', name: '【事件脚本】', alias: ['【事件脚本】'] },
+  { key: 'keep', name: '【保持一致】', alias: ['【保持一致】'] },
+];
+/* 有一个独占一行就是 PE 稿（旧稿的素材里也写【参考素材职责】【未采用素材】，这两个不算） */
+const PE_MARKS = ['【生成目标】', '【基础设定】', '【主体与关系】', '【事件脚本】', '【保持一致】'];
+const RE_PE_SUBJECT = /^【主体设定[：:][^】]*】$/;
+const PROMPT_BASIC = ['影像风格', '摄影', '摄影与镜头', '光色基调', '核心氛围', '本段事件'];
 const PROMPT_RULES = ['运镜', '构图', '轴线'];
 const PROMPT_SHOT_HEAD = ['机位/景别/角度', '本镜调用', '画面构图', '环境音', '进入状态'];
 const PROMPT_SUB = ['动作/表情', '音效', '镜头', '台词'];
@@ -607,18 +627,21 @@ const headKey = line => String(line).trim().replace(/\s+/g, '').replace(/\|/g, '
 function promptSectionKey(line, table) {
   const t = headKey(line);
   for (const s of table || PROMPT_SECTIONS) if (s.alias.includes(t)) return s.key;
+  if (table === PROMPT_SECTIONS_PE && RE_PE_SUBJECT.test(t)) return 'cast';   // 写法二的【主体设定：某某】和【人物】同一类
   return null;
 }
-/* 认格式：有七分区才有的分区名是旧稿（seven）；有独占一行的「本段」或「素材」是现行骨架（merged）；都没有是自由格式（''） */
+/* 认格式：有独占一行的【生成目标】【基础设定】【主体与关系】【事件脚本】【保持一致】是 sd2.5PE 稿（pe，2026-11-13 起）；有七分区才有的分区名是旧稿（seven）；
+   有独占一行的「本段」或「素材」是 11-13 以前的合并稿（merged）；都没有是自由格式（''） */
 function promptFormat(lines) {
   const heads = new Set(lines.map(l => headKey(l.t)));
+  if (PE_MARKS.some(a => heads.has(a))) return 'pe';
   if (PROMPT_OLD_ONLY.some(a => heads.has(a))) return 'seven';
   if (heads.has('本段') || heads.has('素材')) return 'merged';
   const first = lines.find(l => l.t.trim());
   if (first && labelOf(first.t.trim()) === '本段事件' && (heads.has('基础设定') || heads.has('分镜'))) return 'merged';
   return PROMPT_SECTIONS.some(s => s.alias.some(a => heads.has(a))) ? 'seven' : '';
 }
-const promptTable = doc => doc && doc.fmt === 'merged' ? PROMPT_SECTIONS_NEW : PROMPT_SECTIONS;
+const promptTable = doc => doc && doc.fmt === 'pe' ? PROMPT_SECTIONS_PE : doc && doc.fmt === 'merged' ? PROMPT_SECTIONS_NEW : PROMPT_SECTIONS;
 /* 一段话在文件里常折成几行：上一行停在逗号、分号、顿号、冒号上，或是基础设定的一项还没写完，下一行就接在这一段里。
    下一行是「标签：」、@ 开头、某某对应@、分场景｜、小节、镜头几，都另起一段 */
 function continues(first, prev, t) {
@@ -746,47 +769,35 @@ function newPromptShot(n, title) {
     blocks: ['机位/景别/角度：', '本镜调用：', '画面构图：', '环境音：', '进入状态：', '小节一', '动作/表情：', '音效：', '镜头：', '台词：无', '退出状态：', '切点：', ''].map(blk),
   };
 }
-/* 空白模板：照 seedance-prompt-format「三、骨架」原文 */
-const PROMPT_SKELETON = `以〔按剧情先后排列的关键帧@图片N〕作为关键帧。
+/* 空白模板：sd2.5PE 写法一（带参考素材的生成）。素材多于五份改用写法二：素材按【人物】【道具】【场景】【动作与声音】分组，不写【主体与关系】；
+   挂了没用上的素材，在【主体与关系】前面加【未采用素材】逐个列出 */
+const PROMPT_SKELETON = `【生成目标】
+〔这条视频拍什么：谁要什么，所以发生了什么；结束时什么样〕。
 
-本段事件：〔谁要什么、情绪从哪来，所以发生了什么；结束时什么样〕。
-
-素材
-〔称谓〕对应@图片N，外貌、发型和服装以@图片N为准。
-〔道具〕对应@图片N，只采用〔结构、材质、颜色〕。
-@图片N是〔哪个分场景〕从〔哪〕往〔哪〕看的样子，只采用〔空间布局、陈设、材质、灯光〕。
+【参考素材职责】
+@图片N用于〔称谓〕的五官、发型和服装，不采用图片背景。
+@图片N用于〔道具〕的〔结构、材质、颜色〕，不采用图中人物和背景。
+@图片N用于〔场景叫法〕的〔空间布局、陈设、材质、灯光〕，不采用图中人物。
 @图片N作为首帧。
-该首帧定义视频开始时的〔构图、主体位置、姿态、道具状态、场景、镜头方向〕。
-@图片N定义镜头〔编号〕在〔阶段〕的关键状态：〔该刻可见状态〕。
-@图片N作为尾帧。
-该尾帧定义视频结束时的〔构图、主体位置、姿态、道具状态、场景、镜头方向〕。
-【未采用素材】
-@图片N未参与本段，不用于人物、场景、道具、动作或镜头。
+该首帧定义视频开始时的〔构图、人物位置、姿态、道具状态、镜头方向〕。
 
-基础设定
-影像风格：〔片种、质感〕。
-摄影：〔摄影机、胶片质感、景深，只写全片不变的〕。
-光色基调：〔时间和天光；主光从哪来；色调〕。
+【基础设定】
+影像风格：〔风格名打头，画面质感写成看得见的〕。
+摄影：〔常用景别、机位、运镜〕。
+光色基调：〔主色和明暗〕；〔这场的时间、主光从哪来〕。
 
-本段
-核心氛围：〔时间和地点的一句画面〕。〔人物在做什么〕；整体〔什么感觉〕。
-分场景｜〔叫法〕：〔传了场景图的写参考@图片N〕。〔本段拍得到的地方：有什么、各在哪〕。〔项目 GEO 的场景段，照放〕。
-轴线：〔项目 GEO 的轴线行，照放〕。
-人物：〔本段几个人、各是谁〕。〔没有图的写长相、衣着〕。〔说话的人写声线：年龄、音色、腔调〕。
-站位：〔开场时谁在几点、坐还是站、朝着谁、隔多远；有首帧时仅开场站位照@图片N；必要的图外关系补写〕。
-物件：〔没有图的写结构、材质、颜色〕。
-道具：〔几个、开场什么样、什么时候出现、最后在哪〕。
-声音：〔配乐；不要就写无背景音乐〕。〔环境音、音效：点名的写声源、哪个近哪个远；交给模型的写只生成哪几类声音，根据画面内容适配相应的音效〕。〔有台词：口型同步，不说话的人闭口〕。〔旁白、字幕〕。
+【主体与关系】
+〔画面中共有几个人、各是谁；没有图的写长相和衣着；说话的人写声线〕。
+〔开场时谁在哪、朝着谁、隔多远〕。〔道具几个、归谁〕。
+〔场景空间：照项目 GEO 的场景段〕。
 
-分镜
+【事件脚本】
+镜头1：〔景别、机位〕，〔谁要什么，所以做什么；台词 {}、音效 <> 写在发生处；听的人怎么反应〕。
+镜头2：〔……〕
+声音包括〔配乐或无背景音乐、环境声、音效〕。
 
-镜头 01｜〔标题〕
-〔在哪个分场景；只有一个不写〕。〔开镜时看见什么〕。〔景别、机位在几点朝几点拍、高低、固定还是移动〕。〔站位变了的，写谁在几点、朝着谁；机位偏离6点朝12点或过肩的，写谁在画面左右〕。〔谁要什么，所以做什么、接着做什么；有关键帧的，写清动作做到哪一步时对应图中画面；台词 {}、音效 <> 写在发生处；听的人被哪句话引出什么反应〕。〔往哪移动、经过哪里、最后在哪；没有位移不写〕。〔必要的退出状态和切点，顺接对应事件；没有不写〕。音效：〔什么在响、怎么响、离机位远还是近；有明确触发时机的已写在发生处，本段的声音够用就整句不写〕。
-
-镜头 02｜〔标题〕
-〔……〕
-
-保持一致：〔最怕错的两三条〕。
+【保持一致】
+保持〔人物身份与数量、服装、道具归属、空间方向〕稳定。
 `;
 function promptTemplate() { const d = parsePrompt(PROMPT_SKELETON.replace(/\n/g, '\r\n')); return d; }
 
@@ -795,7 +806,42 @@ function promptTemplate() { const d = parsePrompt(PROMPT_SKELETON.replace(/\n/g,
    ============================================================ */
 function issue(level, msg, loc) { return { level, msg, loc: loc || null }; }
 
+/* PE 稿照 sd25-pe 查：() 音乐、<> 音效、{} 台词、【】字幕都能用；台词别用引号 */
+function lintPe(doc) {
+  const out = [], table = PROMPT_SECTIONS_PE, keys = doc.sections.map(s => s.key), nameOf = k => (table.find(s => s.key === k) || {}).name || k;
+  for (const s of table) if (!s.optional && !keys.includes(s.key)) out.push(issue(s.key === 'keep' ? 'info' : 'warn', '缺少分区：' + s.name, { sec: s.key, missing: true }));
+  const idx = keys.map(k => table.findIndex(s => s.key === k));
+  if (idx.some((v, i) => i && v < idx[i - 1])) out.push(issue('warn', '分区顺序和 sd2.5PE 不一致。写法一：生成目标 → 参考素材职责 → 未采用素材 → 基础设定 → 主体与关系 → 事件脚本 → 保持一致；写法二：生成目标 → 人物 → 道具 → 场景 → 动作与声音 → 未采用素材 → 基础设定 → 事件脚本 → 保持一致。'));
+  if (keys.includes('rel') && ['cast', 'props', 'scene', 'avs'].some(k => keys.includes(k))) out.push(issue('info', '写法一用【主体与关系】，写法二用【人物】【道具】【场景】分组；一份稿里选一种。'));
+  let ph = 0;
+  doc.sections.forEach(s => {
+    const lines = s.blocks.filter(b => b.text.trim());
+    if (!lines.length) out.push(issue(s.key === 'goal' || s.key === 'script' ? 'warn' : 'info', nameOf(s.key) + ' 还空着', { sec: s.key }));
+    lines.forEach(b => {
+      const t = b.text, loc = { sec: s.key, block: b.id };
+      if (/〔[^〕]*〕/.test(t)) { ph++; if (ph <= 6) out.push(issue('warn', '还有没填的〔 〕：' + t.slice(0, 18) + (t.length > 18 ? '…' : ''), loc)); }
+      if (/[“”"‘’「」『』]/.test(t)) out.push(issue('warn', '台词放进 {}，不用引号', loc));
+      if (/（[^（）]*）/.test(t)) out.push(issue('info', '圆括号在 Seedance 里是音乐的记号：音乐写成 (……)，别的说明不加括号', loc));
+      if (/[0-9０-９]+(?:\.[0-9]+)?\s*秒|[0-9]{1,2}:[0-9]{2}(?![0-9])/.test(t) && !/16:9|9:16/.test(t)) out.push(issue('info', '不写时间码和秒数（时长在生成参数里设）', loc));
+      if (/横屏|竖屏|16\s*[:：]\s*9|9\s*[:：]\s*16|720p|1080p|分辨率|画幅/i.test(t)) out.push(issue('warn', '画幅、分辨率这类生成参数不写进提示词', loc));
+      if (/首帧参考|参考首帧|首帧构图参考|尾帧参考|参考尾帧/.test(t)) out.push(issue('warn', '固定首帧、尾帧单独写一句「@图片N作为首帧。」「@图片N作为尾帧。」', loc));
+      if (s.key !== 'script') return;
+      if (/^镜头\s*[0０][0-9０-９]/.test(t.trim())) out.push(issue('info', '镜头号写「镜头1：」，不补 0', loc));
+      if (/^镜头\s*[0-9０-９]+/.test(t.trim()) && /(?<!其)[她他](?!们)/.test(t.replace(/吉他/g, ''))) out.push(issue('info', '镜头里用称谓指人，不用她、他', loc));
+      if (/^最终画面/.test(t.trim())) out.push(issue('info', '风格写进【基础设定】，放在事件脚本前面；事件脚本最后一行只写「声音包括……」', loc));
+    });
+    if (s.key === 'script') {
+      const look = lines.filter(b => /^(最终画面|声音包括)/.test(b.text.trim()));
+      if (look.length && lines[lines.length - 1] !== look[look.length - 1]) out.push(issue('info', '「声音包括……」放在事件脚本最后一行', { sec: 'script', block: look[0].id }));
+    }
+  });
+  if (!keys.includes('basic') && !doc.sections.some(s => s.key === 'script' && s.blocks.some(b => /^最终画面/.test(b.text.trim()))))
+    out.push(issue('info', '还没有【基础设定】：影像风格、摄影、光色基调写在事件脚本前面'));
+  if (ph > 6) out.push(issue('warn', '另外还有 ' + (ph - 6) + ' 处没填的〔 〕'));
+  return out;
+}
 function lintPrompt(doc, fileName) {
+  if (doc.fmt === 'pe') return lintPe(doc);
   const out = [];
   if (!doc.sections.length) {
     doc.pre.forEach(b => { if (/〔[^〕]*〕/.test(b.text)) out.push(issue('warn', '还有没填的〔 〕：' + b.text.slice(0, 18) + (b.text.length > 18 ? '…' : ''), { sec: 'pre', block: b.id })); });
@@ -1063,7 +1109,7 @@ const Core = {
   crc32, unzip, zip, readDocx, writeDocx, docxXmlParagraphs,
   SCRIPT_HEAD, parseScripts, scriptToParas, scriptTemplate, scriptRole, parseLine, parseCast, scriptTitle, newScriptDoc,
   SHOT_MAX, countChars, parseShotList, shotsToParas, shotsTemplate, shotTitle, newShot, newShotDoc, shotOldCount, shotsOverLimit,
-  PROMPT_SECTIONS, PROMPT_SECTIONS_NEW, promptFormat, promptTable, PROMPT_BASIC, PROMPT_RULES, PROMPT_SHOT_HEAD, PROMPT_SUB, PROMPT_SHOT_TAIL, RE_SUB,
+  PROMPT_SECTIONS, PROMPT_SECTIONS_NEW, PROMPT_SECTIONS_PE, PE_MARKS, promptFormat, promptTable, PROMPT_BASIC, PROMPT_RULES, PROMPT_SHOT_HEAD, PROMPT_SUB, PROMPT_SHOT_TAIL, RE_SUB,
   parsePrompt, serializePrompt, splitWithEol, joinLines, wrapPara, isBlank, edgeRange, ensureTrailingBlank, promptTemplate, promptSectionKey, promptShotTitle, renumberPromptShots, newPromptShot, PROMPT_SKELETON,
   lintPrompt, lintScript, lintShots, decodeText, hasBom, encodeText, cloneDoc,
   units, redline, diffChars, notesToMd, parseNotes,

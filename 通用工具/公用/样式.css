@@ -137,6 +137,7 @@ p { margin: 0; }
 .dlg-body { display: flex; flex-direction: column; gap: 15px; margin: 10px 0 4px; }
 .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .fld { display: flex; flex-direction: column; gap: 6px; }
+.fld[hidden] { display: none; }   /* 上面那句 display 会盖掉 hidden，弹窗里按选项藏起来的格子要靠这句 */
 .fld > span { font-size: 12px; color: var(--ink-3); letter-spacing: .24em; }
 .fld > em { font-style: normal; font-size: 11.5px; color: var(--ink-4); }
 .inp {

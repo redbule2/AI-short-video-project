@@ -6,6 +6,29 @@
 <title>流水线 · 剧本</title>
 <link rel="stylesheet" href="../公用/样式.css">
 <link rel="stylesheet" href="流水线.css">
+<style>
+/* 自己写剧本：右边那一块换成写字的地方（只这一页用，样式就放在这里） */
+.sw { padding: 16px 22px 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); }
+.sw-title { display: flex; align-items: center; gap: 2px; padding-bottom: 12px; border-bottom: 1px dashed var(--line); font: 600 18px/1.5 var(--serif); letter-spacing: .06em; white-space: nowrap; }
+.sw-title .sw-in { flex: 1; min-width: 0; font-weight: 600; font-size: 18px; letter-spacing: .06em; }
+.sw-row { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 12px; align-items: start; margin-top: 14px; }
+.sw-row > label { padding-top: 9px; font: 14px var(--kai); color: var(--ink-2); letter-spacing: .2em; white-space: nowrap; }
+.sw-in { width: 100%; padding: 7px 14px; border: 1px solid var(--line); border-radius: 7px; outline: 0; background: #fffefa; font: 16px/1.8 var(--serif); color: var(--ink); transition: border-color .15s, box-shadow .15s; }
+.sw-in:focus { border-color: var(--dai-line); box-shadow: 0 0 0 4px var(--dai-soft); }
+.sw-in::placeholder { color: var(--ink-4); font: 400 15px var(--kai); letter-spacing: 0; }
+.sw .fl-ta.sw-sm { min-height: 54px; }
+.sw .fl-ta.sw-body { min-height: 440px; }
+.sw-tip { margin: 6px 0 8px; font-size: 12.5px; line-height: 1.8; color: var(--ink-3); }
+.sw-tip b { font-weight: 600; color: var(--ink-2); }
+.sw-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 12.5px; color: var(--ink-3); }
+.sw-tools .btn { padding: 3px 10px; }
+.sw-lint { margin: 8px 0 0; padding: 0; list-style: none; font-size: 13px; line-height: 1.8; color: var(--ink-3); }
+.sw-lint li.warn { color: var(--zhu); }
+.sw-lint button { padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.sw-from { margin: 12px 0 0; font-size: 12.5px; color: var(--ink-3); }
+.sw-exp { margin: 0 0 18px; font: 15px/1.8 var(--serif); white-space: pre-wrap; word-break: break-word; }
+#sw-state.warn { color: var(--zhu); }
+</style>
 </head>
 <body class="wf">
 <div id="wf"></div>
@@ -18,31 +41,78 @@
 <script>
 /* ============================================================
    流水线 · 剧本（一场的第二道工序的后一半）
-   段落定下来以后：让 AI 扩写成剧本；就在这一页看、点一段写批注、交给 AI 改；看完没问题点「剧本定稿」。
+   段落定下来以后写剧本：自己写（点「我自己写」），或者让 AI 扩写；就在这一页看、点一段写批注、交给 AI 改，也能点「自己改」直接改；看完没问题点「剧本定稿」。
    定稿了才能去下一步出资产图。剧本再改，或者这一场重新定过，要再定一次。
    镜头表这一步 2026-11-12 取消了（他定的）：剧本定稿、资产确认以后直接写提示词，镜头在提示词的「分镜」里设计。
    看剧本、写批注用的是「项目管理」里剧本那一样，嵌在这一页下面。
    共用的东西（读写流水线.json、顶栏、步骤条、剧本现在什么样）在 流水线.js。
    ============================================================ */
 'use strict';
-let FRAME_KEY = '';   // 嵌着的批注页现在开的是哪一份：同一份就不重新嵌（AI 重写以后，里面的页面自己会换上新的）
+let FRAME_KEY = '';   // 右边那一块现在摆的是什么：剧本的路径（嵌着的批注页）、'edit'（自己写）、'none'（还没有剧本）。一样就不重摆（AI 重写以后，嵌着的页面自己会换上新的）
 const swapCard = () => rerender();
-/* 剧本定稿：只记一个时间。剧本以后再改，或者这一场重新定过，这个定稿就不算了，要再点一次 */
+/* 剧本定稿：只记一个时间。剧本以后再改，或者这一场重新定过，这个定稿就不算了，要再点一次。
+   定过稿、后来剧本又改过（自己改、批注改、AI 重写）再定稿：AI 对一遍新旧剧本，列影响清单（哪些资产、提示词要再看、为什么；2026-11-14 文生资产流程图「中途改剧本」） */
 async function finalScript(s) {
   await flush();
   if (F.err) return;
-  const now = nowText();
+  const now = nowText(), { st, again } = scriptState(s), prev = again ? s.剧本定稿 : st === 'ok' ? s.上回定稿 || '' : '';   // prev：上回定稿的时间（AI 重写时剧本定稿清空了，记在「上回定稿」里）
+  const first = !s.头回定稿;
   if (!s.头回定稿) s.头回定稿 = s.剧本定稿 || now;   // 头一回定稿是什么时候：以后再定稿就是「重新定稿」，这一场的资产要再核对一遍
-  s.剧本定稿 = now; touch();
+  s.剧本定稿 = now; delete s.上回定稿; touch();
   await flush();
   swapCard(s);
-  toast('第' + s.段 + '场剧本定稿了，可以去看资产、出资产图了');
+  if (prev && AI.ok) { await startJob({ 事: '影响清单', 段: s.段, 参数: { 上回: prev } }, true); toast('第' + s.段 + '场重新定稿了。AI 在对新旧剧本，列哪些资产、提示词要再看；没列上的照旧'); }
+  else toast('第' + s.段 + '场剧本定稿了，可以去看资产、出资产图了');
+  if (isRev(s)) {   // 先写提示词的场（11-14 他定的：剧本定稿就铺底）：头一回定稿，AI 把提示词里它写的几块铺进正文；片子还没定拍摄风格先挑，铺底照它写
+    if (!filmStyle()) await styleDlg(null, { first: true });
+    if (!first) { toast('提示词里 AI 写的几块要照新剧本再铺的，到「提示词」那一步打开那一条，点「AI 铺底」'); return; }
+    const n = await revLay(s);
+    if (n) toast('AI 在给第' + s.段 + '场的 ' + n + ' 条提示词铺底：素材、基础设定、主体与关系、保持一致。你写的两块不动');
+    return;
+  }
+  if (!filmStyle()) styleDlg(null, { first: true });   // 片子还没定拍摄风格：照剧本挑一个（关上也行，以后在全片设定、这一场顶上都能定）
+}
+/* ---------- 先写提示词的场：AI 照提示词反推好了，在这里看剧本、看左边的段落和出场的，点「采用」 ---------- */
+const revOpen = s => !!s.定稿 || (isRev(s) && !!(revJob(s) || revPending(s)));   // 这一页摆不摆剧本：段落定了；先写提示词的场在反推、反推好了也摆
+const REV_PICK = new Map();   // 采用时不加的新人物、新道具、新场景（去掉了勾的）：段@反推时间 → { 新人物, 新道具, 新场景 }
+function revSkip(s, v) {
+  const k = s.段 + '@' + v.时间;
+  if (!REV_PICK.has(k)) REV_PICK.set(k, { 新人物: new Set(), 新道具: new Set(), 新场景: new Set() });
+  return REV_PICK.get(k);
+}
+function revSide(s, v) {
+  const skip = revSkip(s, v), body = h('div', { class: 'rv-side' });
+  const box = (key, id, label, desc) => {
+    const cb = h('input', { type: 'checkbox', checked: !skip[key].has(id) });
+    cb.addEventListener('change', () => { cb.checked ? skip[key].delete(id) : skip[key].add(id); });
+    return h('label', { class: 'rv-new' }, cb, h('span', null, label, desc ? h('small', null, desc) : null));
+  };
+  if (v.表达) body.append(h('h4', null, '这一场表达'), h('p', { class: 'sw-exp' }, v.表达));
+  body.append(h('h4', null, '段落 · ' + v.段落.length), h('ol', null, v.段落.map(x => h('li', null, x.写什么, x.作用 ? h('small', null, x.作用) : null))));
+  const have = [...v.人物.filter(n => entryOf('人物', n)).map(n => ['人物', n]), ...v.场景图.filter(f => F.doc.场景图.includes(f)).map(f => ['场景图', f]),
+    ...v.场景文字.filter(t => sceneLines().includes(t)).map(t => ['场景文字', t]), ...v.道具.filter(n => entryOf('道具', n)).map(n => ['道具', n])];
+  if (have.length) body.append(h('h4', null, '出场的'), h('div', { class: 'fs-sel' }, have.map(([k, id]) => refChip(k, id))));
+  const news = [...v.新人物.map(x => ['新人物', x.名, '人物 · ' + x.名, x.描写]), ...v.新场景.map(t => ['新场景', t, '场景 · ' + t, '']), ...v.新道具.map(x => ['新道具', x.名, '道具 · ' + x.名, x.描写])];
+  if (news.length) body.append(h('h4', null, '全片设定里还没有的'), ...news.map(([k, id, label, desc]) => box(k, id, label, desc)),
+    h('p', { class: 'fn-note' }, '勾上的，采用时加进全片设定，这一场也选上；不要的去掉勾。'));
+  if (v.补的.length) body.append(h('h4', null, '提示词里没有、AI 补的'), h('ol', null, v.补的.map(t => h('li', null, t))));
+  return [h('div', { class: 'fs-lab' }, '反推的', h('em', null, '采用了才写进这一场')), body];
+}
+async function revTake(s, v) {
+  revAdopt(s, v, revSkip(s, v));
+  await flush();
+  if (F.err) return;
+  FS.write(at([F.name, '历史记录', '定稿的剧本', '流水线__' + stampNow() + '.json']), C.encodeText(F.text)).catch(() => {});   // 和定下段落一样，留一版
+  await loadSides();
+  rerender();
+  toast('采用了：' + v.段落.length + ' 个段落和出场的写进了第' + s.段 + '场。剧本看完没问题就点「剧本定稿」');
 }
 /* 扩写：请 AI 把每个段落写成剧本。原来的剧本由 AI 在写新的之前收进历史记录 */
 async function expand(s) {
   await flush();
   if (F.err) return;
   if (!s.头回定稿 && s.剧本定稿) s.头回定稿 = s.剧本定稿;   // 以前定过稿的：头一回定稿的时间先记下，AI 重写完再定稿就算「重新定稿」
+  if (s.剧本定稿) s.上回定稿 = s.剧本定稿;   // 重写完再定稿时，拿它找改之前那一版，列影响清单
   s.扩写 = nowText(); s.剧本定稿 = ''; touch();
   await flush();
   if (AI.ok) await startJob({ 事: '扩写剧本', 段: s.段 });
@@ -50,53 +120,304 @@ async function expand(s) {
   swapCard(s);
 }
 
+/* ---------- 自己写剧本（2026-11-14 他要的：「剧本页面为什么只有让AI扩写，不能自己写吗？我需要支持自己写」） ----------
+   点「我自己写」「自己改」，右边那一块换成写字的地方：段名、场景、人物（一行一个）、梗概、正文（一行一件事）、备注。
+   边写边存成这一场的剧本（定稿的剧本/第N段/第N段_剧本.docx，固定格式，和 AI 写的一样），写完点「写好了」，回去看、批注、定稿。
+   原来已经有剧本的（AI 写的、自己上回写的）：这一回头一次存之前，原来那一份留一版进 历史记录/定稿的剧本/第N段/原名__时间.docx。
+   汇总稿里有这一段、还没有单独剧本的：先把汇总稿里这一段摆上，存成单独的一份，汇总稿不动。
+   每回存之前看一眼文件时间：写着的时候别处（AI）动过，先问用哪一版，没用上的那一版也留进历史记录，不悄悄盖掉 */
+let ED = null;   // 正在写的：{ seg, path（从项目名写起）, mtime（盘上那一份的时间，没有是 0）, orig（这回开始改之前那一份，留历史用）, snap（这一回留过历史了）, init（摆上来的字）, els（几个格子）, saved（存过的字）, savedAt, err, busy, chain（一回一回排着存） }
+let ED_T = 0;
+const ED_HEAD3 = ['场景', '人物', '梗概'];
+const ED_FIELDS = ['name', '场景', '人物', '梗概', '其他', '正文', '备注'];
+const edPathOf = seg => [F.name, '定稿的剧本', segName(seg), segName(seg) + '_剧本.docx'];   // 这一场的剧本放在哪（从项目名写起）
+const edLines = t => String(t || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+async function edRead(path, seg) {
+  const r = await FS.read(at(path)), got = C.parseScripts(await C.readDocx(r.buf.buffer), C.segFromName(path[path.length - 1]));
+  return { buf: r.buf, mtime: r.mtime, doc: got.segs.find(x => x.seg === seg) || (got.segs.length === 1 ? got.segs[0] : null) };
+}
+/* 一份剧本（Core 读出来的样子）→ 几个格子里的字。段头里场景、人物、梗概以外的行摆在「其他」里，不丢 */
+function edFields(doc) {
+  const H = doc.sections[0].blocks.map(b => b.text), val = l => { const t = H.find(x => C.labelOf(x) === l); return t ? C.splitLabel(t).value.trim() : ''; };
+  return { name: doc.name || '', 场景: val('场景'), 人物: C.parseCast(val('人物')).map(c => c.name + (c.desc ? '（' + c.desc + '）' : '')).join('\n'), 梗概: val('梗概'),
+    其他: H.filter(x => !ED_HEAD3.includes(C.labelOf(x))).join('\n'), 正文: doc.sections[1].blocks.map(b => b.text).join('\n'), 备注: doc.sections[2].blocks.map(b => b.text).join('\n') };
+}
+/* 还没有剧本：段名用这一场的名字，人物照这一场选的出场人物（全片人物表里的描写），正文先摆一个 △ */
+function edBlank(s) {
+  const cast = [...s.人物.map(n => { const e = entryOf('人物', n), d = e ? oneLine(e.描写) : ''; return n + (d ? '（' + d + '）' : ''); }), ...s.人物图.map(f => baseOf(f).split('_')[0])];
+  return { name: s.名.trim(), 场景: '', 人物: [...new Set(cast)].join('\n'), 梗概: '', 其他: '', 正文: '△ ', 备注: '' };
+}
+const edVals = ed => Object.fromEntries(ED_FIELDS.map(k => [k, ed.els && ed.els[k] ? ed.els[k].value : ed.init[k]]));
+/* 格子里的字 → 固定格式的剧本：人物一行一个并成「、」隔开；场景的 | 换成 ｜；光一个 △ 的空行不存 */
+function edDoc(ed, v) {
+  const doc = C.newScriptDoc(ed.seg, oneLine(v.name)), mk = (pre, list) => list.map((text, i) => ({ id: pre + i, text }));
+  const head = ['场景：' + oneLine(v.场景).replace(/\s*[|｜]\s*/g, '｜'), '人物：' + edLines(v.人物).map(x => x.replace(/[、，,]+$/, '')).join('、'), '梗概：' + edLines(v.梗概).join(''), ...edLines(v.其他)];
+  doc.sections[0].blocks = mk('h', head);
+  doc.sections[1].blocks = mk('b', edLines(v.正文).filter(t => !/^[△▲]$/.test(t)));
+  doc.sections[2].blocks = mk('n', edLines(v.备注));
+  return doc;
+}
+const edBytes = doc => C.writeDocx(C.scriptToParas(doc), { title: C.scriptTitle(doc), header: F.name + ' · 第' + doc.seg + '段 · 剧本' });   // 和项目管理、AI 写的一个样
+/* 原来那一份留一版：历史记录/同样的路径/原名__年月日-时分秒.docx（同一秒已经有一份就加 _2） */
+async function edKeepOld(path, bytes) {
+  const n = path[path.length - 1], dot = n.lastIndexOf('.'), dir = [path[0], '历史记录', ...path.slice(1, -1)], st = stampNow();
+  let p = [...dir, n.slice(0, dot) + '__' + st + n.slice(dot)];
+  for (let i = 2; await FS.stat(at(p)); i++) p = [...dir, n.slice(0, dot) + '__' + st + '_' + i + n.slice(dot)];
+  await FS.write(at(p), bytes);
+}
+/* 新建：那里已经有了就不写（同时 AI 刚写出一份的时候，不盖掉它） */
+async function edPutNew(parts, bytes) {
+  const r = await fetch(LINK.url(parts), { method: 'PUT', headers: { 'X-Antou': '1', 'If-None-Match': '*' }, body: bytes, cache: 'no-store' });
+  if (!r.ok) throw new Error(r.status === 412 ? '那里刚有了一份剧本，先没存' : (await r.text()) || '没存上');
+  return r.json();
+}
+async function edOpen(s) {
+  if (ED || !s) return;
+  await flush();
+  if (F.err) return;
+  const d = docsOf(s.段), ed = { seg: s.段, path: d.script ? d.script.path : edPathOf(s.段), mtime: 0, orig: null, snap: false, from: '', err: '', savedAt: null, busy: false, chain: Promise.resolve(true) };
+  try {
+    if (d.script) {
+      const got = await edRead(ed.path, s.段);
+      if (!got.doc) throw new Error('这一份里读不出第' + s.段 + '段');
+      Object.assign(ed, { init: edFields(got.doc), orig: got.buf, mtime: got.mtime });
+    } else {
+      if (await FS.stat(at(ed.path))) { await refresh(); toast('剧本刚写出来了，先看一眼再改', 'err'); return; }   // 页面还没看到，盘上已经有了（AI 刚写好）
+      ed.init = edBlank(s);
+      if (d.combined) {
+        const got = await edRead(d.combined.path, s.段).catch(() => null);
+        if (got && got.doc) { ed.init = edFields(got.doc); ed.from = '汇总稿「' + d.combined.name + '」里的这一段'; }
+      }
+    }
+  } catch (e) { toast('没打开：' + e.message, 'err'); return; }
+  ed.saved = JSON.stringify(edVals(ed));
+  ED = ed;
+  rerender();
+  setTimeout(() => { const t = ED && ED.els && (ED.els.场景.value.trim() ? ED.els.正文 : ED.els.场景); if (t) t.focus({ preventScroll: true }); }, 30);
+}
+/* 写好了：存上，回去看剧本（下面换上嵌着的批注页） */
+async function edClose() {
+  const ed = ED;
+  if (!ed) return;
+  const ok = await edSave();
+  if (ED !== ed) return;
+  if (!ok && !(await confirmDlg({ title: '还没存上', body: (ed.err || '没存上') + '。现在回去，这一回没存上的字就没了。', ok: '不存了，回去', cancel: '接着写', danger: true }))) return;
+  ED = null; FRAME_KEY = '';
+  await refresh();
+  rerender();
+  window.scrollTo({ top: 0 });   // 回到顶上：看得见「剧本定稿」
+}
+function edInput(e) {
+  if (!ED || (e && e.isComposing)) return;   // 拼音还没选字：等选好再存
+  if (e && e.target) { fit(e.target); if (e.target === ED.els.人物) edPaintTools(); }
+  paintEdState();
+  clearTimeout(ED_T);
+  ED_T = setTimeout(() => { edLint(); edSave(); }, 900);
+}
+/* 存：一回一回排着来，存的是那一刻格子里的字；字没变就不存 */
+function edSave() {
+  clearTimeout(ED_T);
+  const ed = ED;
+  if (!ed || !ed.els) return Promise.resolve(true);
+  return (ed.chain = ed.chain.then(() => edSaveNow(ed)));
+}
+async function edSaveNow(ed) {
+  const v = edVals(ed), sig = JSON.stringify(v);
+  if (sig === ed.saved) return true;
+  ed.busy = true; paintEdState();
+  try {
+    const p = at(ed.path), st = await FS.stat(p), cur = st ? st.mtime : 0;
+    if (cur !== ed.mtime && !(await edClash(ed, cur, v))) return false;
+    const bytes = await edBytes(edDoc(ed, v));
+    if (ed.orig && !ed.snap) { await edKeepOld(ed.path, ed.orig); ed.snap = true; }   // 这一回头一次存：原来那一份先留一版
+    const r = cur ? await FS.write(p, bytes) : await edPutNew(p, bytes);
+    Object.assign(ed, { mtime: r.mtime, saved: sig, savedAt: new Date(), err: '' });
+    return true;
+  } catch (e) { ed.err = e.message; return false; }
+  finally { ed.busy = false; paintEdState(); }
+}
+/* 写着的时候盘上那一份被别处动过（多半是 AI 刚写好、刚按批注改完）：问用哪一版。返回 true＝接着存我这边的 */
+async function edClash(ed, cur, v) {
+  const gone = !cur;
+  const pick = await choiceDlg({ title: gone ? '剧本在别处挪走了' : '剧本在别处改过了',
+    body: gone ? '你写着的时候，' + segName(ed.seg) + '的剧本被挪走了（挪进历史记录、改了名）。要接着存你这边的吗？' : '你写着的时候，' + segName(ed.seg) + '的剧本被别处改过（多半是 AI 刚写好、刚按批注改完）。用哪一版？没用上的那一版留进历史记录，不会丢。',
+    buttons: [{ label: gone ? '不存了' : '用那边的', value: 'theirs', cls: 'ghost' }, { label: gone ? '接着存我这边的' : '用我这边的', value: 'mine', cls: 'ink', focus: true }] });
+  if (pick === 'mine') {
+    if (cur) await edKeepOld(ed.path, (await FS.read(at(ed.path))).buf);   // 那边那一版留着
+    Object.assign(ed, { mtime: cur, snap: true });   // 我开始改之前那一份，改它的那一方已经收进历史记录了
+    return true;
+  }
+  if (pick !== 'theirs') { ed.err = '剧本在别处动过，还没选用哪一版'; return false; }
+  await edKeepOld(ed.path, await edBytes(edDoc(ed, v)));   // 我这边写的留一版
+  if (gone) { ED = null; FRAME_KEY = ''; refresh(); toast('你写的那一版留进了历史记录'); return false; }
+  const got = await edRead(ed.path, ed.seg);
+  if (!got.doc) throw new Error('那边那一版读不出第' + ed.seg + '段');
+  Object.assign(ed, { init: edFields(got.doc), orig: got.buf, mtime: got.mtime, snap: false, els: null, err: '', savedAt: null });
+  ed.saved = JSON.stringify(edVals(ed));
+  FRAME_KEY = ''; repaint();
+  toast('换成那边的了。你写的那一版留进了历史记录');
+  return false;
+}
+function edStateText() {
+  const ed = ED;
+  if (!ed) return '';
+  if (ed.err) return '没存上：' + ed.err;
+  if (ed.busy) return '正在保存…';
+  if (JSON.stringify(edVals(ed)) !== ed.saved) return '有改动，停一下就存';
+  return ed.savedAt ? '已存 ' + two(ed.savedAt.getHours()) + ':' + two(ed.savedAt.getMinutes()) : '边写边存';
+}
+function paintEdState() {
+  const el = document.getElementById('sw-state');
+  if (!el) return;
+  el.textContent = edStateText();
+  el.classList.toggle('warn', !!(ED && ED.err));
+}
+/* 正文上面那一排：点一下插一行（光标那一行空着就写在那一行，不空就另起一行） */
+function edPaintTools() {
+  const ed = ED;
+  if (!ed || !ed.tools) return;
+  const names = [...new Set(C.parseCast(edLines(ed.els.人物.value).map(x => x.replace(/[、，,]+$/, '')).join('、')).map(c => c.name).filter(Boolean))];
+  const b = (label, ins, title) => h('button', { class: 'btn sm', type: 'button', tabindex: '-1', title, onmousedown: e => e.preventDefault(), onclick: () => edInsert(ins) }, label);
+  ed.tools.replaceChildren(h('span', null, '插一行：'), b('△ 动作', '△ ', '动作：写看得见、听得见的'),
+    ...names.map(n => b(n + '：', n + '：', n + '的台词。怎么说写在括号里：' + n + '（小声）：……')), b('字幕：', '字幕：', '后期加的字幕'), b('音效：', '音效：', '单独的一声'));
+}
+function edInsert(pre) {
+  const t = ED && ED.els && ED.els.正文;
+  if (!t) return;
+  const v = t.value, a = t.selectionStart, s0 = a ? v.lastIndexOf('\n', a - 1) + 1 : 0, e0 = v.indexOf('\n', a), end = e0 < 0 ? v.length : e0;
+  const blank = /^[△▲]?$/.test(v.slice(s0, end).trim()), text = (blank ? '' : '\n') + pre;
+  t.focus();
+  if (blank) t.setSelectionRange(s0, end); else t.setSelectionRange(end, end);
+  if (!document.execCommand('insertText', false, text)) { t.setRangeText(text, t.selectionStart, t.selectionEnd, 'end'); edInput({ target: t }); }   // insertText 能撤回（Ctrl+Z）
+}
+/* 照固定格式看一遍：哪一行不对，点一下跳过去 */
+const ED_LINT_SAY = { '段头缺「场景：时间｜内/外｜地点」': '场景还空着：写成 时间｜内/外｜地点', '段头缺「人物」': '人物还空着', '这一行不是 △ 动作、台词、字幕、音效中的任何一种': '不是动作、台词、字幕、音效。是动作的话，前面加 △' };
+function edLint() {
+  const ed = ED;
+  if (!ed || !ed.lint) return;
+  const rows = [];
+  ed.els.正文.value.split('\n').forEach((t, i) => { if (t.trim() && !/^[△▲]$/.test(t.trim())) rows.push(i); });
+  ed.lint.replaceChildren(...C.lintScript(edDoc(ed, edVals(ed))).map(x => {
+    const k = x.loc && x.loc.sec === 'body' && x.loc.block ? +String(x.loc.block).slice(1) : -1, ln = k >= 0 ? rows[k] : undefined;
+    return h('li', { class: x.level }, ln != null ? [h('button', { type: 'button', title: '跳到这一行', onclick: () => edGoLine(ln) }, '第 ' + (ln + 1) + ' 行'), '：'] : null, ED_LINT_SAY[x.msg] || x.msg);
+  }));
+}
+function edGoLine(ln) {
+  const t = ED && ED.els && ED.els.正文;
+  if (!t) return;
+  const ls = t.value.split('\n');
+  let a = 0;
+  for (let i = 0; i < ln; i++) a += ls[i].length + 1;
+  t.focus({ preventScroll: true });
+  t.setSelectionRange(a, a + (ls[ln] || '').length);
+  const lh = parseFloat(getComputedStyle(t).lineHeight) || 31;   // 折行的长句会差一点，大致到那儿
+  window.scrollTo({ top: Math.max(0, t.getBoundingClientRect().top + scrollY + ln * lh - innerHeight / 3), behavior: 'smooth' });
+}
+/* 写字的那一块。重摆的时候（换了一版、整页重画）格子里已经写的字照旧 */
+function edBox() {
+  const ed = ED, old = ed.els, val = k => old && old[k] ? old[k].value : ed.init[k], E = ed.els = {};
+  const on = el => { el.addEventListener('input', edInput); el.addEventListener('compositionend', edInput); el.addEventListener('blur', () => edSave()); return el; };
+  const inp = (k, ph, cls) => on(E[k] = h('input', { class: 'sw-in' + (cls ? ' ' + cls : ''), value: val(k), placeholder: ph, spellcheck: 'false' }));
+  const ta = (k, ph, cls) => { const t = E[k] = h('textarea', { class: 'fl-ta ' + cls, placeholder: ph, spellcheck: 'false' }); t.value = val(k); return on(t); };
+  const row = (lab, ...kids) => h('div', { class: 'sw-row' }, h('label', null, lab), h('div', null, kids));
+  ed.tools = h('div', { class: 'sw-tools' });
+  ed.lint = h('ul', { class: 'sw-lint' });
+  const box = h('div', { class: 'sw' },
+    h('div', { class: 'sw-title' }, h('span', null, segName(ed.seg) + '｜'), inp('name', '段名，四到八个字', 'sw-name')),
+    row('场景', inp('场景', '时间｜内/外｜地点，比如：夜｜内｜出租屋')),
+    row('人物', ta('人物', '一行一个人：叫法（年纪、长相、穿着）', 'sw-sm')),
+    row('梗概', ta('梗概', '这一场从头到尾发生了什么，一两句讲完，写到结束时的样子', 'sw-sm')),
+    val('其他').trim() ? row('其他', ta('其他', '', 'sw-sm')) : null,
+    row('正文', h('p', { class: 'sw-tip' }, '一行一件事：', h('b', null, '△'), ' 开头是动作，写看得见、听得见的；台词写成 ', h('b', null, '人物：台词'), '，怎么说写在括号里；还有 ', h('b', null, '字幕：'), ' ', h('b', null, '音效：'), '。不写秒数、机位。'),
+      ed.tools, ta('正文', '△ ', 'sw-body'), ed.lint),
+    row('备注', ta('备注', '改了什么、还有什么没定；没有就空着', 'sw-sm')),
+    ed.from ? h('p', { class: 'sw-from' }, '先摆上了' + ed.from + '。存的时候存成这一场单独的剧本，汇总稿不动。') : null);
+  box.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 's') { e.preventDefault(); edSave(); } });   // Ctrl+S：马上存
+  edPaintTools(); edLint(); fitAll();
+  return box;
+}
+window.addEventListener('beforeunload', e => {   // 关页面、刷新：还有没存的就先存，浏览器问一句
+  if (!ED || !ED.els || (!ED.busy && JSON.stringify(edVals(ED)) === ED.saved)) return;
+  edSave(); e.preventDefault(); e.returnValue = '';
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden && ED) edSave(); });
+
 /* ---------- 上面一条：剧本现在什么样、该点什么 ---------- */
 const barNote = (t, warn) => h('span', { class: 'fn-note' + (warn ? ' warn' : '') }, t);
 function barEls(s) {
   const { d, st, again, job } = scriptState(s), out = [], sp = () => h('span', { class: 'sp' });
-  const bad = st === 'wait' ? null : jobFailed('扩写剧本', s.段) || jobFailed('按批注改', s.段);   // 上一回没做成，说一句
+  const bad = st === 'wait' ? null : jobFailed('扩写剧本', s.段) || jobFailed('按批注改', s.段) || (isRev(s) ? jobFailed('反推剧本', s.段) : null);   // 上一回没做成，说一句
   const fixing = jobOf('按批注改', s.段);   // 你在下面点了「交给 AI 改」
+  if (ED && ED.seg === s.段) return [h('span', { class: 'fs-state' }, icon('pen'), ED.orig ? '自己改剧本' : '自己写剧本'), h('span', { class: 'fn-note', id: 'sw-state' }, edStateText()),
+    st === 'wait' || jobLive(fixing) ? barNote('AI 也在写这一场的剧本，存的时候会问你用哪一版。', true) : null, sp(),
+    h('button', { class: 'btn sm ink', type: 'button', title: '存上，回去看剧本、写批注、定稿', onclick: edClose }, '写好了，看剧本')].filter(Boolean);
   if (jobLive(fixing)) return [jobLine(fixing), barNote('改好以后，下面改动的地方显示成红批。')];
+  /* 先写提示词的场：AI 在反推、反推好了等你采用 */
+  const rj = revJob(s), rv = !rj && isRev(s) ? revPending(s) : null;
+  if (rj) return [jobLine(rj), barNote('AI 照这一场的提示词写剧本，写好了这里自动出现。')];
+  if (rv) return [barNote('AI 照提示词反推好了（' + rv.时间.slice(5, 16) + '）：下面是剧本，左边是段落、出场的。看完点「采用」，段落、出场的才写进这一场。'), sp(),
+    h('button', { class: 'fl-link', type: 'button', disabled: !AI.ok, title: '照这一场现在的几条提示词再反推一次（现在的剧本先进历史记录）', onclick: () => revStart(s) }, '再反推'),
+    h('button', { class: 'btn sm ink', type: 'button', title: '段落、表达、出场的写进这一场；勾上的新人物、新道具、新场景加进全片设定', onclick: () => revTake(s, rv) }, icon('check'), '采用')];
   if (bad) out.push(bad);
+  const re = isRev(s) && promptsOf(s.段).length && st !== 'wait' ? h('button', { class: 'fl-link', type: 'button', disabled: !AI.ok, title: '改了提示词：照这一场现在的几条提示词再反推一次剧本（现在的剧本先进历史记录；定过稿的，采用以后要重新定稿）', onclick: () => revStart(s) }, '照提示词再反推') : null;
   const go1 = (label, cls) => h('button', { class: 'btn sm ' + (cls || ''), onclick: () => expand(s) }, label);
   const fin = (label, cls) => h('button', { class: 'btn sm ' + (cls || ''), title: '剧本看过了，就照这一版。定稿以后才出这一场的资产图', onclick: () => finalScript(s) }, label);
-  if (st === 'none') out.push(barNote(d.combined ? '汇总稿里有这一段，还没有单独的剧本。' : '还没有剧本。AI 照梗概、人物、场景和这一场的表达，把每个段落写成剧本。'), sp(), go1('让 AI 扩写成剧本', 'ink'));
+  const mine = (label, cls) => h('button', { class: 'btn sm ' + (cls || ''), type: 'button', title: '在下面直接写，边写边存', onclick: () => edOpen(s) }, icon('pen'), label);
+  if (st === 'none') out.push(barNote(d.combined ? '汇总稿里有这一段，还没有单独的剧本。自己写，或者让 AI 扩写。' : '还没有剧本。自己写，或者让 AI 照梗概、人物、场景和这一场的表达，把每个段落写成剧本。'), sp(), mine('我自己写'), go1('让 AI 扩写成剧本', 'ink'));
   else if (st === 'wait') out.push(...(job ? [jobLine(job), barNote('写好这里自动出现。')] : [barNote('交给 AI 了（' + s.扩写.slice(5, 16) + '），写好这里自动出现。'), h('button', { class: 'fl-link', type: 'button', onclick: () => expand(s) }, '再交一次')]));
-  else if (st === 'final') out.push(h('span', { class: 'fs-state ok', title: '剧本定稿的时间：' + s.剧本定稿 }, icon('check'), '剧本定稿了 ' + s.剧本定稿.slice(5, 16)), barNote('剧本再改，要重新定稿。'), sp(),
+  else if (st === 'final') out.push(h('span', { class: 'fs-state ok', title: '剧本定稿的时间：' + s.剧本定稿 }, icon('check'), '剧本定稿了 ' + s.剧本定稿.slice(5, 16)), impactNote(s) || barNote('剧本再改，要重新定稿。'),
+    h('button', { class: 'fl-link', type: 'button', title: '在下面直接改。改了要重新定稿', onclick: () => edOpen(s) }, '自己改'), sp(),
     h('button', { class: 'btn ink', onclick: () => go('资产', { s: s.段 }) }, '下一步：资产 →'));
-  else if (st === 'old') out.push(barNote('这一场后来又定过，剧本还是以前的。', true), sp(), go1('让 AI 照这一场重新扩写', 'ink'), fin('剧本不用重写，定稿'));
-  else out.push(barNote(again ? '定稿以后又改过。看完没问题，再定一次。' : '在下面看剧本：点一段写批注，再点「交给 AI 改」。没问题了就定稿；定稿以后才出资产图。', again), sp(), fin('剧本定稿', 'ink'));
+  else if (st === 'old') out.push(barNote('这一场后来又定过，剧本还是以前的。', true), sp(), mine('自己改'), go1('让 AI 照这一场重新扩写', 'ink'), fin('剧本不用重写，定稿'));
+  else out.push(barNote(again ? '定稿以后又改过。看完没问题，再定一次。' : '在下面看剧本、写批注交给 AI 改，或者点「自己改」。没问题了就定稿；定稿以后才出资产图。', again), sp(), mine('自己改'), fin('剧本定稿', 'ink'));
+  if (re) { const i = out.findIndex(x => x && x.classList && x.classList.contains('sp')); out.splice(i < 0 ? out.length : i, 0, re); }   // 摆在左边那几句的后面
   return out;
 }
-/* ---------- 下面：左边是你的段落，右边嵌着剧本，在里面写批注 ---------- */
+/* 重新定稿以后的影响清单：AI 在列、列好了（资产几样、提示词几条要再看）、没列成 */
+function impactNote(s) {
+  const job = jobOf('影响清单', s.段), v = impactOf(s);
+  if (jobLive(job)) return [jobLine(job), barNote('AI 在对新旧剧本，列哪些资产、提示词要再看。')];
+  if (v) {
+    const a = impactTodo(s, v).length, p = v.提示词.length;
+    return barNote('剧本改了' + (v.总 ? '：' + v.总 : '') + '。' + (a || p ? [a ? '资产 ' + a + ' 样' : '', p ? '提示词 ' + p + ' 条' : ''].filter(Boolean).join('、') + '要再看，没列上的照旧。' : 'AI 说别的都不受影响。'), !!(a || p));
+  }
+  return jobFailed('影响清单', s.段) || null;
+}
+/* ---------- 下面：左边是你的段落，右边嵌着剧本，在里面写批注（自己写的时候换成写字的地方） ---------- */
 function paintDoc(s) {
   const d = docsOf(s.段), e = d.script || d.combined, box = document.getElementById('sb-doc');
-  const key = e ? at(e.path).join('/') : '';
+  const key = ED ? 'edit' : e ? at(e.path).join('/') : 'none';
   if (key === FRAME_KEY && box.firstChild) return;
   FRAME_KEY = key;
-  box.replaceChildren(e ? h('iframe', { class: 'wf-frame', title: '剧本', src: shellUrl(at(e.path), true) })
-    : h('div', { class: 'wf-lock' }, '剧本写好以后，在这里看、写批注。'));
+  box.replaceChildren(ED ? edBox() : e ? h('iframe', { class: 'wf-frame', title: '剧本', src: shellUrl(at(e.path), true) })
+    : h('div', { class: 'wf-lock' }, scriptState(s).st === 'wait' ? '剧本写好以后，在这里看、写批注。' : '还没有剧本。点上面「我自己写」，就在这里写；也可以让 AI 扩写。'));
 }
-/* 只换会变的那几块：嵌着的批注页不动，写到一半的批注不会丢 */
+/* 只换会变的那几块：嵌着的批注页、写到一半的字都不动 */
 function repaint() {
   const s = sceneNow(), bar = document.getElementById('sb-bar');
-  if (!s || !s.定稿 || !bar) return false;   // 还没定下来、或者刚从没定变成定了：整页重画
-  const d = docsOf(s.段);
+  if (!s || !revOpen(s) || !bar) return false;   // 还没定下来、或者刚从没定变成定了：整页重画
+  const d = docsOf(s.段), rv = isRev(s) && !revJob(s) ? revPending(s) : null;
   bar.replaceChildren(...barEls(s));
-  document.getElementById('sb-side').replaceChildren(h('div', { class: 'fs-lab' }, '你的段落', h('em', null, '剧本照它们写')), ...paraList(s).filter(Boolean));
-  document.getElementById('sb-docs').replaceChildren(h('span', { class: 'fn-note' }, d.script || d.combined ? '点一段写批注；写完点右上角「交给 AI 改」。' : ''));
+  document.getElementById('sb-side').replaceChildren(...(rv ? revSide(s, rv) : !s.定稿 ? [h('div', { class: 'fs-lab' }, '反推的', h('em', null, '段落、出场的')), h('p', { class: 'fn-note' }, 'AI 照提示词写剧本，同时列出段落、出场的人物、场景、道具，写好了摆在这里。')]
+    : [...(ED && s.表达.trim() ? [h('div', { class: 'fs-lab' }, '这一场', h('em', null, '要表达的')), h('p', { class: 'sw-exp' }, s.表达.trim())] : []),
+      isRev(s) ? h('div', { class: 'fs-lab' }, '这一场的段落', h('em', null, '照提示词反推、你采用的')) : h('div', { class: 'fs-lab' }, '你的段落', h('em', null, '剧本照它们写')), ...paraList(s).filter(Boolean)]));
+  document.getElementById('sb-docs').replaceChildren(h('span', { class: 'fn-note' }, !ED && (d.script || d.combined) ? '点一段写批注；写完点右上角「交给 AI 改」。' : ''));
   paintDoc(s);
 }
 function render() {
   const s = sceneNow();
   FRAME_KEY = '';
-  if (!s.定稿) return h('div', { class: 'wf-lock' }, '这一场的段落还没定下来。先把段落写好、定下来，AI 才能照它扩写剧本。', h('button', { class: 'btn ink', onclick: () => go('分场', { s: s.段 }) }, '← 回去写段落'));
+  if (!revOpen(s)) {
+    if (ED) { edSave(); ED = null; }   // 写着的时候这一场的段落被「再改」了：写的先存上
+    if (isRev(s) && !s.反推采用) return h('div', { class: 'wf-lock' }, '这一场先写提示词：写好了，在上一步点「让 AI 反推剧本」，AI 照提示词写的剧本就摆在这里。', h('button', { class: 'btn ink', onclick: () => go('分场', { s: s.段 }) }, '← 回去写提示词'));
+    return h('div', { class: 'wf-lock' }, '这一场的段落还没定下来。先把段落写好、定下来，再写剧本。', h('button', { class: 'btn ink', onclick: () => go('分场', { s: s.段 }) }, '← 回去写段落'));
+  }
   setTimeout(repaint, 0);   // 架子先摆上，里面的东西接着填
   return [h('div', { class: 'wf-bar', id: 'sb-bar' }),
     h('div', { class: 'wf-two' }, h('aside', { class: 'wf-side', id: 'sb-side' }), h('div', null, h('div', { class: 'wf-docs', id: 'sb-docs' }), h('div', { id: 'sb-doc' })))];
 }
 
-start({ name: '剧本', scene: true, wide: true, render, repaint, sides() { rerender(); } });
+start({ name: '剧本', scene: true, wide: true, render, repaint, sides() { rerender(); }, leave: () => edSave() });
 </script>
 </body>
 </html>

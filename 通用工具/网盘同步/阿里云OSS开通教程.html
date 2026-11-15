@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>阿里云 OSS 开通教程</title>
+<style>
+  :root { color-scheme: light; }
+  html, body { background: #fff; }
+  body { font:17px/1.8 "Microsoft YaHei","PingFang SC",sans-serif; color:#222; max-width:840px; margin:32px auto; padding:0 20px; }
+  h1 { font-size:27px; margin-bottom:4px; }
+  h2 { font-size:21px; margin-top:40px; border-left:5px solid #2f6fdf; padding-left:10px; }
+  .sub { color:#666; margin-top:0; }
+  ol li, ul li { margin:6px 0; }
+  code { background:#f2f4f7; padding:1px 6px; border-radius:4px; font-family:Consolas,"Microsoft YaHei",monospace; }
+  b.btn { display:inline-block; background:#fff3e6; border:1px solid #f0c48a; border-radius:4px; padding:0 6px; font-weight:normal; color:#8a4b00; }
+  .box { background:#f6f9ff; border:1px solid #d6e2fb; border-radius:8px; padding:12px 18px; margin:12px 0; }
+  .warn { background:#fff8ec; border-color:#f3d9a6; }
+  table { border-collapse:collapse; width:100%; }
+  td, th { border:1px solid #ddd; padding:8px 12px; text-align:left; vertical-align:top; }
+  th { background:#f6f6f6; }
+  svg { display:block; margin:20px auto; max-width:100%; }
+  a { color:#2f6fdf; }
+  .src { color:#888; font-size:14px; }
+</style>
+</head>
+<body>
+
+<h1>阿里云 OSS 开通教程</h1>
+<p class="sub">第一次用网盘，跟着做一遍，大约 15 分钟。做完以后，这台电脑就能用「推送」「拉取」和项目管理里的「网盘」那一页了。<br>
+橙色框里的字，就是网页上要点的按钮。</p>
+
+<svg width="780" height="120" viewBox="0 0 780 120" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdf"/></marker></defs>
+  <g font-size="15" text-anchor="middle">
+    <rect x="5" y="30" width="120" height="60" rx="10" fill="#f6f9ff" stroke="#2f6fdf"/><text x="65" y="56">① 注册</text><text x="65" y="78">实名认证</text>
+    <rect x="165" y="30" width="120" height="60" rx="10" fill="#f6f9ff" stroke="#2f6fdf"/><text x="225" y="56">② 开通</text><text x="225" y="78">OSS</text>
+    <rect x="325" y="30" width="120" height="60" rx="10" fill="#f6f9ff" stroke="#2f6fdf"/><text x="385" y="56">③ 充钱</text><text x="385" y="78">设提醒</text>
+    <rect x="485" y="30" width="120" height="60" rx="10" fill="#f6f9ff" stroke="#2f6fdf"/><text x="545" y="56">④ 建一把</text><text x="545" y="78">钥匙</text>
+    <rect x="645" y="30" width="130" height="60" rx="10" fill="#f3fbf7" stroke="#1d9a6c"/><text x="710" y="56">⑤ 电脑上</text><text x="710" y="78">设置网盘</text>
+  </g>
+  <g stroke="#2f6fdf" stroke-width="2.5" marker-end="url(#a)">
+    <line x1="127" y1="60" x2="161" y2="60"/><line x1="287" y1="60" x2="321" y2="60"/><line x1="447" y1="60" x2="481" y2="60"/><line x1="607" y1="60" x2="641" y2="60"/>
+  </g>
+</svg>
+
+<h2>第 1 步　注册、实名认证</h2>
+<ol>
+  <li>打开 <a href="https://www.aliyun.com" target="_blank">aliyun.com</a>，点右上角 <b class="btn">登录/注册</b>。用支付宝、淘宝扫码登录都行。</li>
+  <li>登录后点右上角头像 → <b class="btn">账号中心</b> → <b class="btn">实名认证</b> → <b class="btn">个人支付宝认证</b>，用手机支付宝扫码授权。最快一两分钟。</li>
+  <li>没实名，开不了 OSS。</li>
+</ol>
+
+<h2>第 2 步　开通 OSS</h2>
+<ol>
+  <li>打开 OSS 页面：<a href="https://www.aliyun.com/product/oss" target="_blank">aliyun.com/product/oss</a>，点 <b class="btn">立即开通</b>。</li>
+  <li>勾上「我已阅读并同意……服务协议」，再点 <b class="btn">立即开通</b>。</li>
+  <li>开通不要钱，用多少扣多少（按量付费）。<b>不用买资源包。</b></li>
+</ol>
+<div class="box warn">没开通就去设置网盘，会提示「阿里云说这个账号现在用不了 OSS」。开通后等一两分钟再试就好。</div>
+
+<h2>第 3 步　充点钱，设两个提醒</h2>
+<p>打开 <a href="https://billing-cost.console.aliyun.com/" target="_blank">费用与成本</a>（阿里云页面右上角 <b class="btn">费用</b> 也能进）。</p>
+<ol>
+  <li><b>充钱：</b><b class="btn">账户</b> → <b class="btn">资金账户</b> → <b class="btn">充值</b>，先充 20～50 元就够用很久。<br>余额没了会欠费，网盘就暂时用不了。</li>
+  <li><b>余额提醒：</b>还在「资金账户」这一页，<b class="btn">账户设置</b> 里打开 <b class="btn">可用额度预警</b>，填 10 元，点 <b class="btn">确定</b>。余额低于 10 元会发短信提醒你充钱。</li>
+  <li><b>防盗刷提醒：</b><b class="btn">成本监控</b> → <b class="btn">成本预警</b>，在「高额消费预警」那一块点 <b class="btn">详情</b>，商品选「对象存储 OSS」，阈值填 5 元，点 <b class="btn">增加</b>。哪天花了 5 元以上就发短信。设好后第三天起生效。</li>
+  <li>收不到短信的话：右上角小铃铛 → <b class="btn">消息中心</b> → <b class="btn">基本接收管理</b>，给「账户资金消息」填上你的手机。</li>
+</ol>
+
+<h2>第 4 步　建一把只能管 OSS 的钥匙</h2>
+<p>不要用主账号的钥匙。单独建一个「RAM 用户」，它只能动 OSS，丢了也不怕别的东西被动。</p>
+<ol>
+  <li>打开 <a href="https://ram.console.aliyun.com/users" target="_blank">RAM 访问控制 → 用户</a>，点 <b class="btn">创建用户</b>。</li>
+  <li><b>登录名称</b>填 <code>aivideo</code>（英文、数字随便起）。</li>
+  <li><b>访问方式</b>只勾 <b class="btn">使用永久 AccessKey 访问</b>，再勾 <b class="btn">我确认必须创建 AccessKey</b>，点 <b class="btn">确定</b>。按提示收手机验证码。</li>
+  <li>页面会显示 <b>AccessKey ID</b> 和 <b>AccessKey Secret</b>。点 <b class="btn">复制</b>，先粘到记事本里，用完就删。<br><b>Secret 只显示这一次</b>，页面先别关。</li>
+  <li>回到用户列表，在 aivideo 这一行点 <b class="btn">添加权限</b>（有的页面叫 <b class="btn">新增授权</b>），搜 <code>AliyunOSSFullAccess</code>，勾上，点 <b class="btn">确认新增授权</b>。</li>
+</ol>
+<div class="box warn">钥匙就像网盘的钥匙：别发给别人，别截图发群里，也别放进项目文件夹。</div>
+
+<h2>第 5 步　在电脑上设置网盘</h2>
+<ol>
+  <li>双击 <code>E:\AI短视频项目\通用工具\网盘同步\设置网盘.bat</code>。</li>
+  <li>这台电脑没有同步工具的话，会问要不要下载（约 31MB），直接回车。</li>
+  <li>粘贴 AccessKey ID，回车；再粘贴 AccessKey Secret，回车。粘贴用右键或 Ctrl+V，屏幕上只显示星号，是正常的。</li>
+  <li>第一次会问网盘建在哪，直接回车 = 杭州。它会自己建好一个只有你能看的网盘，名字像 <code>aivideo-cn-hangzhou-xxxxxx</code>。</li>
+  <li>看到「设置好了」就完成了。记事本里的钥匙可以删了。</li>
+</ol>
+<p><b>换一台电脑：</b>先装 <a href="https://nodejs.org" target="_blank">Node.js</a>，从 GitHub 拉下这个仓库，再做第 5 步，粘<b>同一把钥匙</b>，它会自己找到原来的网盘。</p>
+
+<h2>开始用</h2>
+<table>
+  <tr><th style="width:30%">双击</th><th>做什么</th></tr>
+  <tr><td><code>网盘管理.bat</code></td><td>打开项目管理里的「网盘」那一页：看这个项目哪些文件和网盘上不一样，能上传、下载、删除。</td></tr>
+  <tr><td><code>推送.bat</code></td><td>把整个「项目」文件夹的改动传上去。</td></tr>
+  <tr><td><code>拉取.bat</code></td><td>挑着把网盘里的项目拿下来。</td></tr>
+</table>
+<p>桌面上也有这三个的快捷方式。</p>
+
+<h2>花多少钱</h2>
+<table>
+  <tr><th style="width:30%">做什么</th><th>价钱</th></tr>
+  <tr><td>存着</td><td>每 GB 每月约 1 角 2 分（官网标价 0.12 元）。33GB 一个月约 4 元。</td></tr>
+  <tr><td>上传</td><td>不要钱。</td></tr>
+  <tr><td>下载</td><td>每 GB 0.5 元；北京时间半夜 0～8 点半价，0.25 元。「网盘」那一页和拉取.bat 下载前都会先告诉你要花多少。</td></tr>
+  <tr><td>其他</td><td>每一万次读写约 1 分钱，可以不管。</td></tr>
+</table>
+
+<h2>遇到问题</h2>
+<table>
+  <tr><th style="width:38%">看到这个</th><th>怎么办</th></tr>
+  <tr><td>「这个账号现在用不了 OSS」</td><td>多半是还没做第 2 步。开通后等一两分钟再试。少数是欠费，去「费用与成本」看一眼。</td></tr>
+  <tr><td>「AccessKey ID 不对」或「Secret 不对」</td><td>重新复制一遍，别多复制空格。Secret 忘了找不回，只能新建一把（见下面「钥匙丢了」）。</td></tr>
+  <tr><td>「没有权限」</td><td>第 4 步最后的「添加权限」漏了，补上 AliyunOSSFullAccess。</td></tr>
+  <tr><td>「连不上阿里云」</td><td>看看网络。开着代理也没关系，工具会直连阿里云。</td></tr>
+  <tr><td>钥匙丢了、可能被别人看到了</td><td>RAM → 用户 → 点 aivideo → <b class="btn">认证管理</b>：把旧钥匙 <b class="btn">禁用</b>，再点 <b class="btn">创建 AccessKey</b> 建一把新的，重新双击「设置网盘.bat」粘新钥匙。</td></tr>
+  <tr><td>想在阿里云网页上直接看文件</td><td>打开 <a href="https://oss.console.aliyun.com/" target="_blank">OSS 控制台</a> → <b class="btn">Bucket 列表</b> → 点 aivideo-cn-… 那一个 → <b class="btn">文件列表</b>。</td></tr>
+</table>
+
+<p class="src">按阿里云帮助中心 2026 年的说明整理：
+<a href="https://help.aliyun.com/zh/account/user-guide/individual-identities" target="_blank">个人实名认证</a>、
+<a href="https://help.aliyun.com/zh/ram/user-guide/create-a-ram-user" target="_blank">创建 RAM 用户</a>、
+<a href="https://help.aliyun.com/zh/ram/user-guide/grant-permissions-to-the-ram-user" target="_blank">给 RAM 用户授权</a>、
+<a href="https://help.aliyun.com/zh/user-center/monitor-account-balances" target="_blank">可用额度预警</a>、
+<a href="https://help.aliyun.com/zh/user-center/set-high-consumption-alert" target="_blank">高额消费预警</a>、
+<a href="https://help.aliyun.com/zh/oss/purchase-resource-plans" target="_blank">OSS 价格</a>。阿里云改了页面的话，按钮名字可能稍有不同。</p>
+
+</body>
+</html>

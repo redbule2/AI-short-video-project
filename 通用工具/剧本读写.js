@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* 剧本、镜头表的 Word 文件，和「一行一段」的文字互相转。给 AI 写剧本、改剧本用：
-   用的就是 项目管理.html 里读写 Word 的那一套，写出来的文件页面一定读得回来。
+   用的就是页面里读写 Word 的那一套（公用/核心.js），写出来的文件页面一定读得回来。
      node 剧本读写.js 读 <剧本或镜头表.docx>
          打印成文字，一行一段（就是固定格式的那个样子）
      node 剧本读写.js 写剧本 <第N段_剧本.docx> <文字.txt>
@@ -13,15 +13,9 @@
 const fs = require('fs');
 const path = require('path');
 
-/* 项目管理.html 头一块脚本就是读写的核心，拿出来直接用 */
+/* 读写的核心就是 公用/核心.js（流水线各页、看文件的那一页用的都是它），直接拿来用 */
 function loadCore() {
-  const html = fs.readFileSync(path.join(__dirname, '项目管理.html'), 'utf8');
-  const mark = html.indexOf('案头 · 核心逻辑');
-  const a = html.lastIndexOf('<script>', mark), z = html.indexOf('</script>', mark);
-  if (mark < 0 || a < 0 || z < 0) throw new Error('项目管理.html 里没找到读写的核心');
-  const mod = { exports: {} };
-  new Function('module', html.slice(a + '<script>'.length, z))(mod);
-  return mod.exports;
+  return require(path.join(__dirname, '公用', '核心.js'));
 }
 const two = n => String(n).padStart(2, '0');
 const stamp = () => { const d = new Date(); return d.getFullYear() + two(d.getMonth() + 1) + two(d.getDate()) + '-' + two(d.getHours()) + two(d.getMinutes()) + two(d.getSeconds()); };

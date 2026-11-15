@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>流水线 · 网盘</title>
+<link rel="stylesheet" href="../公用/样式.css">
+<link rel="stylesheet" href="流水线.css">
+<style>
+/* 这一页自己的样式，都是 wp- 开头 */
+.wp-sub { margin: 10px 0 0; font-size: 13px; line-height: 1.8; color: var(--ink-3); }
+.wp-sp { flex: 1; }
+.wp-box { margin-top: 24px; padding: 18px 22px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--sheet); font-size: 13.5px; line-height: 1.9; color: var(--ink-2); }
+.wp-box b { color: var(--ink); }
+.wp-box .acts { display: flex; gap: 8px; margin-top: 12px; }
+.wp-load { margin-top: 30px; color: var(--ink-3); font: 15px var(--kai); letter-spacing: .1em; }
+.wp-note { margin-top: 14px; display: flex; align-items: center; gap: 12px; padding: 9px 14px; border-radius: 8px; font-size: 13px; color: var(--ink-2); background: var(--zhe-soft); border: 1px solid var(--zhe-line); }
+.wp-sum { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 13px; color: var(--ink-2); }
+.wp-sum .faint { font-size: 12px; }
+.wp-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.wp-pill { display: inline-flex; align-items: center; gap: 4px; padding: 0 9px; border-radius: 999px; border: 1px solid; font-size: 12px; line-height: 21px; white-space: nowrap; }
+.wp-pill .ic { width: 11px; height: 11px; stroke-width: 2.2; }
+.wp-pill.ok { color: var(--dai); border-color: var(--dai-line); background: var(--dai-soft); }
+.wp-pill.up { color: var(--zhe); border-color: var(--zhe-line); background: var(--zhe-soft); }
+.wp-pill.dn { color: var(--zi); border-color: var(--zi-line); background: var(--zi-soft); }
+.wp-pill.warn { color: var(--zhu); border-color: var(--zhu-line); background: var(--zhu-soft); }
+.wp-chk { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.wp-chk input, .wp-row input { width: 15px; height: 15px; margin: 0; accent-color: var(--dai); cursor: pointer; }
+.wp-path { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font: 15px var(--kai); }
+.wp-path button { all: unset; cursor: pointer; padding: 1px 5px; border-radius: 4px; color: var(--ink-2); }
+.wp-path button:hover { background: var(--paper-2); color: var(--ink); }
+.wp-path .cur { padding: 1px 5px; color: var(--ink); font-weight: 600; }
+.wp-path .sep { color: var(--ink-4); }
+.wp-acts { position: sticky; top: 60px; z-index: 5; margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 9px 2px; background: var(--paper); border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-2); }
+.wp-table { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: var(--sheet); }
+.wp-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) 190px 190px 200px; align-items: center; gap: 0 10px; padding: 6px 12px; border-top: 1px solid var(--line); font-size: 13px; }
+.wp-row:first-child { border-top: 0; }
+.wp-row.head { font-size: 12px; letter-spacing: .14em; color: var(--ink-3); background: var(--paper-2); }
+.wp-row.on { background: rgba(62, 92, 94, .07); }
+.wp-row:not(.head):hover { background: rgba(80, 60, 40, .035); }
+.wp-row.on:hover { background: rgba(62, 92, 94, .1); }
+.wp-name { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.wp-name .ic { color: var(--ink-3); }
+.wp-name .dir { color: var(--zhe); }
+.wp-name span, .wp-name button { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-name button { all: unset; cursor: pointer; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-name button:hover { color: var(--dai); text-decoration: underline; }
+.wp-side { min-width: 0; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wp-side small { margin-left: 6px; color: var(--ink-4); font-size: 11.5px; }
+.wp-none { color: var(--ink-4); }
+.wp-st { min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.wp-empty { padding: 26px 16px; text-align: center; color: var(--ink-3); font: 14px var(--kai); letter-spacing: .08em; }
+.wp-job { margin-top: 12px; padding: 11px 15px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--sheet); font-size: 13px; color: var(--ink-2); }
+.wp-job.failed { border-color: var(--zhu-line); }
+.wp-jh { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.wp-jh b { color: var(--ink); font-weight: 600; }
+.wp-bar { height: 5px; margin-top: 8px; border-radius: 3px; background: var(--paper-3); overflow: hidden; }
+.wp-bar > i { display: block; height: 100%; background: var(--dai); transition: width .5s; }
+.wp-job ul { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: var(--zhu); }
+.wp-job .ok { color: var(--dai); }
+.wp-warn { color: var(--zhu); }
+.wp-list { margin: 6px 0 0; padding-left: 18px; max-height: 150px; overflow: auto; font-size: 12.5px; color: var(--ink-2); }
+.wp-dlg p { margin: 0 0 8px; font-size: 13.5px; line-height: 1.85; color: var(--ink-2); }
+.wp-dlg .wp-chk { margin-top: 6px; font-size: 13.5px; color: var(--ink); }
+.wp-old .wp-row { grid-template-columns: 30px minmax(0, 1fr) 110px 150px 90px; }
+.wp-others { display: flex; flex-wrap: wrap; gap: 10px; }
+.wp-other { display: flex; align-items: center; gap: 12px; padding: 9px 14px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--sheet); font-size: 13.5px; }
+@media (max-width: 900px) { .wp-row { grid-template-columns: 30px minmax(0, 1fr) 120px 120px 130px; } .wp-side small { display: none; } }
+</style>
+</head>
+<body class="wf">
+<div id="wf"></div>
+<div id="layer"></div>
+<div id="toasts" aria-live="polite"></div>
+<script src="../公用/核心.js"></script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="流水线.js"></script>
+<script>
+/* ============================================================
+   流水线 · 网盘：这个项目在阿里云网盘上的那一份
+   本机（项目\项目名）和网盘（项目/项目名）的每个文件一不一样；勾上文件或文件夹：
+     上传：本机这份传上去，网盘上不一样的那份先放进网盘「旧版」；
+     下载：网盘上那份拿下来，本机不一样的那份先挪进这个项目的「历史记录」（同样的位置，名字后面加时间）；
+     删除：只删网盘上的，本机不动，删下来的默认放进「旧版」。
+   下面「旧版」里这个项目换下来、删掉的，能拿回本机、能彻底删掉；「网盘上还有」是本机没有的项目，能整个拉下来。
+   后台在 通用工具/网盘同步/网盘管理.js（本机服务第 7 版起有，/api/wangpan/）。整个「项目」文件夹一起传、一起拿，还是用 推送.bat、拉取.bat。
+   这一页的代码都包在一个大括号里，起的名字不会和 流水线.js 撞。
+   ============================================================ */
+'use strict';
+{
+const API = '/api/wangpan/';
+const ST = {   // 每个文件两边怎么样：[叫法, 颜色, 悬停说明]
+  same: ['一样', 'ok', '本机和网盘上是同一份'],
+  local: ['没传上去', 'up', '这台电脑有，网盘上还没有'],
+  lnew: ['本机改过', 'up', '上回两边一样以后，这台电脑上又改过'],
+  cnew: ['网盘上的新', 'dn', '网盘上那份比这台电脑的新，多半是另一台电脑传的'],
+  cloud: ['只在网盘', 'dn', '网盘上有，这台电脑没有'],
+  both: ['两边都改过', 'warn', '两边都改过，或者说不准哪边新：先打开看看，再决定上传还是下载'],
+};
+const ORDER = ['local', 'lnew', 'cnew', 'cloud', 'both', 'same'];
+const WHY = [[/_推送$/, '推送时换下来、删掉的'], [/_拉取前$/, '拉取前本机那份'], [/_网盘管理(上传|覆盖)$/, '上传时换下来的'], [/_网盘管理删除$/, '在这一页删掉的']];
+const OLD_MAX = 300;
+const W = { dir: '', info: null, rows: [], err: '', loading: true, sel: new Set(), diff: false, jobs: [], busy: false, hide: new Set(), poll: 0,
+  old: null, oldErr: '', oldOpen: false, oldSel: new Set() };
+
+/* ---------- 小工具 ---------- */
+async function call(method, sub, body) {
+  const r = await fetch(API + sub, { method, cache: 'no-store', headers: { 'X-Antou': '1', ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  let j = null;
+  try { j = await r.json(); } catch (e) { /* 老的服务回的是一行字 */ }
+  if (!r.ok) throw new Error((j && j.error) || (r.status === 404 ? '本机服务还是旧版，没有网盘这一页：要重开一次项目管理服务' : '本机服务出错 ' + r.status));
+  return j;
+}
+const sumOf = (a, f) => a.reduce((s, x) => s + f(x), 0);
+function size(n) {
+  if (n < 1024) return n + ' B';
+  const u = ['KB', 'MB', 'GB', 'TB'];
+  let i = -1;
+  do { n /= 1024; i++; } while (n >= 1024 && i < u.length - 1);
+  return (n >= 100 ? n.toFixed(0) : n >= 10 ? n.toFixed(1) : n.toFixed(2)).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1') + ' ' + u[i];
+}
+function when(ms) {
+  if (!ms) return '';
+  const d = new Date(ms), md = two(d.getMonth() + 1) + '-' + two(d.getDate());
+  return (d.getFullYear() === new Date().getFullYear() ? md : d.getFullYear() + '-' + md) + ' ' + two(d.getHours()) + ':' + two(d.getMinutes());
+}
+const night = () => (new Date().getUTCHours() + 8) % 24 < 8;   // 北京时间 0～8 点下载半价
+const PR = () => (W.info && W.info.price) || { store: 0.12, day: 0.5, night: 0.25 };
+const yuan = y => y < 0.01 ? '不到 1 分钱' : '约 ' + y.toFixed(2) + ' 元';
+const fee = bytes => yuan(bytes / 1024 ** 3 * (night() ? PR().night : PR().day)) + (night() ? '（现在是半夜，半价）' : '（北京时间 0～8 点半价）');
+const monthly = bytes => yuan(bytes / 1024 ** 3 * PR().store);
+function eta(sec) { return sec < 60 ? Math.max(1, Math.round(sec)) + ' 秒' : sec < 3600 ? Math.ceil(sec / 60) + ' 分钟' : (sec / 3600).toFixed(1) + ' 小时'; }
+const pill = (s, text) => h('span', { class: 'wp-pill ' + ST[s][1], title: ST[s][2] }, s === 'same' ? icon('check') : null, text || ST[s][0]);
+const peek = list => h('ul', { class: 'wp-list' }, list.slice(0, 6).map(f => h('li', null, f[0])), list.length > 6 ? h('li', { class: 'faint' }, '……一共 ' + list.length + ' 个') : null);
+const running = () => W.jobs.some(j => j.state === 'running');
+const locked = () => W.busy || running() || !W.info || !W.info.configured;
+const pj = () => encodeURIComponent(F.name);
+
+/* ---------- 读 ---------- */
+async function reload() {
+  W.loading = true; paintMain();
+  try {
+    const r = await call('GET', 'list?p=' + pj());
+    W.info = r; W.rows = r.rows || []; W.busy = !!r.engineBusy; W.err = '';
+  } catch (e) { W.err = e.message; }
+  W.loading = false;
+  if (W.dir && !W.rows.some(f => f[0].startsWith(W.dir + '/'))) setDir('');
+  const names = new Set(kids().map(k => k.name));
+  for (const n of [...W.sel]) if (!names.has(n)) W.sel.delete(n);
+  paintMain(); paintOthers();
+}
+async function loadOld() {
+  try { W.old = (await call('GET', 'old?p=' + pj())).rows || []; W.oldErr = ''; }
+  catch (e) { W.oldErr = e.message; }
+  const keys = new Set((W.old || []).map(x => x[0] + '/' + x[1]));
+  for (const k of [...W.oldSel]) if (!keys.has(k)) W.oldSel.delete(k);
+  paintOld();
+}
+async function pollJobs() {
+  clearTimeout(W.poll);
+  try {
+    const r = await call('GET', 'jobs');
+    const was = new Map(W.jobs.map(j => [j.id, j.state]));
+    W.jobs = r.jobs || []; W.busy = !!r.engineBusy;
+    const ended = W.jobs.filter(j => j.state !== 'running' && was.get(j.id) === 'running');
+    paintJobs(); paintActs();
+    if (ended.length) {
+      for (const j of ended) toast(j.title + (j.state === 'done' ? '：好了' : j.state === 'stopped' ? '：停了' : '：没全做成'), j.state === 'done' ? '' : 'err');
+      await reload();
+      if (W.old) loadOld();
+    }
+  } catch (e) { /* 下回再问 */ }
+  if (running()) W.poll = setTimeout(pollJobs, 1500);
+}
+async function run(sub, body) {
+  try {
+    const r = await call('POST', sub, body);
+    if (r && r.nothing) { toast(r.nothing); reload(); return; }
+    if (r && r.id && !W.jobs.some(j => j.id === r.id)) W.jobs = [...W.jobs, { id: r.id, state: 'running', p: body.p, title: '', done: 0, total: 0 }];   // 做得快、头一回问就做完了的，也认得出是刚做完的
+    W.sel.clear(); W.oldSel.clear();
+    await pollJobs();
+    paintMain(); paintOld();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+/* ---------- 这一层有什么 ---------- */
+function kids() {
+  const pre = W.dir ? W.dir + '/' : '', m = new Map();
+  for (const f of W.rows) {
+    const [r, ls, , cs, , s] = f;
+    if (pre && !r.startsWith(pre)) continue;
+    const rest = r.slice(pre.length), i = rest.indexOf('/'), name = i < 0 ? rest : rest.slice(0, i);
+    let k = m.get(name);
+    if (!k) m.set(name, k = { name, dir: i >= 0, ln: 0, lb: 0, cn: 0, cb: 0, n: {} });
+    if (i < 0) k.f = f;
+    else k.dir = true;
+    if (ls >= 0) { k.ln++; k.lb += ls; }
+    if (cs >= 0) { k.cn++; k.cb += cs; }
+    k.n[s] = (k.n[s] || 0) + 1;
+  }
+  return [...m.values()].sort((a, b) => (b.dir - a.dir) || a.name.localeCompare(b.name, 'zh'));
+}
+const full = n => W.dir ? W.dir + '/' + n : n;
+const filesOf = names => W.rows.filter(f => names.some(n => f[0] === n || f[0].startsWith(n + '/')));
+function plan(names) {
+  const fs = filesOf(names);
+  return { up: fs.filter(f => f[1] >= 0 && f[5] !== 'same'), dn: fs.filter(f => f[3] >= 0 && f[5] !== 'same'), cl: fs.filter(f => f[3] >= 0) };
+}
+function setDir(d) {
+  W.dir = d; W.sel.clear();
+  history.replaceState(null, '', location.pathname + location.search + (d ? '#d=' + encodeURIComponent(d) : ''));
+}
+function goDir(d) { setDir(d); paintMain(); document.scrollingElement.scrollTop = 0; }
+
+/* ---------- 画 ---------- */
+function render() {
+  return [
+    h('div', { class: 'fl-head' }, h('div', { class: 'fl-kicker' }, '网　盘'),
+      h('div', { class: 'fl-trow' }, h('div', { class: 'fl-title' }, F.name),
+        h('button', { class: 'btn sm', title: '每个项目分开看。现在看的是这一个', onclick: pickProject }, icon('folder'), '换项目'),
+        h('span', { class: 'wp-sp' }),
+        h('a', { class: 'btn ghost sm', href: '../网盘同步/用法说明.html', target: '_blank' }, '用法说明'),
+        h('a', { class: 'btn ghost sm', href: '../网盘同步/阿里云OSS开通教程.html', target: '_blank' }, '开通教程')),
+      h('p', { class: 'wp-sub' }, '这个项目在阿里云网盘上的那一份。勾上文件或文件夹：上传＝本机这份传上去，下载＝网盘上那份拿到本机，删除＝只删网盘上的。',
+        h('br'), '换下来的不会丢：网盘上的放进「旧版」，本机的挪进这个项目的「历史记录」。整个「项目」文件夹一起传、一起拿，还是双击 推送.bat、拉取.bat。')),
+    h('div', { id: 'wp-main' }, mainEls()),
+    h('div', { id: 'wp-jobs' }, jobEls()),
+    h('section', { class: 'fl-sec wp-old', id: 'wp-old' }, oldEls()),
+    h('section', { class: 'fl-sec', id: 'wp-others' }, otherEls()),
+  ];
+}
+const paint = (id, els) => { const el = document.getElementById(id); if (el) el.replaceChildren(...els.filter(Boolean)); };
+const paintMain = () => paint('wp-main', mainEls());
+const paintJobs = () => paint('wp-jobs', jobEls());
+const paintOld = () => paint('wp-old', oldEls());
+const paintOthers = () => paint('wp-others', otherEls());
+const paintActs = () => { const el = document.getElementById('wp-acts'); if (el) el.replaceWith(actBar()); };
+
+function mainEls() {
+  if (LINK.v < 7) return [h('div', { class: 'wp-box' }, h('b', null, '本机服务还是旧版，没有网盘这一页。'), h('br'), '在 Claude 里说「重开项目管理服务」，开好以后刷新这一页。')];
+  if (W.err && !W.info) return [h('div', { class: 'wp-box' }, h('b', null, '没读出来：'), W.err, h('div', { class: 'acts' }, h('button', { class: 'btn sm', onclick: reload }, icon('refresh'), '再试一次')))];
+  if (!W.info) return [h('div', { class: 'wp-load' }, '正在看本机和网盘上的文件……')];
+  if (!W.info.configured) return [h('div', { class: 'wp-box' }, h('b', null, '这台电脑还没设置网盘。'), h('br'),
+    '第一次用：照「开通教程」开通阿里云 OSS、建好钥匙，再双击 ', h('code', null, LINK.abs + '\\通用工具\\网盘同步\\设置网盘.bat'), '。设置好了点「再看一次」。',
+    h('div', { class: 'acts' }, h('a', { class: 'btn sm ink', href: '../网盘同步/阿里云OSS开通教程.html', target: '_blank' }, '开通教程'), h('button', { class: 'btn sm', onclick: reload }, icon('refresh'), '再看一次')))];
+  return [notices(), summary(), pathBar(), actBar(), table()];
+}
+function notices() {
+  const out = [];
+  if (W.err) out.push(h('div', { class: 'wp-note' }, '刚才没刷新成：' + W.err));
+  if (W.busy) out.push(h('div', { class: 'wp-note' }, '推送或拉取正在跑：现在只能看，等它跑完再上传、下载、删除。', h('span', { class: 'wp-sp' }), h('button', { class: 'btn sm', onclick: reload }, '再看一次')));
+  if (W.info.fragments) out.push(h('div', { class: 'wp-note' }, '网盘上有 ' + W.info.fragments + ' 个没传完的碎片（推送中途停了留下的），占地方也算钱。', h('span', { class: 'wp-sp' }),
+    h('button', { class: 'btn sm', disabled: locked(), onclick: () => run('clean-fragments', {}).then(reload) }, '清理')));
+  return out.length ? h('div', null, out) : null;
+}
+function summary() {
+  const ln = W.rows.filter(f => f[1] >= 0), cn = W.rows.filter(f => f[3] >= 0), lb = sumOf(ln, f => f[1]), cb = sumOf(cn, f => f[3]);
+  const n = {};
+  for (const f of W.rows) n[f[5]] = (n[f[5]] || 0) + 1;
+  const diffs = ORDER.filter(s => s !== 'same' && n[s]);
+  const box = h('input', { type: 'checkbox', checked: W.diff, onchange: e => { W.diff = e.target.checked; paintMain(); } });
+  return h('div', { class: 'wp-sum' },
+    h('span', null, '本机 ', h('b', null, ln.length), ' 个 · ', size(lb)), h('span', { class: 'faint' }, '｜'),
+    h('span', null, '网盘 ', h('b', null, cn.length), ' 个 · ', size(cb), h('span', { class: 'faint' }, '　存着每月' + monthly(cb))),
+    h('span', { class: 'wp-pills' }, W.rows.length ? (diffs.length ? diffs.map(s => pill(s, ST[s][0] + ' ' + n[s])) : pill('same', '两边都一样')) : null),
+    h('span', { class: 'wp-sp' }),
+    W.loading ? h('span', { class: 'faint' }, '正在刷新…') : null,
+    h('label', { class: 'wp-chk', title: '两边一样的先不摆' }, box, '只看不一样的'),
+    h('button', { class: 'btn sm', disabled: W.loading, onclick: reload }, icon('refresh'), '刷新'));
+}
+function pathBar() {
+  const segs = W.dir ? W.dir.split('/') : [];
+  const out = [segs.length ? h('button', { onclick: () => goDir('') }, F.name) : h('span', { class: 'cur' }, F.name)];
+  segs.forEach((s, i) => {
+    out.push(h('span', { class: 'sep' }, '›'));
+    out.push(i === segs.length - 1 ? h('span', { class: 'cur' }, s) : h('button', { onclick: () => goDir(segs.slice(0, i + 1).join('/')) }, s));
+  });
+  if (segs.length) out.push(h('button', { class: 'faint', style: 'margin-left:10px;font:12.5px var(--sans)', onclick: () => goDir(segs.slice(0, -1).join('/')) }, '← 上一层'));
+  return h('div', { class: 'wp-path' }, out);
+}
+function actBar() {
+  const names = [...W.sel].map(full), p = plan(names), lock = locked();
+  const why = W.busy ? '推送或拉取正在跑，等它跑完' : running() ? '上一件还没做完' : '';
+  return h('div', { class: 'wp-acts', id: 'wp-acts' },
+    W.sel.size ? h('span', null, '选了 ', h('b', null, W.sel.size), ' 样：能上传 ' + p.up.length + ' 个、能下载 ' + p.dn.length + ' 个、网盘上有 ' + p.cl.length + ' 个')
+      : h('span', { class: 'faint' }, W.rows.length ? '勾上要动的文件或文件夹' : ''),
+    h('span', { class: 'wp-sp' }),
+    h('button', { class: 'btn sm', disabled: lock || !p.up.length, title: why || '把本机这份传到网盘（不要钱）', onclick: doUp }, icon('up'), '上传'),
+    h('button', { class: 'btn sm', disabled: lock || !p.dn.length, title: why || '把网盘上那份拿到本机（按流量收钱，下载前会告诉你多少）', onclick: doDown }, icon('down'), '下载'),
+    h('button', { class: 'btn sm', disabled: lock || !p.cl.length, title: why || '只删网盘上的，本机不动', onclick: doDel }, icon('x'), '删除'));
+}
+function table() {
+  let list = kids();
+  if (W.diff) list = list.filter(k => k.dir ? Object.keys(k.n).some(s => s !== 'same') : k.f[5] !== 'same');
+  const all = list.length > 0 && list.every(k => W.sel.has(k.name));
+  const head = h('div', { class: 'wp-row head' },
+    h('input', { type: 'checkbox', checked: all, disabled: !list.length, title: '这一层全选', onchange: e => { for (const k of list) e.target.checked ? W.sel.add(k.name) : W.sel.delete(k.name); paintMain(); } }),
+    h('span', null, '名字'), h('span', null, '本机'), h('span', null, '网盘'), h('span', null, '两边'));
+  if (!W.rows.length) return h('div', { class: 'wp-table' }, head, h('div', { class: 'wp-empty' }, '本机和网盘上都还没有这个项目的文件。'));
+  if (!list.length) return h('div', { class: 'wp-table' }, head, h('div', { class: 'wp-empty' }, W.diff ? '这一层两边都一样。' : '这里没有文件。'));
+  return h('div', { class: 'wp-table' }, head, list.map(rowOf));
+}
+function rowOf(k) {
+  const on = W.sel.has(k.name);
+  const chk = h('input', { type: 'checkbox', checked: on, onchange: e => { e.target.checked ? W.sel.add(k.name) : W.sel.delete(k.name); e.target.closest('.wp-row').classList.toggle('on', e.target.checked); paintActs(); } });
+  if (k.dir) {
+    const diffs = ORDER.filter(s => s !== 'same' && k.n[s]);
+    return h('div', { class: 'wp-row' + (on ? ' on' : '') }, chk,
+      h('div', { class: 'wp-name' }, icon('folder', 'dir'), h('button', { title: '打开这个文件夹', onclick: () => goDir(full(k.name)) }, k.name)),
+      h('div', { class: 'wp-side' }, k.ln ? k.ln + ' 个 · ' + size(k.lb) : h('span', { class: 'wp-none' }, '—')),
+      h('div', { class: 'wp-side' }, k.cn ? k.cn + ' 个 · ' + size(k.cb) : h('span', { class: 'wp-none' }, '—')),
+      h('div', { class: 'wp-st' }, diffs.length ? diffs.map(s => pill(s, k.n[s] + ' 个' + ST[s][0])) : pill('same')));
+  }
+  const [, ls, lm, cs, ct, s] = k.f;
+  return h('div', { class: 'wp-row' + (on ? ' on' : '') }, chk,
+    h('div', { class: 'wp-name' }, icon('file'), h('span', { title: full(k.name) }, k.name)),
+    h('div', { class: 'wp-side', title: ls >= 0 ? '本机改的时间 ' + when(lm) : '' }, ls >= 0 ? [size(ls), h('small', null, when(lm))] : h('span', { class: 'wp-none' }, '—')),
+    h('div', { class: 'wp-side', title: cs >= 0 ? '传到网盘的时间 ' + when(ct) : '' }, cs >= 0 ? [size(cs), h('small', null, when(ct))] : h('span', { class: 'wp-none' }, '—')),
+    h('div', { class: 'wp-st' }, pill(s)));
+}
+
+/* ---------- 上传、下载、删除 ---------- */
+const dlgActs = (close, ok, cls) => [h('button', { class: 'btn ghost', 'data-focus': cls === 'zhu' ? '' : null, onclick: () => close(false) }, '取消'),
+  h('button', { class: 'btn ' + (cls || 'ink'), 'data-focus': cls === 'zhu' ? null : '', onclick: () => close(true) }, ok)];
+const wdlg = (title, body, ok, cls) => dialog(close => { const el = dlgShell(title, null, body, dlgActs(close, ok, cls)); el.classList.add('wp-dlg'); return el; });
+async function doUp() {
+  const names = [...W.sel].map(full), { up } = plan(names);
+  if (!up.length) return toast('选的这些两边已经一样了，不用传。');
+  const over = up.filter(f => f[3] >= 0), risky = up.filter(f => f[5] === 'cnew' || f[5] === 'both');
+  const ok = await wdlg('上传到网盘', [
+    h('p', null, '把本机的 ' + up.length + ' 个文件传到网盘，共 ' + size(sumOf(up, f => f[1])) + '。上传不要钱。'),
+    over.length ? h('p', null, '其中 ' + over.length + ' 个网盘上已经有、和本机不一样：网盘上那份先放进「旧版」，再换成本机这份。') : null,
+    risky.length ? h('p', { class: 'wp-warn' }, '注意：其中 ' + risky.length + ' 个网盘上的比本机的新，或者两边都改过（多半是另一台电脑传的）。上传就换成本机这份。') : null,
+    risky.length ? peek(risky) : null], '上传');
+  if (ok) run('up', { p: F.name, names });
+}
+async function doDown() {
+  const names = [...W.sel].map(full), { dn } = plan(names);
+  if (!dn.length) return toast('选的这些两边已经一样了，不用拿。');
+  const over = dn.filter(f => f[1] >= 0), risky = dn.filter(f => f[5] === 'lnew' || f[5] === 'both'), bytes = sumOf(dn, f => f[3]);
+  const overH = over.filter(f => f[0].startsWith('历史记录/')).length;
+  const ok = await wdlg('下载到本机', [
+    h('p', null, '把网盘上的 ' + dn.length + ' 个文件拿到本机，共 ' + size(bytes) + '，流量费' + fee(bytes) + '。'),
+    over.length ? h('p', null, '其中 ' + over.length + ' 个本机已经有、和网盘上不一样：本机那份先挪进这个项目的「历史记录」（同样的位置，名字后面加时间），再换成网盘上这份。'
+      + (overH ? '本来就在「历史记录」里的 ' + overH + ' 个，就在原处改名留着。' : '')) : null,
+    risky.length ? h('p', { class: 'wp-warn' }, '注意：其中 ' + risky.length + ' 个本机的比网盘上新，或者两边都改过。下载就换成网盘上那份，本机这份在「历史记录」里。') : null,
+    risky.length ? peek(risky) : null], '下载');
+  if (ok) run('down', { p: F.name, names });
+}
+async function doDel() {
+  const names = [...W.sel].map(full), { cl } = plan(names);
+  if (!cl.length) return toast('网盘上没有选的这些。');
+  const both = cl.filter(f => f[1] >= 0);
+  const perm = h('input', { type: 'checkbox' });
+  const okBtn = h('button', { class: 'btn zhu' }, '删除');
+  perm.addEventListener('change', () => { okBtn.textContent = perm.checked ? '彻底删掉' : '删除'; });
+  const ok = await dialog(close => {
+    okBtn.onclick = () => close(true);
+    const el = dlgShell('删除网盘上的', null, [
+      h('p', null, '删掉网盘上的 ' + cl.length + ' 个文件，共 ' + size(sumOf(cl, f => f[3])) + '。本机的不动。'),
+      h('p', null, '删下来的先放进网盘「旧版」，在这一页下面能拿回来（存着也算钱，不要了再去「旧版」里彻底删）。'),
+      h('label', { class: 'wp-chk' }, perm, '彻底删掉，不放进「旧版」（删了找不回来）'),
+      both.length ? h('p', { class: 'wp-warn', style: 'margin-top:10px' }, '其中 ' + both.length + ' 个本机也有：下次「推送」还会传上去。只想网盘上不要，本机这份也得删掉或挪出项目。') : null],
+      [h('button', { class: 'btn ghost', 'data-focus': '', onclick: () => close(false) }, '取消'), okBtn]);
+    el.classList.add('wp-dlg');
+    return el;
+  });
+  if (ok) run('del', { p: F.name, names, permanent: perm.checked });
+}
+
+/* ---------- 在做的、做完的 ---------- */
+const AGAIN = { up: 'up', down: 'down', del: 'del', oldget: 'old-get', olddel: 'old-del' };
+function jobEls() {
+  const list = W.jobs.filter(j => !W.hide.has(j.id)).slice().reverse();
+  return list.map(j => {
+    const pct = j.totalBytes ? j.bytes / j.totalBytes : j.total ? j.done / j.total : 0;
+    const who = j.p !== F.name ? '「' + j.p + '」' : '';
+    const live = j.state === 'running';
+    const line = live ? [j.done + ' / ' + j.total + ' 个', j.totalBytes ? ' · ' + size(Math.min(j.bytes, j.totalBytes)) + ' / ' + size(j.totalBytes) : '', j.speed ? ' · ' + size(j.speed) + '/秒' : '', j.eta != null && j.speed ? ' · 还要 ' + eta(j.eta) : ''].join('')
+      : j.state === 'done' ? '好了' + (j.total > 1 ? '：' + j.done + ' 个' : '') : (j.state === 'stopped' ? '停了' : '没全做成') + '：做好 ' + j.done + ' / ' + j.total + ' 个';
+    const req = j.req ? Object.fromEntries(Object.entries(j.req).filter(([k]) => k !== 'kind')) : null;
+    return h('div', { class: 'wp-job' + (j.state === 'failed' ? ' failed' : '') },
+      h('div', { class: 'wp-jh' }, h('b', null, who + j.title), h('span', { class: j.state === 'done' ? 'ok' : '' }, line), h('span', { class: 'wp-sp' }),
+        live ? h('button', { class: 'btn sm', onclick: () => call('POST', 'stop', { id: j.id }).then(pollJobs, e => toast(e.message, 'err')) }, '停下') : null,
+        !live && j.state !== 'done' && req && AGAIN[j.kind] ? h('button', { class: 'btn sm', disabled: locked(), title: '只做还没做好的', onclick: () => run(AGAIN[j.kind], req) }, '再来一次') : null,
+        !live && j.whole && j.state === 'done' ? h('a', { class: 'btn sm ink', href: pageUrl('总览', { p: j.p }) }, '打开这个项目') : null,
+        !live ? h('button', { class: 'btn ghost sm', onclick: () => { W.hide.add(j.id); paintJobs(); } }, '清掉') : null),
+      live ? h('div', { class: 'wp-bar' }, h('i', { style: 'width:' + Math.round(Math.min(1, pct) * 100) + '%' })) : null,
+      !live && j.notes && j.notes.length ? h('div', { class: 'faint', style: 'margin-top:4px;font-size:12.5px' }, j.notes.join('；') + '。') : null,
+      !live && j.errors && j.errors.length ? h('ul', null, j.errors.slice(0, 4).map(e => h('li', null, e)), j.nErrors > 4 ? h('li', null, '……一共 ' + j.nErrors + ' 处出错') : null) : null);
+  });
+}
+
+/* ---------- 旧版 ---------- */
+const whyOf = b => (WHY.find(([re]) => re.test(b)) || [null, b.replace(/^\d{8}-\d{6}_?/, '') || '换下来的'])[1];
+const batchTime = b => { const m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(b); return m ? (+m[1] === new Date().getFullYear() ? '' : m[1] + '-') + m[2] + '-' + m[3] + ' ' + m[4] + ':' + m[5] : b; };
+function oldEls() {
+  if (LINK.v < 7 || !W.info || !W.info.configured) return [];
+  const rows = W.old || [], bytes = sumOf(rows, x => x[2]);
+  const sub = W.oldErr ? '没读出来：' + W.oldErr : !W.old ? '正在看……' : rows.length ? '网盘上这个项目换下来、删掉的 ' + rows.length + ' 个 · ' + size(bytes) + '（存着每月' + monthly(bytes) + '）' : '网盘上这个项目还没有换下来、删掉的';
+  const head = secHead('', '旧　版', sub, rows.length ? h('button', { class: 'btn sm', onclick: () => { W.oldOpen = !W.oldOpen; paintOld(); } }, W.oldOpen ? '收起' : '看看') : null);
+  if (!W.oldOpen || !rows.length) return [head];
+  const sorted = rows.slice().sort((a, b) => b[0].localeCompare(a[0]) || a[1].localeCompare(b[1], 'zh')), shown = sorted.slice(0, OLD_MAX);
+  const key = x => x[0] + '/' + x[1];
+  const picked = rows.filter(x => W.oldSel.has(key(x))), lock = locked();
+  const all = shown.every(x => W.oldSel.has(key(x)));
+  return [head,
+    h('div', { class: 'wp-acts', style: 'top:60px' },
+      picked.length ? h('span', null, '选了 ', h('b', null, picked.length), ' 个 · ' + size(sumOf(picked, x => x[2]))) : h('span', { class: 'faint' }, '勾上要拿回来、或者不要了的'),
+      h('span', { class: 'wp-sp' }),
+      h('button', { class: 'btn sm', disabled: lock || !picked.length, title: '拿回本机原来的位置', onclick: () => oldGet(picked) }, icon('down'), '拿回本机'),
+      h('button', { class: 'btn sm', disabled: lock || !picked.length, title: '从网盘上彻底删掉，删了找不回来', onclick: () => oldDel(picked) }, icon('x'), '彻底删掉')),
+    h('div', { class: 'wp-table' },
+      h('div', { class: 'wp-row head' },
+        h('input', { type: 'checkbox', checked: all, title: '全选', onchange: e => { for (const x of shown) e.target.checked ? W.oldSel.add(key(x)) : W.oldSel.delete(key(x)); paintOld(); } }),
+        h('span', null, '文件'), h('span', null, '什么时候'), h('span', null, '怎么来的'), h('span', null, '大小')),
+      shown.map(x => {
+        const on = W.oldSel.has(key(x));
+        return h('div', { class: 'wp-row' + (on ? ' on' : '') },
+          h('input', { type: 'checkbox', checked: on, onchange: e => { e.target.checked ? W.oldSel.add(key(x)) : W.oldSel.delete(key(x)); paintOld(); } }),
+          h('div', { class: 'wp-name' }, icon('file'), h('span', { title: x[1] }, x[1])),
+          h('div', { class: 'wp-side' }, batchTime(x[0])), h('div', { class: 'wp-side' }, whyOf(x[0])), h('div', { class: 'wp-side' }, size(x[2])));
+      }),
+      sorted.length > OLD_MAX ? h('div', { class: 'wp-empty' }, '只摆了最新的 ' + OLD_MAX + ' 个，一共 ' + sorted.length + ' 个。') : null)];
+}
+async function oldGet(picked) {
+  const seen = new Set();
+  for (const x of picked) { if (seen.has(x[1])) return toast('「' + x[1].split('/').pop() + '」选了不止一个旧版，一次只能拿回一个。', 'err'); seen.add(x[1]); }
+  const here = new Set(W.rows.filter(f => f[1] >= 0).map(f => f[0])), had = picked.filter(x => here.has(x[1])).length, bytes = sumOf(picked, x => x[2]);
+  const ok = await wdlg('从旧版拿回本机', [
+    h('p', null, '把这 ' + picked.length + ' 个旧版拿回本机原来的位置，共 ' + size(bytes) + '，流量费' + fee(bytes) + '。'),
+    had ? h('p', null, '其中 ' + had + ' 个本机现在也有：本机那份要是不一样，先挪进这个项目的「历史记录」。') : null,
+    h('p', null, '拿回来以后本机就是旧的那份；要网盘上也换回去，再点「上传」。'), peek(picked.map(x => [x[1]]))], '拿回本机');
+  if (ok) run('old-get', { p: F.name, items: picked.map(x => [x[0], x[1]]) });
+}
+async function oldDel(picked) {
+  const ok = await wdlg('彻底删掉旧版', [h('p', { class: 'wp-warn' }, '从网盘上彻底删掉这 ' + picked.length + ' 个旧版，共 ' + size(sumOf(picked, x => x[2])) + '。删了找不回来。'), peek(picked.map(x => [x[1]]))], '彻底删掉', 'zhu');
+  if (ok) run('old-del', { p: F.name, items: picked.map(x => [x[0], x[1]]) });
+}
+
+/* ---------- 网盘上有、这台电脑没有的项目 ---------- */
+function otherEls() {
+  const o = (W.info && W.info.configured && W.info.others) || [];
+  if (!o.length) return [];
+  return [secHead('', '网盘上还有', '这台电脑没有的项目，可以整个拉下来'),
+    h('div', { class: 'wp-others' }, o.map(n => h('div', { class: 'wp-other' }, h('b', null, n), h('button', { class: 'btn sm', disabled: locked(), onclick: () => pullProject(n) }, icon('down'), '拉下来…'))))];
+}
+async function pullProject(n) {
+  let z;
+  try { z = await call('GET', 'size?p=' + encodeURIComponent(n)); } catch (e) { return toast(e.message, 'err'); }
+  if (!z.n) return toast('网盘上的「' + n + '」是空的。');
+  const hist = h('input', { type: 'checkbox' }), note = h('p');
+  const paintN = () => { const b = z.size - (hist.checked ? 0 : z.hist), c = z.n - (hist.checked ? 0 : z.histN); note.textContent = '这次拿 ' + c + ' 个，共 ' + size(b) + '，流量费' + fee(b) + '。'; };
+  hist.addEventListener('change', paintN);
+  paintN();
+  const ok = await wdlg('拉下「' + n + '」', [
+    h('p', null, '网盘上的「' + n + '」有 ' + z.n + ' 个文件，共 ' + size(z.size) + (z.histN ? '，其中历史记录 ' + z.histN + ' 个、' + size(z.hist) : '') + '。拉到 ' + LINK.abs + '\\项目\\' + n + '。'),
+    z.histN ? h('label', { class: 'wp-chk' }, hist, '历史记录也拉') : null, note], '拉下来');
+  if (ok) run('down', { p: n, names: [''], noHist: !hist.checked });
+}
+
+start({ name: '网盘', crumb: '网盘', wide: true, render, repaint: () => true, sides() {} }).then(() => {
+  if (!F.name || !document.getElementById('wp-main')) return;
+  const m = /^#d=(.+)$/.exec(location.hash);
+  if (m) { try { W.dir = decodeURIComponent(m[1]); } catch (e) { W.dir = ''; } }
+  if (LINK.v < 7) { paintMain(); return; }
+  reload().then(() => { if (W.info && W.info.configured) loadOld(); });
+  pollJobs();
+});
+}
+</script>
+</body>
+</html>
