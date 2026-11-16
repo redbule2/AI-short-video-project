@@ -307,5 +307,5 @@ module.exports = function makeCanvas({ HOME, JM, run, log }) {
     }
     return json(res, { 状态: job.状态, 进度: job.进度, 错误: job.错误 || '', 时间: job.时间, ...(job.结果 || {}) });
   }
-  return { handle, pixelHash };   // pixelHash 给测试用
+  return { handle };
 };

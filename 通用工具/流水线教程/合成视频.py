@@ -202,8 +202,12 @@ class Lesson:
 
     def box(self, img, name):
         b = self.boxes[img]['框'].get(name)
-        mix = self.plan.get('拼框', {}).get(img, {}).get(name)   # {"横": 甲, "竖": 乙}：左右照甲、上下照乙（如一整列）
-        if not b and mix:
+        mix = self.plan.get('拼框', {}).get(img, {}).get(name)   # {"横": 甲, "竖": 乙}：左右照甲、上下照乙（如一整列）；{"并": [甲, 乙…]}：包住这几样
+        if not b and mix and '并' in mix:
+            rs = [self.box(img, n) for n in mix['并']]
+            x0, y0 = min(r[0] for r in rs), min(r[1] for r in rs)
+            b = [x0, y0, max(r[0] + r[2] for r in rs) - x0, max(r[1] + r[3] for r in rs) - y0]
+        elif not b and mix:
             a, c = self.box(img, mix['横']), self.box(img, mix['竖'])
             b = [a[0], c[1], a[2], c[3]]
         if not b:
@@ -576,8 +580,9 @@ class Lesson:
         a = ease((t - s['start']) / 0.5)
         home = self.img('首页')
         dpr = self.boxes['首页']['倍数']
-        tw, th = 900, int(900 * 949 / 1280)
-        thumb = home.resize((tw, th), Image.BICUBIC, box=(0, 0, 1280 * dpr, 949 * dpr), reducing_gap=2.0)
+        hh = min(self.boxes['首页']['高'], 960)
+        tw, th = 900, int(900 * hh / 1280)
+        thumb = home.resize((tw, th), Image.BICUBIC, box=(0, 0, 1280 * dpr, hh * dpr), reducing_gap=2.0)
         tx, ty = 110, (H - th) // 2 - 10
         sh = Image.new('L', (W, H), 0)
         ImageDraw.Draw(sh).rounded_rectangle([tx, ty + 10, tx + tw, ty + th + 10], 16, fill=90)

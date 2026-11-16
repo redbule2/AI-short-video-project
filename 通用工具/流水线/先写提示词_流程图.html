@@ -146,7 +146,7 @@ textarea.has { border-style: solid; border-color: #b9822f; background: var(--hua
 <div class="bar"><span id="st">在每一块下面的虚线框里写批注，自动存。</span><button id="copy">复制批注</button></div>
 
 <script>
-/* ===== 内容（改内容只改这一块） ===== */
+/* ===== 内容（改内容只改这一块；怎么摆、怎么存批注在 公用/说明页.js） ===== */
 const ROUND = 1;
 const SUB = '和正着走只差前半段：你先加人物、写提示词里你写的两块，AI 照提示词倒推出剧本、场景、道具，剧本定稿以后再铺 AI 那几块。审片、改、重出都不变。（第 1 轮批注已照改，甲、乙都选 A）';
 const FOOT = '2026-11-14 Claude 画的。第 1 轮批注已经照改：先加人物那一步只摆人物、少点几下；分镜、自由模式都支持；甲、乙都照 A 办。流水线照这张图改。';
@@ -205,73 +205,10 @@ const SECTIONS = [
       '项目 / 工序图.html 加一句：一场也能先写提示词，照这张图走。' ] },
   ] },
 ];
-
-/* ===== 下面是页面本身 ===== */
-const FILE = '/api/fs/' + ['通用工具', '流水线', '先写提示词_流程图_批注.json'].map(encodeURIComponent).join('/');
-const LS = 'antou:xxtsc-flow:r' + ROUND;
-const HDR = { 'X-Antou': '1' };
-let S = { 轮: ROUND, 时间: '', 批注: {}, 选择: {}, 其他: '' };
-const $ = s => document.querySelector(s);
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const now = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()); };
-const cards = () => SECTIONS.flatMap(s => s.cards);
-
-function paint() {
-  $('#sub').textContent = SUB;
-  $('#foot').textContent = FOOT;
-  $('#sections').innerHTML = SECTIONS.map(s => '<h2>' + esc(s.h) + '</h2>' + s.cards.map(c => '<div class="card"><h3><span class="no">' + esc(c.no) + '</span>' + esc(c.t) + '</h3>'
-    + c.p.map(x => '<p>' + esc(x) + '</p>').join('')
-    + (c.opts ? '<div class="opts">' + c.opts.map(o => '<label><input type="radio" name="' + c.id + '" value="' + esc(o.v) + '">' + esc(o.v + '　' + o.t) + (o.rec ? '<span class="rec">（推荐）</span>' : '') + '</label>').join('') + '</div>' : '')
-    + '<textarea data-k="' + c.id + '" placeholder="批注（可以不写）"></textarea></div>').join('')).join('');
-  document.querySelectorAll('textarea').forEach(t => {
-    const k = t.dataset.k; t.value = (k === '其他' ? S.其他 : S.批注[k]) || ''; mark(t);
-    t.addEventListener('input', () => { if (k === '其他') S.其他 = t.value; else S.批注[k] = t.value; mark(t); changed(); });
-  });
-  document.querySelectorAll('.opts input').forEach(r => {
-    if (S.选择[r.name] === r.value) r.checked = true;
-    r.addEventListener('change', () => { S.选择[r.name] = r.value; changed(); });
-  });
-}
-const mark = t => t.classList.toggle('has', !!t.value.trim());
-
-let timer = 0;
-function changed() {
-  S.时间 = now();
-  try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { /* 存不了就算了 */ }
-  clearTimeout(timer); timer = setTimeout(save, 700);
-  $('#st').textContent = '正在存…';
-}
-async function save() {
-  try {
-    const r = await fetch(FILE, { method: 'PUT', headers: HDR, body: JSON.stringify(S, null, 2) + '\n' });
-    if (!r.ok) throw new Error(r.status);
-    $('#st').textContent = '已存好（' + S.时间.slice(11, 16) + '）。批完回到对话说一声「批完了」';
-  } catch (e) { $('#st').textContent = '没连上本机服务，只存在这个浏览器里。批完点「复制批注」贴给我'; }
-}
-async function load() {
-  try {
-    const r = await fetch(FILE, { headers: HDR });
-    if (r.ok) { const t = JSON.parse(await r.text()); if (t && t.轮 === ROUND) S = Object.assign(S, t); }
-  } catch (e) { /* 没有就是还没批 */ }
-  try { const t = JSON.parse(localStorage.getItem(LS) || 'null'); if (t && t.轮 === ROUND && (t.时间 || '') > (S.时间 || '')) S = Object.assign(S, t); } catch (e) { /* 不管 */ }
-  paint();
-}
-function text() {
-  const out = ['先写提示词流程图 · 第 ' + ROUND + ' 轮批注（' + (S.时间 || now()) + '）'];
-  for (const c of cards()) {
-    const n = (S.批注[c.id] || '').trim(), v = S.选择[c.id];
-    if (!n && !v) continue;
-    const o = v && c.opts ? c.opts.find(x => x.v === v) : null;
-    out.push(c.no + ' ' + c.t + (v ? '　选了 ' + v + (o ? '：' + o.t : '') : '') + (n ? '\n　' + n.replace(/\n/g, '\n　') : ''));
-  }
-  if ((S.其他 || '').trim()) out.push('其他意见：' + S.其他.trim());
-  return out.join('\n');
-}
-$('#copy').addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText(text()); $('#st').textContent = '复制好了，贴到对话里就行'; }
-  catch (e) { prompt('复制下面这段：', text()); }
-});
-load();
+window.DOC = { 名: '先写提示词_流程图', 题: '先写提示词流程图', 存: 'antou:xxtsc-flow', 轮: ROUND, 副题: SUB, 脚注: FOOT, 段: SECTIONS };
 </script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="../公用/说明页.js"></script>
 </body>
 </html>

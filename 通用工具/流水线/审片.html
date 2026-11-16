@@ -14,6 +14,7 @@
 <script src="../公用/核心.js"></script>
 <script src="../公用/底座.js"></script>
 <script src="../公用/界面.js"></script>
+<script src="../公用/审片.js"></script>
 <script src="../公用/点图.js"></script>
 <script src="../公用/找旧版.js"></script>
 <script src="流水线.js"></script>
@@ -76,12 +77,10 @@ function verOf(s, vid, e) {
   if (rec && e.vers.includes(rec.提示词)) return rec.提示词;
   return e.vers.length === 1 ? e.vers[0] : '';
 }
-/* 修改方案的头几行：照哪一版出的、几条、总的看法、改成了哪一版（审片台.html、本机服务 jobs.js 是同一个格式） */
+/* 修改方案：照哪一版出的、几条、总的看法、改成了哪一版。读法和审片台、本机服务同一份（公用/审片.js 的 parsePlan），条数也和审片台一样数 */
 function planHead(md) {
-  const t = String(md).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n'), head = t.split(/^##[ \t]+/m)[0];
-  const get = k => ((new RegExp('^' + k + '[：:][ \\t]*(.*)$', 'm')).exec(head) || [])[1] || '';
-  const done = [...t.matchAll(/^改成了[：:][ \t]*(.+)$/gm)].map(m => m[1].trim());
-  return { src: get('提示词').trim().split('/').pop(), sum: get('总的看法').trim(), n: (t.match(/^##[ \t]+\d/gm) || []).length, at: get('出方案').trim(), done, last: done.length ? done[done.length - 1].replace(/（.*$/, '').split('/').pop() : '' };
+  const P = Review.parsePlan(md), last = P.done.length ? P.done[P.done.length - 1] : '';
+  return { src: P.提示词.split('/').pop(), sum: P.总, n: P.items.length, at: P.出方案, done: P.done, last: last.replace(/（.*$/, '').split('/').pop() };
 }
 /* 对照看片、写批注：审片台.html 整页盖上来（样片旁边对照提示词、白模、关键帧、资产图，批注照旧存在样片旁边）。
    它自己有「← 回审片」：先问它一声（没存的批注先存上），再收起、重读 */

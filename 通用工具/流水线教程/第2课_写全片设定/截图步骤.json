@@ -1,0 +1,151 @@
+{
+ "网址": "http://localhost:8797/通用工具/流水线/",
+ "视口": [
+  1280,
+  720
+ ],
+ "倍数": 3,
+ "假接口": {
+  "/api/jimeng": {
+   "status": {
+    "ok": true,
+    "data": {
+     "loggedIn": true
+    },
+    "raw": ""
+   },
+   "account": {
+    "ok": true,
+    "data": {
+     "displayName": "我的即梦号"
+    },
+    "raw": ""
+   }
+  }
+ },
+ "步骤": [
+  {
+   "开": "总览.html?p=童晓晓",
+   "等": 2500
+  },
+  {
+   "截": "首页",
+   "整页": true,
+   "框": {
+    "顶栏": "header.wf-top",
+    "项目名": ".fl-trow .fl-title",
+    "设定标题": "#fl-body > section:nth-of-type(1)",
+    "设定": ".wf-tiles",
+    "梗概格": ".wf-tile:nth-child(1)",
+    "人物格": ".wf-tile:nth-child(2)",
+    "场景格": ".wf-tile:nth-child(3)",
+    "道具格": ".wf-tile:nth-child(4)",
+    "风格格": ".wf-tile:nth-child(5)",
+    "分场表": ".wf-table",
+    "列资产": ".wf-row.head > span:nth-child(4)"
+   }
+  },
+  {
+   "跑": "document.querySelector('.wf-tile:nth-child(1)').click();",
+   "等": 2200
+  },
+  {
+   "截": "梗概页",
+   "框": {
+    "顶栏": "header.wf-top",
+    "分页": "#wf-tabs",
+    "梗概分页": ".wf-tab.on",
+    "梗概框": "#fl-syn",
+    "自动保存": "text:边写边自动保存",
+    "下一步": "text:下一步：人物 →",
+    "人物分页": "js:[...document.querySelectorAll('button.wf-tab')].find(b => b.textContent.startsWith('人物'))"
+   }
+  },
+  {
+   "跑": "[...document.querySelectorAll('button.wf-tab')].find(b => b.textContent.startsWith('人物')).click();",
+   "等": 1200
+  },
+  {
+   "截": "人物页",
+   "框": {
+    "分页": "#wf-tabs",
+    "人物分页": ".wf-tab.on",
+    "人物列表": "js:document.querySelector('.fr').parentElement",
+    "加人物": "text:加人物",
+    "下一步": "text:下一步：场景 →"
+   }
+  },
+  {
+   "跑": "[...document.querySelectorAll('button')].find(b => b.textContent.trim() === '加人物').click();",
+   "等": 1200
+  },
+  {
+   "截": "加人物空",
+   "框": {
+    "弹窗": ".dlg",
+    "叫法": ".dlg input.fl-in",
+    "描写": ".dlg textarea"
+   }
+  },
+  {
+   "跑": "const d = document.querySelector('.dlg'); const i = d.querySelector('input.fl-in'); i.value = '城管'; i.dispatchEvent(new Event('input', {bubbles: true})); const t = d.querySelector('textarea'); t.value = '四十来岁，管这条街的，嘴上凶，心不坏'; t.dispatchEvent(new Event('input', {bubbles: true})); document.activeElement.blur();",
+   "等": 500
+  },
+  {
+   "截": "加人物",
+   "框": {
+    "弹窗": ".dlg",
+    "叫法": ".dlg input.fl-in",
+    "描写": ".dlg textarea",
+    "引用资产": ".dlg .fl-apick",
+    "还没有图": ".dlg .fl-at.blank",
+    "加上": "text:加上",
+    "再加一个": "text:加上，再加一个"
+   }
+  },
+  {
+   "跑": "[...document.querySelectorAll('#layer button')].find(b => b.textContent.trim() === '加上').click();",
+   "等": 1500
+  },
+  {
+   "截": "人物页加完",
+   "框": {
+    "人物列表": "js:document.querySelector('.fr').parentElement",
+    "新行": "js:[...document.querySelectorAll('.fr')].find(e => /城管/.test(e.textContent))",
+    "加人物": "text:加人物",
+    "场景分页": "js:[...document.querySelectorAll('button.wf-tab')].find(b => b.textContent.startsWith('场景'))",
+    "下一步": "text:下一步：场景 →"
+   }
+  },
+  {
+   "跑": "[...document.querySelectorAll('button.wf-tab')].find(b => b.textContent.startsWith('场景')).click();",
+   "等": 1200
+  },
+  {
+   "截": "场景页",
+   "框": {
+    "分页": "#wf-tabs",
+    "场景框": "#fl-scene-ta",
+    "场景图": ".fs-as",
+    "引用场景图": "text:引用场景图",
+    "下一步": "text:下一步：道具 →"
+   }
+  },
+  {
+   "跑": "[...document.querySelectorAll('button.wf-tab')].find(b => b.textContent.startsWith('道具')).click();",
+   "等": 1200
+  },
+  {
+   "截": "道具页",
+   "框": {
+    "顶栏": "header.wf-top",
+    "分页": "#wf-tabs",
+    "道具列表": "js:document.querySelector('.fr').parentElement",
+    "加道具": "text:加道具",
+    "回首页": "text:写好了，回首页分场 →",
+    "已保存": "js:[...document.querySelectorAll('body *')].filter(e => e.offsetParent !== null && /^已保存/.test(e.textContent.trim())).sort((a, b) => a.getBoundingClientRect().width - b.getBoundingClientRect().width)[0]",
+    "底部说明": "js:[...document.querySelectorAll('body *')].filter(e => e.offsetParent !== null && /各场共用。边写边自动保存。$/.test(e.textContent.trim())).sort((a, b) => a.textContent.length - b.textContent.length)[0]"
+   }
+  }
+ ]
+}

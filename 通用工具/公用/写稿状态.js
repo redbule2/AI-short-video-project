@@ -10,11 +10,13 @@
  */
 (function (root, factory) {
   'use strict';
-  const api = factory();
-  if (typeof module === 'object' && module.exports) module.exports = api;
+  const node = typeof module === 'object' && module.exports;
+  const api = factory(node ? require('./核心.js') : root.Core);   // 网页里要先引 核心.js
+  if (node) module.exports = api;
   else root.PromptDraft = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Core) {
   'use strict';
+  if (!Core) throw new Error('写稿状态.js 要先引 核心.js');
 
   const BOM = String.fromCharCode(0xFEFF);
   const ORDER = ['pre', 'event', 'refs', 'basic', 'seg', 'shots', 'keep'];
@@ -33,12 +35,7 @@
   const rawOf = tokens => tokens.map(t => t.text + t.eol).join('');
   const has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 
-  function labelOf(text) {
-    const m = /^([^：:\n]{1,10})[：:]/.exec(text);
-    if (!m) return null;
-    const label = m[1].trim();
-    return /^[㐀-鿿豈-﫿A-Za-z\/｜·]{1,10}$/.test(label) ? { label, value: text.slice(m[0].length) } : null;
-  }
+  const labelOf = Core.splitLabel;   // 「标签：内容」照 核心.js 的认法（和编辑器、流水线一套）
 
   // 与编辑器的标签/正文两格保持一致。原来的空格仍在 _source 中，回写时复用。
   function normalizeLine(text, key) {
@@ -362,5 +359,5 @@
   const PE_SKELETON = ['【生成目标】', '', '【事件脚本】', ''];
   function skeleton(eol) { return PE_SKELETON.join(eol || '\r\n'); }
 
-  return Object.freeze({ parse, serialize, shotText, withShotText, skeleton, isPeRefHead, isLook, PE_HEADS, PE_REFS });
+  return Object.freeze({ parse, serialize, shotText, withShotText, skeleton, formatOf, isPeRefHead, isLook, PE_HEADS, PE_REFS });
 });

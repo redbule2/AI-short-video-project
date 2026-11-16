@@ -1,4 +1,4 @@
-/* 写稿页交互。只操作用户当前选择的稿；AI 回答始终作为侧栏建议。 */
+/* 写稿页交互。只操作用户当前选择的稿。 */
 'use strict';
 
 /* 新稿只替换分镜正文。旧版整页自由稿原样保留在自由分镜里，首次保存才迁移。 */
@@ -80,7 +80,7 @@ function renderFree() {
   $('#shot-editor').replaceChildren(h('div', { class: 'free-section' },
     wr, h('div', { class: 'free-footer' }, '分镜正文 · 输入 @ 引用素材', h('span', { id: 'freeCount' }, FREE.length + ' 字'))));
   grow($('#freeText'));
-  LASTF = $('#freeText'); LAST = null; LAST_SHOT = '';
+  LASTF = $('#freeText'); LAST = null;
 }
 function renderShotEditor() {
   renderMode();
@@ -89,7 +89,7 @@ function renderShotEditor() {
     $('#shot-editor').replaceChildren(h('div', { class: 'pshots' }, DOC.shots.length ? DOC.shots.flatMap((s, i) => [shotEl(s), i < DOC.shots.length - 1 ? h('button', { class: 'mini-b insert-shot', onclick: () => insertShot(i + 1) }, '＋ 在这里插入一镜') : null]) : h('p', { class: 'empty-shots' }, '还没有镜头，从空白开始写。')), h('button', { class: 'add-shot', onclick: () => addShot() }, '＋ 添加空白镜头'));
     $$('.wr-ta', $('#shot-editor')).forEach(grow); updateShotControls();
   }
-  paintSuggestions(); paintOutline();
+  paintOutline();
 }
 let switchingMode = false;
 async function switchMode(mode) {
@@ -98,19 +98,14 @@ async function switchMode(mode) {
   try {
     if (!await save()) return;
     DOC = collect(); if (MODE === '自由') FREE = freeText();
-    MODE = mode; LASTF = null; LAST = null; LAST_SHOT = '';
+    MODE = mode; LASTF = null; LAST = null;
     closeAt(); renderShotEditor(); setAsk(); paintMarks(); renderNotes(); touch(); await save();
   } finally { switchingMode = false; }
-}
-function currentWriter() {
-  if (MODE === '自由') return $('#freeText');
-  return $$('.p-shot').find(el => el.dataset.id === SELECTED_ID)?.querySelector('.wr-ta') || null;
 }
 function selectShot(id) {
   SELECTED_ID = id;
   $$('.p-shot').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
-  LAST_SHOT = DOC.shots.find(s => s.id === id)?.no || '';
-  paintSuggestions(); setAsk(); paintOutline();
+  setAsk(); paintOutline();
 }
 function updateShotControls() {
   const list = $$('.p-shot');
@@ -152,67 +147,6 @@ function copyShot(el) {
   const index = DOC.shots.findIndex(s => s.id === el.dataset.id), src = DOC.shots[index];
   if (!src) return;
   insertShot(index + 1, { title: src.title, lines: [...src.lines], purpose: src.purpose, keywords: structuredClone(src.keywords || {}) });
-}
-function insertSuggestion(text) {
-  const ta = currentWriter();
-  if (!ta) return toast('先添加一镜，或切到自由模式');
-  const start = ta._seen ? ta.selectionStart : ta.value.length, end = ta._seen ? ta.selectionEnd : ta.value.length;
-  typeInto(ta, start, end, String(text));
-}
-function paintSuggestions() {
-  const pane = $('#pane-suggest');
-  if (!pane || !DOC) return;
-  const shot = DOC.shots.find(s => s.id === SELECTED_ID);
-  const kw = h('div', { class: 'kw' });
-  paintKw(kw, MODE === '自由' ? '' : shot?.no || '');
-  const list = Array.isArray(SIDE.分镜建议) ? SIDE.分镜建议 : [];
-  const cards = list.map(item => {
-    if (!item || typeof item !== 'object') return null;
-    const title = String(item.标题 || '分镜建议'), text = String(item.正文 || ''), purpose = String(item.作用 || '');
-    return h('section', { class: 'suggest-card' }, h('h3', null, title), purpose ? h('p', null, '作用：' + purpose) : null, h('p', null, text),
-      h('div', { class: 'suggest-actions' }, btn('插入到当前正文', () => insertSuggestion(text)), MODE === '分镜' ? btn('＋ 采用为新镜头', () => insertShot(undefined, { title, purpose, lines: text.split(/\r?\n/), keywords: item.关键词 || {} })) : null));
-  }).filter(Boolean);
-  const basics = SIDE.基础建议 && typeof SIDE.基础建议 === 'object' ? Object.entries(SIDE.基础建议).map(([label, value]) => {
-    const text = Array.isArray(value) ? value.join('\n') : String(value || '');
-    return h('section', { class: 'suggest-card' }, h('h3', null, label + ' · AI 铺底建议'), h('p', null, text), btn('采用到「' + label + '」', () => applyBasicSuggestion(label, text)));
-  }) : [];
-  pane.replaceChildren(h('p', { class: 'suggest-intro' }, '根据剧本和你的草稿提供可选思路。点选才加入，加入后可以继续改。'),
-    h('div', { class: 'suggest-head' }, MODE === '自由' ? '正在写：自由稿' : shot ? '正在写：镜头 ' + shot.no : '先添加一个空白镜头',
-      btn('获取建议', () => sendLine('重新铺底 ' + OPENPATH, '正在准备侧栏建议，写好后显示在这里'))),
-    h('section', { class: 'suggest-card' }, h('h3', null, '关键词'), kw),
-    ...cards, ...basics,
-    !cards.length && !basics.length ? h('p', { class: 'suggest-empty' }, '还没有分镜建议。你可以直接写，也可以点「获取建议」，让 AI 提供分镜和关键词。') : null);
-}
-function applyBasicSuggestion(label, text) {
-  if (label === '素材' && Array.isArray(SIDE.建议素材)) {
-    for (const item of SIDE.建议素材) {
-      const match = /^@(图片|视频|音频)([0-9]+)$/.exec(item.ref || '');
-      if (!match || typeof item.path !== 'string') continue;
-      const current = NUM[match[1]][+match[2] - 1];
-      if (current && current !== item.path) return toast('建议里的素材编号与当前稿件不同，请重新获取建议');
-    }
-    for (const item of SIDE.建议素材) {
-      const match = /^@(图片|视频|音频)([0-9]+)$/.exec(item.ref || '');
-      if (!match || typeof item.path !== 'string') continue;
-      NUM[match[1]][+match[2] - 1] = item.path;
-      SIDE.挂图 = { ...SIDE.挂图, [item.ref]: item.path };
-    }
-  }
-  const KEY_OF = { 本段事件: 'event', 生成目标: 'event', 素材: 'refs', 基础设定: 'basic', 画面与声音: 'basic', 本段: 'seg', 主体与关系: 'seg', 保持一致: 'keep' };
-  const sec = SECS.find(s => s.name === label) || SECS.find(s => s.key === KEY_OF[label]);
-  if (!sec || sec.key === 'shots') return insertSuggestion(text);
-  const el = $('section[data-sec="' + sec.key + '"]');
-  openCommonSection(sec.key);
-  if (sec.key === 'event') {
-    const ta = $('.wr-ta', el); typeInto(ta, ta.value.length, ta.value.length, (ta.value ? '\n' : '') + text);
-  } else {
-    const list = $('.blist', el);
-    if (list.children.length === 1 && !lineOf(list.firstElementChild)) list.replaceChildren();
-    if (isPe() && sec.key === 'refs' && text.split(/\r?\n/).some(t => PromptDraft.isPeRefHead(t.replace(/\s+/g, '')))) list.replaceChildren();   // PE 稿的素材建议是整段（带段名）：整段换上
-    if (isPe() && sec.key === 'basic' && /^\s*影像风格\s*[：:]/m.test(text)) list.replaceChildren();   // PE 稿的基础设定建议是整份（风格三行加声音那行）：整份换上，老稿末尾「最终画面采用……」那行一起换掉
-    text.split(/\r?\n/).forEach(t => list.append(blockEl(toBlock(t, sec.key), sec.key)));
-    touch(); paintMarks();
-  }
 }
 function previewDraft() {
   showEditorDialog('当前草稿预览', activeText());

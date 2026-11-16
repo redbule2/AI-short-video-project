@@ -60,10 +60,10 @@ async function main() {
       if (st.等) await sleep(st.等);
       if (st.截) {
         const want = st.框 || {};
-        const found = await js('(' + findBoxes.toString() + ')(' + JSON.stringify(want) + ')');
         const H = st.整页 ? Math.ceil(await js('Math.max(document.documentElement.scrollHeight, document.body.scrollHeight)')) : VH;
         if (st.整页) await cdp('Emulation.setDeviceMetricsOverride', { width: VW, height: H, deviceScaleFactor: DPR, mobile: false });
         await sleep(st.整页 ? 400 : 50);
+        const found = await js('(' + findBoxes.toString() + ')(' + JSON.stringify(want) + ')');   // 整页的先撑高再量：悬在右下角的（定下来、提示条）这时才在图上的位置
         const shot = await cdp('Page.captureScreenshot', { format: 'png', fromSurface: true });
         if (st.整页) await cdp('Emulation.setDeviceMetricsOverride', { width: VW, height: VH, deviceScaleFactor: DPR, mobile: false });
         const file = '截图_' + st.截 + '.png';

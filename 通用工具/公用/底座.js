@@ -1,6 +1,7 @@
 /* ============================================================
    公用 · 底座（window.Base）
-   流水线各页都靠它：经本机服务读写总文件夹里的文件、把事情交给 AI、认项目、几样小工具。
+   流水线各页、看文件的那一页（项目管理.html）、写稿页都靠它：经本机服务读写总文件夹里的文件、把事情交给 AI、认项目、几样小工具。
+   读写文件只用这里的 LINK、FS，交给哪个 AI 只用这里的 CH，各页别另写一套。
    路径一律是从总文件夹算起的一串名字，比如 ['项目', '童晓晓', '定稿的剧本', '流水线.json']。
    这几页只在本机服务里用（在 Claude 里说「打开项目管理」，项目管理就是流水线）；直接双击文件打开时读不了项目。
    ============================================================ */
@@ -15,9 +16,9 @@ const mimeOf = n => MIME[(n.split('.').pop() || '').toLowerCase()] || '';
 const LINK = {
   on: false, v: 0, root: '', abs: '',
   url: parts => '/api/fs/' + parts.map(encodeURIComponent).join('/'),
-  async req(method, url, body) {
-    const r = await fetch(url, { method, body, cache: 'no-store', headers: HDR, keepalive: !!body && body.byteLength < 60000 });
-    if (!r.ok) throw new Error(r.status === 404 ? '没有这个文件' : (await r.text()) || '本机服务出错 ' + r.status);
+  async req(method, url, body, headers) {
+    const r = await fetch(url, { method, body, cache: 'no-store', headers: headers ? { ...HDR, ...headers } : HDR, keepalive: !!body && body.byteLength < 60000 });
+    if (!r.ok) throw new Error(r.status === 404 ? '没有这个文件' : r.status === 412 ? '同名文件已经存在，已保留原文件' : (await r.text()) || '本机服务出错 ' + r.status);
     return r;
   },
   /* 服务在不在：在就记下总文件夹叫什么、服务是第几版 */
@@ -40,6 +41,8 @@ const FS = {
   async read(parts) { const r = await LINK.req('GET', LINK.url(parts)); const buf = new Uint8Array(await r.arrayBuffer()); return { buf, mtime: +r.headers.get('X-Mtime'), size: buf.length }; },
   async stat(parts) { try { return await (await LINK.req('GET', LINK.url(parts) + '?stat')).json(); } catch (e) { return null; } },
   async write(parts, data) { return (await LINK.req('PUT', LINK.url(parts), data)).json(); },
+  /* 新建：那里已经有同名的就不写（两个页面同时新建，后写的不会盖掉先写的） */
+  async create(parts, data) { return (await LINK.req('PUT', LINK.url(parts), data, { 'If-None-Match': '*' })).json(); },
   async list(parts) {
     const ents = await (await LINK.req('GET', LINK.url(parts) + '?list&t')).json();   // &t：文件带修改时间（老版本的服务不认，那就没有）
     return ents.map(e => ({ name: e.name, kind: e.kind, mtime: e.mtime || 0, handle: { kind: e.kind, name: e.name, getFile: () => FS.file([...parts, e.name]) } }));
@@ -53,6 +56,32 @@ const FS = {
 
 /* ---------- 交给 AI：排进本机服务的队，对话里的 AI 挂着等；返回 AI 在不在等 ---------- */
 async function askAI(line) { return (await (await LINK.req('POST', '/api/ai', line)).json()).online; }
+
+/* ---------- 交给哪个 AI：流水线顶栏「AI 用」选的那个，各页都照它（记在这台电脑的浏览器里；本机服务第 5 版起有）----------
+   模型、推理深度跟着选的那个 AI 走，每个 AI 各记各的；Codex 这两样在这里定不了（照它自己的设置）。摆「AI 用」那一排用 界面.js 的 aiPicker */
+const CH_KEY = 'antou:flow:channel';
+const OPT_KEY = { 深度: 'antou:flow:depth:', 模型: 'antou:flow:model:' };
+const readLS = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
+let chOnce = null;
+const CH = {
+  SELF: '自己交给 AI',   // 「给我提示词」的渠道号：不调 AI，要交代的话弹出来（公用/交给AI.js）。11-14 头一版叫「自己交给 AI」，名字改了号不改
+  list: [],   // 这台电脑上调得起来的 AI（load 以后才有）
+  async load() { CH.list = (await (await LINK.req('GET', '/api/job?channels')).json()).channels.filter(c => c.ok); return CH.list; },
+  ready: () => chOnce || (chOnce = CH.load().catch(() => (CH.list = []))),   // 只问一次；没连上就当一个都没有
+  now: () => { const v = readLS(CH_KEY); return CH.list.some(c => c.id === v) ? v : (CH.list[0] || { id: 'claude' }).id; },
+  info: () => CH.list.find(c => c.id === CH.now()) || null,
+  name: () => CH.now() === CH.SELF ? '你自己的 AI' : (CH.info() || { 名: 'AI' }).名,   // 按钮上写「交给 X 改」：选了给我提示词就是你自己的 AI
+  hand: id => (CH.list.find(c => c.id === id) || {}).hand || '',   // self 给我提示词 / claude Claude 桌面版 / deepseek DeepSeek 窗口；空＝在后台调
+  opt: k => { const c = CH.info(), v = c ? readLS(OPT_KEY[k] + c.id) : ''; return c && (c[k] || []).some(d => d.id === v) ? v : ''; },   // k：'模型' 或 '深度'；没选过、这个 AI 不认就是空（照默认）
+  optName: k => { const c = CH.info(), v = CH.opt(k); return v ? c[k].find(d => d.id === v).名 : ''; },
+  set: id => store(CH_KEY, id),
+  setOpt: (id, k, v) => store(OPT_KEY[k] + id, v || null),
+  /* 开任务前：交给「AI 用」选的那个时，带上选的模型、推理深度（出片这类指定了 Codex 的不带） */
+  fill: b => { if (b.渠道 === CH.now()) for (const k of ['深度', '模型']) if (b[k] === undefined && CH.opt(k)) b[k] = CH.opt(k); return b; },
+  say: () => CH.now() === CH.SELF ? '以后不调 AI：点了先给你要交代的话，贴进你自己开的对话'
+    : '以后交给 ' + CH.name() + (CH.optName('模型') ? '（' + CH.optName('模型') + '）' : '') + (CH.optName('深度') ? '，推理' + CH.optName('深度') : '')
+      + ({ claude: '：在 Claude 桌面版开新对话，你按发送', deepseek: '：在 DeepSeek Harness 的窗口里做' }[CH.hand(CH.now())] || ''),
+};
 
 /* ---------- 项目 ---------- */
 const HOME = '项目';
@@ -126,5 +155,5 @@ function pageUrl(page, { p, s, ...more } = {}, hash) {
    它只认嵌着打开（?embed=1）；不嵌着打开会转回流水线首页（老页面 2026-11-13 下掉了） */
 const shellUrl = parts => '/?embed=1' + (parts && parts.length ? '#open=' + parts.map(encodeURIComponent).join('/') : '');
 
-window.Base = { C, LINK, FS, askAI, HOME, at, projects, scanScripts, mimeOf, two, stampNow, nowText, timeOf, debounce, isComposing, store, query, pageUrl, shellUrl };
+window.Base = { C, LINK, FS, askAI, CH, HOME, at, projects, scanScripts, mimeOf, two, stampNow, nowText, timeOf, debounce, isComposing, store, query, pageUrl, shellUrl };
 })();

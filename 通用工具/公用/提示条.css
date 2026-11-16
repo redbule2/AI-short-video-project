@@ -1,0 +1,13 @@
+/* 提示条：公用/界面.js 的 toast() 用。流水线各页、项目管理.html 经 样式.css 引进来，写稿页直接引。 */
+#toasts { position: fixed; left: 50%; bottom: 28px; z-index: 70; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+.toast {
+  max-width: min(70vw, 720px); display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px; border-radius: 999px; background: rgba(40, 35, 30, .93); color: #f6efe3;
+  font-size: 13px; letter-spacing: .04em; box-shadow: 0 12px 30px -12px rgba(30, 20, 10, .5);
+  animation: rise .25s ease both; transition: opacity .4s, transform .4s;
+}
+.toast .s { width: 6px; height: 6px; flex: none; border-radius: 50%; background: #cdb27a; }
+.toast.err { background: rgba(92, 33, 24, .95); }
+.toast.err .s { background: #f08a74; }
+.toast.out { opacity: 0; transform: translateY(6px); }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

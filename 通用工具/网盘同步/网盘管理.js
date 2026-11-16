@@ -12,45 +12,18 @@
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
-const cp = require('child_process');
-const crypto = require('crypto');
 const S = require('./网盘同步.js');
+const { COMMON, rcAsync, listFile, dropList, sum, under, sameL, sameContent } = S;   // 和推送、拉取共用的，只在 网盘同步.js 写一份
 
 const PROJ = '项目', OLD = '旧版', HIST = '历史记录';
 const PRICE_STORE = 0.12; // 元/GB/月：阿里云官网标价，标准存储（本地冗余）
-const COMMON = ['--transfers', '6', '--checkers', '16', '--retries', '3', '--low-level-retries', '10'];
 const BAD_SEG = /^\.+$|[<>:"\\/|?*\u0000-\u001f]|[. ]$/;   // Windows 文件名里不许有的
 const R = p => `${S.ALIAS}:${p}`;
-const sum = (a, f) => a.reduce((s, x) => s + f(x), 0);
-const under = (r, d) => d === '' || r === d || r.startsWith(d + '/');
 const inHist = r => r.startsWith(HIST + '/');
-// 记录里一项：[本机大小, 本机修改时间, 网盘大小, 网盘收到的时间]（和 网盘同步.js 一样）
-const sameL = (l, m) => !!m && l.size === m[0] && Math.abs(l.mtime - m[1]) <= 1;
+// 记录里一项：[本机大小, 本机修改时间, 网盘大小, 网盘收到的时间]（和 网盘同步.js 一样；这里网盘上的时间叫 stime）
 const sameC = (c, m) => !!m && c.size === m[2] && c.stime === m[3];
-const sameContent = (l, c) => l.size === c.size && Math.abs(l.mtime - c.mtime) < 1000;
 
 class Bad extends Error { constructor(msg, code = 400) { super(msg); this.code = code; } }
-
-function rcAsync(args) {
-  return new Promise(res => {
-    const p = cp.spawn(S.RCLONE, args, { env: S.rcEnv(), windowsHide: true });
-    const out = [], err = [];
-    p.stdout.on('data', d => out.push(d));
-    p.stderr.on('data', d => err.push(d));
-    p.on('error', e => res({ code: -1, out: '', err: String(e) }));
-    p.on('close', code => res({ code, out: Buffer.concat(out).toString('utf8'), err: Buffer.concat(err).toString('utf8') }));
-  });
-}
-const tmpLists = new Set();
-function listFile(paths) {
-  fs.mkdirSync(S.STATE_DIR, { recursive: true });
-  const f = path.join(S.STATE_DIR, `list-${process.pid}-${crypto.randomBytes(4).toString('hex')}.txt`);
-  fs.writeFileSync(f, paths.join('\n') + '\n');
-  tmpLists.add(f);
-  return f;
-}
-function dropList(f) { try { fs.rmSync(f, { force: true }); } catch {} tmpLists.delete(f); }
-process.on('exit', () => { for (const f of tmpLists) try { fs.rmSync(f, { force: true }); } catch {} });
 
 // 名字、路径：只能是项目里的相对路径，用 / 隔开
 const seg = s => typeof s === 'string' && s !== '' && !BAD_SEG.test(s);
@@ -257,30 +230,19 @@ module.exports = function mount(opt = {}) {
   function rcJob(job, args, count) {
     return new Promise(res => {
       if (job.stopped) return res(-2);
-      const p = cp.spawn(S.RCLONE, [...args, ...COMMON, '--use-json-log', '--stats', '1s', '--stats-log-level', 'NOTICE'], { env: S.rcEnv(), windowsHide: true });
+      const p = S.rcSpawn(args);
       job.proc = p;
       const base = job.done, b0 = job.bytes0 || 0;
-      let buf = '';
       p.stdout.resume();
-      p.stderr.setEncoding('utf8');
-      p.stderr.on('data', d => {
-        buf += d;
-        let i;
-        while ((i = buf.indexOf('\n')) >= 0) {
-          const line = buf.slice(0, i).trim();
-          buf = buf.slice(i + 1);
-          if (!line.startsWith('{')) continue;
-          let o;
-          try { o = JSON.parse(line); } catch { continue; }
-          if (o.stats) {
-            const s = o.stats;
-            if (count) job.done = base + count(s);
-            if (job.moves) { job.bytes = b0 + (s.bytes || 0); job.speed = s.speed || 0; job.eta = s.eta ?? null; }
-          } else if (o.level === 'error' || o.level === 'critical') {
-            job.nErrors++;
-            if (job.errors.length < 20) job.errors.push(`${o.object ? o.object + '：' : ''}${o.msg}`);
-          }
-        }
+      S.rcLog(p.stderr, {
+        stats: s => {
+          if (count) job.done = base + count(s);
+          if (job.moves) { job.bytes = b0 + (s.bytes || 0); job.speed = s.speed || 0; job.eta = s.eta ?? null; }
+        },
+        error: o => {
+          job.nErrors++;
+          if (job.errors.length < 20) job.errors.push(`${o.object ? o.object + '：' : ''}${o.msg}`);
+        },
       });
       p.on('error', e => { job.nErrors++; job.errors.push(String(e)); job.proc = null; res(-1); });
       p.on('close', code => { job.proc = null; job.bytes0 = job.bytes; res(code); });

@@ -122,5 +122,4 @@ module.exports = function makeDraftStore({ ROOT, io = fs.promises, now = () => n
   }
   return { save, withLocks };
 };
-module.exports.EDITOR_FIELDS = EDITOR_FIELDS;
 module.exports.pickEditor = pickEditor;

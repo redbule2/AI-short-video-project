@@ -245,7 +245,7 @@ textarea.has { border-style: solid; border-color: #b9822f; background: var(--hua
 <div class="bar"><span id="st">在每一块下面的虚线框里写批注，自动存。</span><button id="copy">复制批注</button></div>
 
 <script>
-/* ===== 内容（改内容只改这一块） ===== */
+/* ===== 内容（改内容只改这一块；怎么摆、怎么存批注在 公用/说明页.js） ===== */
 const ROUND = 1;
 const SUB = '剧本定稿以后，每一样资产先写字、你批，再出图、你批。你说这张图不用批（11-14），这一版补了「写提示词时要回头改」。有意见也能在虚线框里写，自动存。';
 const FOOT = '2026-11-14 Claude 和 Codex（GPT-6.1 Sol Max）讨论三轮后出的（第三轮讲回头改），讨论记录在 通用工具 / 流水线 / 文生资产_讨论.md。你说可以了，再照这张图改流水线。';
@@ -312,7 +312,7 @@ const SECTIONS = [
     { id: 'b5', no: '五', t: '已经出的样片', p: [
       '每条样片记下出片时用的是哪一版提示词、哪一版图。受影响的标「待核对」，你看过再定要不要重出。' ] },
   ] },
-  { h: '原来要你定的（你说不用批，按推荐的办）', decide: true, cards: [
+  { h: '原来要你定的（你说不用批，按推荐的办）', cards: [
     { id: 'd1', no: '甲', t: '工序一里「AI 补细」「用 GEO 扩写场景」两个按钮', p: [
       '我们俩都觉得：细化长相、做 GEO，应该挪到剧本定稿以后。' ],
       opts: [ { v: 'A', t: '拿掉。工序一只写粗的，细的都到资产这一步做', rec: true }, { v: 'B', t: '留着，只用来帮 AI 写剧本' } ] },
@@ -334,73 +334,10 @@ const SECTIONS = [
       '项目 / 工序图.html 里工序三、工序四的小字，照这张图改。' ] },
   ] },
 ];
-
-/* ===== 下面是页面本身 ===== */
-const FILE = '/api/fs/' + ['通用工具', '流水线', '文生资产_流程图_批注.json'].map(encodeURIComponent).join('/');
-const LS = 'antou:wsz-flow:r' + ROUND;
-const HDR = { 'X-Antou': '1' };
-let S = { 轮: ROUND, 时间: '', 批注: {}, 选择: { d1: 'A', d2: 'A', d3: 'A' }, 其他: '' };   // 他说不用批：三处先按推荐的选上，他改了照他的
-const $ = s => document.querySelector(s);
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const now = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()); };
-const cards = () => SECTIONS.flatMap(s => s.cards);
-
-function paint() {
-  $('#sub').textContent = SUB;
-  $('#foot').textContent = FOOT;
-  $('#sections').innerHTML = SECTIONS.map(s => '<h2>' + esc(s.h) + '</h2>' + (s.fig ? document.getElementById(s.fig).innerHTML : '') + s.cards.map(c => '<div class="card"><h3><span class="no">' + esc(c.no) + '</span>' + esc(c.t) + '</h3>'
-    + c.p.map(x => '<p>' + esc(x) + '</p>').join('')
-    + (c.opts ? '<div class="opts">' + c.opts.map(o => '<label><input type="radio" name="' + c.id + '" value="' + esc(o.v) + '">' + esc(o.v + '　' + o.t) + (o.rec ? '<span class="rec">（推荐）</span>' : '') + '</label>').join('') + '</div>' : '')
-    + '<textarea data-k="' + c.id + '" placeholder="批注（可以不写）"></textarea></div>').join('')).join('');
-  document.querySelectorAll('textarea').forEach(t => {
-    const k = t.dataset.k; t.value = (k === '其他' ? S.其他 : S.批注[k]) || ''; mark(t);
-    t.addEventListener('input', () => { if (k === '其他') S.其他 = t.value; else S.批注[k] = t.value; mark(t); changed(); });
-  });
-  document.querySelectorAll('.opts input').forEach(r => {
-    if (S.选择[r.name] === r.value) r.checked = true;
-    r.addEventListener('change', () => { S.选择[r.name] = r.value; changed(); });
-  });
-}
-const mark = t => t.classList.toggle('has', !!t.value.trim());
-
-let timer = 0;
-function changed() {
-  S.时间 = now();
-  try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { /* 存不了就算了 */ }
-  clearTimeout(timer); timer = setTimeout(save, 700);
-  $('#st').textContent = '正在存…';
-}
-async function save() {
-  try {
-    const r = await fetch(FILE, { method: 'PUT', headers: HDR, body: JSON.stringify(S, null, 2) + '\n' });
-    if (!r.ok) throw new Error(r.status);
-    $('#st').textContent = '已存好（' + S.时间.slice(11, 16) + '）。批完回到对话说一声「批完了」';
-  } catch (e) { $('#st').textContent = '没连上本机服务，只存在这个浏览器里。批完点「复制批注」贴给我'; }
-}
-async function load() {
-  try {
-    const r = await fetch(FILE, { headers: HDR });
-    if (r.ok) { const t = JSON.parse(await r.text()); if (t && t.轮 === ROUND) S = Object.assign(S, t); }
-  } catch (e) { /* 没有就是还没批 */ }
-  try { const t = JSON.parse(localStorage.getItem(LS) || 'null'); if (t && t.轮 === ROUND && (t.时间 || '') > (S.时间 || '')) S = Object.assign(S, t); } catch (e) { /* 不管 */ }
-  paint();
-}
-function text() {
-  const out = ['文生资产流程图 · 第 ' + ROUND + ' 轮批注（' + (S.时间 || now()) + '）'];
-  for (const c of cards()) {
-    const n = (S.批注[c.id] || '').trim(), v = S.选择[c.id];
-    if (!n && !v) continue;
-    const o = v && c.opts ? c.opts.find(x => x.v === v) : null;
-    out.push(c.no + ' ' + c.t + (v ? '　选了 ' + v + (o ? '：' + o.t : '') : '') + (n ? '\n　' + n.replace(/\n/g, '\n　') : ''));
-  }
-  if ((S.其他 || '').trim()) out.push('其他意见：' + S.其他.trim());
-  return out.join('\n');
-}
-$('#copy').addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText(text()); $('#st').textContent = '复制好了，贴到对话里就行'; }
-  catch (e) { prompt('复制下面这段：', text()); }
-});
-load();
+window.DOC = { 名: '文生资产_流程图', 题: '文生资产流程图', 存: 'antou:wsz-flow', 轮: ROUND, 副题: SUB, 脚注: FOOT, 先选: { d1: 'A', d2: 'A', d3: 'A' }, 段: SECTIONS };   // 他说不用批：三处先按推荐的选上，他改了照他的
 </script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="../公用/说明页.js"></script>
 </body>
 </html>

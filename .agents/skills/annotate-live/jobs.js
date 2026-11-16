@@ -36,6 +36,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const Style = (() => { try { return require(path.join(TOOLS, '公用', '风格库.js')); } catch (e) { log('读不了 公用/风格库.js：' + e.message); return null; } })();
   /* 提示词的无损读写（和写稿页同一套）：先写提示词的场，反推剧本只读人写的两块，直接铺底只改 AI 写的几块（11-14） */
   const PromptDraft = (() => { try { return require(path.join(TOOLS, '公用', '写稿状态.js')); } catch (e) { log('读不了 公用/写稿状态.js：' + e.message); return null; } })();
+  const Core = (() => { try { return require(path.join(TOOLS, '公用', '核心.js')); } catch (e) { log('读不了 公用/核心.js：' + e.message); return null; } })();
+  const Review = (() => { try { return require(path.join(TOOLS, '公用', '审片.js')); } catch (e) { log('读不了 公用/审片.js：' + e.message); return null; } })();
   const two = n => String(n).padStart(2, '0');
   const stampOf = (d = new Date()) => d.getFullYear() + two(d.getMonth() + 1) + two(d.getDate()) + '-' + two(d.getHours()) + two(d.getMinutes()) + two(d.getSeconds());
   const nowText = (d = new Date()) => d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate()) + ' ' + two(d.getHours()) + ':' + two(d.getMinutes()) + ':' + two(d.getSeconds());
@@ -45,13 +47,17 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const unbom = s => s.replace(/^\uFEFF/, '');
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const segOk = s => /^[0-9]+(-[0-9]+)*$/.test(s);
-  const nameOk = s => !!s && !/[<>:"\\/|?*\u0000-\u001f]/.test(s) && !/^\.+$/.test(s) && !/[. ]$/.test(s);
+  /* 文件名能不能用、场景文字起名、视频提示词第几条改几：和流水线各页、审片台同一份（公用/核心.js）；读不了它就报错，服务照开 */
+  const core = k => Core ? Core[k] : () => { throw fail('读不了 公用/核心.js'); };
+  const nameOk = core('nameOk'), sceneStem = core('sceneStem');
   const exists = p => fsp.stat(p).then(() => true, () => false);
   const str = v => typeof v === 'string' ? v : '';
   const fail = msg => Object.assign(new Error(msg), { plain: true });
   const retry = msg => Object.assign(new Error(msg), { plain: true, retry: true });   // 交给 AI 等回复的：还差一点（图还没存好），接着等，不算没成
   const pj = (name, ...parts) => path.join(HOME, name, ...parts);
   const segDir = seg => '第' + seg + '段';
+  const stemOf = f => path.basename(String(f)).replace(/\.[^.]+$/, '');   // 文件名去掉后缀
+  const IMG_RE = /\.(png|jpe?g|webp)$/i;   // 认的图
   async function writeFile(p, text) {
     await fsp.mkdir(path.dirname(p), { recursive: true });
     const tmp = p + '.antou-tmp';
@@ -137,6 +143,15 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     if (res.effort) j.实际深度 = String(res.effort);
     if (res.model_id) j.实际模型 = String(res.model_id);
   };
+  /* 跑一回 codex-chat：话在 file 里；secs 是它自己最多等几秒，ms 是这边最多等多久。顺手记下这一回实际用的模型和档 */
+  async function cxRun(job, file, secs, ms) {
+    const r = await run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', CX, '-PromptFile', file, '-Path', HOME, '-Timeout', String(secs)], { job, timeout: ms });
+    const res = resultJson(r.out);
+    cxSeen(job, res);
+    return { ...r, res };
+  }
+  const CX_HEAD = '=== Codex 回复 ===';
+  const cxReply = out => { const a = out.indexOf(CX_HEAD), z = out.lastIndexOf('RESULT_JSON '); return a >= 0 && z > a ? out.slice(a + CX_HEAD.length, z) : ''; };   // Codex 回的那一段
   const depthOf = j => j.深度 || j.实际深度 || '';   // 这个任务用的推理深度：选了的，或者做完读出来的
   const modelOf = j => j.模型 || j.实际模型 || '';   // 这个任务用的模型：选了的，或者做完读出来的
   const chLabel = j => { if (j.渠道 === SELF) return '你自己交的 AI'; const t = [modelName(modelOf(j)), depthName(depthOf(j))].filter(Boolean).join(' · '); return ((CHANNELS[j.渠道] || {}).名 || j.渠道) + (t ? '（' + t + '）' : ''); };
@@ -180,13 +195,10 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         // 11-14：原来写「不要运行命令」，Codex 读不了文件，就用 Computer Use 开记事本一份一份读。读文件让它用命令行，只是不许写
         await writeFile(files.msg, '请读 ' + files.book + '，照里面的要求回复。' + ((images || []).length ? '动笔前先用 view_image 把这几张图各看一遍：' + images.join('　') + '。' : '')
           + '读文件用命令行（Get-Content -Raw -Encoding UTF8），要用的材料任务书里都带齐了。只读不写：不要改、不要新建任何文件。不要用 Computer Use，不要打开记事本或别的软件、窗口。只回复结果。');
-        const r = await run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', CX, '-PromptFile', files.msg, '-Path', HOME, '-Timeout', '1500'], { job, timeout: 27 * 60e3 });
+        const r = await cxRun(job, files.msg, 1500, 27 * 60e3);
         await fsp.unlink(files.msg).catch(() => {});
-        const j = resultJson(r.out);
-        cxSeen(job, j);
-        if (!j || !j.ok) throw fail('Codex 没答上来：' + ((j && j.error) || r.err.trim() || r.out.trim() || '没有结果').slice(0, 300));
-        const a = r.out.indexOf('=== Codex 回复 ==='), z = r.out.lastIndexOf('RESULT_JSON ');
-        const text = a >= 0 && z > a ? r.out.slice(a + '=== Codex 回复 ==='.length, z) : '';
+        if (!r.res || !r.res.ok) throw fail('Codex 没答上来：' + ((r.res && r.res.error) || r.err.trim() || r.out.trim() || '没有结果').slice(0, 300));
+        const text = cxReply(r.out);
         if (!text.trim()) throw fail('Codex 回了空的');
         return text;
       },
@@ -240,6 +252,11 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     if (!(await exists(p))) throw fail('这个项目还没有流水线');
     return JSON.parse(unbom(await fsp.readFile(p, 'utf8')));
   }
+  async function imgsAt(name, list) {   // 流水线里记的几张图（项目里的路径）：还在的，换成完整路径
+    const out = [];
+    for (const g of list || []) { const p = pj(name, ...String(g).replace(/\\/g, '/').split('/')); if (IMG_RE.test(p) && await exists(p)) out.push(p); }
+    return out;
+  }
   const sceneOf = (flow, seg) => (Array.isArray(flow.场) ? flow.场 : []).find(s => s && str(s.段) === seg) || null;
   const parasOf = s => (Array.isArray(s.段落) && s.段落.length ? s.段落 : Array.isArray(s.镜头) ? s.镜头 : []).map(x => ({ 写什么: str(x.写什么 !== undefined ? x.写什么 : x.拍什么).trim(), 作用: str(x.作用).trim() })).filter(x => x.写什么 || x.作用);
   const rowsText = (rows, pick) => (Array.isArray(rows) ? rows : []).filter(e => e && e.名 && (!pick || pick.includes(e.名))).map(e => e.名 + '：' + (str(e.描写).trim() || '（还没写）')).join('\n') || '（没有）';
@@ -276,7 +293,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     if (w.code !== 0) throw fail('没写成：' + (w.out + w.err).trim().slice(0, 300));
   }
   const settingText = flow => ['梗概：' + (str(flow.梗概).trim() || '（还没写）'), '', '人物（叫法：描写）：', rowsText(flow.人物), '', '场景：' + (str(flow.场景).trim() || '（还没写）'), '', '道具（名字：描写）：', rowsText(flow.道具)].join('\n');
-  const segRefs = s => ['人物', '道具'].flatMap(k => (Array.isArray(s[k + '图']) ? s[k + '图'] : []).map(f => ({ k, f: String(f).replace(/\\/g, '/'), n: path.basename(String(f)).replace(/\.[^.]+$/, '') })));   // 这一段文件夹里的图，这一场当人物、道具用的（流水线 11-13 起有；不挂表里哪一行）
+  const segRefs = s => ['人物', '道具'].flatMap(k => (Array.isArray(s[k + '图']) ? s[k + '图'] : []).map(f => ({ k, f: String(f).replace(/\\/g, '/'), n: stemOf(f) })));   // 这一段文件夹里的图，这一场当人物、道具用的（流水线 11-13 起有；不挂表里哪一行）
   function sceneText(flow, s) {
     const ps = parasOf(s), seg = segRefs(s);
     return ['出场的人物：' + ((s.人物 || []).join('、') || '（没选）'), '出场的道具：' + ((s.道具 || []).join('、') || '（没选）'),
@@ -321,7 +338,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         for (const k of ['人物', '道具']) for (const n of j[k] || []) {
           const e = (flow[k] || []).find(x => x && x.名 === n);
           if (!e) continue;
-          const imgs = (Array.isArray(e.资产) ? e.资产 : e.资产 ? [e.资产] : []).map(f => path.basename(String(f)).replace(/\.[^.]+$/, ''));
+          const imgs = (Array.isArray(e.资产) ? e.资产 : e.资产 ? [e.资产] : []).map(f => stemOf(f));
           ask.push(k + '「' + n + '」：现在写的是「' + (str(e.描写).trim() || '（空）') + '」' + (imgs.length ? '；已经有图，图名：' + imgs.join('、') : ''));
         }
         if (!ask.length) throw fail('没有要补的');
@@ -355,8 +372,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       async book(j) {
         const flow = await readFlow(j.项目);
         if (!str(flow.场景).trim() && !(flow.场景图 || []).length) throw fail('场景那一格还空着');
-        const imgs = [];   // 引用的场景图：让 AI 看着图建底稿（GEO 要照生成好的参考图核）
-        for (const g of flow.场景图 || []) { const p = pj(j.项目, ...String(g).replace(/\\/g, '/').split('/')); if (/\.(png|jpe?g|webp)$/i.test(p) && await exists(p)) imgs.push(p); }
+        const imgs = await imgsAt(j.项目, flow.场景图);   // 引用的场景图：让 AI 看着图建底稿（GEO 要照生成好的参考图核）
         j.images = imgs;
         return ['# 任务：照 scene-geo 的办法，把全片的场景写清楚', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是人写的全片场景（比较粗），请照 scene-geo 技能的办法：先出 GEO 底稿（只给人审，核清楚空间关系），再翻成场景段（简短的中文句子，一处地方一段）。',
           '', '## 要求', '1. 人写了的地方不能丢，也别加梗概里没有的地方。' + (imgs.length ? '引用的场景图已经让你看过了：底稿照图核，图上有什么、各在哪、从哪往哪看，都以图为准；图和人写的对不上的地方，在底稿里单列出来。' : ''), '2. 回复只有两块，照这个样子：', '【GEO底稿】', '（底稿正文）', '【场景段】', '（场景段正文，一处地方一段）',
@@ -368,7 +384,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         const geo = t.slice(a + 7, z).trim(), seg = body(t.slice(z + 5));
         if (!seg) throw fail('AI 没写出场景段');
         const flow = await readFlow(j.项目), first = (flow.场景图 || [])[0];
-        const rel = ['提示词', '全局资产', '场景', (first ? path.basename(String(first)).replace(/\.[^.]+$/, '') : '全片场景') + '_GEO底稿.md'];
+        const rel = ['提示词', '全局资产', '场景', (first ? stemOf(first) : '全片场景') + '_GEO底稿.md'];
         await archive(j.项目, rel);
         await writeFile(pj(j.项目, ...rel), geo + '\n');
         const p = pj(j.项目, '定稿的剧本', AI_FILE);
@@ -431,7 +447,6 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   /* ---------- 工序三：出图。先让选的那个 AI 把出图提示词写好，再交给 Codex 出图（出图只走 Codex） ---------- */
   const crypto = require('crypto');
   const sha256 = buf => crypto.createHash('sha256').update(buf).digest('hex');
-  const CATS = { 人物: '人物', 道具: '道具', 场景: '场景' };
   const IMG_TASK = path.join(TOOLS, '流水线', '任务书', '资产出图任务.txt');
   async function codexDo(j, msg, opt = {}) {   // 让 Codex 真去做一件事（它会开一个看得见的对话）
     /* 给我提示词：这件事人贴进自己的 Codex 去做（要用它的出图工具、操作即梦）；opt.核图：出完图顺手对着字核一遍，写进回复；
@@ -439,12 +454,9 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     if (j.渠道 === SELF) return (await handoff(j, { codex: msg, 核图: !!opt.核图, ...(opt.tag ? { tag: opt.tag } : {}) }, 'self', [], opt.check)).trim();   // tag：一个任务里交几回的（照方案改一张张出图），回复文件各叫各的
     const f = path.join(j.dir, '发给Codex的话.txt');
     await writeFile(f, msg);
-    const r = await run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', CX, '-PromptFile', f, '-Path', HOME, '-Timeout', '1700'], { job: j, timeout: 30 * 60e3 });
-    const res = resultJson(r.out);
-    cxSeen(j, res);
-    if (!res || !res.ok) throw fail('Codex 没做成：' + ((res && res.error) || r.err.trim() || r.out.trim() || '没有结果').slice(0, 300));
-    const a = r.out.indexOf('=== Codex 回复 ==='), z = r.out.lastIndexOf('RESULT_JSON ');
-    return a >= 0 && z > a ? r.out.slice(a + '=== Codex 回复 ==='.length, z).trim() : '';
+    const r = await cxRun(j, f, 1700, 30 * 60e3);
+    if (!r.res || !r.res.ok) throw fail('Codex 没做成：' + ((r.res && r.res.error) || r.err.trim() || r.out.trim() || '没有结果').slice(0, 300));
+    return cxReply(r.out).trim();
   }
   async function askText(j, chId, book, tag, images, check) {   // 多一步的事：中间要 AI 写一段字。images：要它看的图；check：交给人、Claude 桌面版的，回复格式不对就接着等它改好
     const ch = CHANNELS[chId], files = { book: path.join(j.dir, '任务书_' + tag + '.md'), raw: path.join(j.dir, '答卷_' + tag + '_原样.md'), msg: path.join(j.dir, '发给Codex的话.txt'), tag, ...(check ? { check } : {}) };
@@ -484,16 +496,9 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
      关键帧也走这一套：在提示词那一步做，字和图放在这一段的文件夹里 ---------- */
   const WORD_CATS = ['人物', '道具', '场景', '关键帧'];
   const EDIT_TASK = path.join(TOOLS, '流水线', '任务书', '按批注改图任务.txt');
-  const stemOf = f => path.basename(String(f)).replace(/\.[^.]+$/, '');
   const imgsOf = e => (!e ? [] : Array.isArray(e.资产) ? e.资产 : e.资产 ? [e.资产] : []).map(g => String(g).replace(/\\/g, '/'));
   const stateOfImg = (name, file) => { const b = stemOf(file); return b === name ? '' : b.startsWith(name + '_') ? b.slice(name.length + 1) : b; };
   const oneLine = t => str(t).replace(/\s+/g, ' ').trim();
-  /* 只用文字写的场景（全片设定「场景」里的一行）要出图时用的名字：冒号前那一段。页面（流水线.js 的 sceneStem）和这里一样算 */
-  function sceneStem(t) {   // 「面摊：傍晚……」叫「面摊」，「一个出租屋内，一张床……」叫「一个出租屋内」
-    const x = str(t).trim(), c = x.search(/[：:]/), p = x.search(/[，,。；;\n]/);
-    const a = (c >= 1 && c <= 12 && (p < 0 || c < p) ? x.slice(0, c) : p >= 2 && p <= 14 ? x.slice(0, p) : x.slice(0, 12)).replace(/[<>:"\\/|?*\u0000-\u001f]/g, '').trim().replace(/[. ]+$/, '');
-    return nameOk(a) ? a : '';
-  }
   const mtimeOf = async p => { try { return Math.floor((await fsp.stat(p)).mtimeMs); } catch (e) { return 0; } };   // 核图记下核的是哪一张（图的修改时间）：页面照它分清说的是原图还是候选
   /* 一样东西的几个文件：字（出图提示词）、GEO 底稿（场景）、字的批注、图、候选图、图的批注（看大图时写的） */
   function wordFiles(cat, stem, seg, img) {
@@ -506,7 +511,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     const img = str(file).replace(/\\/g, '/').split('/').filter(Boolean);
     if (!img.length) return null;
     const dir = cat === '关键帧' ? ['资产', segDir(seg)] : ['资产', '全局资产', cat];
-    if (img.length !== dir.length + 1 || dir.some((x, i) => img[i] !== x) || !/\.(png|jpe?g|webp)$/i.test(img[img.length - 1]) || !img.every(nameOk)) throw fail('这张图不在 ' + dir.join('/') + ' 里');
+    if (img.length !== dir.length + 1 || dir.some((x, i) => img[i] !== x) || !IMG_RE.test(img[img.length - 1]) || !img.every(nameOk)) throw fail('这张图不在 ' + dir.join('/') + ' 里');
     return img;
   }
   async function wordPrep(j) {
@@ -567,7 +572,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         const stem = img ? stemOf(img[img.length - 1]) : x.状态名 ? x.名称 + '_' + x.状态名 : x.名称;
         if (!nameOk(stem) || /_候选$/.test(stem)) continue;
         const 参考 = [];
-        for (const g of x.参考) { const parts = g.split('/').filter(Boolean); if (parts[0] === '资产' && parts.every(nameOk) && /\.(png|jpe?g|webp)$/i.test(g) && await exists(pj(j.项目, ...parts))) 参考.push(parts.join('/')); }
+        for (const g of x.参考) { const parts = g.split('/').filter(Boolean); if (parts[0] === '资产' && parts.every(nameOk) && IMG_RE.test(g) && await exists(pj(j.项目, ...parts))) 参考.push(parts.join('/')); }
         await add({ 类别: x.类别, 名称: x.名称, 状态名: x.状态名, stem, 图: img ? img.join('/') : '', 描写: e ? str(e.描写).trim() : x.文字, 描写改: e ? timeOf(e.描写改) : 0, 要求: x.要求, 参考, 提示词: x.提示词 || '', 只: true });
       }
       return out;
@@ -870,6 +875,15 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     /* ---------- 工序四：提示词 ---------- */
     写提示词: {
       title: j => '写提示词 · 第' + j.段 + '场 ' + vpLabel(j), need: ['段'], key: j => j.段 + '/' + j.名, file: j => j.段 + '/' + j.名,
+      /* 这一条写哪段戏（11-15 他定）：人没写就写这一场整段，别的条不附；人写了哪段（老请求带着段落范围的也一样）就只写那段，别的条附在后面好接上。
+         me：第几条；others：这一场别的条 [{ f, no, text }]。给 { text：任务书里说范围的那几句, others：要附上的别的条 } */
+      scope(me, others, what, pa) {
+        const no = me ? '第 ' + me + ' 条' : '其中一条';
+        if (!pa && !what) return { text: '这一份是' + no + '，写这一场整段戏，从开头写到结尾。一条视频一般 15 秒、最长 30 秒。', others: [] };
+        const where = pa ? '这一条只写段落 ' + pa[0] + (pa[1] > pa[0] ? ' 到段落 ' + pa[1] : '') + ' 的戏，别的段落留给别的条，不要写进来。'
+          : '这一条写这段戏：' + what + '。别的戏留给别的条，不要写进来。';
+        return { text: '这一场的戏分几条写由人定，这一份是' + no + (others.length ? '，这一场另外还有 ' + others.length + ' 条（附在后面，接头处要接得上）' : '') + '。' + where + '一条视频一般 15 秒、最长 30 秒，装不下的戏留给下一条。', others };
+      },
       async prep(j) {
         if (!nameOk(str(j.名)) || !RE_VP.test(j.名) || vpVer(j.名)) throw fail('提示词的文件名要是「视频提示词.txt」「视频提示词_02.txt」这样的');
         if (await exists(vpPath(j))) throw fail('这份提示词已经存在，请打开接着写；AI 初稿不会覆盖它');
@@ -883,7 +897,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           const out = [];
           for (const x of j.关键帧) {
             const f = str(x).replace(/\\/g, '/'), q = f.split('/');
-            if (q[0] !== '资产' || q[1] !== segDir(j.段) || q.length > 4 || !/\.(png|jpe?g|webp)$/i.test(f) || q.some(y => !nameOk(y)) || !(await exists(pj(j.项目, ...q)))) throw fail('关键帧要是 资产/' + segDir(j.段) + ' 里的图');
+            if (q[0] !== '资产' || q[1] !== segDir(j.段) || q.length > 4 || !IMG_RE.test(f) || q.some(y => !nameOk(y)) || !(await exists(pj(j.项目, ...q)))) throw fail('关键帧要是 资产/' + segDir(j.段) + ' 里的图');
             if (!out.includes(f)) out.push(f);
           }
           j.关键帧 = out;
@@ -907,7 +921,6 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         const look = await lookPart(j.项目, flow, s, '写', '全片的光影总基调（【基础设定】的影像风格、光色基调照它写）'), lessons = await lessonsOf(j.项目), gp = await geoPart(j, s.场景图, s), bm = await bmPart(j, j.白模 ? [{ ref: '@视频1', path: j.白模 }] : [], frames.map(() => null));
         const fp = framePart(frames, bmk ? '图已经让你看过：事件脚本里参考它的那一镜，戏要和它对得上。' : '每张定义了什么照图写（图已经让你看过）：这一刻的构图、人物位置、姿态、镜头方向；事件脚本里对应那一镜的开场要和它对得上。', bmk);
         j.images = [...gp.images, ...frameImgs(j, frames)];
-        /* 一场写几条由人定（2026-11-13 起页面不再选段落范围）：人写了这一条写哪段戏就照它；没写，第一条从这一场开头写，后面的接着前面几条往下写。老请求带着段落范围的照旧 */
         const others = [];
         try {
           for (const f of vpLatest(await fsp.readdir(pj(j.项目, '提示词', segDir(j.段))))) {
@@ -915,14 +928,10 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
             others.push({ f, no: vpNo(f), text: unbom(await fsp.readFile(pj(j.项目, '提示词', segDir(j.段), f), 'utf8')).trim() });
           }
         } catch (e) { /* 还没有别的条 */ }
-        others.sort((a, b) => (a.no || 1e9) - (b.no || 1e9) || a.f.localeCompare(b.f, 'zh', { numeric: true }));
-        const me = vpNo(str(j.名)), what = str(j.写什么).trim();
-        const where = pa ? '这一条只写段落 ' + pa[0] + (pa[1] > pa[0] ? ' 到段落 ' + pa[1] : '') + ' 的戏，别的段落留给别的条，不要写进来。'
-          : what ? '这一条写这段戏：' + what + '。别的戏留给别的条，不要写进来。'
-            : others.length ? '这一条接着前面几条往下写：前面已经写过的戏不要重写，从它们停下的地方接着写。'
-              : '这一条从这一场开头写起。';
-        const range = '这一场的戏分几条写由人定，这一份是' + (me ? '第 ' + me + ' 条' : '其中一条') + (others.length ? '，这一场另外还有 ' + others.length + ' 条（附在后面，接头处要接得上）' : '') + '。' + where + '一条视频一般 15 秒、最长 30 秒，装不下的戏留给下一条。' + (j.白模 ? '这一条挂白模视频 @视频1，镜头的切分、机位、运镜照白模。' : '') + (frames.length ? '这一条挂 ' + frames.length + ' 张关键帧（见下面「这一条挂的关键帧」），对应镜头的开场照关键帧。' : '');
-        const otherText = others.length ? ['', '## 这一场的其他几条提示词（只看，别改；接头处的人物位置、动作、光线要接得上）', ...others.map(o => '### ' + o.f + (o.no ? '（第 ' + o.no + ' 条）' : '') + '\n' + (o.text || '（还是空的）'))].join('\n') : '';
+        others.sort(byNo);
+        const sc = KINDS.写提示词.scope(vpNo(str(j.名)), others, str(j.写什么).trim(), pa);
+        const range = sc.text + (j.白模 ? '这一条挂白模视频 @视频1，镜头的切分、机位、运镜照白模。' : '') + (frames.length ? '这一条挂 ' + frames.length + ' 张关键帧（见下面「这一条挂的关键帧」），对应镜头的开场照关键帧。' : '');
+        const otherText = sc.others.length ? ['', '## 这一场的其他几条提示词（只看，别改；接头处的人物位置、动作、光线要接得上）', ...sc.others.map(o => '### ' + o.f + (o.no ? '（第 ' + o.no + ' 条）' : '') + '\n' + (o.text || '（还是空的）'))].join('\n') : '';
         return ['# 任务：给一场戏写 Seedance 视频提示词', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面有定稿的剧本、人写的剧本段落、全片设定、这一场能用的资产图。请照 sd25-pe 的格式写视频提示词。' + range,
           '', '## 要求', '1. 格式照下面「提示词格式」：这一条挂的素材五份以内用写法一，多于五份用写法二。镜头由剧情需要来设计，不按剧本段落机械地一段一镜，写在【事件脚本】里，一镜一行，一镜只讲一两件事；戏照「写戏规矩」写。', '2. 素材职责里用 @图片1、@图片2……引用资产图，只能用下面「能用的资产图」里的，镜头里看得见的人物、道具、场景都要挂。',
           bmk ? '3. 不写时长秒数（时长在生成参数里设；这一条挂了白模又挂了关键帧，每一镜开头照下面「白模＋关键帧的写法」写它在白模里的整秒），不写画面里没有的东西。' : '3. 不写时长秒数（时长在生成参数里设），不写画面里没有的东西。', '4. ' + gp.rule, '5. 回复' + (gp.make ? '三块（最前面是【GEO底稿】）' : '两块') + '，照这个样子：', ...(gp.make ? ['【GEO底稿】', '（照 scene-geo 第五节模板写的底稿）'] : []), '【提示词】', '（整份提示词，从「【生成目标】」开始）', '【素材登记】', '[{"ref": "@图片1", "name": "叫法", "path": "资产/……png"}]',
@@ -955,7 +964,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         let bmNote = '';
         if (j.白模 && !list.some(r => r.path === j.白模)) {   // AI 没登记白模：照提示词里写的视频编号替它登记；一句都没写，也登记上（生成任务书时会拦下，提醒补那几句）
           const m = /@视频(\d+)/.exec(prompt), ref = m ? '@视频' + m[1] : '@视频1';
-          if (!list.some(r => r.ref === ref)) list.push({ ref, name: path.basename(j.白模).replace(/\.[^.]+$/, ''), path: j.白模, sha256: sha256(await fsp.readFile(pj(j.项目, ...j.白模.split('/')))) });
+          if (!list.some(r => r.ref === ref)) list.push({ ref, name: stemOf(j.白模), path: j.白模, sha256: sha256(await fsp.readFile(pj(j.项目, ...j.白模.split('/')))) });
           if (!m) bmNote = '；注意：AI 没写白模那几句（@视频1），生成任务书前要补上';
         }
         const mp = pj(j.项目, '资产', '参考素材映射.json');
@@ -965,7 +974,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         map.prompts[rel.join('/')] = { prompt_sha256: sha256(buf), references: list };
         await writeFile(mp, JSON.stringify(map, null, 2) + '\n');
         const nv = list.filter(r => /^@视频/.test(r.ref)).length, lostF = (Array.isArray(j.关键帧) ? j.关键帧 : []).filter(f => !list.some(r => r.path === f));
-        const fNote = lostF.length ? '；注意：关键帧 ' + lostF.map(f => path.basename(f).replace(/\.[^.]+$/, '')).join('、') + ' AI 没登记，打开看一眼，生成任务书前要补上' : '';
+        const fNote = lostF.length ? '；注意：关键帧 ' + lostF.map(f => stemOf(f)).join('、') + ' AI 没登记，打开看一眼，生成任务书前要补上' : '';
         const kNote = j.白模 && (j.关键帧 || []).length && BmKey && !BmKey.isBmk(prompt) ? '；注意：AI 没照「白模＋关键帧」的写法写，生成任务书前要换（进去改，或者写批注让 AI 改）' : '';
         return { 结果: '提示词写好了，挂了 ' + (list.length - nv) + ' 张图' + (nv ? '、' + nv + ' 段白模' : '') + bmNote + fNote + kNote + (geoAt ? '；AI 看图新建了一份 GEO 底稿，等你审' : ''), 产出: [rel.join('/'), ...(geoAt ? [geoAt] : [])] };
       },
@@ -991,7 +1000,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
               continue;
             }
             if (!(await exists(pj(j.项目, ...fp.split('/'))))) continue;
-            const stem = path.basename(fp).replace(/\.[^.]+$/, '');
+            const stem = stemOf(fp);
             refs.push({ ref, name: VIDEO_RE.test(fp) ? stem : stem.split('_')[0], path: fp, sha256: sha256(await fsp.readFile(pj(j.项目, ...fp.split('/')))) });
           }
         } catch (e) { if (e.plain) throw e; /* 没有过程文件 */ }
@@ -1005,7 +1014,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         }
         const used = [...new Set(text.match(/@(?:图片|视频|音频)\d+/g) || [])];
         const lost = used.filter(u => !refs.some(r => r.ref === u));
-        if (lost.length) throw fail('提示词里写了 ' + lost.join('、') + '，可是没登记它是哪个文件（资产/参考素材映射.json）。先让 AI 批一批或者重新铺底，把素材对上');
+        if (lost.length) throw fail('提示词里写了 ' + lost.join('、') + '，可是没登记它是哪个文件（资产/参考素材映射.json）。先让 AI 批一批，或者在写稿页点「AI 铺底」，把素材对上');
         const idle = refs.filter(r => /^@视频\d+$/.test(r.ref) && !used.includes(r.ref));
         if (idle.length) throw fail('挂了白模 ' + idle.map(r => path.basename(str(r.path))).join('、') + '（' + idle.map(r => r.ref).join('、') + '），可是提示词里没写它的编号：在素材里补上白模那几句，或者去掉白模，再生成任务书');
         refs = refs.filter(r => used.includes(r.ref)).sort((a, b) => a.ref.localeCompare(b.ref, 'zh', { numeric: true }));
@@ -1084,27 +1093,6 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         return { 结果: 'Codex 做完了：' + reply.replace(/\s+/g, ' ').slice(0, 120), 产出: [] };
       },
     },
-    /* ---------- 工序五：审片不满意，让 AI 照批注说说该回哪一道 ---------- */
-    审片建议: {
-      title: j => '审片建议 · 第' + j.段 + '场 ' + str(j.视频), need: ['段'], key: j => j.段 + '/' + j.视频,
-      async book(j) {
-        const v = str(j.视频), stem = v.replace(/\.[^.]+$/, ''), np = pj(j.项目, '成片', segDir(j.段), stem + '_批注.md');
-        if (!nameOk(v) || !(await exists(np))) throw fail('这条视频还没有批注：先在审片里写批注');
-        const flow = await readFlow(j.项目), s = sceneOf(flow, j.段), sp = scriptPath(j.项目, j.段);
-        let prompts = '';
-        try { for (const f of vpLatest(await fsp.readdir(pj(j.项目, '提示词', segDir(j.段))))) prompts += '\n### ' + f + '\n' + unbom(await fsp.readFile(pj(j.项目, '提示词', segDir(j.段), f), 'utf8')); } catch (e) { /* 没有提示词 */ }
-        const look = await lookPart(j.项目, flow, s, '审', '全片的光影总基调');   // 定了拍摄风格：带上风格库里给人核片子用的招牌（11-14）
-        return ['# 任务：看审片批注，说说该回哪一道工序改', '', '今天 ' + today() + '。这是一个 AI 短视频项目，一场戏分五道工序做：一 全片设定（梗概、人物、场景、道具、拍摄风格）→ 二 段落、剧本 → 三 资产图 → 四 提示词 → 五 审片。下面是用户看完一条样片写的批注。请逐条说：要改的具体是什么，建议回哪一道工序改，会波及哪些已经做好的东西。',
-          '', '## 要求', '1. 别按问题的种类硬套工序：表演不好可能只要改提示词；台词文字要改才回剧本；长相、道具样子不对回资产；只是这一条没抽好、东西都不用改的，就说「不用改，重出一条」。', '2. 用大白话，一条批注对一条建议，每条两三句。最后一行写总的建议：先做哪一件。',
-          ...(look ? ['3. 批注说到风格、画面味道的，对照下面「拍摄风格」那几样说：是提示词没写到、是这一条没抽好，还是这种风格本身不合这场戏（那就回全片设定换风格）。'] : []),
-          '', '## 审片批注', unbom(await fsp.readFile(np, 'utf8')), '', '## 这一场', s ? sceneText(flow, s) : '（流水线里没有这一场的段落）', look, (await exists(sp)) ? '\n## 剧本\n' + await docText(sp) : '', prompts ? '\n## 这一场的提示词' + prompts : '', TAIL].join('\n');
-      },
-      async apply(j, text) {
-        const rel = ['成片', segDir(j.段), str(j.视频).replace(/\.[^.]+$/, '') + '_AI建议.md'];
-        await writeFile(pj(j.项目, ...rel), '# AI 建议｜' + j.视频 + '\n\n' + nowText() + '　' + chLabel(j) + '\n\n' + body(text) + '\n');
-        return { 结果: 'AI 的建议写好了，在这条视频下面', 产出: [rel.join('/')] };
-      },
-    },
     /* ---------- 拍摄风格：剧本定稿以后，AI 读梗概和剧本，从风格库里挑一种推荐（11-14 加）。挑哪个还是人定；推荐写进 定稿的剧本/流水线_AI扩写.json 的「风格」 ---------- */
     推荐风格: {
       title: j => '推荐拍摄风格' + (j.段 ? ' · 第' + j.段 + '场' : ''), key: j => j.段 || 'all',
@@ -1163,78 +1151,27 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     '5. 不过度演绎：被逼到了才爆发。', '6. 最重的那句，写被什么点着。', '7. 再写身体怎么使劲、话怎么往上冲。', '8. 夸张放在事上，人按常理反应。',
     '9. 禁止写一直不变的表情姿势。', '10. 禁止堆表情小动作，挑最清楚的一两处。', '11. 说话做事朝着对方，不无故冲镜头。', '12. 人多只写主要人物，次要人物各忙各的。',
     '13. 人少要写明具体人数。', '14. 放手：表情、小动作的细节。', '15. 不放手：人数、站位、道具。', '16. 不放手：台词原文、镜头顺序。', '17. 放手的底：一句台词配一个看得见的动作。'].join('\n');
-  /* 稿子是不是 sd2.5PE 格式：有独占一行的【生成目标】【基础设定】【主体与关系】【事件脚本】【保持一致】之一（旧稿素材里也写【参考素材职责】【未采用素材】，不算） */
-  const PE_HEAD = { '【生成目标】': 'event', '【基础设定】': 'basic', '【主体与关系】': 'seg', '【事件脚本】': 'shots', '【保持一致】': 'keep' };
-  const RE_PE_REF = /^【(参考素材职责|人物|道具|场景|动作与声音|未采用素材|主体设定[：:][^】]*)】$/;
-  const isPeText = t => String(t || '').split(/\r\n|\n|\r/).some(l => PE_HEAD[l.replace(/\s+/g, '')]);
+  /* 稿子是不是 sd2.5PE 格式（有独占一行的【生成目标】【基础设定】【主体与关系】【事件脚本】【保持一致】之一）、怎么读成几区：
+     都照 公用/写稿状态.js（写稿页同一套），这里不另写 */
+  const draft = () => { if (!PromptDraft) throw fail('读不了 公用/写稿状态.js'); return PromptDraft; };
+  const isPeText = t => draft().formatOf(String(t || '')) === 'pe';
 
-  /* ---------- 工序四：你来写提示词，AI 给建议、关键词、批注、按批注改 ----------
-     只有分镜部分可在逐镜编辑、自由文本间切换；其余公共区共用。铺底任务仅更新侧栏建议，不改正文。
+  /* ---------- 工序四：你来写提示词，AI 批注、按批注改 ----------
+     只有分镜部分可在逐镜编辑、自由文本间切换；其余公共区共用。
      读成几区、照原样写回去，和写稿页（通用工具/项目管理_写稿试用.html）是同一套读法 */
-  const SEC_OF = { 素材: 'refs', 基础设定: 'basic', 本段: 'seg', 分镜: 'shots' }, BOMCH = String.fromCharCode(0xFEFF);
-  function parsePrompt(text) {
-    const d = { bom: false, eol: '\n', pre: [], event: '', refs: [], basic: [], seg: [], shotsPre: [], shots: [], keep: '', has: {} };
-    if (text.charCodeAt(0) === 0xFEFF) { d.bom = true; text = text.slice(1); }
-    if (/\r\n/.test(text)) d.eol = '\r\n';
-    let sec = 'pre', shot = null;
-    if (isPeText(text)) {   // sd2.5PE 稿：事件脚本里「镜头1：……」一行一镜，没有标题；【基础设定】和事件脚本最后「声音包括……」（老稿「最终画面采用……」）那一行都记在 basic
-      d.fmt = 'pe';
-      for (const raw of text.split(/\r\n|\n|\r/)) {
-        const t = raw.trim(), hk = t.replace(/\s+/g, '');
-        if (PE_HEAD[hk]) { sec = PE_HEAD[hk]; d.has[sec] = true; shot = null; continue; }
-        if (RE_PE_REF.test(hk)) { sec = 'refs'; d.has.refs = true; d.refs.push(t); shot = null; continue; }
-        if (!t) continue;
-        if (sec === 'shots' && /^(最终画面|声音包括)/.test(t)) { d.basic.push(t); shot = null; continue; }
-        const m = sec === 'shots' ? /^镜头\s*([0-9０-９]+)\s*[：:｜|]?\s*(.*)$/.exec(t) : null;
-        if (m) { shot = { no: m[1], title: '', lines: m[2] ? [m[2]] : [] }; d.shots.push(shot); continue; }
-        if (sec === 'event') d.event += t;
-        else if (sec === 'keep') d.keep += t;
-        else if (sec === 'shots') (shot ? shot.lines : d.shotsPre).push(t);
-        else d[sec].push(t);
-      }
-      return d;
-    }
-    const lab = line => { const m = /^([^：:\n]{1,10})[：:]/.exec(line); return m ? { label: m[1].trim(), value: line.slice(m[0].length) } : null; };
-    for (const raw of text.split(/\r\n|\n|\r/)) {
-      const t = raw.trim(), key = SEC_OF[t.replace(/\s+/g, '')];
-      if (key) { sec = key; d.has[key] = true; shot = null; continue; }
-      const g = lab(t);
-      if (g && g.label === '本段事件' && sec === 'pre') { d.event = g.value.trim(); sec = 'event'; continue; }
-      if (g && g.label === '保持一致' && sec !== 'keep') { d.keep = g.value.trim(); d.has.keep = true; sec = 'keep'; shot = null; continue; }
-      if (sec === 'shots' && /^镜头\s*[0-9０-９]+/.test(t)) { const m = /^镜头\s*([0-9０-９]+)\s*[｜|：:]?\s*(.*)$/.exec(t); shot = { no: m[1], title: m[2], lines: [] }; d.shots.push(shot); continue; }
-      if (!t) continue;
-      if (sec === 'event') d.event += t;
-      else if (sec === 'keep') d.keep += t;
-      else if (sec === 'shots') (shot ? shot.lines : d.shotsPre).push(t);
-      else d[sec].push(t);
-    }
-    return d;
-  }
-  function serializePrompt(d) {
-    const out = [];
-    if (d.pre.length) out.push(...d.pre, '');
-    out.push('本段事件：' + d.event, '');
-    if (d.has.refs || d.refs.length) out.push('素材', ...d.refs, '');
-    out.push('基础设定', ...d.basic, '', '本段', ...d.seg, '', '分镜', '');
-    if (d.shotsPre.length) out.push(...d.shotsPre, '');
-    for (const s of d.shots) out.push('镜头 ' + s.no + '｜' + s.title, ...s.lines, '');
-    out.push('保持一致：' + d.keep);
-    return (d.bom ? BOMCH : '') + out.join(d.eol) + d.eol;
-  }
+  const BOMCH = String.fromCharCode(0xFEFF);
   /* 提示词的名字：一场写几条就分几条，第一条 视频提示词.txt，第二条起 视频提示词_02.txt、_03.txt……（2026-11-13 定，加第二条时第一条不改名）；
      老稿 段落a-b_视频提示词.txt、镜头a-b_视频提示词.txt 照旧认。和 通用工具/流水线/流水线.js 里的 vpNo、vpLabel、vpTok 一个算法 */
   /* 审片以后照修改方案改出来的另存一份，名字后面加 _改1、_改2……（2026-11-14 他定）：视频提示词_改1.txt、视频提示词_02_改1.txt、镜头1-5_视频提示词_改1.txt。
      原稿和前几版留在原处不动；流水线里一条只摆最新的那一版，出片也用它 */
-  const RE_VP = /(^|_)视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/;
+  const RE_VP = Core ? Core.RE_VP : { test: core('RE_VP') };
   const vpPath = j => pj(j.项目, '提示词', segDir(j.段), str(j.名));
-  const vpVer = name => +((/_改([0-9]+)\.txt$/.exec(str(name)) || [])[1] || 0);   // 改的第几版；原稿是 0
-  const vpBase = name => str(name).replace(/_改[0-9]+(\.txt)$/, '$1');   // 这一条的原稿名
-  const vpNo = name => { const b = vpBase(name); return /^视频提示词\.txt$/.test(b) ? 1 : +((/^视频提示词_([0-9]+)\.txt$/.exec(b) || [])[1] || 0); };   // 第几条；老稿是 0
-  const vpLabelOf = name => { const b = vpBase(name), n = vpNo(b), v = vpVer(name); return (n ? '第' + n + '条' : b.replace(/_?视频提示词\.txt$/, '') || '整场') + (v ? ' 改' + v : ''); };
-  const vpLabel = j => vpLabelOf(str(j.名));
-  const vpTok = name => { const b = vpBase(name), n = vpNo(b), v = vpVer(name); return (n ? '提示词' + two(n) : b.replace(/_?视频提示词\.txt$/, '') || '整场') + (v ? '改' + v : ''); };   // 样片名、画布节点名里写的（和样片自己的「第N条」分开）
+  const viaStr = f => n => f(str(n));   // 不是字的当空字
+  const vpVer = viaStr(core('vpVer')), vpBase = viaStr(core('vpBase')), vpNo = viaStr(core('vpNo')), vpLabelOf = viaStr(core('vpLabel')), vpTok = viaStr(core('vpTok'));   // 样片名、画布节点名里写的是 vpTok（和样片自己的「第N条」分开）
+  const vpLabel = j => vpLabelOf(j.名);
   const taskOfVp = name => name.replace(/视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/, '出片任务$1$2.txt');   // 视频提示词_02.txt → 出片任务_02.txt；视频提示词_改1.txt → 出片任务_改1.txt
   const vpLatest = names => { const by = new Map(); for (const n of names) if (RE_VP.test(n)) { const b = vpBase(n), o = by.get(b); if (!o || vpVer(n) > vpVer(o)) by.set(b, n); } return [...by.values()]; };   // 一条只留最新那一版
+  const byNo = (a, b) => (a.no || 1e9) - (b.no || 1e9) || a.f.localeCompare(b.f, 'zh', { numeric: true });   // 几条提示词照第几条排，老稿排后面
   async function vpNeed(j) { if (!nameOk(str(j.名)) || !RE_VP.test(j.名) || !(await exists(vpPath(j)))) throw fail('没有这份提示词'); }
   /* 改之前留一版（复制，不挪走：他可能正开着页面写）：历史记录/同样的路径/原名__时间.后缀 */
   async function keepCopy(name, relParts) {
@@ -1271,8 +1208,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   }
   /* 任务书里讲场景的那几句、带的材料、要不要让 AI 看图：有底稿照底稿；没有底稿、有场景图，看图建一份 */
   async function geoPart(j, sceneImgs, s) {
-    const geo = await geoOf(j.项目, j.段, s), imgs = [];
-    for (const g of sceneImgs || []) { const p = pj(j.项目, ...String(g).replace(/\\/g, '/').split('/')); if (/\.(png|jpe?g|webp)$/i.test(p) && await exists(p)) imgs.push(p); }
+    const geo = await geoOf(j.项目, j.段, s), imgs = await imgsAt(j.项目, sceneImgs);
     const make = !geo.length && imgs.length > 0;   // 没有底稿、有场景图：让 AI 看图先建一份
     return {
       make, images: make ? imgs : [],
@@ -1285,14 +1221,14 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   async function saveGeo(j, text) {   // AI 新建的底稿：存到这一段的文件夹里给人审；那里已经有就不动
     const t = (text || '').trim(), rel = ['提示词', segDir(j.段), 'GEO底稿.md'];
     if (t.length < 80 || await exists(pj(j.项目, ...rel))) return '';
-    await writeFile(pj(j.项目, ...rel), '# 第' + j.段 + '段 GEO 底稿\n\n人审用，不进提示词。' + nowText() + ' ' + chLabel(j) + ' 看着场景图、照 scene-geo 建的，还没人审过：看完哪里不对，改这份底稿，再点「重新铺底」。\n\n' + t + '\n');
+    await writeFile(pj(j.项目, ...rel), '# 第' + j.段 + '段 GEO 底稿\n\n人审用，不进提示词。' + nowText() + ' ' + chLabel(j) + ' 看着场景图、照 scene-geo 建的，还没人审过：看完哪里不对，改这份底稿，再点写稿页的「AI 铺底」。\n\n' + t + '\n');
     return rel.join('/');
   }
   /* 这个项目定下来的全片光影总基调、踩过的坑（历史教训）：写提示词、铺底的时候带上 */
   async function toneOf(name) { const p = pj(name, '提示词', '全局资产', '全片_光影总基调.txt'); return (await exists(p)) ? unbom(await fsp.readFile(p, 'utf8')).trim() : ''; }
   /* 交给 AI 的「拍摄风格」那一段（11-14 加）：这一场另选的先算，没有就照全片的（s 不给：只看全片的，资产图是各场共用的）。
      风格库里的一种：带上它的写法；「本项目自己的」：照光影总基调；没定风格：照旧只带光影总基调（有的话），小标题用 toneHead。
-     use：写（写提示词、铺底）、批、改、图（出图提示词）、审（审片建议），各带哪几行见 公用/风格库.js */
+     use：写（写提示词、铺底）、批、改、图（出图提示词）、审（修改方案），各带哪几行见 公用/风格库.js */
   const styleLib = async () => Style.parse(unbom(await fsp.readFile(path.join(TOOLS, Style.DIR[1], Style.FILE), 'utf8')));
   async function lookPart(name, flow, s, use, toneHead) {
     if (flow === null) flow = await readFlow(name).catch(() => null);
@@ -1330,32 +1266,6 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     }
     return list;
   }
-  /* 别的段写好的基础设定：各段照抄（挑最近改过的一份） */
-  async function basicOfOthers(j) {
-    let best = null;
-    try {
-      for (const d of await fsp.readdir(pj(j.项目, '提示词'))) {
-        if (!/^第.+段$/.test(d)) continue;
-        for (const g of await fsp.readdir(pj(j.项目, '提示词', d)).catch(() => [])) {
-          if (!RE_VP.test(g) || (d === segDir(j.段) && g === j.名)) continue;
-          const p = pj(j.项目, '提示词', d, g), doc = parsePrompt(await fsp.readFile(p, 'utf8'));
-          if (!doc.basic.length) continue;
-          const t = (await fsp.stat(p)).mtimeMs;
-          if (!best || t > best.t) best = { t, from: d + '/' + g, lines: doc.basic };
-        }
-      }
-    } catch (e) { /* 还没有别的段 */ }
-    return best;
-  }
-  const kwNorm = v => {   // 关键词：一组一组，每条不超过 10 个字；长的（台词）写成 {show, t, tip}
-    const out = {};
-    for (const [g, list] of Object.entries(v && typeof v === 'object' && !Array.isArray(v) ? v : {})) {
-      const items = (Array.isArray(list) ? list : []).map(x => typeof x === 'string' ? x.trim() : x && typeof x === 'object' && str(x.t).trim() ? { show: str(x.show).trim().slice(0, 10) || str(x.t).trim().slice(0, 10), t: str(x.t).trim(), ...(str(x.tip).trim() ? { tip: str(x.tip).trim() } : {}) } : null)
-        .filter(Boolean).filter(x => !/^(无|没有|暂无)(台词|对白)?$/.test(typeof x === 'string' ? x : x.t)).map(x => typeof x === 'string' && x.length > 10 ? { show: x.slice(0, 9) + '…', t: x } : x).slice(0, 6);
-      if (items.length) out[str(g).trim().slice(0, 6) || '提示'] = items;
-    }
-    return out;
-  };
   async function sideOf(j) {
     try {
       const value = JSON.parse(unbom(await fsp.readFile(vpPath(j).replace(/\.txt$/, '_写稿.json'), 'utf8')));
@@ -1363,43 +1273,13 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       return value;
     } catch (e) { if (e.code === 'ENOENT') return {}; throw fail('写稿资料读不了，为保护现有内容没有改动：' + e.message); }
   }
-  const recordOf = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
-  // 新格式的自由稿只含分镜；无范围标记的旧自由稿仍按原语义读取，避免截断旧内容。
-  const freeShotText = (side, raw) => side.写法范围 === '分镜' ? str(side.自由稿) : raw;
-  const shotInfo = side => Array.isArray(side.镜头信息) ? side.镜头信息 : [];
-  const shotSignature = sh => JSON.stringify([sh.no, sh.title, sh.lines]);
-  function keywordTargets(cur, side) {
-    return cur.shots.map(sh => {
-      const info = shotInfo(side).find(x => x && String(x.no) === String(sh.no));
-      return { no: sh.no, id: info ? str(info.id) : '', signature: shotSignature(sh) };
-    });
-  }
-  function applyKeywords(side, cur, targets, words) {
-    let count = 0;
-    for (const target of targets || []) {
-      const got = kwNorm(words[target.no] || words[String(+target.no)] || words['镜头' + target.no] || words['镜头 ' + target.no]);
-      if (!Object.keys(got).length) continue;
-      if (target.id) {
-        if (!shotInfo(side).some(x => x && x.id === target.id)) continue;
-        side.镜头关键词 = recordOf(side.镜头关键词);
-        side.镜头关键词[target.id] = got;
-      } else {
-        // 老稿没有稳定 ID 时，镜头内容和编号都未变化才接受旧请求的返回。
-        if (!cur.shots.some(sh => shotSignature(sh) === target.signature)) continue;
-        side.关键词 = recordOf(side.关键词);
-        side.关键词[target.no] = got;
-      }
-      count++;
-    }
-    return count;
-  }
   const blockOf = (t, name, next) => { const a = t.indexOf('【' + name + '】'); if (a < 0) return null; const rest = t.slice(a + name.length + 2); let z = rest.length; for (const n of next) { const i = rest.indexOf('【' + n + '】'); if (i >= 0 && i < z) z = i; } return rest.slice(0, z); };
   const linesOf = t => (t || '').split('\n').map(l => l.trim()).filter(l => l && !/^\x60\x60\x60/.test(l));
   /* 不是从流水线做起来的项目：没有「这一场出场的」可查，就把全局资产和这一段文件夹里的图都列给 AI 挑 */
   async function poolAssets(j) {
-    const out = [], img = /\.(png|jpe?g|webp)$/i;
-    try { for (const c of await fsp.readdir(pj(j.项目, '资产', '全局资产'))) for (const g of await fsp.readdir(pj(j.项目, '资产', '全局资产', c)).catch(() => [])) if (img.test(g)) out.push({ line: c + '：资产/全局资产/' + c + '/' + g, path: '资产/全局资产/' + c + '/' + g }); } catch (e) { /* 没有全局资产 */ }
-    try { for (const g of await fsp.readdir(pj(j.项目, '资产', segDir(j.段)))) if (img.test(g)) out.push({ line: '这一段的图：资产/' + segDir(j.段) + '/' + g, path: '资产/' + segDir(j.段) + '/' + g }); } catch (e) { /* 这一段没有文件夹 */ }
+    const out = [];
+    try { for (const c of await fsp.readdir(pj(j.项目, '资产', '全局资产'))) for (const g of await fsp.readdir(pj(j.项目, '资产', '全局资产', c)).catch(() => [])) if (IMG_RE.test(g)) out.push({ line: c + '：资产/全局资产/' + c + '/' + g, path: '资产/全局资产/' + c + '/' + g }); } catch (e) { /* 没有全局资产 */ }
+    try { for (const g of await fsp.readdir(pj(j.项目, '资产', segDir(j.段)))) if (IMG_RE.test(g)) out.push({ line: '这一段的图：资产/' + segDir(j.段) + '/' + g, path: '资产/' + segDir(j.段) + '/' + g }); } catch (e) { /* 这一段没有文件夹 */ }
     return out.slice(0, 200);
   }
   /* ---------- 白模视频（2026-11-13 起，见 通用工具/流水线/白模与分段_讨论.md）：挂在某一条提示词上的 @视频N ----------
@@ -1425,7 +1305,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   /* 这一条挂的关键帧（11-13 夜加，流水线资产那一步「关键帧」一块里的图）：这一段文件夹里的图，名字带首帧、尾帧、关键帧的，或者这一场挑进「关键帧」的 */
   const FRAME_RE = /首帧|尾帧|关键帧/;
   const framesOf = (j, regs, s) => regs.filter(r => /^@图片\d+$/.test(r.ref) && r.path.startsWith('资产/' + segDir(j.段) + '/') && (FRAME_RE.test(path.basename(r.path)) || (!!s && Array.isArray(s.关键帧) && s.关键帧.includes(r.path))));
-  const frameImgs = (j, frames) => frames.map(f => pj(j.项目, ...(f.path || f).split('/'))).filter(p => /\.(png|jpe?g|webp)$/i.test(p));
+  const frameImgs = (j, frames) => frames.map(f => pj(j.项目, ...(f.path || f).split('/'))).filter(p => IMG_RE.test(p));
   const FRAME_HOW = '写法照 sd25-pe「关键帧锚点」：一张的写「@图片N作为首帧。」，另起一句「该首帧定义……。」（名字带「尾帧」的当尾帧）；几张的照上面的先后，先写「以@图片A至@图片B的顺序作为关键帧。」（编号不连着就用顿号一个个列），第一张当首帧，中间的写「@图片N定义第二个关键帧：……。」，最后一张名字带「尾帧」的当尾帧。写法二放【场景】最前面，写法一放【参考素材职责】最前面。';
   const FRAME_HOW_BMK = '这一条还挂了白模：关键帧照「白模＋关键帧的写法」那一段写，不用 sd25-pe 的关键帧锚点句。';
   /* ---------- 审片时弃用的关键帧（2026-11-14 他定：新的一版去掉，图留着）----------
@@ -1433,11 +1313,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
      照方案改的时候，照方案、照你说的都改完以后去掉：它自己那几句删掉，别的句子里提到它的那一处换成〔〕要人改写，后面的 @图片 往前挪、不留空号；
      普通写法的关键帧句子照剩下的重写（谁当首帧、第几个关键帧跟着变）；白模＋关键帧的稿只改关键帧那一句和每一镜开头参考的那几张，秒数不动。
      和提示词那一步「改关键帧」同一套（提示词.html 的 framePlan） */
-  const KF_HOLE = '〔原来的关键帧去掉了，改写这一处〕';
   const KF_SHOT = /^(\s*镜头\s*)([0-9０-９]+)(\s*[：:]\s*)(.*)$/;
-  const kfKey = l => String(l == null ? '' : l).replace(/\s+/g, '');
-  const kfIsHead = l => /^【[^】]+】$/.test(kfKey(l));
-  const kfEmpty = (L, i) => { const n = L[i + 1]; return n === undefined || !n.trim() || kfIsHead(n); };
   const spanRefs = s => { const out = []; for (const m of String(s).matchAll(/@图片(\d+)(?:至@图片(\d+))?/g)) { const a = +m[1], b = m[2] ? +m[2] : a; for (let n = Math.min(a, b); n <= Math.max(a, b) && out.length < 99; n++) out.push('@图片' + n); } return out; };   // 「@图片6至@图片10」「@图片6、@图片8」→ 一个一个
   function goneFrames(notesMd, regs) {   // 批注里弃用的那几张：照路径认，认不出照编号（名字也得对上）。{ list：登记里的那几项, miss：认不出的编号 }
     const list = [], miss = [];
@@ -1448,33 +1324,17 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     }
     return { list, miss };
   }
-  function kfPut(L, add) {   // 关键帧句子放哪：写法二放【场景】最前面，写法一放【参考素材职责】最前面；没有这一组就补上组名
-    if (!add.length) return L;
-    const find = g => L.findIndex(l => kfKey(l) === g);
-    const two = ['【人物】', '【道具】', '【场景】', '【动作与声音】'].some(g => find(g) >= 0), g = find(two ? '【场景】' : '【参考素材职责】');
-    if (g >= 0) { L.splice(g + 1, 0, ...add); return L; }
-    let k = L.findIndex(l => (two ? /^【(动作与声音|未采用素材|主体与关系|事件脚本|保持一致)】$/ : /^【(未采用素材|主体与关系|事件脚本|保持一致)】$/).test(kfKey(l)));
-    if (k < 0) k = L.length;
-    L.splice(k, 0, two ? '【场景】' : '【参考素材职责】', ...add, '');
-    return L;
-  }
   function kfBmBack(L, v) {   // 白模＋关键帧的稿，关键帧一张不剩：换回普通的白模写法（白模那句、几何体对应，和提示词那一步 BM_LINES 一样）
     const T = L.map(l => l.trim()), add = [];
     if (!T.some(l => l.startsWith(v + '是'))) add.push(v + '是粗粒度白模参考，仅提供〔动作路径、主体站位、机位、运镜和切镜〕，不采用其中的白模外观、材质和场景。');
     if (!T.some(l => l.startsWith(v + '中的') || l.startsWith(v + '里'))) add.push(v + '中的〔哪个白模几何体〕对应〔哪个人物或道具〕。');
-    if (!add.length) return L;
-    const find = g => L.findIndex(l => kfKey(l) === g);
-    const two = ['【人物】', '【道具】', '【场景】'].some(g => find(g) >= 0), g = find(two ? '【动作与声音】' : '【参考素材职责】');
-    if (g >= 0) { let k = g + 1; while (k < L.length && L[k].trim() && !kfIsHead(L[k])) k++; L.splice(k, 0, ...add); return L; }
-    let k = L.findIndex(l => (two ? /^【(未采用素材|事件脚本|保持一致)】$/ : /^【(未采用素材|主体与关系|事件脚本|保持一致)】$/).test(kfKey(l)));
-    if (k < 0) k = L.length;
-    L.splice(k, 0, two ? '【动作与声音】' : '【参考素材职责】', ...add, '');
-    return L;
+    return KeyFrames.putRef(L, add);   // 放哪：和提示词那一步同一份（公用/关键帧写法.js）
   }
   /* 去掉弃用的关键帧。lines：改好的稿（一行一项）；regs：原稿登记的素材；gone：弃用的那几项；s：流水线里这一场。
      返回 { lines 新稿, regs 新的一版登记的素材（编号照挪过的）, gone 去掉的编号, removed 删掉的句子, holed 换成〔〕的句子, moved 编号挪过没有 } */
   async function dropFrames(j, lines, regs, gone, s) {
     if (!KeyFrames) throw fail('读不了 公用/关键帧写法.js，去不了弃用的关键帧');
+    const { headKey, isHead, groupEmpty, HOLE } = KeyFrames;
     const goneRefs = gone.map(r => r.ref), vids = vidsOf(regs), frames = framesOf(j, regs, s), src = lines.join('\n');
     const bmk = !!BmKey && vids.length > 0 && BmKey.isBmk(src), used = new Set(), removed = [], holed = [];
     const isGroup = l => !!BmKey && BmKey.isOwn(l) && /@图片/.test(l);   // 白模＋关键帧：「@图片6至@图片10是各镜头的关键帧……」
@@ -1486,8 +1346,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     const sc = KeyFrames.scan(L);
     if (!bmk) sc.refs.forEach(r => used.add(r));
     const kfs = regs.filter(r => /^@图片\d+$/.test(r.ref) && (frames.includes(r) || used.has(r.ref) || goneRefs.includes(r.ref))), olds = kfs.map(r => r.ref);
-    let list = KeyFrames.order(kfs.filter(r => !goneRefs.includes(r.ref) && used.has(r.ref)).map(r => ({ ref: r.ref, name: path.basename(r.path).replace(/\.[^.]+$/, ''), desc: sc.desc.get(r.ref) || '' })));
-    const filled = new Set(L.map((l, i) => kfIsHead(l) && !kfEmpty(L, i) ? kfKey(l) : '').filter(Boolean));
+    let list = KeyFrames.order(kfs.filter(r => !goneRefs.includes(r.ref) && used.has(r.ref)).map(r => ({ ref: r.ref, name: stemOf(r.path), desc: sc.desc.get(r.ref) || '' })));
+    const filled = new Set(L.map((l, i) => isHead(l) && !groupEmpty(L, i) ? headKey(l) : '').filter(Boolean));
     if (bmk && !list.length) L = BmKey.bare(src).text.split('\n');   // 一张不剩：白模＋关键帧那几句、每一镜开头的秒数都拿掉，下面换回普通的白模写法
     else if (bmk) {   // 关键帧那一句先换成记号（编号排好了写回原处）；每一镜开头参考的，去掉弃用的那几张
       let had = false;
@@ -1508,10 +1368,10 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     });
     for (const r of gone) {   // 别处提到它的：以它开头的句子删掉，别的那一处换成〔〕
       const has = new RegExp(r.ref + '(?![0-9])'), all = new RegExp(r.ref + '(?![0-9])', 'g');
-      L = L.flatMap(l => { if (!has.test(l)) return [l]; if (l.trim().startsWith(r.ref)) { removed.push(l.trim()); return []; } const n = l.replace(all, KF_HOLE); holed.push(n.trim()); return [n]; });
+      L = L.flatMap(l => { if (!has.test(l)) return [l]; if (l.trim().startsWith(r.ref)) { removed.push(l.trim()); return []; } const n = l.replace(all, HOLE); holed.push(n.trim()); return [n]; });
     }
-    if (!bmk && sc.rows.size) L = kfPut(L, KeyFrames.lines(list));
-    for (let i = L.length - 1; i >= 0; i--) if (/^【(参考素材职责|场景)】$/.test(kfKey(L[i])) && filled.has(kfKey(L[i])) && kfEmpty(L, i)) L.splice(i, L[i + 1] !== undefined && !L[i + 1].trim() ? 2 : 1);   // 原来有句子、这回删空了的组
+    if (!bmk && sc.rows.size) L = KeyFrames.put(L, KeyFrames.lines(list));
+    for (let i = L.length - 1; i >= 0; i--) if (/^【(参考素材职责|场景)】$/.test(headKey(L[i])) && filled.has(headKey(L[i])) && groupEmpty(L, i)) L.splice(i, L[i + 1] !== undefined && !L[i + 1].trim() ? 2 : 1);   // 原来有句子、这回删空了的组
     // 编号别留空号：出片任务书照编号挂素材，空一个号后面就全对错了
     const nums = new Set([...(L.join('\n').match(/@图片\d+/g) || []), ...list.map(x => x.ref)].map(r => +r.slice(3))), move = new Map();
     [...nums].sort((a, b) => a - b).forEach((n, i) => { if (n !== i + 1) move.set('@图片' + n, '@图片' + (i + 1)); });
@@ -1589,132 +1449,18 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     return { text: text || '（这一场还没有剧本和镜头表）', assets: s ? sceneAssets(flow, s) : await poolAssets(j), s };
   }
   Object.assign(KINDS, {
-    铺底: {
-      title: j => 'AI 建议 · 第' + j.段 + '场 ' + vpLabel(j), need: ['段'], key: j => j.段 + '/' + j.名, file: j => j.段 + '/' + j.名,
-      prep: vpNeed,
-      async book(j) {
-        const ctx = await ctxOf(j), assets = ctx.assets;
-        const raw = await fsp.readFile(vpPath(j), 'utf8'), side = await sideOf(j);
-        const cur = parsePrompt(side.写法 === '自由' ? str(side.分镜稿) : raw), other = await basicOfOthers(j);
-        j.keywordTargets = side.写法 === '自由' ? [] : keywordTargets(cur, side);
-        j.suggestionMode = side.写法 === '自由' ? '自由' : '分镜';
-        const regs = await regOf(j), vids = vidsOf(regs), frames = framesOf(j, regs, ctx.s);   // 这一条挂的白模、关键帧：也算能用的素材（素材登记可以写它），任务书里另说怎么写
-        for (const v of vids) assets.push({ line: '白模视频（这一条已经挂成 ' + v.ref + '）：' + v.path, path: v.path });
-        for (const f of frames) assets.push({ line: '关键帧（这一条已经挂成 ' + f.ref + '）：' + f.path, path: f.path });
-        j.assets = assets.map(x => x.path);
-        j.images = frameImgs(j, frames);
-        const bmk = vids.length > 0 && frames.length > 0 && !!BmKey;   // 既挂白模又挂关键帧：照官方「白模＋关键帧」的写法（11-14）
-        const look = await lookPart(j.项目, null, ctx.s, '写', '全片光影总基调'), lessons = await lessonsOf(j.项目), geo = await geoOf(j.项目, j.段, ctx.s), bm = await bmPart(j, vids, frames)
-          + framePart(frames, bmk ? '素材建议里白模、关键帧、收尾那三句照原样留着（编号和先后都不改），还是 sd25-pe 关键帧锚点句的换成这三句；每一镜开头的秒数和参考哪张由人定，分镜建议的正文不带秒数。'
-            : '素材建议里关键帧那几句照原样留着（顺序句、首帧尾帧、第几个关键帧；编号和先后都不改）；还留着〔〕的，照图把这一刻看得见的构图、人物位置、姿态、镜头方向填上（图已经让你看过），别的字不动。', bmk);
-        const pe = isPeText(raw) || !raw.trim();   // 新稿都是 sd2.5PE 格式；11-13 以前的旧稿照旧格式给建议
-        const head = pe ? ['# 任务：给正在写的提示词提供侧栏建议', '', '今天 ' + today() + '。这份稿照 sd25-pe 的格式写。用户自己写【生成目标】和【事件脚本】里的镜头，事件脚本采用' + j.suggestionMode + '模式，自行决定镜头数量、顺序和正文。生成目标、素材、基础设定、主体与关系、保持一致是共用的公共内容，不随写法切换。你只提供备选建议，用户点击采用以后才进入正文。',
-          '', '## 要求', '1. 不重写整份稿，不要求用户按固定段落或镜头数量写，不把剧本段落机械映射成镜头。格式照下面「提示词格式」，戏照「写戏规矩」。',
-          '2. 分镜建议给二到四个有帮助的思路，每项包含标题、作用和可采用的正文（正文是一镜的一句话，不带「镜头N：」，页面会自己编号），以及按机位、动作、台词分组的关键词；不要复述已有内容。对空白稿也只提供建议，不预填或代替用户定结构。',
-          '3. 基础建议给公共区提供可选文本，可留空：「生成目标」一两句；「素材」写整段、带段名（写法一从【参考素材职责】起，挂了没用上的接【未采用素材】；写法二从【人物】起，按【人物】【道具】【场景】【动作与声音】分组）；「主体与关系」只在写法一给，写法二把这些写进素材的【人物】【场景】里；「基础设定」写「影像风格：……」「摄影：……」「光色基调：……」三行，再加一行「声音包括……。」（这一行存的时候跟在事件脚本最后）；「保持一致」写「保持……稳定。」。现有公共内容已合适就不必改。资产只能选下面给出的文件；素材登记记录建议里使用的素材，不能自行改用户已用的编号。',
-          '4. 关键词每条不超过十个字。台词只用剧本里已有原话，长句写成 {"show":"台词提示","t":"台词原话","tip":"出处"}，没有台词就不提供。已有镜头的关键词以当前镜头号为键（如 "1"）；自由写的事件脚本以“自由”为键。',
-          '5. 回复一个 JSON 对象，不附加说明。结构如下：',
-          '{"分镜建议":[{"标题":"建议标题","作用":"想达到什么效果","正文":"可以插入的一句话","关键词":{"机位":["…"],"动作":["…"]}}],"基础建议":{"生成目标":"","素材":"","基础设定":"","主体与关系":"","保持一致":""},"关键词":{"1":{"动作":["…"]}},"素材登记":[{"ref":"@图片1","name":"称谓","path":"资产/……png"}]}']
-          : ['# 任务：给正在写的提示词提供侧栏建议', '', '今天 ' + today() + '。用户只在分镜部分采用' + j.suggestionMode + '模式，自行决定镜头数量、顺序、标题、作用和正文。本段事件、素材、基础设定、本段、保持一致是共用的公共内容，不随分镜写法切换。你只提供备选建议，用户点击采用以后才进入正文。',
-          '', '## 要求', '1. 不重写整份稿，不要求用户按固定段落或镜头数量写，不把剧本段落机械映射成镜头。这份是 11-13 以前的旧格式稿，照它原来的格式（本段事件、素材、基础设定、本段、分镜、保持一致）给建议；写法照 sd25-pe 和下面的「写戏规矩」。',
-          '2. 分镜建议给二到四个有帮助的思路，每项包含标题、作用和可采用的正文，以及按机位、动作、台词分组的关键词；不要复述已有内容。对空白稿也只提供建议，不预填或代替用户定结构。',
-          '3. 基础建议给公共区的本段事件、素材、基础设定、本段、保持一致提供可选文本。可留空。现有公共内容已合适就不必改，不因分镜采用自由文本而忽略或重建公共区。资产只能选下面给出的文件；素材登记记录建议里使用的素材，不能自行改用户已用的编号。',
-          '4. 关键词每条不超过十个字。台词只用剧本里已有原话，长句写成 {"show":"台词提示","t":"台词原话","tip":"出处"}，没有台词就不提供。已有镜头的关键词以当前镜头号为键；自由分镜以“自由”为键。自由分镜不要求逐镜编号或作用字段，公共区仍共用。',
-          '5. 回复一个 JSON 对象，不附加说明。结构如下：',
-          '{"分镜建议":[{"标题":"建议标题","作用":"想达到什么效果","正文":"可以插入的文字","关键词":{"机位":["…"],"动作":["…"]}}],"基础建议":{"本段事件":"","素材":"","基础设定":"","本段":"","保持一致":""},"关键词":{"01":{"动作":["…"]}},"素材登记":[{"ref":"@图片1","name":"称谓","path":"资产/……png"}]}'];
-        return [...head,
-          '', '## 当前草稿（原样保留，仅供参考）', raw || '（空白稿）',
-          shotInfo(side).length ? '\n## 用户自定的镜头作用\n' + JSON.stringify(shotInfo(side).map(x => ({ no: x.no, 作用: x.作用 }))) : '',
-          '', '## 能用的资产', assets.map(x => x.line).join('\n') || '（没有）', bm, other ? '\n## 本项目其他段写过的画面风格（旧稿是基础设定，11-13～11-14 的稿是「最终画面采用……」一行，11-14 起是【基础设定】；照它统一，和这部片子定的拍摄风格对不上的以拍摄风格为准）\n' + other.lines.join('\n') : '',
-          look, geo.length ? '\n## 已有场景空间资料\n' + geo.map(x => x.text).join('\n') : '',
-          '', ctx.text, lessons ? '\n## 项目历史教训\n' + lessons : '', '', ...(pe ? [PE_FORMAT, ''] : []), PE_DRAMA, '', '## 技能：sd25-pe', await skill('sd25-pe'), TAIL].join('\n');
-      },
-      async apply(j, text) {
-        const data = recordOf(jsonIn(text));
-        const suggestions = (Array.isArray(data.分镜建议) ? data.分镜建议 : []).filter(x => x && typeof x === 'object').map(x => ({ 标题: str(x.标题).trim(), 作用: str(x.作用).trim(), 正文: str(x.正文).trim(), 关键词: kwNorm(x.关键词) })).filter(x => x.正文 || x.标题).slice(0, 8);
-        const basic = {};
-        for (const key of ['本段事件', '生成目标', '素材', '基础设定', '画面与声音', '本段', '主体与关系', '保持一致']) {   // 旧稿、PE 稿的分区名都认；空的不留
-          const value = recordOf(data.基础建议)[key];
-          const v = Array.isArray(value) ? value.filter(x => typeof x === 'string').join('\n') : str(value);
-          if (v.trim()) basic[key] = v;
-        }
-        const words = recordOf(data.关键词);
-        if (!suggestions.length && !Object.values(basic).some(Boolean) && !Object.keys(words).length) throw fail('AI 没有返回可用的建议');
-        const refs = await refsIn(j, JSON.stringify(data.素材登记 || []), j.assets || []);
-        return withFileLocks([vpPath(j), vpPath(j).replace(/\.txt$/, '_写稿.json')], async () => {
-          // 与页面保存共用文件锁；仅改 AI 字段，正文、写法、快照与镜头信息保持原样。
-          const raw = await fsp.readFile(vpPath(j), 'utf8'), side = await sideOf(j);
-          const cur = parsePrompt(side.写法 === '自由' ? str(side.分镜稿) : raw);
-          side.分镜建议 = suggestions;
-          side.基础建议 = basic;
-          side.建议素材 = refs;
-          applyKeywords(side, cur, j.keywordTargets, words);
-          if (j.suggestionMode === '自由' && words.自由) {
-            side.关键词 = recordOf(side.关键词);
-            side.关键词.自由 = kwNorm(words.自由);
-          }
-          await writeFile(vpPath(j).replace(/\.txt$/, '_写稿.json'), JSON.stringify(side, null, 2) + '\n');
-          return { 结果: 'AI 建议已放到侧栏，正文保持原样', 产出: [] };
-        });
-      },
-    },
-    要关键词: {
-      title: j => '给关键词 · 第' + j.段 + '场 ' + vpLabel(j) + (j.镜头号 === '自由' ? ' 自由分镜' : ' 镜头' + j.镜头号), need: ['段'], key: j => j.段 + '/' + j.名 + '/' + (j.镜头ID || j.镜头号), file: j => j.段 + '/' + j.名,
-      async prep(j) {
-        await vpNeed(j);
-        if (j.镜头号 !== '自由' && !/^[0-9]{1,6}$/.test(str(j.镜头号))) throw fail('要说清是哪一镜');
-        if (j.镜头ID && !/^[A-Za-z0-9_-]{1,100}$/.test(j.镜头ID)) throw fail('镜头标识不正确');
-      },
-      async book(j) {
-        const ctx = await ctxOf(j), side = await sideOf(j), raw = await fsp.readFile(vpPath(j), 'utf8');
-        const free = j.镜头号 === '自由', cur = parsePrompt(side.写法 === '自由' ? str(side.分镜稿) : raw);
-        const info = j.镜头ID ? shotInfo(side).find(x => x && x.id === j.镜头ID) : null;
-        if (j.镜头ID && !info) throw fail('这个镜头已经删除，请重新选择');
-        const sh = free ? null : cur.shots.find(x => +x.no === +(info ? info.no : j.镜头号));
-        if (!free && !sh) throw fail('这份稿里没有镜头 ' + j.镜头号);
-        j.keywordTargets = sh ? [{ no: sh.no, id: j.镜头ID || '', signature: shotSignature(sh) }] : [];
-        const old = free ? recordOf(side.关键词).自由 : info ? recordOf(side.镜头关键词)[info.id] : recordOf(side.关键词)[sh.no];
-        const shotName = sh ? '镜头' + (cur.fmt === 'pe' ? sh.no + (info && str(info.标题) ? '｜' + str(info.标题) : '') : ' ' + sh.no + '｜' + sh.title) : '';
-        return ['# 任务：给提示词几个可选关键词', '', '今天 ' + today() + '。用户在写' + (free ? '自由分镜文本' : shotName) + '，想要几个关键词提示。只提供选项，由用户主动采用。素材等公共区不随写法切换。',
-          '', '## 要求', '1. 分机位、动作、台词几组，每组一到四条，每条不超过十个字。以剧本和当前文字为准，不要求用户调整镜头数量或套固定格式。',
-          '2. 台词只用剧本里已有原话，超过十个字时写成 {"show":"台词提示","t":"台词原话","tip":"出处"}。没有台词就不提供。', old ? '3. 已给过的关键词，换一批有用的：' + JSON.stringify(old) : '',
-          '4. 回复 JSON 对象，如 {"机位":["…"],"动作":["…"]}。',
-          info && str(info.作用) ? '\n## 用户写的本镜作用\n' + info.作用 : '',
-          '', '## 当前文字', free ? freeShotText(side, raw) || '（分镜尚未填写）' : sh.lines.join('\n') || '（尚未填写正文）',
-          free && side.写法范围 === '分镜' ? '\n## 整份提示词（公共区供对照）\n' + raw : '', '', ctx.text, TAIL].join('\n');
-      },
-      async apply(j, text) {
-        const got = kwNorm(jsonIn(text));
-        if (!Object.keys(got).length) throw fail('AI 没给出关键词');
-        return withFileLocks([vpPath(j), vpPath(j).replace(/\.txt$/, '_写稿.json')], async () => {
-          const raw = await fsp.readFile(vpPath(j), 'utf8'), side = await sideOf(j);
-          if (j.镜头号 === '自由') {
-            side.关键词 = recordOf(side.关键词);
-            side.关键词.自由 = got;
-          } else {
-            const cur = parsePrompt(side.写法 === '自由' ? str(side.分镜稿) : raw);
-            const target = (j.keywordTargets || [])[0];
-            if (!target || !applyKeywords(side, cur, [target], { [target.no]: got })) return { 结果: '原镜头已删除或改变，这次建议保留在任务记录中', 产出: [] };
-          }
-          await writeFile(vpPath(j).replace(/\.txt$/, '_写稿.json'), JSON.stringify(side, null, 2) + '\n');
-          return { 结果: '关键词已放到侧栏', 产出: [] };
-        });
-      },
-    },
     /* AI 批注：只批不改。写成写稿页认的格式（总评一行，一条一节），最多 8 条 */
     批注提示词: {
-      title: j => 'AI 批注 · 第' + j.段 + '场 ' + vpLabel(j) + (j.只批 ? ' 镜头' + j.只批 : ''), need: ['段'], key: j => j.段 + '/' + j.名, file: j => j.段 + '/' + j.名,
+      title: j => 'AI 批注 · 第' + j.段 + '场 ' + vpLabel(j), need: ['段'], key: j => j.段 + '/' + j.名, file: j => j.段 + '/' + j.名,
       prep: vpNeed,
       async book(j) {
         const flow = await readFlow(j.项目).catch(() => null), s = flow && sceneOf(flow, j.段), sp = scriptPath(j.项目, j.段), hp = shotsPath(j.项目, j.段);
-        const side = await sideOf(j);
-        let lessons = '';
-        try { for (const g of await fsp.readdir(pj(j.项目, '历史教训'))) if (/\.(md|txt)$/i.test(g)) lessons += '\n### ' + g + '\n' + unbom(await fsp.readFile(pj(j.项目, '历史教训', g), 'utf8')).slice(0, 6000); } catch (e) { /* 这个项目没有历史教训 */ }
+        const side = await sideOf(j), lessons = await lessonsOf(j.项目);
         const raw = unbom(await fsp.readFile(vpPath(j), 'utf8')), pe = isPeText(raw), regs = await regOf(j), vids = vidsOf(regs), frames = framesOf(j, regs, s);
         const bmk = vids.length > 0 && frames.length > 0 && !!BmKey;   // 既挂白模又挂关键帧：照官方「白模＋关键帧」的写法批（11-14）
         const bm = await bmPart(j, vids, frames) + framePart(frames, '图已经让你看过。', bmk);
         j.images = frameImgs(j, frames);
-        return ['# 任务：给一份视频提示词写批注（只批不改）', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是一场戏的 Seedance 视频提示词（' + (pe ? '生成目标和事件脚本' : '本段事件和分镜') + '多半是人自己写的），和这一场的剧本（老项目有镜头表的也带上）。请你当一个懂 Seedance 的编辑，给它写批注。' + (j.只批 ? '这一回只批「镜头 ' + j.只批 + '」这一镜。' : ''),
+        return ['# 任务：给一份视频提示词写批注（只批不改）', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是一场戏的 Seedance 视频提示词（' + (pe ? '生成目标和事件脚本' : '本段事件和分镜') + '多半是人自己写的），和这一场的剧本（老项目有镜头表的也带上）。请你当一个懂 Seedance 的编辑，给它写批注。',
           '', '## 怎么批', '1. 最多 8 条，要紧的排在前面。只批不改：稿子一个字都不动，你只写批注。写得好的地方不用夸，没问题就少写。',
           '2. 看这几样：和剧本对不对得上（漏戏、加戏、顺序）；人物想干什么、为什么这么反应写清楚没有（前因后果连不连得上）；一镜是不是只讲一两件事；有没有写一直不变的表情姿势、画面里没有的东西、时长秒数。' + (side.写法 === '自由' ? '用户只把分镜写成自由文本，不因分镜未逐镜分栏、缺少编号或作用字段批评格式。素材等公共区仍然共用，照实际内容核对。' : '镜头数量、顺序、标题和作用由用户决定，不要求镜头与剧本段落一一对应。') + '人物的戏照「写戏规矩」看。',
           ...(bmk ? ['   这一条既挂白模又挂关键帧（见下面「白模＋关键帧的写法」）：看素材里有没有那三句、几何体各对应谁填了没有；每一镜开头有没有写它在白模里的整秒和参考哪张，秒数是不是整数、一镜接着一镜、和白模的切点对得上（每一镜开头的这几个秒数不算「写了时长秒数」）；还在用 sd25-pe 关键帧锚点句、「@视频N是粗粒度白模参考」那一句的，要提醒换掉；参考的关键帧和那一镜的戏对不对得上；图里画了爆炸、烟、火这类会动的东西，挂上会被钉住不动，也要提醒。']
@@ -1756,7 +1502,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         if (!sum && !parts.length) throw fail('AI 没按要的格式回（要「总评」和一条一节的批注）');
         const rel = ['提示词', segDir(j.段), j.名.replace(/\.txt$/, '') + '_AI批注.md'];
         await archive(j.项目, rel);   // 上一轮的批注收进历史记录
-        await writeFile(pj(j.项目, ...rel), '总评：' + (sum || '见下面几条。') + '\n\n' + parts.map((p, i) => '## ' + (i + 1) + '\n' + p).join('\n\n') + '\n\n（' + nowText() + '　' + chLabel(j) + ' 批的' + (j.只批 ? '，只批了镜头 ' + j.只批 : '') + '）\n');
+        await writeFile(pj(j.项目, ...rel), '总评：' + (sum || '见下面几条。') + '\n\n' + parts.map((p, i) => '## ' + (i + 1) + '\n' + p).join('\n\n') + '\n\n（' + nowText() + '　' + chLabel(j) + ' 批的）\n');
         await resha(j.项目, ['提示词', segDir(j.段), j.名]);
         return { 结果: 'AI 批了 ' + parts.length + ' 条，稿子没动', 产出: [rel.join('/')] };
       },
@@ -1785,10 +1531,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           (await exists(sp)) ? '\n## 这一场的剧本（对照用）\n' + await docText(sp) : '', '', PE_FORMAT, '', PE_DRAMA, '', '## 技能：sd25-pe', await skill('sd25-pe'), TAIL].join('\n');
       },
       async apply(j, text) {
-        const a = text.indexOf('['), z = text.lastIndexOf(']');
-        let ops;
-        try { ops = JSON.parse(text.slice(a, z + 1)); } catch (e) { throw fail('AI 没按要的格式回（要一段 JSON 列表）'); }
-        ops = (Array.isArray(ops) ? ops : []).filter(o => o && typeof o.原文 === 'string' && o.原文.trim() && typeof o.改成 === 'string');
+        const ops = opsOf(text);
         if (!ops.length) throw fail('AI 说没有要改的地方');
         const rel = ['提示词', segDir(j.段), j.名], raw = await fsp.readFile(vpPath(j), 'utf8'), bom = raw.charCodeAt(0) === 0xFEFF, eol = /\r\n/.test(raw) ? '\r\n' : '\n';
         const lines = (bom ? raw.slice(1) : raw).split(/\r\n|\n|\r/), miss = [];
@@ -1798,7 +1541,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           for (let i = 0; i < lines.length; i++) if (lines[i] !== null && lines[i].trim() === want && ++seen === nth) { hit = i; break; }
           if (hit < 0) {   // 没有一模一样的整行：AI 可能只抄了一行里的半句。全文只有一处含着它，就换那半句
             const idx = lines.map((l, i) => l !== null && l.includes(want) ? i : -1).filter(i => i >= 0);
-            if (idx.length === 1 && lines[idx[0]].split(want).length === 2) { lines[idx[0]] = lines[idx[0]].replace(want, o.改成.replace(/\r?\n/g, '')); continue; }
+            if (idx.length === 1 && lines[idx[0]].split(want).length === 2) { lines[idx[0]] = lines[idx[0]].replace(want, () => o.改成.replace(/\r?\n/g, '')); continue; }   // 用函数换：AI 的话里有 $& 这类记号也照原样放
             miss.push(want.slice(0, 20)); continue;
           }
           lines.splice(hit, 1, ...(put.length === 1 && !put[0] ? [null] : put));   // 删掉的先占着位，下面一起拿掉：不影响后面几处数第几处
@@ -1921,9 +1664,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
             '', '## 修改方案（对照用）', planMd, notes ? '\n## 审片批注（对照用）\n' + notes : '', (await exists(sp)) ? '\n## 这一场的剧本（对照用）\n' + await docText(sp) : '',
             '', PE_FORMAT, '', PE_DRAMA, '', '## 技能：sd25-pe', await skill('sd25-pe'), TAIL].join('\n');
           step('改字', chLabel(j) + ' 在改你说的 ' + (ask.length + (general ? 1 : 0)) + ' 处', '在做');
-          const opsOf = t => { const a = t.indexOf('['), z = t.lastIndexOf(']'); try { return JSON.parse(t.slice(a, z + 1)); } catch (e) { throw fail('AI 没按要的格式回（要一段 JSON 列表）'); } };
-          let ops = opsOf(await askText(j, j.渠道, book, '照方案改', [], fmtRetry(opsOf)));
-          ops = (Array.isArray(ops) ? ops : []).filter(o => o && typeof o.原文 === 'string' && o.原文.trim() && typeof o.改成 === 'string');
+          const ops = opsOf(await askText(j, j.渠道, book, '照方案改', [], fmtRetry(opsOf)));
           const miss = [];
           for (const o of ops) {
             const got = applyOne(lines, o.原文, o.改成, Math.max(1, Number(o.第几处) || 1));
@@ -1959,7 +1700,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         for (const r of drop ? drop.regs : await regOf(j)) {   // 拿掉了关键帧：编号照挪过的
           const q = r.path.split('/').filter(Boolean);
           if (!q.length || !(await exists(pj(j.项目, ...q)))) continue;
-          const st = path.basename(r.path).replace(/\.[^.]+$/, '');
+          const st = stemOf(r.path);
           refs.push({ ref: r.ref, name: r.name || (VIDEO_RE.test(r.path) ? st : st.split('_')[0]), path: r.path, sha256: sha256(await fsp.readFile(pj(j.项目, ...q))) });
         }
         const mp = pj(j.项目, '资产', '参考素材映射.json');
@@ -2006,7 +1747,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
      反推剧本：AI 照这一场的几条提示词写剧本（不加戏不删戏，补的写进备注），段落、表达、出场的另列一份（定稿的剧本/第N段/第N段_反推.json），人在剧本页点「采用」才写进流水线。
      直接铺底：剧本定稿以后，AI 把提示词里它写的几块（素材、基础设定、主体与关系、保持一致、「声音包括」那一行）直接写进正文，人写的两块一个字不动 */
   const REV_TAIL = '_反推.json';
-  const PE_HEAD_SET = new Set(Object.keys(PE_HEAD));
+  const PE_HEAD_SET = new Set(PromptDraft ? Object.values(PromptDraft.PE_HEADS) : []);   // sd2.5PE 的几个段名
   const humanOf = d => ({ event: str(d.event).trim(), shots: PromptDraft.shotText(d).split(/\r\n|\n|\r/).map(l => l.trim()).filter(l => l && !PromptDraft.isLook(l)).join('\n') });   // 人写的两块
   const sameHuman = (a, b) => a.event === b.event && a.shots === b.shots;
   function aiPartsText(d) {   // 提示词里 AI 写的几块现在什么样（重铺的时候给 AI 看）
@@ -2019,14 +1760,14 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       const p = path.join(dir, f), d = PromptDraft.parse(unbom(await fsp.readFile(p, 'utf8')));
       out.push({ f, no: vpNo(f), mt: await mtimeOf(p), ...humanOf(d) });
     }
-    return out.sort((a, b) => (a.no || 1e9) - (b.no || 1e9) || a.f.localeCompare(b.f, 'zh', { numeric: true }));
+    return out.sort(byNo);
   }
   /* 直接铺底能不能铺（11-14 起正着走、倒着走的场都能铺）：剧本定稿了、新格式的稿、人写的两块不全空。点的时候 prep 就查，当场说清 */
   async function layCheck(j) {
     const flow = await readFlow(j.项目), s = sceneOf(flow, j.段), sp = scriptPath(j.项目, j.段);
     if (!s || !(await exists(sp)) || !finalOk(s, Math.floor((await fsp.stat(sp)).mtimeMs))) throw fail('剧本定稿以后才铺底：先到剧本页点「剧本定稿」');
     const raw = unbom(await fsp.readFile(vpPath(j), 'utf8'));
-    if (raw.trim() && !isPeText(raw)) throw fail('这一条是旧格式的稿，不走这里：在写稿页里请 AI 给建议');
+    if (raw.trim() && !isPeText(raw)) throw fail('这一条是旧格式的稿，AI 铺底只铺新格式的：在写稿页里写批注，交给 AI 改');
     const d = PromptDraft.parse(raw), hm = humanOf(d);
     if (!hm.event && !hm.shots) throw fail('这一条的生成目标、事件脚本都还空着：先写好再铺底');
     return { flow, s, d, hm };
@@ -2207,58 +1948,17 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     },
   });
   /* ---------- 修改方案读写（页面 审片台.html 用同一个格式） ---------- */
-  const PLAN_TAIL = '_修改方案.md', PLAN_NOTE_TAIL = '_修改方案_批注.md', PLAN_KEYS = ['批注', '位置', '问题', '原因', '怎么改', '原文', '改成'];
-  const DEL_RE = /^[（(]?(删掉|删除|删去|去掉)[）)]?$/;
-  const unq = s => { const t = str(s).trim(), m = /^[「“"『](.*)[」”"』]$/s.exec(t); return m && !/[「“"『」”"』]/.test(m[1]) ? m[1] : t; };   // AI 爱给原话加引号
-  function planItems(t) {   // 「## 1」一节一条，「- 键：值」；原文、改成可以接着写几行
-    return t.replace(/\r\n?/g, '\n').split(/^#{2,3}[ \t]+/m).slice(1).map(p => {
-      const no = parseInt(p.replace(/^[^0-9\n]*/, ''), 10), g = { no };   // 「## 1」；AI 写成「## 第1条」也认
-      let cur = '';
-      for (const line of p.split('\n').slice(1)) {
-        const s = line.trim(), m = /^(?:[-*•]|\d+[.、])?[ \t]*\**[ \t]*(批注|位置|问题|原因|怎么改|原文|改成)[ \t]*\**[ \t]*[：:][ \t]*\**[ \t]*(.*)$/.exec(s);   // 「- 原文：」；带 **加粗** 的也认
-        if (m) { cur = m[1]; g[cur] = m[2].trim(); }
-        else if (/^改成了[：:]/.test(s)) cur = '';
-        else if (cur && s) g[cur] += (cur === '原文' || cur === '改成' ? '\n' : '') + s;
-      }
-      if (!(no > 0)) return null;
-      if (g.原文 != null) { g.原文 = unq(g.原文); if (!g.原文) delete g.原文; }
-      if (g.改成 != null) g.改成 = DEL_RE.test(g.改成.trim()) ? '' : unq(g.改成);
-      if (g.原文 == null) delete g.改成; else if (g.改成 == null) g.改成 = '';   // 有原文没写改成：当删掉
-      return g;
-    }).filter(Boolean).map((g, i) => ({ ...g, no: i + 1 }));
-  }
-  function planText(it) {
-    const out = ['## ' + it.no];
-    for (const k of PLAN_KEYS) {
-      if (it[k] == null || (k !== '改成' && !str(it[k]).trim())) continue;
-      const v = k === '改成' && !it[k] ? '（删掉）' : str(it[k]);
-      const ls = v.split('\n');
-      out.push('- ' + k + '：' + ls[0], ...ls.slice(1).map(l => '  ' + l));
-    }
-    return out.join('\n');
-  }
-  function parsePlan(md) {
-    const t = str(md).replace(/\r\n?/g, '\n'), head = t.split(/^##[ \t]+/m)[0];
-    const get = k => ((new RegExp('^' + k + '[：:][ \\t]*(.*)$', 'm')).exec(head) || [])[1] || '';
-    return { 视频: get('视频').trim(), 提示词: get('提示词').trim(), 总: get('总的看法').trim(), done: [...t.matchAll(/^改成了[：:][ \t]*(.+)$/gm)].map(m => m[1].trim()), items: planItems(t) };
-  }
-  function parsePlanNote(md) {   // 「## 1」下面「定：照这样改 / 不改 / 照我说的改」「批注：……」；「## 整体」下面「批注：……」
-    const out = { items: new Map(), general: '' };
-    for (const p of str(md).replace(/\r\n?/g, '\n').split(/^##[ \t]+/m).slice(1)) {
-      const head = p.split('\n')[0].trim(), d = { 定: '', 批注: '' };
-      let inNote = false;
-      for (const line of p.split('\n').slice(1)) {   // 「批注：」写在最后，后面几行都算它的
-        if (inNote) { d.批注 += '\n' + line; continue; }
-        const m = /^(定|批注)[：:][ \t]*(.*)$/.exec(line.trim());
-        if (!m) continue;
-        if (m[1] === '定') d.定 = m[2].trim(); else { d.批注 = m[2]; inNote = true; }
-      }
-      d.批注 = d.批注.trim();
-      if (/^整体/.test(head)) out.general = d.批注;
-      else if (parseInt(head, 10) > 0) out.items.set(parseInt(head, 10), d);
-    }
-    return out;
-  }
+  const PLAN_TAIL = '_修改方案.md', PLAN_NOTE_TAIL = '_修改方案_批注.md';
+  /* 读写方案：和审片台同一份（公用/审片.js）；读不了它就报错，服务照开 */
+  const planFn = k => Review ? Review[k] : () => { throw fail('读不了 公用/审片.js'); };
+  const planItems = planFn('planItems'), planText = planFn('planText'), parsePlan = planFn('parsePlan'), parsePlanNote = planFn('parsePlanNote');
+  /* AI 回的改动清单（一段 JSON 列表，一处一项）：读不了就是格式不对；缺原文、改成的项不要 */
+  const opsOf = t => {
+    const a = t.indexOf('['), z = t.lastIndexOf(']');
+    let ops;
+    try { ops = JSON.parse(t.slice(a, z + 1)); } catch (e) { throw fail('AI 没按要的格式回（要一段 JSON 列表）'); }
+    return (Array.isArray(ops) ? ops : []).filter(o => o && typeof o.原文 === 'string' && o.原文.trim() && typeof o.改成 === 'string');
+  };
   /* 换一处：一模一样的整行（第 nth 处）换掉整行；不然，全文只有一行含着这一句、而且只含一次，就换这一句。找不到给 null */
   function applyOne(lines, find, put, nth = 1) {
     const want = str(find).trim(), L = lines.slice();
@@ -2292,7 +1992,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       const raw = m[1].trim(), q = raw.split(/[\\/]/);
       let p = path.resolve(/^[A-Za-z]:[\\/]/.test(raw) ? raw : path.join(base, raw));
       if (!(p.startsWith(root) && await exists(p)) && q.length >= 2) p = path.resolve(base, q[q.length - 2], q[q.length - 1]);   // 项目挪过地方：照「视频名_批注截图/那一帧.jpg」在批注旁边找
-      if (p.startsWith(root) && /\.(png|jpe?g|webp)$/i.test(p) && !out.includes(p) && await exists(p)) out.push(p);
+      if (p.startsWith(root) && IMG_RE.test(p) && !out.includes(p) && await exists(p)) out.push(p);
       if (out.length >= 8) break;
     }
     return out;
@@ -2353,7 +2053,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       for (const r of t.refs) if (!tagged.has(r)) tagged.set(r, { no, a: t.a, b: t.b, role: (new RegExp('(首帧|开场|结尾)?参考\\s*' + r + '(?![0-9])').exec(t.text) || [])[1] || '' });
     }
     const base = framesOf(j, regs, s), gn = goneNotes(notesMd), out = [];
-    const list = regs.filter(r => /^@图片\d+$/.test(r.ref) && /\.(png|jpe?g|webp)$/i.test(r.path) && (base.includes(r) || gone.includes(r) || tagged.has(r.ref)));
+    const list = regs.filter(r => /^@图片\d+$/.test(r.ref) && IMG_RE.test(r.path) && (base.includes(r) || gone.includes(r) || tagged.has(r.ref)));
     for (const r of list) {
       const q = r.path.split('/').filter(Boolean), d = q.slice(0, -1), file = q[q.length - 1], stem = file.replace(/\.[^.]+$/, '');
       const tg = tagged.get(r.ref), no = tg ? tg.no : KeyFrames ? KeyFrames.noOf(stem) : null;
@@ -2511,7 +2211,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     for (const f of frames) if (f.bmf) see(f.bmf, f.ref + ' 那一刻的白模（第 ' + f.sec + ' 秒）');
     for (const f of frames) if (f.mark) see(f.mark, f.ref + ' 图上批注的标注图');
     const pool = [];
-    for (const r of regs) if (/^@图片\d+$/.test(r.ref) && /\.(png|jpe?g|webp)$/i.test(r.path) && !frames.some(f => f.ref === r.ref) && await exists(pj(j.项目, ...r.path.split('/')))) pool.push({ path: r.path, what: r.ref + (r.name ? '，' + r.name : '') });
+    for (const r of regs) if (/^@图片\d+$/.test(r.ref) && IMG_RE.test(r.path) && !frames.some(f => f.ref === r.ref) && await exists(pj(j.项目, ...r.path.split('/')))) pool.push({ path: r.path, what: r.ref + (r.name ? '，' + r.name : '') });
     const book = kfBook(j, { ...o, frames, vid, bm, pool, lessons: await lessonsOf(j.项目), said: imgs.length ? '让你看过的图依次是：' + said.join('；') + '。先对着图看。' : '' });
     if (j.停) throw fail('停掉了');
     step('看关键帧', (j.渠道 === SELF ? '你的 AI' : chLabel(j)) + ' 在看 ' + frames.length + ' 张关键帧', '在做');
@@ -2523,7 +2223,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       Object.assign(f, { 为什么: x ? oneLine(x.为什么).slice(0, 300) : '', prompt: x ? str(x.出图提示词).trim() : '', keep: x ? oneLine(x.要撑住).slice(0, 200) : '', 改哪儿: x ? oneLine(x.改哪儿).slice(0, 400) : '' });
       for (const g of (x && Array.isArray(x.参考图) ? x.参考图 : [])) {   // 只认项目 资产 里还在的图，不要关键帧自己
         const p = str(g).trim().replace(/\\/g, '/'), k = p.indexOf('资产/'), r = k >= 0 ? p.slice(k) : '';
-        if (f.refs.length < KF_REFS - (f.bmf ? 1 : 0) && r && /\.(png|jpe?g|webp)$/i.test(r) && r.split('/').every(nameOk) && !f.refs.includes(r) && !frames.some(z => z.path === r) && await exists(pj(j.项目, ...r.split('/')))) f.refs.push(r);
+        if (f.refs.length < KF_REFS - (f.bmf ? 1 : 0) && r && IMG_RE.test(r) && r.split('/').every(nameOk) && !f.refs.includes(r) && !frames.some(z => z.path === r) && await exists(pj(j.项目, ...r.split('/')))) f.refs.push(r);
       }
       if (!way) { way = f.gone ? '拿掉' : '留着'; f.为什么 = f.gone ? '你弃用了这张，AI 没给新的字，先拿掉' : 'AI 没说这张，照旧留着'; }
       if (way === '小改' && (!f.has || f.gone)) way = '重出';   // 弃用了的不在旧图上改
@@ -2620,7 +2320,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const idle = x => (!!x.交给 && !!x.交给.等 && x.交给.方式 !== 'deepseek') || !!x.等Claude;
   const fileOf = j => KINDS[j.事].file ? j.项目 + '｜' + KINDS[j.事].file(j) : '';
   const pub = j => ({ id: j.id, 事: j.事, 渠道: j.渠道, 渠道名: chLabel(j), 深度: depthOf(j), 模型: modelOf(j), 项目: j.项目, 段: j.段 || '', 标题: j.标题, 状态: j.状态, 步骤: j.步骤, 建: j.建, 开始: j.开始, 结束: j.结束, 错误: j.错误, 结果: j.结果, 产出: j.产出,
-    记录: j.dir ? path.relative(ROOT, j.dir).split(path.sep).join('/') : '', 人物: j.人物, 道具: j.道具, 批注: j.批注, 类别: j.类别, 名: j.名, 状态名: j.状态名, 视频: j.视频, 只批: j.只批, 镜头号: j.镜头号, 文件名: j.文件名, 只名: j.只名, 只: (j.只 || []).map(x => x.类别 + '/' + (x.图 ? stemOf(x.图) : x.状态名 ? x.名称 + '_' + x.状态名 : x.名称)), 只提示词: (j.只 || []).map(x => x.提示词 || ''), 本机: !!KINDS[j.事].local,
+    记录: j.dir ? path.relative(ROOT, j.dir).split(path.sep).join('/') : '', 人物: j.人物, 道具: j.道具, 批注: j.批注, 类别: j.类别, 名: j.名, 状态名: j.状态名, 视频: j.视频, 文件名: j.文件名, 只名: j.只名, 只: (j.只 || []).map(x => x.类别 + '/' + (x.图 ? stemOf(x.图) : x.状态名 ? x.名称 + '_' + x.状态名 : x.名称)), 只提示词: (j.只 || []).map(x => x.提示词 || ''), 本机: !!KINDS[j.事].local,
     分步: j.分步 || null,   // 照方案改：改字、白模、看关键帧、每一张关键帧各做到哪（审片台一行一行摆）
     交给: j.交给 && j.交给.等 ? { 方式: j.交给.方式, 等: j.交给.等 } : null });   // 在等交给 AI 的回复：怎么交的（self 给我提示词 / claude / deepseek）、等什么（你 / 发送 / 做）
   function pump() {
@@ -2691,7 +2391,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     if ((K.need || []).includes('段') && !segOk(j.段)) throw fail('要说清是第几场');
     for (const k of ['人物', '道具']) if (Array.isArray(b[k])) j[k] = b[k].map(str).filter(Boolean);
     if (b.批注) j.批注 = str(b.批注);
-    for (const k of ['类别', '名', '状态名', '要求', '视频', '批准', '只批', '镜头号', '镜头ID', '重写', '白模', '跳过核验']) if (b[k] != null) j[k] = str(b[k]);
+    for (const k of ['类别', '名', '状态名', '要求', '视频', '批准', '重写', '白模', '跳过核验']) if (b[k] != null) j[k] = str(b[k]);
     if (b.写什么 != null) j.写什么 = str(b.写什么).trim().slice(0, 500);   // 写提示词：这一条写哪段戏（人写的一句话，可以不写）
     if (b.关键帧 != null) j.关键帧 = Array.isArray(b.关键帧) ? b.关键帧.map(str) : str(b.关键帧);   // 写提示词：这一条挂的关键帧（是不是这一段的图，prep 里查）
     if (Array.isArray(b.镜头)) j.镜头 = b.镜头.map(Number).filter(n => n > 0);
@@ -2989,5 +2689,5 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       throw e;
     }
   }
-  return { handle, KINDS, CHANNELS };
+  return { handle, KINDS };
 };

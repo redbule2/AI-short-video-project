@@ -71,18 +71,9 @@
 .add-shot { padding: 12px; border-radius: 7px; background: var(--sheet); }
 .empty-shots { padding: 24px 0; text-align: center; color: var(--ink-3); }
 
-/* 新建议区与原来的对照框使用同一组字形、颜色和间距。 */
+/* 右栏标题：和原来的对照框同一组字形、颜色 */
 .rail-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px 0; color: var(--dian); font: 14px var(--kai); }
 .rail-title small { color: var(--ink-3); font: 11.5px var(--sans); }
-.suggest-intro { margin: 0 0 12px; color: var(--ink-3); font-size: 12.5px; }
-.suggest-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; color: var(--dian); font-size: 12.5px; }
-.suggest-head .btn { margin-left: auto; }
-.suggest-card { margin-bottom: 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 7px; background: var(--sheet); color: var(--ink-2); font: 13.5px/1.9 var(--serif); }
-.suggest-card h3 { margin: 0 0 6px; color: var(--dian); font: 14px var(--kai); }
-.suggest-card p { margin: 6px 0 10px; white-space: pre-wrap; }
-.suggest-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.suggest-card .kw { margin-top: 10px; }
-.suggest-empty { padding: 12px 0; color: var(--ink-3); font-size: 12.5px; }
 
 /* 自由输入仍在原来的分镜分区，正文及影子层沿用原 .wr-ta/.wr-bg。 */
 .free-section { padding: 18px; border: 1px solid var(--line); border-radius: 9px; background: var(--sheet); }

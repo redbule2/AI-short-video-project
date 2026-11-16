@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>案头 · 写稿（试用版）</title>
+<link rel="stylesheet" href="公用/提示条.css">
 <style>
 /* 写稿 · 试用版：人写提示词、AI 批注。读写真文件，走 annotate-live 的本机服务（另开一个端口）。
    样式照 项目管理.html 起家。2026-11-13 换配色：暖白底、白卡片、字加深；青＝你写的和选中，靛＝AI 写的和 AI 批注，朱＝你的批注和警告。
@@ -146,7 +147,7 @@ kbd { display: inline-block; padding: 0 6px; border: 1px solid var(--line-2); bo
 .peek { display: none; }
 .fold > .peek { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; padding: 6px 14px; border-radius: 8px; background: var(--qing-soft); box-shadow: inset 2px 0 0 var(--qing-line); font: 14.5px/1.8 var(--serif); color: var(--ink-2); cursor: pointer; }
 .fold > .peek:hover { background: rgba(31, 107, 105, .14); }
-section.sec.fold > .wr, .p-shot.fold > .wr, .p-shot.fold > .kw { display: none; }
+section.sec.fold > .wr, .p-shot.fold > .wr { display: none; }
 .p-shot.fold > .shot-h { margin-bottom: 6px; padding-bottom: 6px; }
 .ed:empty::before { content: attr(data-ph); color: var(--ink-4); }
 .flash { animation: flash 1.2s ease; }
@@ -182,7 +183,7 @@ section.sec.fold > .wr, .p-shot.fold > .wr, .p-shot.fold > .kw { display: none; 
 ::highlight(ph) { color: #6b4d0c; background-color: rgba(232, 184, 60, .32); }
 ::highlight(lint) { text-decoration: underline wavy #b8382b; text-underline-offset: 4px; }
 
-/* 分镜、关键词 */
+/* 分镜 */
 .pshots { display: flex; flex-direction: column; gap: 18px; margin-top: 12px; }
 .p-shot { position: relative; padding: 12px 18px 16px; border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(to bottom, rgba(245, 243, 239, .6), rgba(255, 255, 255, 0) 80px); }
 .shot-h { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; padding: 0 0 9px; border-bottom: 1px solid var(--line); }
@@ -193,16 +194,6 @@ section.sec.fold > .wr, .p-shot.fold > .wr, .p-shot.fold > .kw { display: none; 
 .shot-meta.over { color: var(--zhu); }
 .shot-x { flex: none; padding: 0 6px; border: 0; background: none; cursor: pointer; color: var(--ink-4); font-size: 12px; }
 .shot-x:hover { color: var(--zhu); }
-.kw { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 5px 6px; margin: 0 0 10px; padding: 0 0 0 34px; }
-.kw::before { content: 'AI'; position: absolute; left: 2px; top: 3px; width: 22px; height: 17px; display: grid; place-items: center; border-radius: 3px; background: var(--dian); color: #fff; font: 600 10.5px/1 var(--sans); }
-.kw-g { margin-left: 6px; font: 12.5px var(--kai); color: var(--dian); letter-spacing: .14em; }
-.kw-g:first-child { margin-left: 0; }
-.k { max-width: 100%; padding: 0 10px; border: 1px dashed var(--dian-line); border-radius: 999px; background: rgba(74, 83, 166, .04); color: var(--dian); cursor: pointer; font: 12.5px/1.8 var(--sans); text-align: left; }
-.k:hover { background: rgba(74, 83, 166, .12); border-style: solid; }
-.k.hit { border-color: var(--line); background: none; color: var(--ink-4); }
-.k.hit::before { content: '✓ '; }
-.kw-more { margin-left: auto; padding: 0 4px; border: 0; background: none; cursor: pointer; color: var(--ink-3); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
-.kw-tip { font-size: 12px; color: var(--ink-4); }
 .add-shot { display: block; width: 100%; margin-top: 14px; padding: 9px; border: 1px dashed var(--line-2); border-radius: 9px; background: none; cursor: pointer; color: var(--ink-3); font-size: 13px; letter-spacing: .1em; }
 .add-shot:hover { color: var(--ink); border-color: var(--ink-4); }
 
@@ -386,8 +377,7 @@ body.norail .rail { display: none; }
 .lb-nav { top: 50%; width: 44px; height: 64px; margin-top: -40px; border-radius: 8px; font-size: 30px; }
 .lb-nav.prev { left: 14px; }
 .lb-nav.next { right: 14px; }
-#toast { position: fixed; left: 50%; bottom: 64px; z-index: 90; transform: translate(-50%, 12px); max-width: 80vw; padding: 9px 18px; border-radius: 18px; background: rgba(31, 28, 25, .92); color: #fff; font-size: 13px; line-height: 1.6; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
-#toast.on { opacity: 1; transform: translate(-50%, 0); }
+#toasts { bottom: 64px; }   /* 提示条（公用/提示条.css）抬到底下那条写稿提示栏上面 */
 /* 左下角：AI 正在做的任务 */
 #jobs { position: fixed; left: 16px; bottom: 16px; z-index: 80; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
 .jobrow { pointer-events: auto; display: inline-flex; align-items: center; gap: 9px; padding: 6px 14px 6px 11px; border: 1px solid var(--line-2, #d9cfbd); border-radius: 999px; background: var(--sheet, #fffdf8); box-shadow: 0 4px 14px rgba(30, 28, 24, .12); font-size: 12.5px; color: var(--ink-2, #4a4238); }
@@ -465,7 +455,7 @@ body.norail .rail { display: none; }
     </aside>
   </div>
 </main>
-<div id="toast"></div>
+<script src="公用/核心.js"></script>
 <script src="公用/写稿状态.js"></script>
 <script src="公用/写稿交互.js"></script>
 <script src="公用/关键帧写法.js"></script>
@@ -473,65 +463,42 @@ body.norail .rail { display: none; }
 <script src="公用/点图.js"></script>
 <script src="公用/交给AI.js"></script>
 <script src="公用/等待.js"></script>
+<script src="公用/底座.js"></script>
+<script src="公用/界面.js"></script>
 <script>
 'use strict';
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
-function h(tag, attrs, ...kids) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs || {})) {
-    if (v == null || v === false) continue;
-    if (k === 'class') el.className = v;
-    else if (k === 'style') el.style.cssText = v;
-    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
-    else el.setAttribute(k, v === true ? '' : v);
-  }
-  const add = c => { if (c == null || c === false) return; if (Array.isArray(c)) c.forEach(add); else el.append(c.nodeType ? c : document.createTextNode(String(c))); };
-  kids.forEach(add);
-  return el;
-}
+const { h, toast, thumbOf, thumbSize, whenSeen } = window.UI;   // 造元素、提示条、缩小图用 公用/界面.js 的，这页不另抄
 const ZW = String.fromCharCode(8203);   // 零宽空格：资产名牌排在一行最后时，垫在后面好落光标
 const BOM = String.fromCharCode(0xFEFF);   // 有的文件开头带的记号
 const plain = el => el.textContent.split(ZW).join('').trim();
 const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const btn = (label, fn, cls) => h('button', { class: 'btn sm ' + (cls || ''), type: 'button', tabindex: '-1', onclick: fn }, label);
 const keep = e => e.preventDefault();   // 点按钮时不抢走正文里的光标
-let TT;
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(TT); TT = setTimeout(() => t.classList.remove('on'), 3800); }
 function flash(n) { if (!n) return; n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); }
-const two = n => String(n).padStart(2, '0');
-const stampNow = () => { const d = new Date(); return d.getFullYear() + two(d.getMonth() + 1) + two(d.getDate()) + '-' + two(d.getHours()) + two(d.getMinutes()) + two(d.getSeconds()); };
+const { two, stampNow, timeOf } = window.Base;   // 时间小工具用 公用/底座.js 的，这页不另抄
 
-/* ---------- 读写真文件：走 annotate-live 的本机服务，和 项目管理.html 用的是同一套接口 ---------- */
-const HOME = '项目', HDR = { 'X-Antou': '1' };
-const api = (parts, q) => '/api/fs/' + parts.map(encodeURIComponent).join('/') + (q || '');
+/* ---------- 读写真文件：用 公用/底座.js 的（和 项目管理.html、流水线同一套）。这页另要两样：文件夹不在就当空的；读文字原样留着开头的 BOM ---------- */
+const { HOME, LINK, CH } = window.Base, HDR = { 'X-Antou': '1' };   // CH：哪几条 AI 通道能用、流水线顶栏「AI 用」选的哪个
+const api = (parts, q) => LINK.url(parts) + (q || '');   // 写稿交互.js 存草稿用
 const FS = {
-  async read(parts) { const r = await fetch(api(parts), { headers: HDR }); if (!r.ok) throw new Error((await r.text()) || String(r.status)); return { buf: await r.arrayBuffer(), mtime: +r.headers.get('X-Mtime') }; },
-  async text(parts) { const r = await this.read(parts); return { text: new TextDecoder('utf-8', { ignoreBOM: true }).decode(r.buf), mtime: r.mtime }; },
-  async stat(parts) { const r = await fetch(api(parts, '?stat'), { headers: HDR }); return r.ok ? r.json() : null; },
-  async list(parts) { const r = await fetch(api(parts, '?list'), { headers: HDR }); return r.ok ? r.json() : []; },
-  async write(parts, body) { const r = await fetch(api(parts), { method: 'PUT', headers: HDR, body }); if (!r.ok) throw new Error((await r.text()) || String(r.status)); return r.json(); },
-  async remove(parts) { const r = await fetch(api(parts), { method: 'DELETE', headers: HDR }); if (!r.ok) throw new Error((await r.text()) || String(r.status)); },
-  async move(parts, to) { const r = await fetch(api(parts, '?move=' + encodeURIComponent(to.join('/'))), { method: 'POST', headers: HDR }); if (!r.ok) throw new Error((await r.text()) || String(r.status)); },
+  ...window.Base.FS,
+  list: parts => window.Base.FS.list(parts).catch(() => []),
+  async text(parts) { const r = await window.Base.FS.read(parts); return { text: (Core.hasBom(r.buf) ? BOM : '') + Core.decodeText(r.buf).text, mtime: r.mtime }; },   // 核心.js 的解码（不是 UTF-8 的照 GB18030 读）
 };
 const has = async parts => (await FS.list(parts.slice(0, -1))).some(x => x.name === parts[parts.length - 1]);   // 先看在不在，再去读：不在的文件不去碰
 /* 交给 AI。本机服务第 5 版起：直接开一个 AI 任务（服务去调本机的 Claude、Codex、DeepSeek；用哪个，看流水线顶栏「AI 用」选的那个），
    左下角转圈显示它做到哪了、用了多久，做完文件一变页面自己换上。
    老版本的服务：一行一件事，排进队里等对话里的 AI 来取（node server.js wait 提示词） */
-let SVC = null, CHS = null;   // 本机服务是第几版；哪几条 AI 通道能用
+let SVC = null;   // 本机服务是第几版
 const JOBS = { live: [], timer: 0, n: 0 };
-async function channelNow() {
-  if (!CHS) { try { CHS = (await (await fetch('/api/job?channels', { headers: HDR })).json()).channels.filter(c => c.ok); } catch (e) { CHS = []; } }
-  let v = ''; try { v = localStorage.getItem('antou:flow:channel') || ''; } catch (e) { /* 读不了就用第一条 */ }
-  return CHS.some(c => c.id === v) ? v : (CHS[0] || { id: 'claude' }).id;
-}
+async function channelNow() { await CH.ready(); return CH.now(); }
 function jobBody(line, ch) {
   const base = { 渠道: ch, 项目: PJ, 段: SEGDIR.replace(/^第|段$/g, ''), 名: STEM + '.txt' };
   let m;
-  if ((m = /^请批注 [^｜]+(?:｜只批镜头 (\S+))?$/.exec(line))) return { ...base, 事: '批注提示词', ...(m[1] ? { 只批: m[1] } : {}) };
-  if ((m = /^要关键词 [^｜]+｜镜头 (\S+)$/.exec(line))) { const s = DOC.shots.find(s => s.no === m[1]); return { ...base, 事: '要关键词', 镜头号: m[1] === '自由' ? '自由' : String(parseInt(m[1], 10)), ...(s ? { 镜头ID: s.id } : {}) }; }
+  if (/^请批注 [^｜]+$/.test(line)) return { ...base, 事: '批注提示词' };
   if ((m = /^按批注修改 (.+)$/.exec(line))) return { 渠道: ch, 项目: PJ, 事: '按批注改提示词', 批注: m[1] };
-  if (/^重新铺底 /.test(line)) return { ...base, 事: '铺底' };
   if (/^直接铺底 /.test(line)) return { ...base, 事: '直接铺底' };   // AI 铺底：直接写进正文（不是右栏的建议）
   if (/^反推剧本 /.test(line)) return { 渠道: ch, 项目: PJ, 段: base.段, 事: '反推剧本' };   // 照这一场所有的提示词反推，不只这一条
   return null;
@@ -541,14 +508,11 @@ async function tellAI(line, ch) {   // ch：这一回指定交给谁（AI 铺底
   const now = SVC >= 5 ? await channelNow() : '';
   const body = SVC >= 5 ? jobBody(line, ch || now) : null;
   if (!body) return (await fetch('/api/ai', { method: 'POST', headers: HDR, body: line })).json();
-  let dp = '', md = ''; try { dp = localStorage.getItem('antou:flow:depth:' + body.渠道) || ''; md = localStorage.getItem('antou:flow:model:' + body.渠道) || ''; } catch (e) { /* 读不了就照默认 */ }
-  const ci = CHS.find(c => c.id === body.渠道);
-  if (dp && ci && (ci.深度 || []).some(d => d.id === dp)) body.深度 = dp;   // 推理深度：流水线顶栏选的
-  if (md && ci && (ci.模型 || []).some(d => d.id === md)) body.模型 = md;   // 模型：同上
+  CH.fill(body);   // 模型、推理深度：流水线顶栏选的
 
   const r = await fetch('/api/job', { method: 'POST', headers: { ...HDR, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (!r.ok) throw new Error((await r.text()) || String(r.status));
-  const j = await r.json(), hand = (ci && ci.hand) || '';
+  const j = await r.json(), hand = CH.hand(body.渠道);
   watchJob(j);
   if (hand === 'self' && window.HandAI) HandAI.wait(j, () => {});   // 给我提示词（流水线顶栏「AI 用」选的）：话备好就弹出来给你复制
   return { online: true, say: { self: '要交给 AI 的话弹出来了：复制，贴进你自己开的对话。它做完这里自动换上', claude: '在 Claude 桌面版开了一个新对话，任务填好了：到 Claude 窗口里按发送。做完这里自动换上', deepseek: '交给 DeepSeek 了：它在自己的窗口里做，做完这里自动换上' }[hand] || '' };
@@ -627,9 +591,7 @@ const activeText = () => MODE === '自由' ? PromptDraft.withShotText(collect(),
 const draftKey = () => 'xiegao:recovery:' + OPENPATH;
 
 /* ---------- 提示词：读成几区，再照原样写回去 ---------- */
-const RE_LABEL_HEAD = /^([^：:\n]{1,10})[：:]/, RE_LABEL_OK = /^[㐀-鿿豈-﫿A-Za-z\/｜·]{1,10}$/;
-function splitLabel(line) { const m = RE_LABEL_HEAD.exec(line); if (!m) return null; const label = m[1].trim(); return RE_LABEL_OK.test(label) ? { label, value: line.slice(m[0].length) } : null; }
-const SEC_OF = { 素材: 'refs', 基础设定: 'basic', 本段: 'seg', 分镜: 'shots' };
+const splitLabel = Core.splitLabel;   // 「标签：内容」照 核心.js 的认法（和项目管理、写稿状态.js 一套）
 function parsePrompt(text) {
   return PromptDraft.parse(text);
 }
@@ -694,49 +656,23 @@ async function scanAssets() {
   return out.sort((a, b) => a.name.localeCompare(b.name, 'zh', { numeric: true }));   // 镜头2 排在镜头10 前面
 }
 const isNamed = a => a.type === '图片' && (a.kind === 'person' || a.kind === 'prop');   // 镜头里用称谓写的两类
-/* 缩小图：一次做两张，做好的留着 */
-const THUMB = new Map(), TQ = [];
-let TBUSY = 0;
+/* 缩小图：520 宽，做法在 公用/界面.js；顺手记下宽高，悬停的小窗先按比例占位 */
 function thumbUrl(a) {
-  if (!THUMB.has(a.path)) THUMB.set(a.path, new Promise((res, rej) => { TQ.push({ a, res, rej }); pump(); }));
-  return THUMB.get(a.path);
-}
-function pump() {
-  while (TBUSY < 2 && TQ.length) {
-    const job = TQ.shift(); TBUSY++;
-    makeThumb(job.a).then(job.res, job.rej).finally(() => { TBUSY--; pump(); });
-  }
+  return thumbOf(a.parts, 520).then(u => { const s = thumbSize(u); if (s) [a.w, a.h] = s; return u; });
 }
 async function blobOf(a) { const r = await FS.read(a.parts); return new Blob([r.buf], { type: MIME[a.file.split('.').pop().toLowerCase()] || 'application/octet-stream' }); }
-async function makeThumb(a) {
-  const bmp = await createImageBitmap(await blobOf(a), { resizeWidth: 520, resizeQuality: 'medium' });
-  a.w = bmp.width; a.h = bmp.height;
-  const c = new OffscreenCanvas(bmp.width, bmp.height);
-  c.getContext('2d').drawImage(bmp, 0, 0); bmp.close();
-  return URL.createObjectURL(await c.convertToBlob({ type: 'image/jpeg', quality: .82 }));
+/* 图的缩小图、视频的封面：露出来才去做 */
+function lazyPic(a, cls) {
+  const img = h('img', { class: cls || null, alt: a.name, draggable: 'false' }), vid = a.type === '视频';
+  return whenSeen(img, () => (vid ? posterOf(a) : thumbUrl(a)).then(u => { img.src = u; if (vid) paintVideoMeta(a); },
+    () => { if (vid && img.classList.contains('u-th')) img.replaceWith(h('span', { class: 'ph u-th' }, '▶')); }));   // 封面做不出来（读不了、解不开）：留一个播放记号
 }
-/* 露出来才去做缩小图、视频封面 */
-const SEEN = new IntersectionObserver(list => {
-  for (const e of list) if (e.isIntersecting) {
-    SEEN.unobserve(e.target);
-    const a = e.target._a, vid = a.type === '视频';
-    (vid ? posterOf(a) : thumbUrl(a)).then(u => { e.target.src = u; if (vid) paintVideoMeta(a); },
-      () => { if (vid && e.target.classList.contains('u-th')) e.target.replaceWith(h('span', { class: 'ph u-th' }, '▶')); });   // 封面做不出来（读不了、解不开）：留一个播放记号
-  }
-}, { rootMargin: '200px' });
 function thumb(a, cls) {
   if (a.type === '称谓') return h('span', { class: 'ph ' + (cls || '') }, a.kind === 'person' ? '人' : '物');
   if (a.type !== '图片') return h('span', { class: 'ph ' + (cls || '') }, a.type === '音频' ? '♪' : '▶');
-  const img = h('img', { class: cls || null, alt: a.name, draggable: 'false' });
-  img._a = a; SEEN.observe(img);
-  return img;
+  return lazyPic(a, cls);
 }
-/* 视频的封面小图（资产栏里用）：露出来才去做 */
-function posterEl(a, cls) {
-  const img = h('img', { class: cls || null, alt: a.name, draggable: 'false' });
-  img._a = a; SEEN.observe(img);
-  return img;
-}
+const posterEl = lazyPic;   // 视频的封面小图（资产栏里用）
 /* 视频封面：读一遍文件，取靠前的一帧，顺便记下时长和尺寸；一次做一个，做好的留着 */
 const POSTER = new Map(), PQ = [];
 let PBUSY = 0;
@@ -1064,30 +1000,13 @@ function hnMd() {
   [...items, ...HN.lost].forEach((x, i) => out.push(`## ${i + 1}｜${x.where}`, `原文${x.n > 1 ? `（第${x.n}处）` : ''}：${x.text}`, '批注：' + x.note, ''));
   return out.join('\n');
 }
-function hnParse(md) {
-  const all = [];
-  let cur = null;
-  for (const line of String(md).replace(BOM, '').split(/\r?\n/)) {
-    const hd = /^##\s*(整体|\d+)\s*(?:[｜|]\s*(.*))?$/.exec(line);
-    if (hd) { all.push(cur = { where: hd[1] === '整体' ? null : (hd[2] || '').trim(), text: null, n: 1, note: null }); continue; }
-    if (!cur) continue;
-    if (cur.note !== null) { cur.note += '\n' + line; continue; }
-    const m = /^批注：(.*)$/.exec(line), o = cur.text === null && /^原文(?:（第(\d+)处）)?：(.*)$/.exec(line);
-    if (m) cur.note = m[1];
-    else if (o) { cur.text = o[2]; cur.n = +o[1] || 1; }
-    else if (cur.text !== null) cur.text += '\n' + line;
-  }
-  const done = all.filter(x => x.note !== null && x.note.trim()).map(x => ({ ...x, note: x.note.trim() }));
-  const g = done.find(x => x.where === null);
-  return { general: g ? g.note : '', items: done.filter(x => x.where !== null && x.text !== null) };
-}
 async function loadHNotes(st) {
   if (st === undefined) st = (await has(HNF)) ? await FS.stat(HNF) : null;
   HN_MT = st ? st.mtime : 0;
   HN = { general: '', by: new Map(), lost: [] };
   if (st) {
     try {
-      const r = hnParse((await FS.text(HNF)).text), mine = new Set($$('#sheet section .blist > .blk.ai').map(fullOf));
+      const r = Core.parseNotes((await FS.text(HNF)).text), mine = new Set($$('#sheet section .blist > .blk.ai').map(fullOf));
       HN.general = r.general;
       for (const x of r.items) mine.has(x.text) && !HN.by.has(x.text) ? HN.by.set(x.text, x.note) : HN.lost.push(x);   // 对不上 AI 那几区的（别处写的、原文已经改过的）原样留着
     } catch (e) { toast('批注读不了：' + e.message); }
@@ -1162,37 +1081,6 @@ function toBlock(line, key) {
   const f = key === 'basic' || key === 'seg' ? splitLabel(line) : null;
   return f ? { lab: f.label, t: f.value.trim(), geo: /^(总场景|分场景|轴线)/.test(f.label) } : { t: line };
 }
-/* 每镜上面那一行：AI 给的关键词，点一下插进正文；正文里已经有的打勾 */
-const kwOf = no => { const s = DOC.shots.find(s => s.no === no); return s ? (SIDE.镜头关键词 || {})[s.id] || s.keywords || null : (SIDE.关键词 || {}).自由 || null; };
-function paintKw(row, no) {
-  const kw = kwOf(no), kids = [];
-  if (!kw || !Object.keys(kw).length) kids.push(h('span', { class: 'kw-tip' }, '还没有关键词。'), h('button', { class: 'kw-more', tabindex: '-1', onmousedown: keep, onclick: () => moreKw(no) }, '让 AI 给几个'));
-  else {
-    for (const [g, list] of Object.entries(kw)) {
-      if (!Array.isArray(list)) continue;
-      kids.push(h('span', { class: 'kw-g' }, g));
-      for (const it of list) {   // 提示每条不超过 10 个字；台词这类长的，牌子上只写个名（show），点了插进去的是原话（t）
-        const t = typeof it === 'string' ? it : it && it.t;
-        if (typeof t !== 'string' || !t) continue;
-        const show = (it && it.show) || t, label = show.length > 10 ? show.slice(0, 10) + '…' : show;
-        kids.push(h('button', { class: 'k', tabindex: '-1', 'data-t': t, title: (it && it.tip) || (label === t ? '点一下插进这一镜' : '点一下插进：' + t), onmousedown: keep, onclick: e => useKw(e.currentTarget) }, label));
-      }
-    }
-    kids.push(h('button', { class: 'kw-more', tabindex: '-1', onmousedown: keep, onclick: () => moreKw(no) }, '再要几个'));
-  }
-  row.replaceChildren(...kids);
-}
-function useKw(b) {
-  const ta = currentWriter(), t = b.dataset.t;
-  if (!ta) return toast('先添加一镜，或切到自由模式');
-  const on = document.activeElement === ta || ta._seen, s = on ? ta.selectionStart : ta.value.length, e = on ? ta.selectionEnd : ta.value.length;   // 没点过这一镜就接在最后
-  const before = ta.value.slice(0, s);
-  typeInto(ta, s, e, (before && !/[，。；：、！？\s]$/.test(before) ? '，' : '') + t);   // 前面有字又没断句的，先补一个逗号
-}
-async function moreKw(no) {
-  try { if (!await save()) return; const r = await tellAI('要关键词 ' + OPENPATH + '｜镜头 ' + (no || '自由')); toast(r.online ? r.say || '跟 AI 说了，给好这里自动添上' : 'AI 这会儿没在等。去对话里说一声「看右边」'); }
-  catch (e) { toast('没交上：' + e.message); }
-}
 /* 流水线里这一场写的：主要表达什么、每个剧本段落起什么作用。项目管理「流水线」页写的，这里只看 */
 let FLOW = null, FLOW_ALL = null, FLOW_MAP = null, FLOW_FINE = false;
 async function loadFlow() {
@@ -1262,13 +1150,12 @@ async function revGo() {
    铺的时候不挡人（11-15 他说：等的时候要能接着干别的、能换项目）：任务和别的 AI 任务一样摆在左下角，这一页照样能写，也能回流水线干别的。
    AI 写进文件那一下你还有没存的字：AI 只动了它那几块、你只动了你那两块，就把 AI 写的换进这一页、和你写的一起存，不算冲突（layMerge）；
    两边动了同一块，照旧摆冲突条 ---------- */
-const SELF_CH = '自己交给 AI';   // 「给我提示词」的渠道号（和 流水线.js 一样）
+const SELF_CH = CH.SELF;   // 「给我提示词」的渠道号
 const LAY = { fin: false, sync: false, grace: 0 };   // fin：剧本定稿了（打开时、点的时候各查一次）；sync：铺完了、正在把 AI 写的换上；grace：铺完以后再照看一会儿，晚到的存盘撞上了也照样合
 const layJob = j => !!j && j.事 === '直接铺底' && j.段 === revSeg() && j.名 === STEM + '.txt';
 const layLive = () => JOBS.live.find(layJob) || null;
 const layOn = () => !!layLive() || LAY.sync;
 const layWatch = () => layOn() || Date.now() < LAY.grace;
-const timeOf = t => { const n = Date.parse(String(t || '').trim().replace(' ', 'T')); return isNaN(n) ? 0 : n; };
 const humanOf = d => ({ event: String(d.event || '').trim(), shots: PromptDraft.shotText(d).split(/\r\n|\n|\r/).map(l => l.trim()).filter(l => l && !PromptDraft.isLook(l)) });   // 你写的两块
 const layLaid = d => !!d && (!!String(d.keep || '').trim() || (d.basic || []).some(l => !PromptDraft.isLook(l)));   // 铺过了：基础设定、保持一致有字（和本机服务一个算法）
 async function layFinal(s) {   // 剧本定稿了没有，和流水线、本机服务一个算法：定稿时间不早于段落定下来的时间，也不早于剧本最后改的时间。不给 s 就现读流水线
@@ -1282,7 +1169,7 @@ async function layFinal(s) {   // 剧本定稿了没有，和流水线、本机�
   return !!st && fin + 999 >= st.mtime;
 }
 const layWhyNot = () => FLOW && FLOW.先写提示词 === true ? '剧本定稿以后才能铺。这一场先写提示词：写好了先「让 AI 反推剧本」，剧本头一回定稿时 AI 自动铺' : '剧本定稿以后才能铺：回流水线，到剧本那一步点「剧本定稿」';
-function layNav() {   // 分区按钮那一行，最右边摆「AI 铺底」；旧格式的稿（走右栏「获取建议」）、没有流水线的老项目不摆
+function layNav() {   // 分区按钮那一行，最右边摆「AI 铺底」；旧格式的稿、没有流水线的老项目不摆
   const nav = commonControls();
   if (isPe() && FLOW) nav.append(h('button', { id: 'layBtn', class: 'btn sm lay-b', type: 'button', onclick: layAsk }, 'AI 铺底'));
   return nav;
@@ -1307,8 +1194,8 @@ async function layAsk() {
   if (!LAY.fin) return toast(layWhyNot());
   if (SVC == null) { try { SVC = (await (await fetch('/api/ping', { headers: HDR })).json()).v || 0; } catch (e) { SVC = 0; } }
   if (SVC < 5) return toast('本机服务是老版本，铺不了：重开本机服务再试');
-  const now = await channelNow(), name = (CHS.find(c => c.id === now) || { 名: 'AI' }).名;
-  const pick = await layDialog(layLaid(d), CHS.some(c => c.id === SELF_CH), now === SELF_CH, name);
+  const now = await channelNow(), name = (CH.info() || { 名: 'AI' }).名;
+  const pick = await layDialog(layLaid(d), CH.list.some(c => c.id === SELF_CH), now === SELF_CH, name);
   if (!pick || layOn()) return;
   try {
     clearTimeout(ST); if (!await save()) return toast('稿子还没存上，先存好再铺');
@@ -1480,12 +1367,8 @@ function render() {
     h('div', { class: 'shared-settings' }, SECS.filter(s => s.key !== 'shots').map((s, i) => secEl(s, i))),
     secEl(SECS.find(s => s.key === 'shots'), SECS.findIndex(s => s.key === 'shots')),
     h('div', { class: 'sheet-foot' }, OPENPATH.split('/').join(' / ')));
-  renderShotEditor(); paintSum(); restoreFolds(); updateCommonSections(); $$('.wr-ta').forEach(grow); paintHNotes(); renderNotes(); paintSuggestions(); paintLay();
+  renderShotEditor(); paintSum(); restoreFolds(); updateCommonSections(); $$('.wr-ta').forEach(grow); paintHNotes(); renderNotes(); paintLay();
   headRO.disconnect(); headRO.observe($('#sheet .sheet-head')); pinHead();
-}
-async function sendLine(line, okMsg) {
-  try { clearTimeout(ST); if (!await save()) return; const r = await tellAI(line); toast(r.online ? r.say || okMsg : 'AI 这会儿没在等。去对话里说一声「看右边」，它就来'); }
-  catch (e) { toast('没交上：' + e.message); }
 }
 function addShot() {
   insertShot();
@@ -1550,7 +1433,7 @@ async function poll() {
       if (SAVING || CONFLICT) return;
       if (JSON.stringify(editorPart(state.side)) !== JSON.stringify(BASE_EDITOR)) await pullExternal();
       else { const bindings = SIDE.挂图; SIDE = state.side; SIDE_MT = state.mtime; if (dirty()) SIDE.挂图 = { ...SIDE.挂图, ...bindings }; }
-      paintSuggestions(); paintMarks();
+      paintMarks();
     }
     const ns = await stOf(NOTESF);
     if ((ns ? ns.mtime : 0) !== NOTES_MT) await loadNotes(ns);
@@ -1589,7 +1472,7 @@ function go(x) {
   (ed || el).scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-/* ---------- 即时标记：台词、音效、称谓、校对、AI 批到的那一句、用过的关键词 ---------- */
+/* ---------- 即时标记：台词、音效、称谓、校对、AI 批到的那一句 ---------- */
 const LINT_OLD = [
   { re: /[（(][^（()）]*[）)]|[“”"‘’「」『』]/g, msg: '提示词里不用括号和引号' },
   { re: /[0-9０-９]+(?:\.[0-9]+)?\s*秒/g, msg: '不写秒数，时长在生成参数里设' },
@@ -1624,7 +1507,7 @@ function paintMarks() {
   if (window.Highlight && window.CSS && CSS.highlights) for (const k in sets) CSS.highlights.set(k, new Highlight(...sets[k]));
   const named = ASSETS.filter(a => refOf(a) && isNamed(a));
   for (const ta of $$('#sheet .wr-ta')) {   // 你写的两处
-    const v = ta.value, shot = ta.dataset.kind === 'shot', card = ta.closest('.p-shot'), marks = [];
+    const v = ta.value, shot = ta.dataset.kind === 'shot', marks = [];
     const add = (re, c, fn) => { for (const m of v.matchAll(re)) { const mk = { s: m.index, e: m.index + m[0].length, c }; if (!fn || fn(mk, m[0]) !== false) marks.push(mk); } };
     add(/\{[^{}]*\}/g, 'm-say'); add(/<[^<>]*>/g, 'm-sfx');
     if (shot) for (const a of named) add(new RegExp(reEsc(a.name), 'g'), 'm-nm', mk => { mk.aid = a.path; });
@@ -1640,7 +1523,6 @@ function paintMarks() {
       if (i >= 0) marks.push({ s: i, e: i + n.find.length, c: 'm-ai' });
     }
     paintMirror(ta, marks);
-    if (card) $$('.k', card).forEach(kb => { const m = /\{[^{}]*\}/.exec(kb.dataset.t); kb.classList.toggle('hit', v.includes(m ? m[0] : kb.dataset.t)); });   // 台词只认花括号里的原话
   }
   if (phN) LINT.push({ msg: `还有 ${phN} 处没填的〔 〕，按 Tab 挨个填`, range: phFirst, info: true });
   paintShotMeta();
@@ -1908,7 +1790,7 @@ function renderNotes() {
 function noteEl(n) {
   const el = h('div', { class: 'ainote' + (n.state ? ' done' : '') + (n.lv === '提醒' ? ' soft' : ''), 'data-id': n.id });
   if (n.state) {
-    el.append((n.state === 'done' ? '已照改：' : n.state === 'ok' ? '知道了：' : '不改：') + n.say, h('button', { class: 'linkb', tabindex: '-1', onclick: () => undoNote(n) }, n.state === 'done' ? '撤回' : '恢复'));
+    el.append((n.state === 'done' ? '已照改：' : n.state === 'ok' ? '看过了：' : '不改：') + n.say, h('button', { class: 'linkb', tabindex: '-1', onclick: () => undoNote(n) }, n.state === 'done' ? '撤回' : '恢复'));
     return el;
   }
   const can = n.to != null && n.find && boxOf(n);
@@ -1916,7 +1798,7 @@ function noteEl(n) {
   if (n.find && n.lost) el.append(h('div', { class: 'an-why' }, '这句原文你已经改过了。'), h('div', { class: 'an-acts' }, btn('收起', () => setNote(n, 'skip'), 'ghost')));
   else {
     if (can) el.append(h('div', { class: 'an-diff' }, h('del', null, n.find), n.to ? h('ins', null, n.to) : h('ins', null, '（删掉）')));
-    el.append(h('div', { class: 'an-acts' }, can ? [btn('照改', () => applyNote(n), 'dai'), btn('不改', () => setNote(n, 'skip'), 'ghost')] : btn('知道了', () => setNote(n, 'ok'), 'ghost')));
+    el.append(h('div', { class: 'an-acts' }, can ? [btn('照改', () => applyNote(n), 'dai'), btn('不改', () => setNote(n, 'skip'), 'ghost')] : btn('看过了，收起', () => setNote(n, 'ok'), 'ghost')));   // AI 没给现成改法的：字不动，只收起
   }
   el.addEventListener('click', e => { if (e.target.closest('button')) return; const f = findNote(n); if (f) go(f); });
   return el;
@@ -1939,9 +1821,9 @@ function undoNote(n) {
   }
   n.state = null; afterNotes();
 }
-let LASTF = null, LAST = null, LAST_SHOT = '';   // 最后一次光标在哪：文字框（LASTF）或 AI 那几行里的位置（LAST）
+let LASTF = null, LAST = null;   // 最后一次光标在哪：文字框（LASTF）或 AI 那几行里的位置（LAST）
 const setAsk = () => { const off = !READY || AI.busy || layOn(); $('#askAll').disabled = off; $('#askAll').textContent = AI.busy ? 'AI 正在看稿…' : '请 AI 批'; };   // AI 在铺底时也先不批：稿子马上要换
-async function askAI(shotNo) {
+async function askAI() {
   if (AI.busy || !READY) return;
   if (!$$('#sheet .wr-ta').some(t => t.value.trim())) return toast(evName() + '和' + (isPe() ? '事件脚本' : '分镜') + '都还空着，先写一点再请 AI 批');
   AI.busy = true; AI.since = Date.now(); setAsk();
@@ -1951,7 +1833,7 @@ async function askAI(shotNo) {
     await FS.write([...HIST, STEM + '__' + stamp + '.txt'], LASTTEXT);   // 每批一轮，先留一版
     if (await has(NOTESF)) await FS.move(NOTESF, [...HIST, STEM + '_AI批注__' + stamp + '.md']);   // 上一轮的批注收进历史记录
     NOTES = []; NOTES_MT = 0; NOTES_SUM = ''; renderNotes(); paintMarks();
-    const r = await tellAI('请批注 ' + OPENPATH + (shotNo ? '｜只批镜头 ' + shotNo : ''));
+    const r = await tellAI('请批注 ' + OPENPATH);
     AI.online = r.online; showRail('ai');
     toast(r.online ? r.say || '交给 AI 了，批好这里自动出现' : 'AI 这会儿没在等。去对话里说一声「看右边」，它就来批');
   } catch (e) { AI.busy = false; toast('没交上：' + e.message); }
@@ -1968,13 +1850,13 @@ function paintAi() {
     h('ol', null, h('li', null, '和剧本对不对得上（漏戏、加戏、顺序）'), h('li', null, '有没有犯写戏的老毛病'), h('li', null, '素材、站位、格式')),
     h('p', null, 'AI 只提意见，不改你的字。每条你自己选：「照改」就替你改，「不改」就算了。'),
     h('p', { class: 'faint small' }, '引号、秒数这类小毛病不占条数，在「校对」里自动查。每批一轮，稿子先存一份到历史记录。'),
-    h('p', { style: 'margin-top:14px' }, h('button', { class: 'btn dian', onclick: () => askAI('') }, '请 AI 批'))));
+    h('p', { style: 'margin-top:14px' }, h('button', { class: 'btn dian', onclick: () => askAI() }, '请 AI 批'))));
   const fix = left.filter(n => n.lv === '要改').length, soft = left.length - fix, rank = n => (n.state ? 2 : 0) + (n.lv === '要改' ? 0 : 1);
   pane.replaceChildren(
     h('div', { class: 'ai-sum' }, NOTES_SUM ? '总评：' + NOTES_SUM : left.length ? 'AI 批好了。' : '这一轮都处理完了。',
       h('small', null, left.length ? `还剩 ${fix} 处要改、${soft} 条提醒没处理` : '都处理完了。改完可以再批一轮。')),
     h('div', { class: 'nlist' }, [...NOTES].sort((a, b) => rank(a) - rank(b)).map(n => h('button', { class: 'nl-i' + (n.state ? ' done' : ''), onclick: () => { const el = $('.ainote[data-id="' + CSS.escape(n.id) + '"]'); if (el) { const sec = el.closest('.sec'); if (sec) { if (sec.closest('.shared-settings')) openCommonSection(sec.dataset.sec); else toggleFold(sec, true); } el.scrollIntoView({ behavior: 'smooth', block: 'center' }); flash(el); } } },
-      h('div', { class: 'nl-w' }, [n.where, n.lv, n.tag, n.state ? (n.state === 'done' ? '已照改' : n.state === 'ok' ? '知道了' : '不改') : ''].filter(Boolean).join('　·　')), h('div', { class: 'nl-n' }, n.say)))));
+      h('div', { class: 'nl-w' }, [n.where, n.lv, n.tag, n.state ? (n.state === 'done' ? '已照改' : n.state === 'ok' ? '看过了' : '不改') : ''].filter(Boolean).join('　·　')), h('div', { class: 'nl-n' }, n.say)))));
 }
 
 /* ---------- 右栏：资产、AI 批注、校对、剧本（「分镜 / 关键词」11-15 他说不要了） ---------- */
@@ -2002,26 +1884,8 @@ function paintLint() {
   pane.replaceChildren(intro,
     h('div', { class: 'lint' }, LINT.map(x => h('button', { class: 'issue' + (x.info ? ' info' : ''), onclick: () => x.fix ? x.fix() : go(x) }, h('i', { class: 'lv' }), h('span', null, x.msg, x.text ? h('em', null, x.text) : null)))));
 }
-/* DOCX 里的字：只取正文一段一段的文字，够对照着看 */
-async function docxParas(buf) {
-  const u8 = new Uint8Array(buf), dv = new DataView(u8.buffer), td = new TextDecoder();
-  let eocd = -1;
-  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
-  if (eocd < 0) throw new Error('不是 DOCX');
-  const count = dv.getUint16(eocd + 10, true);
-  let p = dv.getUint32(eocd + 16, true);
-  for (let i = 0; i < count; i++) {
-    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), nlen = dv.getUint16(p + 28, true), xlen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
-    if (td.decode(u8.subarray(p + 46, p + 46 + nlen)) === 'word/document.xml') {
-      const at = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true), data = u8.subarray(at, at + csize);
-      const xml = td.decode(method === 8 ? await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer() : data);
-      const un = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
-      return [...xml.matchAll(/<w:p[ >][\s\S]*?<\/w:p>/g)].map(m => un([...m[0].matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map(x => x[1]).join(''))).filter(s => s.trim());
-    }
-    p += 46 + nlen + xlen + clen;
-  }
-  throw new Error('DOCX 里没有正文');
-}
+/* DOCX 里的字：只取正文一段一段的文字，够对照着看（用 核心.js 的 readDocx；段里的换行、制表符去掉，空段不要） */
+async function docxParas(buf) { return (await Core.readDocx(buf)).map(p => p.text.replace(/[\t\n]/g, '')).filter(s => s.trim()); }
 /* 流水线里这一场出场的人物、道具（在全片的表里各是什么样），和全片的场景 */
 function flowWho() {
   const out = [], row = (label, text) => { if (text) out.push(h('p', null, h('b', null, label), '　' + text)); };
@@ -2311,7 +2175,7 @@ sheet.addEventListener('focusin', e => {
   const box = e.target.closest('.wr-ta, .shot-title, .shot-purpose'), ed = e.target.closest('.ed');
   if (!box && !ed) return;
   const sec = e.target.closest('section[data-sec]'); setGuide(sec ? sec.dataset.sec : null);
-  const sh = e.target.closest('.p-shot'); if (sh) selectShot(sh.dataset.id); else if (MODE === '自由') LAST_SHOT = '';
+  const sh = e.target.closest('.p-shot'); if (sh) selectShot(sh.dataset.id);
   if (box && box.classList.contains('wr-ta')) { LASTF = box; box._seen = true; LAST = null; } else if (ed) LASTF = null;
 });
 sheet.addEventListener('focusout', () => closeAt());
@@ -2373,7 +2237,7 @@ document.addEventListener('keydown', e => {   // 大窗开着：Esc 关，左右
 addEventListener('pagehide', () => { if (READY && dirty()) rememberDraft(); });
 addEventListener('beforeunload', e => { if (READY && (dirty() || SAVING || CONFLICT)) { rememberDraft(); e.preventDefault(); e.returnValue = ''; } });
 $('#as-q').addEventListener('input', paintAssets);
-$('#askAll').onclick = () => askAI('');
+$('#askAll').onclick = () => askAI();
 $('#revBtn').onclick = () => REV.st === 'ok' ? revGo() : revRun();
 $('#railBtn').onclick = () => { document.body.classList.toggle('norail'); $('#railBtn').textContent = document.body.classList.contains('norail') ? '展开侧栏' : '收起侧栏'; $$('.wr-ta').forEach(grow); };
 $('#previewBtn').onclick = previewDraft;   // 「保存草稿」11-15 去掉了：边写边自动存（touch 停 0.7 秒就存），Ctrl+S 照旧能立刻存

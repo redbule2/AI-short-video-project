@@ -280,16 +280,7 @@ let cvBusy = 0;
 function cvPump() {
   while (cvBusy < 3 && CV_Q.length) {
     const job = CV_Q.shift(); cvBusy++;
-    (async () => {
-      const blob = await (await LINK.req('GET', cvUrl('img=' + job.rid))).blob();
-      if (!job.w) return URL.createObjectURL(blob);
-      try {
-        const bmp = await createImageBitmap(blob, { resizeWidth: job.w, resizeQuality: 'medium' });
-        const c = new OffscreenCanvas(bmp.width, bmp.height);
-        c.getContext('2d').drawImage(bmp, 0, 0); bmp.close();
-        return URL.createObjectURL(await c.convertToBlob({ type: 'image/jpeg', quality: .84 }));
-      } catch (e) { return URL.createObjectURL(blob); }
-    })().then(job.res, job.rej).finally(() => { cvBusy--; cvPump(); });
+    (async () => (await window.UI.shrink(await (await LINK.req('GET', cvUrl('img=' + job.rid))).blob(), job.w)).url)().then(job.res, job.rej).finally(() => { cvBusy--; cvPump(); });
   }
 }
 function cvImg(rid, w) {

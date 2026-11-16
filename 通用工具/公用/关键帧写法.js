@@ -60,5 +60,37 @@
   }
   /* 这一组里每一张当什么：首帧、尾帧、第几个关键帧（弹窗里给人看） */
   const roleOf = (list, i) => { const tail = /尾帧/.test(list[i].name || ''); return list.length === 1 ? (tail ? '尾帧' : '首帧') : i === 0 ? '首帧' : i === list.length - 1 && tail ? '尾帧' : '第' + cn(i + 1) + '个关键帧'; };
-  return Object.freeze({ order, scan, lines, roleOf, noOf, cn });
+  /* 稿子里的组名（【参考素材职责】这种一行）：空白不算；第 i 行的组名底下没句子了 */
+  const headKey = l => String(l == null ? '' : l).replace(/\s+/g, '');   // \s 也认开头的 BOM
+  const isHead = l => /^【[^】]+】$/.test(headKey(l));
+  const groupEmpty = (L, i) => { const n = L[i + 1]; return n === undefined || !n.trim() || isHead(n); };
+  /* 往素材那一组里放几句（L 一行一项，原地改，也返回 L）；没有这一组就补上组名。
+     put（关键帧句子）：写法二放【场景】最前面，写法一放【参考素材职责】最前面；
+     putRef（白模这类别的素材）：写法二（有【人物】【道具】【场景】的）放【动作与声音】最后，写法一放【参考素材职责】最后 */
+  function putIn(L, add, two, head, after, ends) {
+    if (!add.length) return L;
+    const g = L.findIndex(l => headKey(l) === head);
+    if (g >= 0) {
+      let k = g + 1;
+      if (ends) while (k < L.length && L[k].trim() && !isHead(L[k])) k++;   // 这一组最后一句的后面
+      L.splice(k, 0, ...add);
+      return L;
+    }
+    let k = L.findIndex(l => after.test(headKey(l)));
+    if (k < 0) k = L.length;
+    L.splice(k, 0, head, ...add, '');
+    return L;
+  }
+  const has = (L, heads) => heads.some(h => L.some(l => headKey(l) === h));
+  function put(L, add) {
+    const two = has(L, ['【人物】', '【道具】', '【场景】', '【动作与声音】']);
+    return putIn(L, add, two, two ? '【场景】' : '【参考素材职责】', two ? /^【(动作与声音|未采用素材|主体与关系|事件脚本|保持一致)】$/ : /^【(未采用素材|主体与关系|事件脚本|保持一致)】$/, false);
+  }
+  function putRef(L, add) {
+    const two = has(L, ['【人物】', '【道具】', '【场景】']);
+    return putIn(L, add, two, two ? '【动作与声音】' : '【参考素材职责】', two ? /^【(未采用素材|事件脚本|保持一致)】$/ : /^【(未采用素材|主体与关系|事件脚本|保持一致)】$/, true);
+  }
+  /* 去掉的关键帧，别的句子里提到它的那一处换成这个，要人改写 */
+  const HOLE = '〔原来的关键帧去掉了，改写这一处〕';
+  return Object.freeze({ order, scan, lines, roleOf, noOf, cn, headKey, isHead, groupEmpty, put, putRef, HOLE });
 });

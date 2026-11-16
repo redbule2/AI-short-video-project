@@ -139,19 +139,44 @@ function rc(args, opts = {}) {
   if (r.error) throw r.error;
   return { code: r.status, out: r.stdout || '', err: r.stderr || '' };
 }
+// 跑一条 rclone 等它跑完，给 { code, out, err }；出得再多也收得下，开不起来 code 是 -1
 function rcAsync(args) {
-  return new Promise(res => cp.execFile(RCLONE, args, { encoding: 'utf8', env: rcEnv(), maxBuffer: 1 << 26, windowsHide: true },
-    (e, out, err) => res({ code: e ? (typeof e.code === 'number' ? e.code : 1) : 0, out, err })));
+  return new Promise(res => {
+    const p = cp.spawn(RCLONE, args, { env: rcEnv(), windowsHide: true });
+    const out = [], err = [];
+    p.stdout.on('data', d => out.push(d));
+    p.stderr.on('data', d => err.push(d));
+    p.on('error', e => res({ code: -1, out: '', err: String(e) }));
+    p.on('close', code => res({ code: code ?? -1, out: Buffer.concat(out).toString('utf8'), err: Buffer.concat(err).toString('utf8') }));
+  });
+}
+// 要传东西的 rclone：带上并发、重试；进度、出错一行一个 JSON 从 stderr 出来，用 rcLog 读
+const rcSpawn = args => cp.spawn(RCLONE, [...args, ...COMMON, '--use-json-log', '--stats', '1s', '--stats-log-level', 'NOTICE'], { env: rcEnv(), windowsHide: true });
+function rcLog(stream, on) {
+  let buf = '';
+  stream.setEncoding('utf8');
+  stream.on('data', d => {
+    buf += d;
+    let i;
+    while ((i = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, i).trim();
+      buf = buf.slice(i + 1);
+      if (!line.startsWith('{')) continue;
+      let o;
+      try { o = JSON.parse(line); } catch { continue; }
+      if (o.stats) on.stats(o.stats);
+      else if (o.level === 'error' || o.level === 'critical') on.error(o);
+    }
+  });
 }
 // 跑一条要传东西的 rclone，显示中文进度
 function rcRun(args, title) {
   console.log(title);
   return new Promise(res => {
-    const p = cp.spawn(RCLONE, [...args, ...COMMON, '--use-json-log', '--stats', '1s', '--stats-log-level', 'NOTICE'],
-      { env: rcEnv(), windowsHide: true });
+    const p = rcSpawn(args);
     const tty = process.stdout.isTTY;
     const errors = [];
-    let buf = '', lastW = 0, stats = null;
+    let lastW = 0, stats = null;
     const draw = st => {
       const pct = st.totalBytes ? Math.floor((st.bytes / st.totalBytes) * 100) : 100;
       let s = `  已完成 ${pct}%（${fmtSize(st.bytes)} / ${fmtSize(st.totalBytes)}）`;
@@ -162,25 +187,15 @@ function rcRun(args, title) {
       lastW = w;
     };
     p.stdout.resume();
-    p.stderr.setEncoding('utf8');
-    p.stderr.on('data', d => {
-      buf += d;
-      let i;
-      while ((i = buf.indexOf('\n')) >= 0) {
-        const line = buf.slice(0, i).trim();
-        buf = buf.slice(i + 1);
-        if (!line) continue;
-        let o;
-        try { o = JSON.parse(line); } catch { continue; }
-        if (o.stats) { stats = o.stats; if (tty) draw(stats); }
-        else if (o.level === 'error' || o.level === 'critical') {
-          errors.push(o);
-          if (errors.length <= 10) {
-            if (tty && lastW) { process.stdout.write('\n'); lastW = 0; }
-            console.log(`  出错：${o.object ? show(o.object) + '：' : ''}${o.msg}`);
-          }
+    rcLog(p.stderr, {
+      stats: st => { stats = st; if (tty) draw(st); },
+      error: o => {
+        errors.push(o);
+        if (errors.length <= 10) {
+          if (tty && lastW) { process.stdout.write('\n'); lastW = 0; }
+          console.log(`  出错：${o.object ? show(o.object) + '：' : ''}${o.msg}`);
         }
-      }
+      },
     });
     p.on('close', code => {
       if (tty && lastW) process.stdout.write('\n');
@@ -191,7 +206,7 @@ function rcRun(args, title) {
   });
 }
 
-const tempFiles = [];
+const tempFiles = new Set();
 process.on('exit', () => { for (const f of tempFiles) try { fs.rmSync(f, { force: true }); } catch {} });
 // 关窗口、按 Ctrl+C 时也走正常退出，锁和临时清单才会收拾掉
 if (require.main === module) for (const sig of ['SIGINT', 'SIGHUP', 'SIGBREAK', 'SIGTERM']) process.on(sig, () => process.exit(130));
@@ -199,9 +214,10 @@ function listFile(paths) {
   fs.mkdirSync(STATE_DIR, { recursive: true });
   const f = path.join(STATE_DIR, `list-${process.pid}-${crypto.randomBytes(4).toString('hex')}.txt`);
   fs.writeFileSync(f, paths.join('\n') + '\n');
-  tempFiles.push(f);
+  tempFiles.add(f);
   return f;
 }
+function dropList(f) { try { fs.rmSync(f, { force: true }); } catch {} tempFiles.delete(f); }
 
 // ---------- 两边的清单 ----------
 function scanLocal() {
@@ -735,7 +751,7 @@ async function setup() {
   // 先在临时配置里试，钥匙对了、网盘建好了，才写进正式配置
   fs.mkdirSync(STATE_DIR, { recursive: true });
   const tmpConf = path.join(STATE_DIR, `setup-${process.pid}.conf`);
-  tempFiles.push(tmpConf);
+  tempFiles.add(tmpConf);
   const write = (region, bucket) => fs.writeFileSync(tmpConf, setSections('', sections(region, bucket)));
   const trc = (args, o = {}) => rc(args, { ...o, env: { ...rcEnv(), RCLONE_CONFIG: tmpConf } });
   write('cn-hangzhou', null);
@@ -791,6 +807,6 @@ if (require.main === module) main();
 
 // 网盘管理.js（项目管理里「网盘」那一页的后台）用的
 module.exports = {
-  LOCAL, STATE_DIR, STATE_FILE, LOCK_FILE, RCLONE, ALIAS, OSS, PRICE_DAY, PRICE_NIGHT,
-  rcEnv, hint, fmtSize, fmtMoney, stamp, writeLog, aliasTarget, loadState, saveState, SKIP_FILE, SKIP_DIR, skipped,
+  LOCAL, STATE_DIR, STATE_FILE, LOCK_FILE, RCLONE, ALIAS, OSS, PRICE_DAY, PRICE_NIGHT, COMMON,
+  rcEnv, rcAsync, rcSpawn, rcLog, listFile, dropList, sum, under, sameL, sameContent, hint, fmtSize, fmtMoney, stamp, writeLog, aliasTarget, loadState, saveState, SKIP_FILE, SKIP_DIR, skipped,
 };

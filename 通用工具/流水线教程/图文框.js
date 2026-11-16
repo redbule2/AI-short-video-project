@@ -9,6 +9,7 @@
     const b = B[shot.dataset.img];
     if (!b) { shot.textContent = '框.json 里没有「' + shot.dataset.img + '」'; continue; }
     const [cx, cy, cw, ch] = shot.dataset.crop ? shot.dataset.crop.split(',').map(Number) : [0, 0, b.宽, b.高];
+    shot.style.boxSizing = 'content-box';   // 比例给里面那块（不含 1px 边）：top 的百分比照里面的高算，截得越靠下，含边算的偏得越多
     shot.style.aspectRatio = cw + ' / ' + ch;
     const img = document.createElement('img');
     img.src = b.图;

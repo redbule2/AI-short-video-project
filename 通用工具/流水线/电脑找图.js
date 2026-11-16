@@ -29,14 +29,7 @@ function pcPump() {
     (async () => {
       const r = await fetch('/api/pc?img=' + encodeURIComponent(job.p), { cache: 'no-store', headers: { 'X-Antou': '1' } });
       if (!r.ok) throw new Error(await r.text());
-      const blob = await r.blob();
-      if (!job.w) return URL.createObjectURL(blob);
-      try {
-        const bmp = await createImageBitmap(blob, { resizeWidth: job.w, resizeQuality: 'medium' });
-        const c = new OffscreenCanvas(bmp.width, bmp.height);
-        c.getContext('2d').drawImage(bmp, 0, 0); bmp.close();
-        return URL.createObjectURL(await c.convertToBlob({ type: 'image/jpeg', quality: .84 }));
-      } catch (e) { return URL.createObjectURL(blob); }
+      return (await window.UI.shrink(await r.blob(), job.w)).url;
     })().then(job.res, job.rej).finally(() => { pcBusy--; pcPump(); });
   }
 }

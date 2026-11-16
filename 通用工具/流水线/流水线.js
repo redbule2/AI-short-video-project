@@ -25,13 +25,7 @@ if (!window.Wait && document.currentScript) document.head.append(Object.assign(d
 /* 提示词的名字：一场写几条就分几条。第一条叫 视频提示词.txt，第二条起 视频提示词_02.txt、_03.txt……（2026-11-13 他定的：加第二条时第一条不改名）。
    老稿还有 段落a-b_视频提示词.txt、镜头a-b_视频提示词.txt，照旧认。
    审片以后照修改方案改的另存一份，名字后面加 _改1、_改2……（2026-11-14 他定）：原稿、前几版留在原处；一条只摆最新那一版，出片也用它 */
-const RE_VP = /(^|_)视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i;
-const vpVer = name => +((/_改([0-9]+)\.txt$/i.exec(name) || [])[1] || 0);   // 改的第几版；原稿是 0
-const vpBase = name => String(name).replace(/_改[0-9]+(\.txt)$/i, '$1');   // 这一条的原稿名
-const vpNo = name => { const b = vpBase(name); return /^视频提示词\.txt$/i.test(b) ? 1 : +((/^视频提示词_([0-9]+)\.txt$/i.exec(b) || [])[1] || 0); };   // 第几条；老稿是 0
-const vpLabel = name => { const b = vpBase(name), n = vpNo(b), v = vpVer(name); return (n ? '第' + n + '条' : b.replace(/_?视频提示词\.txt$/i, '').replace(/_/g, ' ') || '整场') + (v ? ' 改' + v : ''); };
-const vpTok = name => { const b = vpBase(name), n = vpNo(b), v = vpVer(name); return (n ? '提示词' + String(n).padStart(2, '0') : b.replace(/_?视频提示词\.txt$/i, '') || '整场') + (v ? '改' + v : ''); };   // 样片名字里写的（和样片自己的「第N条」分开）
-const vpNext = names => { const ns = names.map(vpNo).filter(Boolean); return ns.length ? '视频提示词_' + String(Math.max(...ns) + 1).padStart(2, '0') + '.txt' : '视频提示词.txt'; };
+const { RE_VP, vpVer, vpBase, vpNo, vpLabel, vpTok, vpNext, nameOk, sceneStem } = window.Core;   // 视频提示词怎么起名、文件名能不能用：和审片台、本机服务共用 公用/核心.js 那一份
 const VID_RE = /\.(mp4|m4v|mov|webm)$/i;
 const SHOTS_TAIL = '_批注截图';
 const FILE = '流水线.json';
@@ -114,7 +108,6 @@ const dirty = () => F.ver !== F.savedVer;
 const flowRef = () => at([F.name, '定稿的剧本', FILE]).join('/');   // 交给 AI 时指的就是这一份
 const scrollTop = () => document.scrollingElement.scrollTop;
 const typing = () => { const a = document.activeElement; return !!a && /^(INPUT|TEXTAREA)$/.test(a.tagName) && !!a.closest('.fl'); };
-const cardOf = seg => document.querySelector('.fl-scene[data-seg="' + seg + '"]');
 function fit(ta) { if (GROWS) return; ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; }
 const fitAll = () => { if (!GROWS) setTimeout(() => document.querySelectorAll('.fl textarea').forEach(fit), 0); };
 const byZh = (a, b) => a.localeCompare(b, 'zh', { numeric: true });
@@ -671,7 +664,7 @@ function openShell(parts, title, extra) {   // extra(close)：顶上那一条里
   document.body.append(SHELL); document.body.classList.add('wf-covered');
 }
 const openImage = (file, extra) => openShell(at([F.name, ...file.split('/')]), baseOf(file), extra);
-/* 你来写提示词：把写稿那一页（通用工具/项目管理_写稿试用.html）盖上来。它自己读写文件、自己开 AI 任务（请 AI 批、要关键词、把批注交给 AI 改）；
+/* 你来写提示词：把写稿那一页（通用工具/项目管理_写稿试用.html）盖上来。它自己读写文件、自己开 AI 任务（请 AI 批、把批注交给 AI 改）；
    写完点「回到流水线」，没存的字先存上。
    页头不盖（2026-11-15 他要的：写提示词时也得看得见「AI 用」选的是谁、能换）：从页头下面盖起（wf-write）；
    写稿页交 AI 的活现读页头选的 AI、模型、推理（同一份本机记录）。点页头去别的页、换项目，也先把写稿页存上（SHELL.leave，go、pickProject 里调） */
@@ -716,62 +709,20 @@ async function showText(parts) {
 /* ---------- AI 任务：交给本机的 AI（Claude、Codex、DeepSeek），页面上看得见它做到哪了 ----------
    点一下就在本机服务里开一个任务（POST /api/job），服务去调 AI、做完落盘；这里隔两秒问一次进度。
    用哪个 AI，在顶栏右边选，记在这台电脑的浏览器里。本机服务是旧版（没有 AI 任务）时，还是老办法：排进队里等对话里的 AI 来取 */
-const AI = { ok: false, channels: [], jobs: [] };
-const CH_KEY = 'antou:flow:channel';
-const SELF_CH = '自己交给 AI';   // 「给我提示词」的渠道号（11-14 头一版叫「自己交给 AI」，名字改了号不改）
-const chNow = () => { const v = localStorage.getItem(CH_KEY); return AI.channels.some(c => c.id === v) ? v : (AI.channels[0] || { id: 'claude' }).id; };
-const chName = () => chNow() === SELF_CH ? '你自己的 AI' : (AI.channels.find(c => c.id === chNow()) || { 名: 'AI' }).名;   // 按钮上写「交给 X 改」：选了给我提示词就是你自己的 AI
-const handOf = id => (AI.channels.find(c => c.id === id) || {}).hand || '';   // self 给我提示词 / claude Claude 桌面版 / deepseek DeepSeek 窗口；空＝在后台调
+const AI = { ok: false, jobs: [] };
+const CH = window.Base.CH;   // 用哪个 AI、它的模型和推理深度：各页共用 底座.js 的那一份
+const SELF_CH = CH.SELF;   // 「给我提示词」的渠道号
+const chNow = CH.now, chName = CH.name, handOf = CH.hand;
 const jobLive = j => !!j && (j.状态 === '排队' || j.状态 === '在做');
 /* 这件事（这一场）最近的一个任务 */
 const jobOf = (事, 段, pred) => AI.jobs.filter(j => j.事 === 事 && (段 == null || j.段 === 段) && (!pred || pred(j))).pop() || null;
-/* 模型、推理深度（2026-11-14 加）：跟着「AI 用」选的那个 AI 走，每个 AI 各记各的。
-   Codex 这两样在这里都定不了（照它自己的设置），只显示现在用的 */
-const DP_KEY = ch => 'antou:flow:depth:' + ch;
-const MD_KEY = ch => 'antou:flow:model:' + ch;
-const chInfo = () => AI.channels.find(c => c.id === chNow()) || null;
-const optNow = (k, key) => { const c = chInfo(), v = c ? localStorage.getItem(key(c.id)) || '' : ''; return c && (c[k] || []).some(d => d.id === v) ? v : ''; };
-const optName = (k, key) => { const c = chInfo(), v = optNow(k, key); return v ? c[k].find(d => d.id === v).名 : ''; };
-const dpNow = () => optNow('深度', DP_KEY), dpName = () => optName('深度', DP_KEY);
-const mdNow = () => optNow('模型', MD_KEY), mdName = () => optName('模型', MD_KEY);
-const pickSay = () => chNow() === SELF_CH ? '以后不调 AI：点了先给你要交代的话，贴进你自己开的对话' : '以后交给 ' + chName() + (mdName() ? '（' + mdName() + '）' : '') + (dpName() ? '，推理' + dpName() : '')
-  + ({ claude: '：在 Claude 桌面版开新对话，你按发送', deepseek: '：在 DeepSeek Harness 的窗口里做' }[handOf(chNow())] || '');
-function optPicker(k, key, label, tip) {   // k：'模型' 或 '深度'；这个 AI 定不了这一样就不出
-  const c = chInfo();
-  if (!c || !(c[k] || []).length) return null;
-  const dn = c['默认' + k + '名'];
-  const sel = h('select', { class: 'ai-ch-sel', title: tip + (c[k + '说明'] || '') }, [h('option', { value: '' }, '默认' + (dn ? '（' + dn + '）' : '')), ...c[k].map(d => h('option', { value: d.id }, d.名))]);
-  sel.value = optNow(k, key);
-  sel.addEventListener('change', () => { store(key(c.id), sel.value || null); toast(pickSay()); });
-  return h('label', { class: 'ai-ch' }, label, sel);
-}
-function aiOpts() {   // 「AI 用」旁边的模型、推理；定不了的合成一句「照 Codex（Terra · 最高）」
-  const c = chInfo();
-  if (!c || c.hand === 'self') return h('span');   // 给我提示词：用哪个 AI、什么模型你自己定
-  const md = optPicker('模型', MD_KEY, '模型', '用它的哪个模型。'), dp = optPicker('深度', DP_KEY, '推理', '想得多深：越深越慢。');
-  const fixed = [!md && c.默认模型名, !dp && c.默认深度名].filter(Boolean).join(' · ');
-  const label = !md && !dp ? '模型、推理' : !md ? '模型' : !dp ? '推理' : '';
-  const tip = [...new Set([!md && c.模型说明, !dp && c.深度说明].filter(Boolean))].join('\n');
-  return h('span', { class: 'ai-ch-box' }, md, dp, label ? h('span', { class: 'ai-ch', title: tip }, label, h('span', { class: 'ai-dp-fixed' }, '照 ' + c.名 + (fixed ? '（' + fixed + '）' : ''))) : null);
-}
-function chPicker() {
-  if (!AI.ok || !AI.channels.length) return null;
-  const sel = h('select', { class: 'ai-ch-sel', title: '点「让 AI ……」的时候交给谁。选「给我提示词」就不调 AI：把要交代的话给你，贴进你自己开的对话，它做完告诉项目。出图、出片走 Codex' }, AI.channels.map(c => h('option', { value: c.id, title: c.说明 }, c.名)));
-  sel.value = chNow();
-  let op = aiOpts();
-  sel.addEventListener('change', () => { store(CH_KEY, sel.value); const n = aiOpts(); op.replaceWith(n); op = n; toast(pickSay()); });
-  return h('span', { class: 'ai-ch-box' }, h('label', { class: 'ai-ch' }, 'AI 用', sel), op);
-}
+const chPicker = () => AI.ok ? window.UI.aiPicker('ai-ch', '点「让 AI ……」的时候交给谁。选「给我提示词」就不调 AI：把要交代的话给你，贴进你自己开的对话，它做完告诉项目。出图、出片走 Codex') : null;
 /* 开一个任务。quiet：不单独提示（一次开好几个时最后统一说一句） */
 async function startJob(body, quiet) {
   await flush();
   if (F.err) return null;
   try {
-    const b = { 项目: F.name, 渠道: chNow(), ...body };
-    if (b.渠道 === chNow()) {   // 模型、推理深度只说「AI 用」选的那一个（出片这类指定了 Codex 的不带）
-      if (b.深度 === undefined && dpNow()) b.深度 = dpNow();
-      if (b.模型 === undefined && mdNow()) b.模型 = mdNow();
-    }
+    const b = CH.fill({ 项目: F.name, 渠道: chNow(), ...body });   // 模型、推理深度只说「AI 用」选的那一个（出片这类指定了 Codex 的不带）
     const j = await (await LINK.req('POST', '/api/job', C.encodeText(JSON.stringify(b)))).json();
     AI.jobs = AI.jobs.filter(x => x.id !== j.id).concat(j);
     const hand = j.渠道 === b.渠道 ? handOf(j.渠道) : '';   // 同一件事已经在做的，服务给的是原来那个任务
@@ -807,14 +758,13 @@ function jobLine(j) {
    AI 把回复写进这一回文件夹里的回复文件（或者跑一句命令告诉服务），这里自动接着做；它写不了文件，把回复贴回来也行。
    有几处原来单独摆了「自己交给 AI」的按钮（startSelf），照旧能用：这一回不管顶栏选的是谁，都给我提示词 ---------- */
 const isSelf = j => !!j && j.渠道 === SELF_CH;
-const selfOk = () => AI.ok && AI.channels.some(c => c.id === SELF_CH);   // 本机服务 11-14 晚那一版起，「AI 用」里有这一项
+const selfOk = () => AI.ok && CH.list.some(c => c.id === SELF_CH);   // 本机服务 11-14 晚那一版起，「AI 用」里有这一项
 async function startSelf(body) {
   if (!selfOk()) { toast('本机服务是旧的，重开一次才能给你提示词', 'err'); return null; }
   const j = await startJob({ ...body, 渠道: SELF_CH }, true);
   if (j && !isSelf(j)) toast('这一样已经交给 ' + j.渠道名 + ' 在做了', 'err');
   return j;
 }
-const selfDlg = j => window.HandAI && HandAI.open(j, () => loadJobs());   // 再看一遍要交代的话（资产那几页用）
 /* 上一回没做成：说一句为什么（做成过、或者过了半小时就不提了） */
 function jobFailed(事, 段, pred) {
   const j = jobOf(事, 段, pred);
@@ -1092,7 +1042,7 @@ async function start(page) {
   if (!(await LINK.up())) { root.replaceChildren(noneBox('这几页要经本机服务打开：在 Claude 里说「打开项目管理」，开好以后点「再试一次」。', againBtn())); return; }
   F.projects = await projects();
   AI.ok = LINK.v >= 5;   // 本机服务第 5 版起有 AI 任务
-  if (AI.ok) { try { AI.channels = (await (await LINK.req('GET', '/api/job?channels')).json()).channels.filter(c => c.ok); } catch (e) { AI.ok = false; } }
+  if (AI.ok) { try { await CH.load(); } catch (e) { AI.ok = false; } }
   const q = query(), has = n => !!n && F.projects.includes(n);
   const name = has(q.p) ? q.p : [localStorage.getItem('antou:last:' + LINK.root)].find(has) || F.projects[0];
   if (!name) { root.replaceChildren(noneBox('这里还没有项目。', h('button', { class: 'btn ink', type: 'button', onclick: newProject }, '新建项目'))); return; }
@@ -1343,7 +1293,6 @@ async function sendAI(line, ok) {
     toast(r.online ? ok : '记下了。AI 这会儿没在等，去对话里说一声「看右边」');
   } catch (e) { toast('没交上：' + e.message, 'err'); }
 }
-const nextRow = (label, body) => h('div', { class: 'fn' }, h('div', { class: 'fn-lab' }, label), body);
 
 /* ---------- 批量让 AI 扩写：各场写成剧本；人物、道具补细描写；场景照 GEO 写清空间 ---------- */
 /* 一句话交出去：批量扩写 <流水线>｜人物：甲、乙｜场景（照 scene-geo 用 GEO…）｜道具：丙｜各场：第1-1段、第1-2段 */
@@ -1559,13 +1508,6 @@ function assetChip(it, opener) {   // opener：点开这一格时另有做法（
    AI 写的「要撑住」「核图」「核GEO」记在 资产/第N段_资产清单.json 里这张图的那一条（页面只读） ---------- */
 const CAND_RE = /_候选\.(png|jpe?g|webp)$/i;
 const BMF_RE = /_白模帧\.(png|jpe?g|webp)$/i;   // 出关键帧时从白模截的那一刻（过程文件，放在关键帧旁边）：不算关键帧
-const nameOk = n => !!n && !/[<>:"\\/|?*\u0000-\u001f]/.test(n) && !/^\.+$/.test(n) && !/[. ]$/.test(n);
-/* 只用文字写的场景（全片设定「场景」里的一行）写字、出图时用的名字：「面摊：傍晚……」叫「面摊」，「一个出租屋内，一张床……」叫「一个出租屋内」。本机服务（jobs.js 的 sceneStem）一样算 */
-function sceneStem(t) {
-  const x = str(t).trim(), c = x.search(/[：:]/), p = x.search(/[，,。；;\n]/);
-  const a = (c >= 1 && c <= 12 && (p < 0 || c < p) ? x.slice(0, c) : p >= 2 && p <= 14 ? x.slice(0, p) : x.slice(0, 12)).replace(/[<>:"\\/|?*\u0000-\u001f]/g, '').trim().replace(/[. ]+$/, '');
-  return nameOk(a) ? a : '';
-}
 const inCatDir = (cat, f) => { const q = String(f).split('/'); return q.length === 4 && q[0] === '资产' && q[1] === '全局资产' && q[2] === cat && nameOk(q[3]); };
 const fileTimeOf = f => (F.imgTime && F.imgTime.get(String(f).toLowerCase())) || (F.pool.find(p => p.文件 === f) || {}).mtime || F.words.get(f) || 0;
 const nearTime = (a, b) => !!a && !!b && Math.abs(a - b) < 3000;
@@ -1760,10 +1702,6 @@ function useSceneImg(s, t, file) {
   s.场景文字 = uniq(s.场景文字).filter(x => x !== t);
   orderCast(s); touch();
 }
-const textImgActs = (s, it, w) => close => [
-  w.checkImg ? noteEl('AI 核图', w.checkImg) : null,
-  PAGE.sub ? null : h('button', { class: 'btn sm ghost', type: 'button', onclick: () => { close(); openWord(s, w); } }, '看字'),
-  h('button', { class: 'btn sm ink', type: 'button', title: '这一场改用这张图（全片设定里那一句还在）', onclick: () => { useSceneImg(s, it.文字, w.img); close(); toast('这一场改用「' + w.stem + '」这张图了'); } }, '用上这张图')];
 /* 一格右边：这一样眼下该做的（写字、批字、看新图；AI 在做就转圈）。有图的「确认可用」另外摆 */
 function wordPills(s, it, w) {
   const stop = ev => ev.stopPropagation();
@@ -1986,7 +1924,7 @@ function revAdopt(s, v, skip) {
   touch();
 }
 /* 先写提示词的场新开一条：只摆你写的两块（【生成目标】【事件脚本】），记好用分镜模式还是自由模式，直接打开写稿页 */
-const REV_SIDE_NOTE = '写稿页的过程文件，不是提示词。这一场先写提示词：人只写【生成目标】和【事件脚本】（分镜模式一镜一行，自由模式一大段），AI 照它们反推剧本；剧本定稿以后 AI 再把素材、基础设定、主体与关系、保持一致铺进正文。写法、写法范围、分镜稿、自由稿、镜头信息由页面保存；分镜建议、基础建议、镜头关键词由 AI 按需提供，用户采用后才写入正文。挂图由页面记录。';
+const REV_SIDE_NOTE = '写稿页的过程文件，不是提示词。这一场先写提示词：人只写【生成目标】和【事件脚本】（分镜模式一镜一行，自由模式一大段），AI 照它们反推剧本；剧本定稿以后 AI 再把素材、基础设定、主体与关系、保持一致铺进正文。写法、写法范围、分镜稿、自由稿、镜头信息由页面保存；挂图由页面记录。';
 async function revDraft(s, mode) {
   await flush();
   if (F.err) return;

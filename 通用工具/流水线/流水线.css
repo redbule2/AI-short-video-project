@@ -374,7 +374,7 @@ body.wf-covered { overflow: hidden; }
 .ai-run .wt-ring { font-size: 13px; }   /* 转着的墨环：公用/等待.js（流水线.js 替各页引好），颜色跟着字 */
 .ai-ch { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
 .ai-ch-box { display: inline-flex; align-items: center; gap: 12px; }
-.ai-dp-fixed { font-size: 13px; color: var(--ink-2); cursor: help; }
+.ai-ch-fixed { font-size: 13px; color: var(--ink-2); cursor: help; }
 .ai-ch-sel { padding: 4px 8px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--sheet); font: 13px var(--sans); color: var(--ink); cursor: pointer; }
 
 /* 首页的进度表：一场一行，五格（段落、剧本、资产、提示词、审片） */

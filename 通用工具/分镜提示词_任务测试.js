@@ -46,7 +46,6 @@ function setup(raw, side) {
 
 const structured = '\uFEFF本段事件：原文  保留\r\n\r\n素材\r\n\r\n基础设定\r\n\r\n本段\r\n\r\n分镜\r\n镜头 01｜第一镜\r\n甲原文。\r\n\r\n镜头 02｜第二镜\r\n乙原文。\r\n\r\n保持一致：原样\r\n';
 const sideData = () => ({ 写法: '分镜', 分镜稿: structured, 自由稿: '自由稿备份\n  保留缩进', 镜头信息: [{ id: 'shot-a', no: '01', 作用: '用户作用甲' }, { id: 'shot-b', no: '02', 作用: '用户作用乙' }], 挂图: { '@图片1': '资产/图.png' }, 额外字段: { 保留: true } });
-const suggestion = JSON.stringify({ 分镜建议: [{ 标题: '建议', 作用: '作用', 正文: '可选正文', 关键词: { 动作: ['停顿'] } }], 基础建议: { 本段: '建议内容' }, 关键词: { '01': { 动作: ['回头'] } } });
 
 (async () => {
   let tested = 0;
@@ -77,64 +76,15 @@ const suggestion = JSON.stringify({ 分镜建议: [{ 标题: '建议', 作用: '
     const sc = KeyFrames.scan(L);   // 写稿页、去掉关键帧时认句子靠它：顺序句、角色句和「该…帧定义」都要认出来
     assert.deepEqual(sc.refs, six.map(x => x.ref)); assert.equal(sc.rows.get(3), '');
   });
-  await check('侧栏建议不修改正文、草稿快照、作用或附加字段', async () => {
-    const s = setup(structured, sideData()), j = job();
-    await s.K.铺底.book(j); await s.K.铺底.apply(j, suggestion);
-    assert.equal(s.raw(), structured);
-    for (const [key, value] of Object.entries(sideData())) assert.deepEqual(s.side()[key], value);
-    assert.equal(s.side().分镜建议[0].正文, '可选正文');
-    assert.deepEqual(s.side().镜头关键词['shot-a'], { 动作: ['回头'] });
-    assert(s.writes.every(p => p === sidePath || p === sidePath + '.antou-tmp'));
-    assert.equal(s.locks.length, 1); assert.equal(s.locks[0].length, 2);
-  });
-  await check('异步关键词返回后仍跟随原镜头 ID', async () => {
-    const s = setup(structured, sideData()), j = { ...job(), 镜头号: '01', 镜头ID: 'shot-a' };
-    await s.K.要关键词.prep(j); await s.K.要关键词.book(j);
-    const edited = sideData(); edited.镜头信息.reverse(); edited.镜头信息[0].no = '01'; edited.镜头信息[1].no = '02';
-    edited.自由稿 = '用户等待期间又写了'; s.files.set(sidePath, Buffer.from(JSON.stringify(edited)));
-    await s.K.要关键词.apply(j, '{"动作":["停住"]}');
-    assert.deepEqual(s.side().镜头关键词['shot-a'], { 动作: ['停住'] });
-    assert.equal(s.side().镜头关键词['shot-b'], undefined); assert.equal(s.side().自由稿, edited.自由稿);
-    assert.equal(s.raw(), structured); assert.equal(s.locks.length, 1);
-  });
-  await check('已删除镜头不会把旧请求关键词移给别的镜头', async () => {
-    const s = setup(structured, sideData()), j = { ...job(), 镜头号: '01', 镜头ID: 'shot-a' };
-    await s.K.要关键词.book(j);
-    const edited = sideData(); edited.镜头信息.shift(); s.files.set(sidePath, Buffer.from(JSON.stringify(edited)));
-    const result = await s.K.要关键词.apply(j, '{"动作":["停住"]}');
-    assert.match(result.结果, /删除或改变/); assert.equal(s.writes.length, 0);
-  });
-  await check('自由稿的空行、缩进和旧结构稿快照均保持原样', async () => {
-    const raw = '\uFEFF任意格式\r\n\r\n   原样\r\n', side = sideData(); side.写法 = '自由'; side.自由稿 = raw;
-    const s = setup(raw, side), j = job(); await s.K.铺底.book(j);
-    await s.K.铺底.apply(j, '{"分镜建议":[{"标题":"自选","正文":"例子"}],"关键词":{"自由":{"动作":["停顿"]}}}');
-    const keyJob = { ...job(), 镜头号: '自由' }; await s.K.要关键词.prep(keyJob); await s.K.要关键词.book(keyJob); await s.K.要关键词.apply(keyJob, '{"机位":["近景"]}');
-    assert.equal(s.raw(), raw); assert.equal(s.side().自由稿, raw); assert.equal(s.side().分镜稿, structured);
-    assert.deepEqual(s.side().关键词.自由, { 机位: ['近景'] });
-  });
-  await check('分镜自由模式只建议分镜，完整公共内容与范围标记保持原样', async () => {
+  await check('自由模式的稿：AI 批注不挑分镜格式，公共区照实核对，稿子不动', async () => {
     const freeShots = '先看向门口\r\n\r\n  停顿，然后开口。';
-    const commonHead = '\uFEFF本段事件：原事件\r\n素材\r\n@图片1 原图\r\n基础设定\r\n原风格\r\n本段\r\n原场景\r\n分镜\r\n';
-    const commonTail = '\r\n保持一致：原约束\r\n';
-    const raw = commonHead + freeShots + commonTail;
-    const side = { ...sideData(), 写法: '自由', 写法范围: '分镜', 自由稿: freeShots };
-    const s = setup(raw, side), j = job(); const book = await s.K.铺底.book(j);
-    assert.ok(book.includes('是共用的公共内容，不随分镜写法切换')); assert.ok(book.includes(raw));
-    await s.K.铺底.apply(j, suggestion);
-    const keyJob = { ...job(), 镜头号: '自由' }; const keywordsBook = await s.K.要关键词.book(keyJob);
-    assert.ok(keywordsBook.includes('## 当前文字\n' + freeShots + '\n'));
-    assert.ok(keywordsBook.includes('## 整份提示词（公共区供对照）\n' + raw));
-    await s.K.要关键词.apply(keyJob, '{"动作":["停顿"]}');
-    assert.equal(s.raw(), raw);
-    for (const [key, value] of Object.entries(side)) assert.deepEqual(s.side()[key], value);
+    const raw = '\uFEFF本段事件：原事件\r\n素材\r\n@图片1 原图\r\n基础设定\r\n原风格\r\n本段\r\n原场景\r\n分镜\r\n' + freeShots + '\r\n保持一致：原约束\r\n';
+    const s = setup(raw, { ...sideData(), 写法: '自由', 写法范围: '分镜', 自由稿: freeShots });
     const reviewBook = await s.K.批注提示词.book(job());
     assert.ok(reviewBook.includes('用户只把分镜写成自由文本'));
     assert.ok(reviewBook.includes('公共区仍然共用'));
-  });
-  await check('坏 JSON 不会被空对象覆盖', async () => {
-    const s = setup(structured, '{broken');
-    await assert.rejects(s.K.铺底.apply(job(), suggestion), /保护现有内容/);
-    assert.equal(s.files.get(sidePath).toString(), '{broken'); assert.equal(s.writes.length, 0);
+    assert.ok(reviewBook.includes(raw.slice(1)));   // 整份稿（连公共区）都给 AI 看
+    assert.equal(s.raw(), raw); assert.equal(s.writes.length, 0);
   });
   await check('AI 初稿禁止覆盖已有提示词（含排队后的新建）', async () => {
     const s = setup(structured, sideData()); await assert.rejects(s.K.写提示词.prep(job()), /已经存在/);
@@ -143,20 +93,17 @@ const suggestion = JSON.stringify({ 分镜建议: [{ 标题: '建议', 作用: '
   });
   const pe = '\uFEFF【生成目标】\r\n甲给乙递书。\r\n\r\n【参考素材职责】\r\n@图片1用于甲的五官、发型和服装，不采用图片背景。\r\n\r\n【事件脚本】\r\n镜头1：甲递书。\r\n镜头2：乙接过。\r\n最终画面采用写实质感，声音包括无背景音乐。\r\n\r\n【保持一致】\r\n保持书只有一本。\r\n';
   const peSide = () => ({ 写法: '分镜', 分镜稿: pe, 自由稿: '', 镜头信息: [{ id: 'pe-a', no: '1', 作用: '', 标题: '递书' }, { id: 'pe-b', no: '2', 作用: '', 标题: '' }] });
-  await check('PE 稿：铺底任务书照 PE 格式、建议的分区名照收，正文不动', async () => {
-    const s = setup(pe, peSide()), j = job();
-    const book = await s.K.铺底.book(j);
-    assert.ok(book.includes('## 提示词格式（照 sd25-pe）')); assert.ok(book.includes('## 写戏规矩')); assert.ok(book.includes('"主体与关系"'));
-    assert.doesNotMatch(book, /seedance-prompt-format/);
-    await s.K.铺底.apply(j, JSON.stringify({ 基础建议: { 主体与关系: '画面中共有两个人。', 画面与声音: '' }, 关键词: { 1: { 动作: ['递书'] } } }));
-    assert.deepEqual(s.side().基础建议, { 主体与关系: '画面中共有两个人。' });
-    assert.deepEqual(s.side().镜头关键词['pe-a'], { 动作: ['递书'] });
-    assert.equal(s.raw(), pe);
+  await check('坏 JSON 不会被空对象覆盖：AI 铺底读不了写稿资料就不存', async () => {
+    const s = setup(pe, '{broken');
+    await assert.rejects(s.K.直接铺底.apply(job(), '【基础设定】\n影像风格：写实。\n【保持一致】\n保持书只有一本。'), /保护现有内容/);
+    assert.equal(s.files.get(sidePath).toString(), '{broken'); assert.equal(s.raw(), pe); assert.equal(s.writes.length, 0);
+    assert.equal(s.locks.length, 1);   // 和页面存盘同一把锁
   });
-  await check('PE 稿：要关键词认「镜头1：」一行一镜，标题取写稿资料', async () => {
-    const s = setup(pe, peSide()), j = { ...job(), 镜头号: '1', 镜头ID: 'pe-a' };
-    await s.K.要关键词.prep(j); const book = await s.K.要关键词.book(j);
-    assert.ok(book.includes('用户在写镜头1｜递书')); assert.ok(book.includes('## 当前文字\n甲递书。\n'));
+  await check('按批注改：只换半句时，AI 的话里有 $& 也照原样放进去', async () => {
+    const s = setup(pe, peSide()), j = { ...job(), rel: ['提示词', '第1段', '视频提示词_批注.md'] };
+    await s.K.按批注改提示词.apply(j, '[{"原文": "甲递书", "第几处": 1, "改成": "甲把书递过去，标价 $& 元"}]');
+    assert.ok(s.raw().includes('\r\n镜头1：甲把书递过去，标价 $& 元。\r\n'));
+    assert.ok(s.raw().includes('\r\n镜头2：乙接过。\r\n'));
   });
   await check('PE 稿：AI 批注的原文抄了「镜头N：」也能对上，段名行不当原文', async () => {
     const s = setup(pe, peSide()), j = { ...job(), 渠道: 'claude' };
@@ -174,6 +121,15 @@ const suggestion = JSON.stringify({ 分镜建议: [{ 标题: '建议', 作用: '
     s.files.delete(promptPath);
     await s.K.写提示词.apply(job(), '好的，下面是稿子\n【提示词】\n【生成目标】\n' + '甲给乙递书。'.repeat(20) + '\n\n【事件脚本】\n镜头1：甲递书。\n【素材登记】\n[]');
     assert.ok(s.raw().startsWith('【生成目标】\n'));
+  });
+  await check('写提示词：没写哪段戏就写整段、别的条不附；写了哪段才只写那段、附上别的条', () => {
+    const sc = setup(structured, sideData()).K.写提示词.scope, two = [{ f: '视频提示词.txt', no: 1, text: '第一条' }];
+    const whole = sc(2, two, '', null);
+    assert.match(whole.text, /这一份是第 2 条，写这一场整段戏，从开头写到结尾。/); assert.equal(whole.others.length, 0);
+    assert.doesNotMatch(whole.text, /接着|留给下一条|留给别的条/);
+    const part = sc(2, two, '小磊进门到坐下', null);
+    assert.match(part.text, /这一条写这段戏：小磊进门到坐下。/); assert.match(part.text, /另外还有 1 条/); assert.equal(part.others, two);
+    assert.match(sc(1, [], '', [2, 3]).text, /只写段落 2 到段落 3/);   // 老请求带着段落范围的照旧
   });
   console.log(tested + ' 项回归检查通过；真实项目数据未读写。');
 })().catch(e => { console.error(e); process.exitCode = 1; });

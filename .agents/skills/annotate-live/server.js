@@ -47,10 +47,11 @@ function send(res, status, body, headers) {
 const json = (res, obj) => send(res, 200, JSON.stringify(obj), { 'Content-Type': 'application/json; charset=utf-8' });
 const mtimeOf = st => Math.floor(st.mtimeMs);
 
-/* 地址里的路径只能落在总文件夹里面 */
+/* 地址里的路径只能落在总文件夹里面：每一节不许是 . 、..，不许有 Windows 文件名里不许有的字 */
+const badSeg = s => /^\.+$|[<>:"\\/|?*\u0000-\u001f]|[. ]$/.test(s);
 function resolveParts(raw, decoded) {
   const parts = raw.split('/').filter(Boolean).map(s => decoded ? s : decodeURIComponent(s));
-  for (const p of parts) if (/^\.+$|[<>:"\\/|?*\u0000-\u001f]|[. ]$/.test(p)) throw httpErr(400, '路径不对：' + p);
+  for (const p of parts) if (badSeg(p)) throw httpErr(400, '路径不对：' + p);
   return path.join(ROOT, ...parts);
 }
 const exists = p => fsp.stat(p).then(() => true, () => false);
@@ -196,7 +197,7 @@ async function handle(req, res) {
     /* 通用工具 里的页面（流水线各步）和它们用的脚本、样式：原样发出去，只读 */
     if (req.method === 'GET' && p.startsWith('/通用工具/')) {
       const parts = p.split('/').filter(Boolean).slice(1);
-      for (const s of parts) if (/^\.+$|[<>:"\\|?*\u0000-\u001f]|[. ]$/.test(s)) throw httpErr(400, '路径不对：' + s);
+      for (const s of parts) if (badSeg(s)) throw httpErr(400, '路径不对：' + s);
       const type = STATIC[path.extname(parts[parts.length - 1] || '').toLowerCase()];
       if (!type) throw httpErr(404, '通用工具 里只发页面、脚本和样式');
       return send(res, 200, await fsp.readFile(path.join(TOOLS, ...parts)), { 'Content-Type': type + '; charset=utf-8' });

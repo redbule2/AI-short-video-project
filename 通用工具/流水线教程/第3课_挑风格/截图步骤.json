@@ -1,0 +1,106 @@
+{
+ "网址": "http://localhost:8797/通用工具/流水线/",
+ "视口": [1280, 720],
+ "倍数": 3,
+ "假接口": {
+  "/api/jimeng": {
+   "status": {"ok": true, "data": {"loggedIn": true}, "raw": ""},
+   "account": {"ok": true, "data": {"displayName": "我的即梦号"}, "raw": ""}
+  }
+ },
+ "步骤": [
+  {"开": "总览.html?p=童晓晓", "等": 2500},
+  {"截": "首页前", "整页": true, "框": {
+   "设定": ".wf-tiles",
+   "风格格": ".wf-tile:nth-child(5)"
+  }},
+
+  {"开": "剧本.html?p=童晓晓&s=1-3", "等": 3000},
+  {"截": "剧本页", "框": {
+   "定稿按钮": "js:[...document.querySelectorAll('button')].find(b => b.textContent.trim() === '剧本定稿')",
+   "步骤条": ".wf-steps"
+  }},
+
+  {"跑": "styleDlg(null, { first: true });", "等": 2200},
+  {"跑": "window.card = n => [...document.querySelectorAll('.sty-card')].find(c => c.querySelector('h4').textContent.startsWith(n)); window.btn = (n, t) => [...card(n).querySelectorAll('button')].find(b => b.textContent === t);"},
+  {"截": "弹窗", "框": {
+   "弹窗": ".dlg",
+   "标题": ".dlg h3",
+   "说明": ".dlg-sub",
+   "AI按钮": "text:让 AI 看剧本推荐",
+   "卡片": "js:card('王家卫')",
+   "看样片": "js:btn('王家卫', '看样片')",
+   "看招牌": "js:btn('王家卫', '看招牌')",
+   "用这个": "js:btn('王家卫', '用这个')"
+  }},
+
+  {"跑": "btn('王家卫', '看样片').click();", "等": 3000},
+  {"跑": "const v = card('王家卫').querySelector('video'); v.pause(); v.removeAttribute('controls'); v.currentTime = 2.2; await new Promise(r => setTimeout(r, 900));", "等": 300},
+  {"截": "样片", "框": {
+   "卡片": "js:card('王家卫')",
+   "样片画面": "js:card('王家卫').querySelector('.sty-media')",
+   "看招牌": "js:btn('王家卫', '看招牌')"
+  }},
+
+  {"跑": "btn('王家卫', '看招牌').click(); await new Promise(r => setTimeout(r, 300)); card('王家卫').querySelector('.sty-more').scrollIntoView({ block: 'center' });", "等": 700},
+  {"截": "招牌", "框": {
+   "卡片": "js:card('王家卫')",
+   "招牌": "js:card('王家卫').querySelector('.sty-more')",
+   "用这个": "js:btn('王家卫', '用这个')"
+  }},
+
+  {"跑": "document.querySelector('.dlg h3').scrollIntoView({ block: 'start' });", "等": 600},
+  {"截": "回顶", "框": {
+   "AI按钮": "text:让 AI 看剧本推荐",
+   "卡片": "js:card('王家卫')",
+   "用这个": "js:btn('王家卫', '用这个')"
+  }},
+
+  {"跑": "btn('王家卫', '用这个').click();", "等": 1300},
+  {"截": "定了", "框": {
+   "提示": ".toast",
+   "风格按钮": ".wf-style"
+  }},
+
+  {"开": "设定.html?p=童晓晓#风格", "等": 3500},
+  {"截": "设定风格", "框": {
+   "风格分页": ".wf-tab.on",
+   "风格详情": ".sty-now",
+   "一眼认出": "js:[...document.querySelectorAll('.sty-now dt')].find(e => e.textContent === '一眼认出').nextElementSibling",
+   "换一个": "text:换一个"
+  }},
+
+  {"开": "总览.html?p=童晓晓", "等": 2500},
+  {"截": "首页", "整页": true, "框": {
+   "设定": ".wf-tiles",
+   "风格格": ".wf-tile:nth-child(5)",
+   "分场表": ".wf-table",
+   "列剧本": ".wf-row.head > span:nth-child(3)",
+   "列资产": ".wf-row.head > span:nth-child(4)",
+   "列审片": ".wf-row.head > span:nth-child(6)"
+  }},
+
+  {"开": "剧本.html?p=童晓晓&s=1-2", "等": 3000},
+  {"截": "这一场", "框": {
+   "风格按钮": ".wf-style",
+   "步骤条": ".wf-steps"
+  }},
+  {"跑": "document.querySelector('.wf-style').click();", "等": 2200},
+  {"截": "这一场弹窗", "框": {
+   "弹窗": ".dlg",
+   "标题": ".dlg h3",
+   "说明": ".dlg-sub"
+  }},
+  {"跑": "[...document.querySelectorAll('.dlg button')].find(b => b.textContent === '关上').click();", "等": 800},
+
+  {"开": "设定.html?p=童晓晓#风格", "等": 3500},
+  {"跑": "[...document.querySelectorAll('button')].find(b => b.textContent.trim() === '换一个').click();", "等": 2200},
+  {"跑": "const c = [...document.querySelectorAll('.sty-card')].find(c => c.querySelector('h4').textContent.startsWith('邵氏港片')); [...c.querySelectorAll('button')].find(b => b.textContent === '用这个').click();", "等": 1500},
+  {"截": "换风格", "框": {
+   "弹窗": ".dlg",
+   "标题": ".dlg h3",
+   "说明": ".dlg-sub"
+  }},
+  {"跑": "[...document.querySelectorAll('.dlg button')].find(b => b.textContent === '取消').click();", "等": 800}
+ ]
+}

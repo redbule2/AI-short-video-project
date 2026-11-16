@@ -43,7 +43,7 @@ function aiNoteBox(s) {
   if (!n || localStorage.getItem(noteKey()) === n.时间) return bad ? h('p', { style: 'margin:10px 0' }, bad) : null;
   return h('div', { class: 'fl-aibox', style: 'margin:10px 0 14px' },
     h('div', { class: 'fl-aibox-h' }, 'AI 的意见', h('span', { class: 'faint small' }, String(n.时间 || '').slice(5, 16)), h('span', { class: 'sp' }),
-      h('button', { class: 'btn sm ghost', type: 'button', onclick: () => { store(noteKey(), n.时间); rerender(); } }, '知道了，收起')),
+      h('button', { class: 'btn sm ghost', type: 'button', onclick: () => { store(noteKey(), n.时间); rerender(); } }, '收起意见')),
     n.总评 ? h('p', null, n.总评) : null,
     (Array.isArray(n.各段) ? n.各段 : []).map(x => h('p', null, h('b', null, '段落' + x.段落 + '：'), x.意见)));
 }

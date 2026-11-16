@@ -1,7 +1,7 @@
 /* ============================================================
    公用 · 界面（window.UI）
    流水线各页共用的小部件：造元素、图标、提示条、对话框、缩小图、悬停看大图、挨着按钮的小窗。
-   h、图标、提示、对话框和看文件的那一页（项目管理.html）样子一样（样式在 样式.css）。
+   看文件的那一页（项目管理.html）、写稿页也用这一份（样式在 样式.css；提示条单独在 提示条.css）。
    ============================================================ */
 (function () {
 'use strict';
@@ -144,8 +144,41 @@ async function copyText(text, ok) {
   return false;
 }
 
-/* 缩小图：一次做两张，做好的留着。w：做多宽（小图 220，悬停看的大一点 640） */
-const THUMB = new Map(), TQ = [];
+/* ---------- 「AI 用」那一排：交给哪个 AI，旁边跟着它的模型、推理深度（流水线顶栏、审片台共用；选的记在 底座.js 的 CH）----------
+   cls：样式名的头，摆出来是 <cls>-box 包着几个 <cls>，下拉框是 <cls>-sel，定不了的那句是 <cls>-fixed；tip：「AI 用」下拉框上的说明。
+   一个 AI 都调不起来就不摆；只有一个就不给选，写「交给 X」 */
+function aiPicker(cls, tip) {
+  const { CH } = window.Base;
+  if (!CH.list.length) return null;
+  const box = kids => h('span', { class: cls + '-box' }, kids);
+  const pick = (k, label, say) => {   // k：'模型' 或 '深度'；这个 AI 定不了这一样就不出
+    const c = CH.info();
+    if (!c || !(c[k] || []).length) return null;
+    const dn = c['默认' + k + '名'];
+    const sel = h('select', { class: cls + '-sel', title: say + (c[k + '说明'] || '') }, h('option', { value: '' }, '默认' + (dn ? '（' + dn + '）' : '')), c[k].map(d => h('option', { value: d.id }, d.名)));
+    sel.value = CH.opt(k);
+    sel.addEventListener('change', () => { CH.setOpt(c.id, k, sel.value); sel.blur(); toast(CH.say()); });
+    return h('label', { class: cls }, label, sel);
+  };
+  const opts = () => {   // 定不了的合成一句「照 Codex（Terra · 最高）」；给我提示词：用哪个 AI、什么模型你自己定
+    const c = CH.info();
+    if (!c || c.hand === 'self') return h('span');
+    const md = pick('模型', '模型', '用它的哪个模型。'), dp = pick('深度', '推理', '想得多深：越深越慢。');
+    const fixed = [!md && c.默认模型名, !dp && c.默认深度名].filter(Boolean).join(' · ');
+    const label = !md && !dp ? '模型、推理' : !md ? '模型' : !dp ? '推理' : '';
+    const say = [...new Set([!md && c.模型说明, !dp && c.深度说明].filter(Boolean))].join('\n');
+    return box([md, dp, label ? h('span', { class: cls, title: say }, label, h('span', { class: cls + '-fixed' }, '照 ' + c.名 + (fixed ? '（' + fixed + '）' : ''))) : null]);
+  };
+  if (CH.list.length < 2) return box([h('span', { class: cls }, '交给 ' + CH.name()), opts()]);
+  const sel = h('select', { class: cls + '-sel', title: tip }, CH.list.map(c => h('option', { value: c.id, title: c.说明 }, c.名)));
+  sel.value = CH.now();
+  let op = opts();
+  sel.addEventListener('change', () => { CH.set(sel.value); sel.blur(); const n = opts(); op.replaceWith(n); op = n; toast(CH.say()); });
+  return box([h('label', { class: cls }, 'AI 用', sel), op]);
+}
+
+/* 缩小图：一次做两张，做好的留着。w：做多宽（小图 220，悬停看的大一点 640）。各页都用这一份，别另抄 */
+const THUMB = new Map(), TQ = [], TSIZE = new Map();
 let TBUSY = 0;
 function pump() {
   while (TBUSY < 2 && TQ.length) {
@@ -153,28 +186,48 @@ function pump() {
     makeThumb(job.parts, job.w).then(job.res, job.rej).finally(() => { TBUSY--; pump(); });
   }
 }
-async function makeThumb(parts, w) {
-  const { buf } = await FS.read(parts);
-  const ext = parts[parts.length - 1].split('.').pop().toLowerCase();
-  const blob = new Blob([buf], { type: 'image/' + (ext === 'jpg' ? 'jpeg' : ext) });
-  try {
+/* 把一张图缩到 w 宽，给 { url, w, h }。w 是 0、缩不了（不是图）就给原图，w、h 是 0。缩图只用这一份 */
+async function shrink(blob, w) {
+  if (w) try {
     const bmp = await createImageBitmap(blob, { resizeWidth: w, resizeQuality: 'medium' });
     const c = new OffscreenCanvas(bmp.width, bmp.height);
     c.getContext('2d').drawImage(bmp, 0, 0); bmp.close();
-    return URL.createObjectURL(await c.convertToBlob({ type: 'image/jpeg', quality: .84 }));
-  } catch (e) { return URL.createObjectURL(blob); }
+    return { url: URL.createObjectURL(await c.convertToBlob({ type: 'image/jpeg', quality: .84 })), w: c.width, h: c.height };
+  } catch (e) { /* 缩不了：给原图 */ }
+  return { url: URL.createObjectURL(blob), w: 0, h: 0 };
 }
-/* 图重出过（同一个路径换了内容）：做好的缩小图不能再用 */
-function dropThumbs() { THUMB.clear(); }
+async function makeThumb(parts, w) {
+  const { buf } = await FS.read(parts);
+  const ext = parts[parts.length - 1].split('.').pop().toLowerCase();
+  const t = await shrink(new Blob([buf], { type: 'image/' + (ext === 'jpg' ? 'jpeg' : ext) }), w);
+  if (t.w) TSIZE.set(t.url, [t.w, t.h]);
+  return t.url;
+}
+/* 做好的这张多宽多高：先按比例占好位置，图出来不跳 */
+const thumbSize = u => TSIZE.get(u) || null;
+/* 图重出过（同一个路径换了内容）：做好的缩小图不能再用。parts：只扔这一张；不给就全扔 */
+function dropThumbs(parts) {
+  const one = parts && parts.join('/');
+  for (const [k, p] of THUMB) if (!one || k.slice(0, k.lastIndexOf('@')) === one) {
+    THUMB.delete(k);
+    p.then(u => setTimeout(() => { URL.revokeObjectURL(u); TSIZE.delete(u); }, 1000), () => {});   // 等一会再收：刚拿到这张的图还在读
+  }
+}
 function thumbOf(parts, w) {
   const k = parts.join('/') + '@' + w;
   if (!THUMB.has(k)) {
     const p = new Promise((res, rej) => { TQ.push({ parts, w, res, rej }); pump(); });
-    p.catch(() => THUMB.delete(k));
+    p.catch(() => { if (THUMB.get(k) === p) THUMB.delete(k); });
     THUMB.set(k, p);
   }
   return THUMB.get(k);
 }
+/* 露出来（离屏幕 400 像素以内）才做：小图多的地方用。fn 只跑一次 */
+const SEEN = new WeakMap();
+const SEEN_IO = new IntersectionObserver(es => {
+  for (const e of es) if (e.isIntersecting) { SEEN_IO.unobserve(e.target); const fn = SEEN.get(e.target); SEEN.delete(e.target); if (fn) fn(e.target); }
+}, { rootMargin: '400px' });
+function whenSeen(el, fn) { SEEN.set(el, fn); SEEN_IO.observe(el); return el; }
 function thumbImg(parts, w) {
   const img = h('img', { alt: '', draggable: 'false' });
   thumbOf(parts, w || 220).then(u => { img.src = u; }).catch(() => {});
@@ -237,5 +290,5 @@ function popover(anchor, build) {
   POP = p;
 }
 
-window.UI = { h, add, icon, ICON, toast, dialog, dlgShell, confirmDlg, choiceDlg, chips, field, inputDlg, copyText, thumbOf, thumbImg, dropThumbs, hoverable, hideHov, popover, closePop, get popOpen() { return !!POP; } };
+window.UI = { h, add, icon, ICON, toast, dialog, dlgShell, confirmDlg, choiceDlg, chips, field, inputDlg, copyText, aiPicker, shrink, thumbOf, thumbImg, thumbSize, dropThumbs, whenSeen, hoverable, hideHov, popover, closePop, get popOpen() { return !!POP; } };
 })();

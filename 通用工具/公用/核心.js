@@ -1095,6 +1095,24 @@ function parseNotes(md) {
   return { general: g ? g.note : '', items: done.filter(x => x.where !== null && x.text !== null) };
 }
 
+/* ---------- 文件名（流水线各页、审片台、本机服务 jobs.js 都用这一份） ---------- */
+/* Windows 文件名里能不能用 */
+const nameOk = n => !!n && !/[<>:"\\/|?*\u0000-\u001f]/.test(n) && !/^\.+$/.test(n) && !/[. ]$/.test(n);
+/* 只用文字写的场景起个名：「面摊：傍晚……」叫「面摊」，「一个出租屋内，一张床……」叫「一个出租屋内」；起不出来给空 */
+function sceneStem(t) {
+  const x = (typeof t === 'string' ? t : '').trim(), c = x.search(/[：:]/), p = x.search(/[，,。；;\n]/);
+  const a = (c >= 1 && c <= 12 && (p < 0 || c < p) ? x.slice(0, c) : p >= 2 && p <= 14 ? x.slice(0, p) : x.slice(0, 12)).replace(/[<>:"\\/|?*\u0000-\u001f]/g, '').trim().replace(/[. ]+$/, '');
+  return nameOk(a) ? a : '';
+}
+/* 视频提示词：视频提示词.txt 是第 1 条，视频提示词_02.txt 第 2 条；审片以后照修改方案另存的 _改1、_改2 也算；名字前面带别的是老稿 */
+const RE_VP = /(^|_)视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i;
+const vpVer = name => +((/_改([0-9]+)\.txt$/i.exec(String(name)) || [])[1] || 0);   // 改的第几版；原稿是 0
+const vpBase = name => String(name).replace(/_改[0-9]+(\.txt)$/i, '$1');   // 这一条的原稿名
+const vpNo = name => { const b = vpBase(name); return /^视频提示词\.txt$/i.test(b) ? 1 : +((/^视频提示词_([0-9]+)\.txt$/i.exec(b) || [])[1] || 0); };   // 第几条；老稿是 0
+const vpLabel = name => { const b = vpBase(name), n = vpNo(b), v = vpVer(name); return (n ? '第' + n + '条' : b.replace(/_?视频提示词\.txt$/i, '').replace(/_/g, ' ') || '整场') + (v ? ' 改' + v : ''); };
+const vpTok = name => { const b = vpBase(name), n = vpNo(b), v = vpVer(name); return (n ? '提示词' + String(n).padStart(2, '0') : b.replace(/_?视频提示词\.txt$/i, '') || '整场') + (v ? '改' + v : ''); };   // 样片名、画布节点名里写的（和样片自己的「第N条」分开）
+const vpNext = names => { const ns = names.map(vpNo).filter(Boolean); return ns.length ? '视频提示词_' + String(Math.max(...ns) + 1).padStart(2, '0') + '.txt' : '视频提示词.txt'; };   // 下一条叫什么
+
 /* ---------- 深拷贝 / 复制 ---------- */
 function cloneDoc(doc) {
   const d = JSON.parse(JSON.stringify(doc));
@@ -1113,6 +1131,7 @@ const Core = {
   parsePrompt, serializePrompt, splitWithEol, joinLines, wrapPara, isBlank, edgeRange, ensureTrailingBlank, promptTemplate, promptSectionKey, promptShotTitle, renumberPromptShots, newPromptShot, PROMPT_SKELETON,
   lintPrompt, lintScript, lintShots, decodeText, hasBom, encodeText, cloneDoc,
   units, redline, diffChars, notesToMd, parseNotes,
+  nameOk, sceneStem, RE_VP, vpVer, vpBase, vpNo, vpLabel, vpTok, vpNext,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;
 G.Core = Core;

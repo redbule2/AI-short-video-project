@@ -423,6 +423,7 @@ button.pn-an:hover { box-shadow: inset 0 0 0 1px var(--zhu-line); }
 <script src="../公用/核心.js"></script>
 <script src="../公用/底座.js"></script>
 <script src="../公用/界面.js"></script>
+<script src="../公用/审片.js"></script>
 <script src="../公用/关键帧写法.js"></script>
 <script src="../公用/白模关键帧写法.js"></script>
 <script src="../公用/对照.js"></script>
@@ -441,7 +442,7 @@ button.pn-an:hover { box-shadow: inset 0 0 0 1px var(--zhu-line); }
    嵌在审片那一页里时，那一页给 window.DESK_HOST.close；这一页给它 window.DESK.leave（没存的先存上）
    ============================================================ */
 'use strict';
-const { C, LINK, FS, at, isComposing } = window.Base;
+const { C, LINK, FS, CH, at, isComposing } = window.Base;
 const { h, add, icon, toast, dialog, dlgShell, confirmDlg, thumbImg, hoverable, hideHov, popover, closePop } = window.UI;
 const fill = (el, ...kids) => { el.replaceChildren(); return add(el, kids); };   // 换掉里面的东西；null、空串跳过（原生 replaceChildren 会写成字）
 
@@ -453,10 +454,8 @@ const pjAt = rel => at([PJ, ...String(rel).split('/').filter(Boolean)]);   // �
 
 const NOTES_TAIL = '_批注.md', SHOTS_TAIL = '_批注截图';
 const VIDEO_RE = /\.(mp4|m4v|mov|webm)$/i;
-const RE_VP = /(^|_)视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i;   // 审片以后照修改方案另存的 视频提示词_改1.txt、视频提示词_02_改1.txt 也算
-const CATS = ['光影', '镜头', '表演', '声音', '其他'];
+const { RE_VP, vpVer, vpBase, vpNo, vpLabel, vpTok } = window.Core;   // 视频提示词的名字：和流水线、本机服务共用 公用/核心.js 那一份
 const RATES = [0.5, 1, 2];
-const HAS_RVFC = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
 const TE = new TextEncoder();
 const BOM = String.fromCharCode(0xFEFF);
 const unbom = t => t.startsWith(BOM) ? t.slice(1) : t;
@@ -468,11 +467,6 @@ const clean = p => str(p).trim().replace(/\\/g, '/');
 const uid = () => Math.random().toString(36).slice(2, 10);
 const byZh = (a, b) => a.localeCompare(b, 'zh', { numeric: true });
 const secText = x => String(Math.round(x * 10) / 10);
-const vpVer = name => +((/_改([0-9]+)\.txt$/i.exec(String(name)) || [])[1] || 0);   // 改的第几版；原稿是 0（和流水线.js、本机服务一个算法）
-const vpBase = name => String(name).replace(/_改[0-9]+(\.txt)$/i, '$1');   // 这一条的原稿名
-const vpNo = name => { const b = vpBase(name); return /^视频提示词\.txt$/i.test(b) ? 1 : +((/^视频提示词_([0-9]+)\.txt$/i.exec(b) || [])[1] || 0); };
-const vpLabel = name => { const b = vpBase(name), n = vpNo(b), v = vpVer(name); return (n ? '第' + n + '条' : b.replace(/_?视频提示词\.txt$/i, '').replace(/_/g, ' ') || '整场') + (v ? ' 改' + v : ''); };
-const vpTok = name => { const b = vpBase(name), n = vpNo(b), v = vpVer(name); return (n ? '提示词' + String(n).padStart(2, '0') : b.replace(/_?视频提示词\.txt$/i, '') || '整场') + (v ? '改' + v : ''); };
 const clipLabel = n => { let s = stem(n); if (s.startsWith(SEGD + '_')) s = s.slice(SEGD.length + 1); return s.replace(/_/g, ' '); };
 const frameNo = rel => { const m = /(?:镜头|段落)\s*0*([0-9]+)/.exec(fileOf(rel)); return m ? +m[1] : null; };
 async function listRel(rel) { try { return await FS.list(pjAt(rel)); } catch (e) { return []; } }
@@ -494,60 +488,10 @@ const TOP = {}, RAIL = { userScroll: 0 };
 const VURL = new Map(), IURL = new Map();   // 读出来的视频、原图：路径 → blob 网址（一页里重复用）
 const host = () => { try { return window.parent !== window ? window.parent.DESK_HOST || null : null; } catch (e) { return null; } };
 
-/* ---------- 从 mp4 头里读帧率和帧数；读不出就按每秒 24 帧（和「项目管理」审片那一样） ---------- */
-const fourcc = (dv, p) => String.fromCharCode(dv.getUint8(p), dv.getUint8(p + 1), dv.getUint8(p + 2), dv.getUint8(p + 3));
-function boxAt(dv, p, end) {
-  if (p + 8 > end) return null;
-  let size = dv.getUint32(p), head = 8;
-  if (size === 1) { if (p + 16 > end) return null; size = Number(dv.getBigUint64(p + 8)); head = 16; }
-  else if (size === 0) size = end - p;
-  if (size < head || p + size > end) return null;
-  return { type: fourcc(dv, p + 4), start: p + head, end: p + size };
-}
-function boxes(dv, box) { const out = []; for (let p = box.start; p < box.end;) { const b = boxAt(dv, p, box.end); if (!b) break; out.push(b); p = b.end; } return out; }
-const child = (dv, box, type) => box ? boxes(dv, box).find(b => b.type === type) || null : null;
-function snapFps(x) {
-  const std = [24000 / 1001, 24, 25, 30000 / 1001, 30, 48, 50, 60000 / 1001, 60];
-  const c = std.reduce((a, b) => Math.abs(b - x) < Math.abs(a - x) ? b : a);
-  return Math.abs(c - x) / c < 0.01 ? c : x;
-}
-async function videoInfo(file) {
-  try {
-    let p = 0, moov = null;
-    while (p + 8 <= file.size) {
-      const dv = new DataView(await file.slice(p, p + 16).arrayBuffer());
-      let size = dv.getUint32(0), head = 8;
-      if (size === 1) { size = Number(dv.getBigUint64(8)); head = 16; } else if (size === 0) size = file.size - p;
-      if (size < head) return null;
-      if (fourcc(dv, 4) === 'moov') { moov = new DataView(await file.slice(p, p + size).arrayBuffer()); break; }
-      p += size;
-    }
-    if (!moov) return null;
-    for (const trak of boxes(moov, boxAt(moov, 0, moov.byteLength)).filter(b => b.type === 'trak')) {
-      const mdia = child(moov, trak, 'mdia'), hdlr = child(moov, mdia, 'hdlr'), mdhd = child(moov, mdia, 'mdhd');
-      if (!hdlr || !mdhd || fourcc(moov, hdlr.start + 8) !== 'vide') continue;
-      const scale = moov.getUint32(mdhd.start + (moov.getUint8(mdhd.start) === 1 ? 20 : 12));
-      const stts = child(moov, child(moov, child(moov, mdia, 'minf'), 'stbl'), 'stts');
-      if (!stts) return null;
-      let frames = 0, ticks = 0;
-      for (let i = 0, n = moov.getUint32(stts.start + 4); i < n; i++) {
-        const c = moov.getUint32(stts.start + 8 + i * 8);
-        frames += c; ticks += c * moov.getUint32(stts.start + 12 + i * 8);
-      }
-      return frames && ticks && scale ? { frames, fps: snapFps(frames * scale / ticks) } : null;
-    }
-  } catch (e) { /* 不是 mp4，或者头坏了 */ }
-  return null;
-}
-
-/* ---------- 时间：分:秒.十分之一秒；帧号给人看从 1 数 ---------- */
-function fmt(t) { const d = Math.max(0, Math.floor(t * 10 + 1e-6)); return Math.floor(d / 600) + ':' + String(Math.floor(d / 10) % 60).padStart(2, '0') + '.' + (d % 10); }
-const fmtF = f => fmt(f / D.fps);
-const fpsText = x => String(Math.round(x * 1000) / 1000);
-const rangeText = n => n.f2 == null ? fmtF(n.f) : fmtF(n.f) + '～' + fmtF(n.f2);
-const frameText = n => n.f2 == null ? '第' + (n.f + 1) + '帧' : '第' + (n.f + 1) + '～' + (n.f2 + 1) + '帧';
-function shotFileName(f) { const d = Math.floor(f / D.fps * 10 + 1e-6); return Math.floor(d / 600) + '分' + String(Math.floor(d / 10) % 60).padStart(2, '0') + '.' + (d % 10) + '秒_第' + (f + 1) + '帧.jpg'; }
-const byFrame = (a, b) => a.f - b.f || (a.f2 == null ? a.f : a.f2) - (b.f2 == null ? b.f : b.f2);
+/* ---------- 从 mp4 头里读帧率帧数、时间和帧号怎么写、批注文件怎么读写、截图：和看文件那一页（项目管理.html）共用 公用/审片.js ---------- */
+const { CATS, HAS_RVFC, videoInfo, fmt, fpsText, frameText, byFrame, mdEsc, kfParse, seekRaw, parsePlan, parsePlanNote } = window.Review;
+const fmtF = f => Review.fmtF(f, D.fps);
+const rangeText = n => Review.rangeText(n, D.fps);
 const nowSec = () => (P ? P.f : 0) / D.fps + 1e-6;   // 画面上这一帧从第几秒起（看它在哪一镜）
 const xOf = t => Math.min(100, Math.max(0, t * D.fps / Math.max(1, D.frames - 1) * 100));   // 第几秒在时间条上的位置（百分之几）
 
@@ -572,7 +516,6 @@ function guessPrompt() {
   const parts = '_' + stem(VID) + '_', by = D.prompts.find(e => e.tok !== '整场' && parts.includes('_' + e.tok + '_'));
   return by ? by.name : D.prompts.length === 1 ? D.prompts[0].name : '';
 }
-const KIND_ORDER = ['白模', '视频', '关键帧', '人物', '场景', '道具', '特效', '其他', '音频'];
 const KIND_CLS = { 人物: 'k-ren', 场景: 'k-jing', 道具: 'k-dao', 特效: 'k-dao', 关键帧: 'k-zhen' };
 function kindOfRef(r) {
   const q = r.rel.split('/'), n = q[q.length - 1];
@@ -990,15 +933,6 @@ function seekTo(f) {
   })();
   return p.seekP;
 }
-function seekRaw(video, t) {
-  return new Promise(res => {
-    let done = false;
-    const fin = () => { if (done) return; done = true; video.removeEventListener('seeked', fin); clearTimeout(tm); res(); };
-    const tm = setTimeout(fin, 2000);
-    video.addEventListener('seeked', fin);
-    video.currentTime = isFinite(video.duration) ? Math.min(t, video.duration) : t;
-  });
-}
 function halt() {
   const vd = P.video;
   if (!vd.paused) { vd.pause(); P.f = clampF(Math.floor(vd.currentTime * D.fps + 1e-3)); }
@@ -1082,14 +1016,7 @@ function paintCap() {
 /* ============================================================
    批注：和「项目管理」审片那一样的格式，AI 一读就懂，那一页也读得回来
    ============================================================ */
-function shown(parts) {   // parts 从总文件夹算起。知道完整位置就写 E:\ 开头的，不然写相对这份批注所在文件夹的
-  if (LINK.abs) return [LINK.abs, ...parts].join('\\');
-  const base = D.notesAt.slice(0, -1);
-  let i = 0;
-  while (i < base.length && i < parts.length - 1 && base[i] === parts[i]) i++;
-  return '../'.repeat(base.length - i) + parts.slice(i).join('/');
-}
-const mdEsc = s => s.replace(/^#/gm, '＃');
+const shown = parts => Review.relPath(D.notesAt, parts, LINK.abs);   // parts 从总文件夹算起。知道完整位置就写 E:\ 开头的，不然写相对这份批注所在文件夹的
 const shortCmp = c => String(c).split(' ').map(w => /[\\/]/.test(w) ? stem(baseName(w.replace(/（.*$/, ''))) + ((/（.*$/.exec(w) || [''])[0]) : w).join(' ');
 function cmpNote() {   // 写批注这一刻旁边摆着什么（写进批注的「对照」那一行）
   if (CMP.src === 'bm' || CMP.src === 'clip') return (CMP.src === 'bm' ? '白模 ' : '另一条样片 ') + shown(pjAt(atOf(CMP.rel))) + '（同一时刻）';   // 摆的是历史记录里的那一份，就记那一份
@@ -1097,124 +1024,17 @@ function cmpNote() {   // 写批注这一刻旁边摆着什么（写进批注的
   if (CMP.src === 'img') return '资产图 ' + (CMP.item && CMP.item.ref ? CMP.item.ref + ' ' : '') + shown(pjAt(atOf(CMP.rel)));
   return '';
 }
-function mdText() {
-  const L = ['# 审片批注｜' + VID, '', '视频：' + shown(pjAt(VID_REL))];
-  if (D.prompt) L.push('提示词：' + shown(pjAt('提示词/' + SEGD + '/' + D.prompt)));
-  else if (D.promptKeep) L.push('提示词：' + D.promptKeep);
-  L.push('', '用户在流水线「审片」里边看这条样片边写的批注。时间是样片里的位置（分:秒.十分之一秒），括号里是第几帧（从 1 数，每秒 ' + fpsText(D.fps) + ' 帧）；「镜头」对应提示词里的「镜头 N」；'
-    + (D.notes.some(n => n.cmp) ? '「对照」是写这一条时旁边摆着对照的东西（白模、另一条样片是同一时刻的画面，关键帧是这一镜开头那一刻该有的样子）；' : '')
-    + (D.notes.some(n => n.kf) ? '写了「弃用关键帧」的，是用户不要这张关键帧了，「批注」写的是为什么；照方案改的时候照新稿重出一张换上，理由说这一镜不要关键帧的就从新稿里拿掉；' : '')
-    + '截图是写这条批注时停住的那一帧，先看截图再读批注。' + (LINK.abs ? '' : '路径都相对这份批注所在的文件夹。'), '');
-  if (D.general.trim()) L.push('## 整体', '批注：' + mdEsc(D.general.trim()), '');
-  D.notes.forEach((n, i) => {
-    L.push('## ' + (i + 1) + '｜' + rangeText(n), '时间：' + rangeText(n) + '（' + frameText(n) + '）');
-    if (n.cats.length) L.push('分类：' + n.cats.join('、'));
-    if (n.shot) L.push('镜头：' + n.shot);
-    if (n.kf) L.push('弃用关键帧：' + n.kf.ref + ' ' + (n.kf.rel ? shown(pjAt(n.kf.rel)) : n.kf.raw));
-    if (n.cmp) L.push('对照：' + n.cmp);
-    if (n.img) L.push('截图：' + shown([...D.shotsDir, n.img]));
-    if (n.img2) L.push('结束截图：' + shown([...D.shotsDir, n.img2]));
-    L.push('批注：' + mdEsc(n.text), '');
-  });
-  return L.join('\n');
-}
-function framesOfText(s, fps) {
-  const m = /第\s*(\d+)\s*(?:帧)?\s*(?:[～~\-–—至到]\s*第?\s*(\d+)\s*)?帧/.exec(s);
-  if (m) return [m[1] - 1, m[2] ? m[2] - 1 : null];
-  const ts = [...s.matchAll(/(\d+):(\d{1,2}(?:\.\d+)?)/g)].map(x => (+x[1]) * 60 + (+x[2]));
-  return ts.length ? [Math.round(ts[0] * fps), ts[1] != null ? Math.round(ts[1] * fps) : null] : null;
-}
-function parseMd(md, fps) {
-  const out = { prompt: '', promptLine: '', general: '', notes: [] }, all = [];
-  let cur = null;
-  for (const line of unbom(String(md)).split(/\r?\n/)) {
-    const hd = /^##\s*(整体|\d+)\s*(?:[｜|]\s*(.*))?$/.exec(line);
-    if (hd) { all.push(cur = { general: hd[1] === '整体', head: (hd[2] || '').trim(), time: '', cats: [], shot: '', cmp: '', kf: null, img: '', img2: '', text: null }); continue; }
-    if (!cur) { const m = /^提示词：\s*(.+)$/.exec(line); if (m) { out.promptLine = m[1].trim(); out.prompt = baseName(m[1]); } continue; }
-    if (cur.text !== null) { cur.text += '\n' + line; continue; }   // 批注写在最后，可以有好几行
-    let m;
-    if ((m = /^批注：(.*)$/.exec(line))) cur.text = m[1];
-    else if ((m = /^时间：(.*)$/.exec(line))) cur.time = m[1];
-    else if ((m = /^分类：(.*)$/.exec(line))) cur.cats = m[1].split(/[、，,\/／\s]+/).filter(Boolean);
-    else if ((m = /^镜头：(.*)$/.exec(line))) cur.shot = m[1].trim();
-    else if ((m = /^弃用关键帧：(.*)$/.exec(line))) cur.kf = kfParse(m[1]);
-    else if ((m = /^对照：(.*)$/.exec(line))) cur.cmp = m[1].trim();
-    else if ((m = /^结束截图：(.*)$/.exec(line))) cur.img2 = baseName(m[1]);
-    else if ((m = /^截图：(.*)$/.exec(line))) cur.img = baseName(m[1]);
-  }
-  for (const x of all) {
-    const text = (x.text || '').trim();
-    if (!text) continue;
-    if (x.general) { out.general = text; continue; }
-    const fr = framesOfText(x.time || x.head, fps);
-    if (!fr) continue;
-    out.notes.push({ id: uid(), f: fr[0], f2: fr[1] != null && fr[1] !== fr[0] ? fr[1] : null, cats: x.cats, shot: x.shot, cmp: x.cmp, kf: x.kf, img: x.img, img2: x.img2, text });
-  }
-  out.notes.sort(byFrame);
-  return out;
-}
-async function readMd() {
-  try {
-    const r = await FS.read(D.notesAt), p = parseMd(C.decodeText(r.buf).text, D.fps);
-    D.notes = p.notes; D.general = p.general; D.mdMtime = r.mtime;
-    return p;
-  } catch (e) { D.notes = []; D.general = ''; D.mdMtime = 0; return null; }
-}
-/* 写进文件；批注全删光就删掉文件。上一次还没写完的，排在后面接着写 */
-function saveNow() {
-  clearTimeout(D.saveT); D.saveT = 0;
-  D.q = D.q.then(async () => {
-    D.saving = true;
-    try {
-      if (D.notes.length || D.general.trim()) await FS.write(D.notesAt, TE.encode(mdText()));
-      else if (await FS.stat(D.notesAt)) await FS.remove(D.notesAt);
-      const st = await FS.stat(D.notesAt);
-      D.mdMtime = st ? st.mtime : 0; D.err = '';
-    } catch (e) { D.err = e.message; toast('批注没存上：' + e.message, 'err'); }
-    finally { D.saving = false; }
-    paintStatus(); paintTabs();
-  });
-  return D.q;
-}
+const mdText = () => Review.notesText({ title: VID, video: shown(pjAt(VID_REL)), prompt: D.prompt ? shown(pjAt('提示词/' + SEGD + '/' + D.prompt)) : D.promptKeep, fps: D.fps, general: D.general, notes: D.notes,
+  where: '流水线「审片」', shotWord: '镜头 N', rel: !LINK.abs, show: shown, shotsDir: D.shotsDir, kfShow: kf => kf.rel ? shown(pjAt(kf.rel)) : kf.raw });
+const readMd = () => Review.readNotes(D);
+const saveNow = () => Review.saveNotes(D, mdText, () => { paintStatus(); paintTabs(); });   // 写进文件；批注全删光就删掉文件
 function saveLater() { clearTimeout(D.saveT); D.saveT = setTimeout(saveNow, 500); }
 
 /* ---------- 截图 ---------- */
-function grab() {
-  const vd = P.video, c = document.createElement('canvas');
-  c.width = vd.videoWidth; c.height = vd.videoHeight;
-  c.getContext('2d').drawImage(vd, 0, 0);
-  return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('浏览器没给出图片')), 'image/jpeg', 0.92));
-}
-async function grabEnd() {
-  const f = P.f;
-  try { const blob = await grab(); return { f, blob, url: URL.createObjectURL(blob), img: '' }; }
-  catch (e) { toast('这一帧没截下来：' + e.message, 'err'); return { f, img: '' }; }
-}
-async function writeShot(f, blob) {
-  const name = shotFileName(f);
-  try {
-    await FS.write([...D.shotsDir, name], blob);
-    const old = D.thumbs.get(name); if (old) old.then(URL.revokeObjectURL).catch(() => {});
-    D.thumbs.set(name, Promise.resolve(URL.createObjectURL(blob)));
-    return name;
-  } catch (e) { toast('截图没存上：' + e.message, 'err'); return ''; }
-}
-function shotImg(name, cls) {
-  const img = h('img', { alt: name, class: cls || null, decoding: 'async' });
-  if (!D.thumbs.has(name)) D.thumbs.set(name, FS.file([...D.shotsDir, name]).then(f => URL.createObjectURL(f)));
-  D.thumbs.get(name).then(u => { img.src = u; }).catch(() => { D.thumbs.delete(name); img.replaceWith(h('span', null, '图不见了')); });
-  return img;
-}
-/* 批注删了、改了时间，原来的截图没别的批注用，就删掉；文件夹空了也删掉 */
-async function dropUnused(names) {
-  const used = new Set(D.notes.flatMap(n => [n.img, n.img2]).filter(Boolean));
-  for (const name of new Set(names.filter(Boolean))) {
-    if (used.has(name)) continue;
-    try { await FS.remove([...D.shotsDir, name]); } catch (e) { /* 已经没了 */ }
-    const u = D.thumbs.get(name); if (u) { u.then(URL.revokeObjectURL).catch(() => {}); D.thumbs.delete(name); }
-  }
-  if (!used.size) { try { await FS.remove(D.shotsDir); } catch (e) { /* 还有别的文件，或者本来就没有 */ } }
-}
+const grabEnd = () => Review.grabEnd(P.video, P.f);
+const writeShot = (f, blob) => Review.writeShot(D, f, blob);
+const shotImg = (name, cls) => Review.shotImg(D, name, cls);
+const dropUnused = names => Review.dropUnused(D, names);   // 没别的批注用的截图删掉
 
 /* ---------- 写批注 ---------- */
 function dropFormUrls() { const fm = D.form; if (fm) for (const e of [fm.a, fm.b]) if (e && e.url && !e.saved) URL.revokeObjectURL(e.url); }
@@ -1261,11 +1081,10 @@ async function saveForm() {
   if (ends.length === 2 && ends[0].f === ends[1].f) ends = [ends[0]];
   for (const e of ends) if (e.blob && !e.img) { e.img = await writeShot(e.f, e.blob); e.saved = !!e.img; }
   const old = fm.id ? D.notes.find(n => n.id === fm.id) : null;
-  let shot = fm.shot.trim();
-  if (/^[0-9０-９]+$/.test(shot)) shot = shot.replace(/[０-９]/g, c => String(c.charCodeAt(0) - 0xFF10)).padStart(2, '0');
+  const shot = Review.shotOf(fm.shot);
   const note = {
     id: fm.id || uid(), f: ends[0].f, img: ends[0].img || '', f2: ends[1] ? ends[1].f : null, img2: ends[1] ? ends[1].img || '' : '',
-    cats: [...CATS.filter(c => fm.cats.has(c)), ...[...fm.cats].filter(c => !CATS.includes(c))], shot, cmp: fm.cmp, kf: fm.kf || null, text,
+    cats: Review.catsOf(fm.cats), shot, cmp: fm.cmp, kf: fm.kf || null, text,
   };
   D.notes = [...D.notes.filter(n => n !== old), note].sort(byFrame);
   dropFormUrls();
@@ -1287,14 +1106,18 @@ async function leaveForm() {
   paintComposer(); paintMarks(); paintRail();
   return true;
 }
-async function delNote(n) {
-  if (!(await confirmDlg({ title: '删掉这条批注？', body: rangeText(n) + '　' + (n.text.length > 60 ? n.text.slice(0, 60) + '…' : n.text) + '\n这条的截图也一起删掉。', ok: '删掉', danger: true })) || !D.notes.includes(n)) return;
+/* 拿掉一条批注：截图跟着删，存好再重画（删批注、撤回弃用都走这里） */
+async function dropNote(n) {
   D.notes = D.notes.filter(x => x !== n);
   if (D.form && D.form.id === n.id) { dropFormUrls(); D.form = null; }
   if (D.sel === n.id) D.sel = null;
   await dropUnused([n.img, n.img2]);
   await saveNow();
   paintComposer(); paintMarks(); paintShots(); paintRail();
+}
+async function delNote(n) {
+  if (!(await confirmDlg({ title: '删掉这条批注？', body: Review.brief(n, D.fps) + '\n这条的截图也一起删掉。', ok: '删掉', danger: true })) || !D.notes.includes(n)) return;
+  await dropNote(n);
   toast('删掉了');
 }
 function jump(n) {
@@ -1492,53 +1315,11 @@ function paneNotes() {
    ============================================================ */
 const PLAN_TAIL = '_修改方案.md', PLAN_NOTE_TAIL = '_修改方案_批注.md';
 const PLAN_REL = '成片/' + SEGD + '/' + stem(VID) + PLAN_TAIL, PNOTE_REL = '成片/' + SEGD + '/' + stem(VID) + PLAN_NOTE_TAIL;
-const PL = { plan: null, mtime: 0, dec: new Map(), general: '', saveT: 0, err: '', src: '', last: '', next: '', again: false, jobs: [], channels: [], pollT: 0,
+const PL = { plan: null, mtime: 0, dec: new Map(), general: '', saveT: 0, err: '', src: '', last: '', next: '', again: false, jobs: [], pollT: 0,
   step: 1, seen: new Set(), open: new Set(), genOpen: false, advT: 0 };   // 下面一行：方案那一页看到哪一步（0 总的看法，1…N 你的第几条批注，最后一步照方案改）、看过哪几步、点开了哪几处折起来的
 const planOk = () => LINK.v >= 8;
 const DEC_FIX = ['照这样改', '不改', '照我说的改'], DEC_TIP = ['知道了', '照我说的改'];   // 有原文改成的；只给建议的（不改提示词）
-const DEC_NAME = { 照我说的改: '我来说' };
-const PLAN_KEYS = ['批注', '位置', '问题', '原因', '怎么改', '原文', '改成'];
-const DEL_RE = /^[（(]?(删掉|删除|删去|去掉)[）)]?$/;
-const unq = s => { const t = str(s).trim(), m = /^[「“"『](.*)[」”"』]$/s.exec(t); return m && !/[「“"『」”"』]/.test(m[1]) ? m[1] : t; };
-function planItems(t) {   // 「## 1」一节一条，「- 键：值」；原文、改成可以接着写几行
-  return t.replace(/\r\n?/g, '\n').split(/^#{2,3}[ \t]+/m).slice(1).map(p => {
-    const no = parseInt(p.replace(/^[^0-9\n]*/, ''), 10), g = { no };
-    let cur = '';
-    for (const line of p.split('\n').slice(1)) {
-      const s = line.trim(), m = /^(?:[-*•]|\d+[.、])?[ \t]*\**[ \t]*(批注|位置|问题|原因|怎么改|原文|改成)[ \t]*\**[ \t]*[：:][ \t]*\**[ \t]*(.*)$/.exec(s);
-      if (m) { cur = m[1]; g[cur] = m[2].trim(); }
-      else if (/^改成了[：:]/.test(s)) cur = '';
-      else if (cur && s) g[cur] += (cur === '原文' || cur === '改成' ? '\n' : '') + s;
-    }
-    if (!(no > 0)) return null;
-    if (g.原文 != null) { g.原文 = unq(g.原文); if (!g.原文) delete g.原文; }
-    if (g.改成 != null) g.改成 = DEL_RE.test(g.改成.trim()) ? '' : unq(g.改成);
-    if (g.原文 == null) delete g.改成; else if (g.改成 == null) g.改成 = '';
-    return g;
-  }).filter(Boolean).map((g, i) => ({ ...g, no: i + 1 }));
-}
-function parsePlan(md) {
-  const t = unbom(str(md)).replace(/\r\n?/g, '\n'), head = t.split(/^##[ \t]+/m)[0];
-  const get = k => ((new RegExp('^' + k + '[：:][ \\t]*(.*)$', 'm')).exec(head) || [])[1] || '';
-  return { 提示词: get('提示词').trim(), 出方案: get('出方案').trim(), 总: get('总的看法').trim(), done: [...t.matchAll(/^改成了[：:][ \t]*(.+)$/gm)].map(m => m[1].trim()), items: planItems(t) };
-}
-function parsePlanNote(md) {   // 「## 1」下面「定：……」「批注：……」（批注写在最后，后面几行都算它的）；「## 整体」下面「批注：……」
-  const out = { items: new Map(), general: '' };
-  for (const p of unbom(str(md)).replace(/\r\n?/g, '\n').split(/^##[ \t]+/m).slice(1)) {
-    const head = p.split('\n')[0].trim(), d = { 定: '', 批注: '' };
-    let inNote = false;
-    for (const line of p.split('\n').slice(1)) {
-      if (inNote) { d.批注 += '\n' + line; continue; }
-      const m = /^(定|批注)[：:][ \t]*(.*)$/.exec(line.trim());
-      if (!m) continue;
-      if (m[1] === '定') d.定 = m[2].trim(); else { d.批注 = m[2]; inNote = true; }
-    }
-    d.批注 = d.批注.trim();
-    if (/^整体/.test(head)) out.general = d.批注;
-    else if (parseInt(head, 10) > 0) out.items.set(parseInt(head, 10), d);
-  }
-  return out;
-}
+const DEC_NAME = { 照我说的改: '我来说', 知道了: '不改提示词' };   // 按钮上的字；存进文件的还是左边的词（本机服务 jobs.js 认这几个词）
 const defDec = it => it.原文 != null ? '照这样改' : '知道了';
 function decOf(it) {
   const d = PL.dec.get(it.no) || {}, ok = (it.原文 != null ? DEC_FIX : DEC_TIP).includes(d.定);
@@ -1597,14 +1378,10 @@ function planSaveNow() {
 function planSaveLater() { clearTimeout(PL.saveT); PL.saveT = setTimeout(planSaveNow, 600); }
 
 /* ---------- AI 任务：交给本机服务（和流水线那几页同一套，用哪个 AI 也记在同一处） ---------- */
-const CH_KEY = 'antou:flow:channel', JOB_KINDS = ['修改方案', '按方案改提示词'];
+const JOB_KINDS = ['修改方案', '按方案改提示词'];
 const jobLive = j => !!j && (j.状态 === '排队' || j.状态 === '在做');
-const chNow = () => { let v = ''; try { v = localStorage.getItem(CH_KEY) || ''; } catch (e) { /* 读不了就用第一个 */ } return PL.channels.some(c => c.id === v) ? v : (PL.channels[0] || { id: 'claude' }).id; };
-const SELF_CH = '自己交给 AI';   // 「给我提示词」的渠道号：不调 AI，要交代的话弹出来（公用/交给AI.js），贴进你自己开的对话
-const chName = () => chNow() === SELF_CH ? '你自己的 AI' : (PL.channels.find(c => c.id === chNow()) || { 名: 'AI' }).名;
-const handOf = id => (PL.channels.find(c => c.id === id) || {}).hand || '';   // self / claude（Claude 桌面版）/ deepseek（DeepSeek 窗口）；空＝在后台调
+const chNow = CH.now, chName = CH.name, handOf = CH.hand, SELF_CH = CH.SELF;   // 用哪个 AI：和流水线顶栏「AI 用」选的同一个（底座.js 的 CH）
 const lastJob = 事 => PL.jobs.filter(j => j.事 === 事).pop() || null;
-async function loadChannels() { try { PL.channels = (await (await LINK.req('GET', '/api/job?channels')).json()).channels.filter(c => c.ok); } catch (e) { PL.channels = []; } }
 async function loadJobs() {
   clearTimeout(PL.pollT); PL.pollT = 0;
   let r;
@@ -1623,41 +1400,9 @@ async function loadJobs() {
   if (ended.length || before !== PL.jobs.map(sig).join()) { if (D.tab === 'plan') paintRail(); else paintTabs(); }
   if (PL.jobs.some(jobLive) || KF.jobs.some(jobLive)) PL.pollT = setTimeout(loadJobs, 2000);
 }
-/* 模型、推理深度：跟着选的那个 AI 走，和流水线顶栏记在同一处（每个 AI 各记各的）；Codex 这两样在这里都定不了，只显示现在用的 */
-const DP_KEY = ch => 'antou:flow:depth:' + ch;
-const MD_KEY = ch => 'antou:flow:model:' + ch;
-const chInfo = () => PL.channels.find(c => c.id === chNow()) || null;
-const optNow = (k, key) => { const c = chInfo(); let v = ''; try { v = c ? localStorage.getItem(key(c.id)) || '' : ''; } catch (e) { /* 读不了就照默认 */ } return c && (c[k] || []).some(d => d.id === v) ? v : ''; };
-const optName = (k, key) => { const c = chInfo(), v = optNow(k, key); return v ? c[k].find(d => d.id === v).名 : ''; };
-const dpNow = () => optNow('深度', DP_KEY), dpName = () => optName('深度', DP_KEY);
-const mdNow = () => optNow('模型', MD_KEY), mdName = () => optName('模型', MD_KEY);
-const pickSay = () => chNow() === SELF_CH ? '以后不调 AI：点了先给你要交代的话，贴进你自己开的对话' : '以后交给 ' + chName() + (mdName() ? '（' + mdName() + '）' : '') + (dpName() ? '，推理' + dpName() : '')
-  + ({ claude: '：在 Claude 桌面版开新对话，你按发送', deepseek: '：在 DeepSeek Harness 的窗口里做' }[handOf(chNow())] || '');
-function optPick(k, key, label, tip) {   // k：'模型' 或 '深度'；这个 AI 定不了这一样就不出
-  const c = chInfo();
-  if (!c || !(c[k] || []).length) return null;
-  const dn = c['默认' + k + '名'];
-  const sel = h('select', { title: tip + (c[k + '说明'] || '') }, [h('option', { value: '' }, '默认' + (dn ? '（' + dn + '）' : '')), ...c[k].map(d => h('option', { value: d.id }, d.名))]);
-  sel.value = optNow(k, key);
-  sel.addEventListener('change', () => { try { if (sel.value) localStorage.setItem(key(c.id), sel.value); else localStorage.removeItem(key(c.id)); } catch (e) { /* 记不下就算了 */ } sel.blur(); toast(pickSay()); });
-  return h('label', { class: 'pn-chl' }, label, sel);
-}
-function dpPick() {   // 「AI 用」旁边的模型、推理；定不了的合成一句「照 Codex（Terra · 最高）」
-  const c = chInfo();
-  if (!c || c.hand === 'self') return h('span');   // 给我提示词：用哪个 AI、什么模型你自己定
-  const md = optPick('模型', MD_KEY, '模型', '用它的哪个模型。'), dp = optPick('深度', DP_KEY, '推理', '想得多深：越深越慢。');
-  const fixed = [!md && c.默认模型名, !dp && c.默认深度名].filter(Boolean).join(' · ');
-  const label = !md && !dp ? '模型、推理' : !md ? '模型' : !dp ? '推理' : '';
-  const tip = [...new Set([!md && c.模型说明, !dp && c.深度说明].filter(Boolean))].join('\n');
-  return h('span', { class: 'pn-chl-box' }, md, dp, label ? h('span', { class: 'pn-chl', title: tip }, label + ' 照 ' + c.名 + (fixed ? '（' + fixed + '）' : '')) : null);
-}
 async function startJob(body) {
   try {
-    const b = { 项目: PJ, 渠道: chNow(), ...body };
-    if (b.渠道 === chNow()) {
-      if (b.深度 === undefined && dpNow()) b.深度 = dpNow();
-      if (b.模型 === undefined && mdNow()) b.模型 = mdNow();
-    }
+    const b = CH.fill({ 项目: PJ, 渠道: chNow(), ...body });   // 带上选的模型、推理深度
     const j = await (await LINK.req('POST', '/api/job', TE.encode(JSON.stringify(b)))).json();
     PL.jobs = PL.jobs.filter(x => x.id !== j.id).concat(j);
     const hand = j.渠道 === b.渠道 ? handOf(j.渠道) : '';
@@ -1692,14 +1437,7 @@ function failLine(事) {   // 上一回没做成：说一句为什么（过了�
   const j = lastJob(事);
   return j && j.状态 === '没成' && Date.now() - j.结束 < 30 * 60e3 ? h('p', { class: 'warn', title: '任务书和 AI 的回答留在：' + j.记录 }, '上一回没做成：' + j.错误) : null;
 }
-function chPick() {
-  if (PL.channels.length < 2) return PL.channels.length ? h('span', { class: 'pn-chl-box' }, h('span', { class: 'pn-chl' }, '交给 ' + chName()), dpPick()) : null;
-  const sel = h('select', { title: '交给哪个 AI（和流水线里选的是同一个）' }, PL.channels.map(c => h('option', { value: c.id, title: c.说明 }, c.名)));
-  sel.value = chNow();
-  let dp = dpPick();
-  sel.addEventListener('change', () => { try { localStorage.setItem(CH_KEY, sel.value); } catch (e) { /* 记不下就算了 */ } sel.blur(); const n = dpPick(); dp.replaceWith(n); dp = n; toast(pickSay()); });
-  return h('span', { class: 'pn-chl-box' }, h('label', { class: 'pn-chl' }, 'AI 用', sel), dp);
-}
+const chPick = () => window.UI.aiPicker('pn-chl', '交给哪个 AI（和流水线里选的是同一个）');
 async function askPlan(again) {
   if (again && !(await confirmDlg({ title: '重出修改方案', body: '照现在的批注让 ' + chName() + ' 重出一份。这一份方案和你逐条定的，收进历史记录' + (PL.plan && PL.plan.done.length ? '；已经改出来的提示词不动' : '') + '。', ok: '重出' }))) return;
   if (D.saveT) saveNow();
@@ -1982,11 +1720,11 @@ function panePlan() {
       live ? [runLine(live), h('p', { class: 'pn-line' }, '做完这里自动出现，可以先接着看片。')]
         : h('p', { class: 'pn-how' }, noted ? '让 AI 照你的' + (nN ? ' ' + nN + ' 条批注' : '') + (D.general.trim() ? (nN ? '和' : '') + '整条的意见' : '') + '出一份修改方案：每一条批注说清哪里不对、为什么、提示词怎么改。这一回不改稿，你一条一条定了再改。'
           : '先写批注：看到哪里不对，停下来按回车写一句。写好了，回这里让 AI 出修改方案。'),
-      !live && noted && !PL.channels.length ? h('p', { class: 'warn' }, '这台电脑上一个 AI 都调不起来（Claude、Codex、DeepSeek）。') : null,
-      !live && noted && PL.channels.length ? h('div', { class: 'pn-pick' }, chPick()) : null,
+      !live && noted && !CH.list.length ? h('p', { class: 'warn' }, '这台电脑上一个 AI 都调不起来（Claude、Codex、DeepSeek）。') : null,
+      !live && noted && CH.list.length ? h('div', { class: 'pn-pick' }, chPick()) : null,
       failLine('修改方案')),
     !live && noted ? h('div', { class: 'pn-dock' }, h('span', { class: 'sp' }),
-      h('button', { class: 'btn zhu', type: 'button', disabled: !PL.channels.length, onclick: () => askPlan(false) }, '让 AI 出修改方案')) : null];
+      h('button', { class: 'btn zhu', type: 'button', disabled: !CH.list.length, onclick: () => askPlan(false) }, '让 AI 出修改方案')) : null];
   }
   if (PL.step > stepEnd()) PL.step = stepEnd();   // 批注删了几条，步数少了
   const ro = planFin() || !!live, g = curGroup();
@@ -2036,12 +1774,6 @@ const kfRefOf = kf => !kf ? null : D.refs.find(r => kf.rel && r.rel === kf.rel) 
 const kfName = kf => { const r = kfRefOf(kf); return r ? r.label : stem(fileOf(kf.rel || clean(kf.raw))); };
 const goneOf = r => D.notes.find(n => n.kf && kfRefOf(n.kf) === r) || null;   // 弃用这张的那条批注
 const kfJob = r => KF.jobs.filter(j => (j.文件名 || j.名) === kfStem(r)).pop() || null;
-function kfParse(s) {   // 「@图片9 E:\…\资产\第3-4段\镜头4_首帧.png」→ { ref, rel 从项目里面写起（认不出空着，照编号认）, raw 原样 }
-  const m = /^(@图片\d+)\s*(.*)$/.exec(String(s).trim());
-  if (!m) return null;
-  const p = clean(m[2]), k = p.lastIndexOf('/资产/');
-  return { ref: m[1], rel: k >= 0 ? p.slice(k + 1) : p.startsWith('资产/') ? p : '', raw: m[2].trim() };
-}
 async function kfLoad() {   // 这一条挂的关键帧：图上写没写批注、有没有改好的候选（一个文件夹只读一回清单，不一张张去问）。变了给 true
   const st = new Map(), dirs = new Map();
   const find = async rel => {
@@ -2110,12 +1842,7 @@ async function dropKf(r) {   // 弃用一张关键帧：停在这一镜开头（
 async function undropKf(n) {   // 撤回弃用：这条批注删掉（截图跟着删），这张照旧挂着
   const body = '这张关键帧照旧挂着，弃用写的这条批注（「' + pnClip(n.text, 40) + '」）删掉。想把理由留成一条普通批注：点「改理由」，再点「不弃用了」。';
   if (!(await confirmDlg({ title: '撤回弃用 ' + n.kf.ref + '？', body, ok: '撤回', danger: true })) || !D.notes.includes(n)) return;
-  D.notes = D.notes.filter(x => x !== n);
-  if (D.form && D.form.id === n.id) { dropFormUrls(); D.form = null; }
-  if (D.sel === n.id) D.sel = null;
-  await dropUnused([n.img, n.img2]);
-  await saveNow();
-  paintComposer(); paintMarks(); paintShots(); paintRail();
+  await dropNote(n);
   toast(n.kf.ref + ' 照旧挂着');
 }
 async function askKfEdit(r) {   // 照图上的批注改图：Codex 一次一张，改出来的先当候选（和资产那一步同一个任务）
@@ -2284,7 +2011,7 @@ setInterval(async () => {
   await loadPrompt(want || '');
   await kfLoad();
   await loadClips();
-  if (planOk()) { await loadPlan(); await loadChannels(); await loadJobs(); }   // 修改方案（本机服务第 8 版起有）
+  if (planOk()) { await loadPlan(); try { await CH.load(); } catch (e) { /* 一个 AI 都调不起来：照旧能批，只是没法交给 AI */ } await loadJobs(); }   // 修改方案（本机服务第 8 版起有）
   if (Q.get('tab') === 'plan') D.tab = 'plan';
   restoreCmp();
   render();
