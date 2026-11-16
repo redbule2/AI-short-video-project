@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>流水线：哪里你做，哪里 AI 做</title>
+<style>
+  body { margin: 0; padding: 28px 32px 48px; background: #f4efe6; color: #2a2622; font: 15px/1.8 'Noto Sans SC', 'Microsoft YaHei', sans-serif; }
+  h1 { font: 600 22px/1.4 'Noto Serif SC', SimSun, serif; letter-spacing: .06em; margin: 0 0 6px; }
+  h2 { font: 600 17px/1.4 'Noto Serif SC', SimSun, serif; margin: 30px 0 10px; }
+  .sub { color: #887e74; font-size: 13px; margin-bottom: 18px; }
+  .rule { background: #fffdf9; border: 1px solid #e5dccd; border-radius: 10px; padding: 14px 18px; }
+  .rule b { color: #a83a2c; }
+  .beat { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 10px; font-size: 14px; }
+  .beat span { padding: 3px 10px; border-radius: 6px; }
+  .you { background: #e8efe9; color: #2d4a3a; }
+  .ai { background: #f6e6d8; color: #7a3d14; }
+  .do { background: #e6e9f2; color: #2e3a5c; }
+  .arrow { color: #b0a698; }
+  table { width: 100%; border-collapse: collapse; background: #fffdf9; border: 1px solid #e5dccd; border-radius: 10px; overflow: hidden; font-size: 14px; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid #eee5d6; text-align: left; vertical-align: top; }
+  th { background: #ece5d8; font-weight: 600; white-space: nowrap; }
+  td.step { white-space: nowrap; font-weight: 600; }
+  .tag { display: inline-block; padding: 1px 8px; margin: 2px 4px 2px 0; border-radius: 5px; font-size: 13px; }
+  .opt { color: #887e74; font-size: 13px; }
+  ul { margin: 6px 0; padding-left: 22px; }
+  .ds { background: #fffdf9; border-left: 3px solid #3e5c5e; padding: 10px 16px; margin: 8px 0; }
+  .me { color: #554d45; font-size: 14px; }
+</style>
+</head>
+<body>
+<h1>流水线：哪里你做，哪里 AI 做</h1>
+<div class="sub">2026-11-15 · Claude 和 DeepSeek 一起梳理 · 晚上照这张表改了流水线</div>
+
+<div class="rule">
+  <div>一句话：<b>你管「定」</b>——写想法、写批注、拍板、花钱。<b>AI 管「写」</b>——把你写的扩开，照你的批注改。</div>
+  <div>出图、出片叫「做」：复制好话，贴进你自己的 Codex，它去 ChatGPT 出图、去即梦出片。你贴进去，就是你批准了。</div>
+  <div class="beat">每道工序都是同一个节奏：
+    <span class="you">你写几句</span><span class="arrow">→</span>
+    <span class="ai">复制给 AI：写</span><span class="arrow">→</span>
+    <span class="you">你看、批注</span><span class="arrow">→</span>
+    <span class="ai">复制给 AI：照批注改</span><span class="arrow">→</span>
+    <span class="you">你定稿</span>
+  </div>
+  <div class="opt" style="margin-top:6px">批注和改可以来回几轮。流水线不再自己调 AI、不转圈等 AI。</div>
+</div>
+
+<h2>五道工序一张表</h2>
+<table>
+  <tr><th>工序</th><th>你做</th><th>复制给 AI</th><th>你去做（花钱）</th><th>可选，不自动跑</th></tr>
+  <tr><td class="step">一 全片设定</td>
+    <td>写梗概；列人物、道具；写场景；挑风格</td>
+    <td class="opt">没有。人物、道具、场景的细节，到资产那一步 ③ 一起写</td>
+    <td>—</td>
+    <td class="opt">推荐风格</td></tr>
+  <tr><td class="step">二 剧本</td>
+    <td>写分场段落；批注剧本；点「剧本定稿」</td>
+    <td><span class="tag ai">① 写剧本</span><span class="tag ai">② 照批注改剧本</span><br><span class="opt">先写提示词的场，① 换成「照提示词反推剧本」</span></td>
+    <td>—</td>
+    <td class="opt">AI 看段落；让 AI 列影响（重新定稿后）</td></tr>
+  <tr><td class="step">三 资产</td>
+    <td>批注出图的字；看图、图上批注；点「确认可用」</td>
+    <td><span class="tag ai">③ 写这场资产的出图提示词</span><span class="tag ai">④ 照批注改字</span></td>
+    <td><span class="tag do">出图</span><span class="tag do">改图</span><br><span class="opt">复制，贴进你的 Codex，它用 ChatGPT 出图、存进项目</span></td>
+    <td class="opt">照图核 GEO</td></tr>
+  <tr><td class="step">四 提示词</td>
+    <td>分镜、本段事件：想写就写，不想写就空着；AI 写完你直接改，或写批注</td>
+    <td><span class="tag ai">⑤ AI 写</span><br><span class="opt">你写了的一字不动，空着的和其余几块 AI 写</span><br><span class="tag ai">⑥ 照批注改提示词</span></td>
+    <td><span class="tag do">出片</span><br><span class="opt">点「批准出片」，复制，贴进 Codex，它去即梦出</span></td>
+    <td class="opt">让 AI 批一批</td></tr>
+  <tr><td class="step">五 审片</td>
+    <td>看片写批注；修改方案逐条定；选定、这一场定稿</td>
+    <td><span class="tag ai">⑦ 出修改方案</span><span class="tag ai">⑧ 照方案改</span></td>
+    <td>再出片</td>
+    <td class="opt">—</td></tr>
+</table>
+
+<h2>已经改好的（11-15 晚，试验服务上点通）</h2>
+<ul>
+  <li>流水线不再直接调 AI。每个 AI 按钮点了都弹「复制」框；顶栏只写「AI：复制给你自己的对话」，那个选 AI 的下拉框没了。</li>
+  <li>贴进去的 AI 做完，把回复写进项目、跑一句命令，流水线自动接着存。写不了文件的 AI，把回复贴回框里也行。</li>
+  <li>写稿页的「AI 铺底」改叫「AI 写」：分镜、本段事件空着也能点，AI 连这两块一起写，写好你直接改。你写了的，它一字不动。</li>
+  <li>不再偷偷开 AI：场景图确认可用后不再自动核 GEO；剧本重新定稿后不再自动列影响，改成剧本页一个「让 AI 列影响」，想用再点。</li>
+  <li>新建提示词的选项改成「AI 先写一版，我改」。</li>
+  <li>原来以为有的「补细、场景 GEO」，页面上早就没有按钮了（资产那一步的 ③ 顶了它们的活），所以复制点是 8 个，不是 9 个。</li>
+</ul>
+
+<h2>还没做的</h2>
+<ul>
+  <li>先写提示词的场，头一回剧本定稿时，照你 11-14 定的规矩，还会自动给每条提示词开「AI 写」。现在会一条一个复制框，要不要改成手点，等你说。</li>
+  <li>直接调 AI 的旧代码还留在服务里（已经用不上），下回顺手删。</li>
+</ul>
+
+<h2>DeepSeek 说的，我们照收的</h2>
+<div class="ds">
+  <div>· 光砍按钮不够，要<b>一道工序一次复制</b>：一张卡把这一场这一步要的都打包，不然复制来复制去反而更乱。</div>
+  <div>· AI 批注和 AI 改要分开，别让 AI 自己批自己改。</div>
+  <div>· 修改方案中间要你逐条定，这一步故意留着，不省。</div>
+  <div>· 防迷路：每场一张状态卡，写着「下一步该谁、等 AI 交回什么」。没交回来，卡上一直挂着「等交回」。</div>
+  <div>· 防格式乱：复制的话里写死交回的样子，让 AI 交前自己对一遍。</div>
+</div>
+<div class="me">DeepSeek 有一条我们没照收：它想让出图、出片还由流水线叫 Codex 去做。你说的是全部改复制，而且你点下去本来就等于批准，所以照你的来。</div>
+
+</body>
+</html>

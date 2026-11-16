@@ -15,6 +15,7 @@
 <script src="../公用/底座.js"></script>
 <script src="../公用/界面.js"></script>
 <script src="../公用/关键帧写法.js"></script>
+<script src="../公用/秒数.js"></script>
 <script src="../公用/白模关键帧写法.js"></script>
 <script src="../公用/素材编号.js"></script>
 <script src="../公用/对照.js"></script>
@@ -27,12 +28,12 @@
    这一场的图都确认可用了才开。一条一份提示词、出一条视频（一般 15 秒，Seedance 2.5 最长 30 秒）；镜头在提示词的「分镜」里设计（镜头表那一步 2026-11-12 取消了）。
    分几条你定（2026-11-13）：「写提示词」写第一条，「再写一条提示词」写下一条，写几条这场戏就分几条，页面不管哪条写哪段戏。
      名字：第一条 视频提示词.txt，第二条起 视频提示词_02.txt、_03.txt……（加第二条时第一条不改名）。
-   2026-11-13 起照 sd2.5PE 写：你写【生成目标】和【事件脚本】（一镜一行），素材职责、基础设定、主体与关系、保持一致由 AI 铺底。
-   事件脚本可选逐镜编辑或自由文本，公共内容两种写法共用。
-   也可以主动让 AI 先写一版，再打开看、写批注、交给 AI 改。AI 先写的：「这一条写哪段戏」不填就写这一场整段戏，要分几条写你自己填（11-15 他定）；
-     也能点「复制任务，自己交给 AI」，贴进你自己开的对话（顶栏选的就是「给我提示词」时只摆这一个）。
-   写好以后：让 AI 批一批（只批不改）→ 生成出片任务书 → 你点「批准出片」才交给 Codex 去即梦出样片。
-   出片要花积分：页面只在你点了「批准出片」、又确认了一次以后才发出去。
+   2026-11-15 他定：提示词一律 AI 写（照 sd25-pe），不再有「我来写」的空稿。「这一条写哪段戏」不填就写这一场整段戏，要分几条写你自己填；
+     点「复制任务，自己交给 AI」，贴进你自己开的对话。写好以后打开看、写批注交给 AI 改；也能「进去改」自己动手改字（他要留着）。
+   每镜几秒（2026-11-15 他定）：AI 写稿、照批注改稿时顺手估每一镜几秒，记在参考素材映射这一条的「秒数」（公用/秒数.js）；
+     点「批准出片」时时长自动填合计，下面列每镜几秒。估完以后稿子又改过（进去改的），弹窗提醒秒数是改之前估的。
+   写好以后：让 AI 批一批（只批不改）→ 你点「批准出片」，选好怎么出，页面排好任务书，就交给 Codex 去即梦出样片。
+   出片要花积分：页面只在你点了「批准出片」、在弹窗里又点了一次以后才发出去。2026-11-15 他定：「生成任务书」和「批准出片」合成一个按钮。
    前面（剧本、资产、拍摄风格）在这一条写好以后又动过的，标「待核对」：看一眼，沿用或者改。
    2026-11-13 晚加了白模（和 DeepSeek 商量定的，见 白模与分段_讨论.md；同时加的「分条」一览和「分成几条…」11-13 他说不要，拿掉了）：
      白模：资产/第N段（含下一层文件夹）里的视频挂在某一条上当 @视频N。你来写的稿记在写稿过程文件的「挂图」里、素材段带两句 sd25-pe 白模模板句；
@@ -40,7 +41,7 @@
    2026-11-13 夜加了关键帧（他要的）：资产那一步「关键帧」一块里的图（只这一场用），写提示词时勾几张挂在这一条上当 @图片N，
      素材里照 sd25-pe「关键帧锚点」写好句子（公用/关键帧写法.js，和写稿页同一套），〔〕里这一刻看得见什么要你填；AI 先写的也照勾的这几张写。
      去掉几张：含它编号的句子都删（先摆出来给你看），后面的编号往前挪，不留空号（任务书照编号顺序挂素材）。
-     2026-11-15 加（他在写稿页删了「开场参考@图片9」，任务书报编号没连着）：你来写的稿点「生成任务书」时先查一遍编号，正文里不再写的号去掉、后面的往前挪，
+     2026-11-15 加（他在写稿页删了「开场参考@图片9」，任务书报编号没连着）：你来写的稿点「批准出片」时先查一遍编号，正文里不再写的号去掉、后面的往前挪，
        正文、挂图、参考素材映射一起挪；挪什么先写在弹窗里，点了才挪（公用/素材编号.js）。AI 写的稿照旧由本机服务拦下。
    2026-11-14 加了删除（他要的）：每条最右边「删除」。不是彻底删：提示词和它的写稿资料、批注、批注截图、AI 批注、出片任务书，用同一个时间移进 历史记录/提示词/第N段（原名__时间）；
      流水线.json 里这一条的「选定」「沿用」、参考素材映射里这一条的登记一起去掉（删了最后一条，再写的会用回这个名字，不能接着用旧的）。样片留在成片里不动；别的条不改名。
@@ -50,20 +51,17 @@
    2026-11-14 白模＋关键帧和普通写法分开（他定：照官方《Seedance 2.5 提示词指南》「粗粒度白模 + 阶段关键帧」的例子）：一条同时挂了白模和关键帧，
      素材里不用 sd25-pe 的关键帧锚点句和白模那一句，换成「以@视频1作为整支视频唯一的运镜……参考」「@图片A至@图片B是各镜头的关键帧……」「所有画面照对应的关键帧……」三句；
      事件脚本每一镜开头写它在白模里的整秒和参考哪张（「镜头1：0-4秒，首帧参考@图片1。」）。秒数照白模旁边「_说明.md」里的切点（一镜一行「镜头1：0-4秒」），没有说明留〔起〕〔止〕。
-     新建、挂白模、改关键帧、去掉白模都照这个换；还是普通写法的标「要换成白模＋关键帧写法」，生成任务书时本机服务拦下。句子和校对在 公用/白模关键帧写法.js（写稿页、本机服务同一套）。
+     新建、挂白模、改关键帧、去掉白模都照这个换；还是普通写法的标「要换成白模＋关键帧写法」，排任务书时本机服务拦下。句子和校对在 公用/白模关键帧写法.js（写稿页、本机服务同一套）。
+   2026-11-15 他定：白模只当普通素材，可以只管其中几秒，上面这一套不再用。挂白模只补它自己的两句（多一个〔用在哪几秒〕），去掉白模只删它自己的句子（事件脚本里提到它的那一处换成〔〕），
+     关键帧照普通写法；页面不再换写法、不标、不拦。已经一镜一镜写参考哪张的老稿（「@图片…是各镜头的关键帧」）照旧能用，「改关键帧」不替它重排，进去自己改。
    2026-11-14 加了「出关键帧…」（文生资产流程图 ⑧，他定关键帧在这一步做）：每一条都能出，取哪一刻、参考哪几张图你定，AI 照这一条的分镜写字，你批过点「照这个出图」；
      用到的人物、场景、道具图确认可用了才出。挂了白模的，截白模那一刻当第一张参考图。这一条后来改过、参考图换过，标「看一眼」。做法在下面「出关键帧」那一节。
-   2026-11-14 每条加了「AI 铺底」（他要的，原来先写提示词的场才有的「重铺」并进来了）：剧本定稿以后，正着走、倒着走的场都能点；
-     点开二选一：让顶栏选的 AI 直接铺，或者复制任务、贴进你自己开的 Codex、Claude 对话（自己交给 AI）。两种都写进正文，你写的两块不动，原来那一版先进历史记录；
-     铺过的，AI 先判断要不要改，对得上就一个字不动（本机服务「直接铺底」那头管）。
-   2026-11-15 他要「AI 铺底」放进写稿页：这一页每条不再摆，在写稿页分区按钮那一行最右边（项目管理_写稿试用.html 的「AI 铺底」那一节）。
    共用的东西（读写流水线.json、顶栏、步骤条、AI 任务）在 流水线.js。
    ============================================================ */
 'use strict';
-const X = { tasks: new Set(), notes: new Map(), open: new Set(), vids: [], side: new Map(), map: new Map(), dur: new Map(), bmk: new Map(), fw: new Map() };   // 出片任务书、AI 批注、展开着的批注；这一段的视频、写稿过程文件、参考素材映射里的登记、视频多长；挂了白模又挂了关键帧的那几条写得对不对
+const X = { tasks: new Set(), notes: new Map(), open: new Set(), vids: [], side: new Map(), map: new Map(), secs: new Map(), dur: new Map(), fw: new Map() };   // 出片任务书、AI 批注、展开着的批注；这一段的视频、写稿过程文件、参考素材映射里的登记、视频多长
 const PROMPT_BTN = true;   // 「写一条提示词」的入口。2026-11-12 他先说「先收起」，当晚资产确认完想在网页上写，问「为什么没有办法在网页上写」，就放回来了。改成 false 就又收起（已经有的稿照样列）
-const SIDE_NOTE = '写稿页的过程文件，不是提示词。写法仅作用于事件脚本（旧稿叫分镜）；素材职责、基础设定、主体与关系、保持一致等公共内容共用。镜头的标题只记在镜头信息里，不写进提示词。写法、写法范围、分镜稿、自由稿、镜头信息由页面保存；挂图由页面记录。';
-const taskOf = name => name.replace(/视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i, '出片任务$1$2.txt');   // 视频提示词_02.txt → 出片任务_02.txt；视频提示词_改1.txt → 出片任务_改1.txt（和本机服务那头一个算法）
+const taskOf = window.Core.vpTask;   // 视频提示词_02.txt → 出片任务_02.txt；视频提示词_改1.txt → 出片任务_改1.txt；补片稿 _改2_补1 → 出片任务_改2_补1（公用/核心.js，和本机服务那头同一份）
 const sideOf = name => name.replace(/\.txt$/i, '') + '_写稿.json';
 const dirOf = s => [F.name, '提示词', segName(s.段)];
 const timeOfFile = (s, name) => { const rec = F.names.get(s.段); return rec && rec.time ? rec.time.get(name) || 0 : 0; };
@@ -83,7 +81,7 @@ async function loadExtra() {
   const s = sceneNow();
   if (!s) return;
   const rec = F.names.get(s.段), names = rec ? [...rec.set] : [];
-  X.tasks = new Set(names.filter(n => /出片任务(_[0-9]+)?(_改[0-9]+)?\.txt$/.test(n)));   // 11-15 补上 _改N：照方案改出来的稿，任务书叫 出片任务_改1.txt（和 taskOf 一样）
+  X.tasks = new Set(names.filter(n => window.Core.RE_TASK.test(n)));   // 出片任务_改1.txt、补片的 出片任务_改2_补1.txt（和 taskOf 一样）
   const notes = new Map();
   for (const n of names) if (/_AI批注\.md$/.test(n)) {
     try { notes.set(n.replace(/_AI批注\.md$/, '.txt'), parseNotes(C.decodeText((await FS.read(at([...dirOf(s), n]))).buf).text)); } catch (e) { /* 读不了就当没有 */ }
@@ -98,16 +96,9 @@ async function loadExtra() {
   const side = new Map();
   for (const e of promptsOf(s.段)) if (e.draft) { try { side.set(e.name, await readJson(at([...dirOf(s), sideOf(e.name)]))); } catch (err) { /* 读不了就当没有 */ } }
   X.side = side;
-  const map = new Map(), pre = '提示词/' + segName(s.段) + '/';
-  try { for (const [k, v] of Object.entries((await readJson(at([F.name, '资产', '参考素材映射.json']))).prompts || {})) if (k.startsWith(pre)) map.set(k.slice(pre.length), Array.isArray(v && v.references) ? v.references : []); } catch (e) { /* 还没有映射 */ }
-  X.map = map;
-  const bmk = new Map();   // 挂了白模又挂了关键帧的：是不是照官方的写法、每一镜开头的秒数对不对
-  for (const e of promptsOf(s.段)) {
-    const v = vidRefs(e)[0];
-    if (!v || !frameRefsOf(s, e).length) continue;
-    try { const text = C.decodeText((await FS.read(at([...dirOf(s), e.name]))).buf).text; bmk.set(e.name, { ok: BmKey.isBmk(text), issues: BmKey.check(BmKey.shots(text), 0, await cutsOfVid(v.path)) }); } catch (err) { /* 读不了就不标 */ }
-  }
-  X.bmk = bmk;
+  const map = new Map(), secs = new Map(), pre = '提示词/' + segName(s.段) + '/';   // secs：AI 写稿时估的每镜秒数（公用/秒数.js）
+  try { for (const [k, v] of Object.entries((await readJson(at([F.name, '资产', '参考素材映射.json']))).prompts || {})) if (k.startsWith(pre)) { map.set(k.slice(pre.length), Array.isArray(v && v.references) ? v.references : []); if (v && v.秒数) secs.set(k.slice(pre.length), v.秒数); } } catch (e) { /* 还没有映射 */ }
+  X.map = map; X.secs = secs;
   await loadFrameWords(s);
 }
 
@@ -128,16 +119,14 @@ function bmStale(s, e) {
   const base = Math.max(t, timeOf(keptOf(s)['白模/' + e.name]));
   return vidRefs(e).some(r => { const v = vidOf(r.path); return !!v && v.mtime > base + 999; });
 }
-/* sd25-pe 粗粒度白模的写法：〔〕里的要你填（生成任务书时还有〔〕就不让生成） */
-const BM_LINES = ref => [ref + '是粗粒度白模参考，仅提供〔动作路径、主体站位、机位、运镜和切镜〕，不采用其中的白模外观、材质和场景。', ref + '中的〔哪个白模几何体〕对应〔哪个人物或道具〕。'];
-/* 白模＋关键帧（11-14）：秒数照白模旁边「_说明.md」里的切点（一镜一行「镜头1：0-4秒」）；没有说明就是空的，秒数留〔起〕〔止〕 */
+/* sd25-pe 粗粒度白模的写法：〔〕里的要你填（批准出片时还有〔〕就不让出）。11-15 起白模是普通素材，可以只管其中几秒：多填一个用在哪几秒 */
+const BM_LINES = ref => [ref + '是粗粒度白模参考，用在〔哪几秒，如第2-4秒；整条都用写整条〕，仅提供〔动作路径、主体站位、机位、运镜和切镜〕，不采用其中的白模外观、材质和场景。', ref + '中的〔哪个白模几何体〕对应〔哪个人物或道具〕。'];
+/* 白模旁边「_说明.md」里的切点（一镜一行「镜头1：0-4秒」）：出关键帧时猜白模第几秒用；没有说明就是空的 */
 const noteOf = file => file.replace(/\.[^.]+$/, '') + '_说明.md';
 async function cutsOfVid(file) {
   const parts = noteOf(file).split('/');
   try { return (await hasFile(F.name, parts)) ? BmKey.cutsOf(C.decodeText((await FS.read(at([F.name, ...parts]))).buf).text) : []; } catch (e) { return []; }
 }
-const BMK_HOW = cuts => '照官方「白模＋关键帧」的写法：素材里写白模、关键帧、收尾三句，事件脚本每一镜开头写它在白模里的整秒和参考哪张'
-  + (cuts.length ? '，秒数照白模说明（' + cuts.map(c => '镜头' + c.no + ' ' + c.a + '-' + c.b + '秒').join('、') + '）。' : '；白模旁边没有「_说明.md」，秒数留〔起〕〔止〕给你填成整秒。');
 const { headKey, isHead, groupEmpty, HOLE } = KeyFrames;   // 组名、素材那一组放句子：和本机服务同一份（公用/关键帧写法.js）
 /* 在素材段里插几句（白模这类）：放哪见 KeyFrames.putRef */
 function insertRefLines(text, add) {
@@ -145,15 +134,20 @@ function insertRefLines(text, add) {
   return KeyFrames.putRef(text.split(/\r\n|\n/), add).join(eol);
 }
 /* 去掉含这个编号的那几句；删完只剩组名的，组名和它后面那个空行一起拿掉。别的一个字不动 */
-function dropRefLines(text, ref) {
-  const eol = /\r\n/.test(text) ? '\r\n' : '\n', L = text.split(/\r\n|\n/), re = new RegExp(ref + '(?![0-9])'), removed = [];
-  for (let i = L.length - 1; i >= 0; i--) if (re.test(L[i])) { removed.unshift(L[i]); L.splice(i, 1); }
+function dropRefLines(text, ref) {   // 11-15：事件脚本里的镜头行不整行删，提到它的那一处换成〔〕（holed）
+  const eol = /\r\n/.test(text) ? '\r\n' : '\n', L = text.split(/\r\n|\n/), re = new RegExp(ref + '(?![0-9])'), removed = [], holed = [];
+  const s0 = L.findIndex(l => headKey(l) === '【事件脚本】'), s1 = s0 < 0 ? -1 : L.findIndex((l, i) => i > s0 && isHead(l));
+  const inShots = i => s0 >= 0 && i > s0 && (s1 < 0 || i < s1);
+  for (let i = L.length - 1; i >= 0; i--) if (re.test(L[i])) {
+    if (inShots(i)) { L[i] = L[i].replace(new RegExp(ref + '(?![0-9])', 'g'), '〔〕'); holed.unshift(L[i]); }
+    else { removed.unshift(L[i]); L.splice(i, 1); }
+  }
   for (let i = L.length - 1; i >= 0; i--) {
     if (!/^【(参考素材职责|动作与声音)】$/.test(headKey(L[i]))) continue;
     const next = L[i + 1];
     if (next === undefined || !next.trim() || isHead(next)) L.splice(i, next !== undefined && !next.trim() ? 2 : 1);
   }
-  return { text: L.join(eol), removed };
+  return { text: L.join(eol), removed, holed };
 }
 /* 改一份你来写的稿：正文和写稿过程文件一起存，用写稿页同一套带版本核对的保存（稿子在别处改过就不写）。
    free：自由模式的稿也改（只换编号这种，正文和分镜稿、自由稿一起换，两种写法对得上）；out.patch：写稿过程文件里另外要换的 */
@@ -162,7 +156,7 @@ async function editDraft(s, e, fn, free) {
   let raw, side;
   try { raw = new TextDecoder('utf-8', { ignoreBOM: true }).decode((await FS.read(p)).buf); side = await readJson(at([...dirOf(s), sideOf(e.name)])); }
   catch (err) { toast('稿子读不了：' + err.message, 'err'); return false; }
-  if (side.写法 === '自由' && !free) { toast('这份稿是自由模式：打开「接着写」，在素材里 @ 白模、关键帧（页面不替自由模式的稿改字，免得两种写法对不上）', 'err'); return false; }
+  if (side.写法 === '自由' && !free) { toast('这份稿是自由模式：点「进去改」，在素材里 @ 白模、关键帧（页面不替自由模式的稿改字，免得两种写法对不上）', 'err'); return false; }
   const out = fn(raw, side);
   if (!out) return false;
   const patch = { 挂图: out.挂图, ...(out.patch || {}) }, own = k => Object.prototype.hasOwnProperty.call(side, k);
@@ -211,7 +205,7 @@ async function attachBm(s, e) {
   if (!X.vids.length) { toast('资产 / ' + segName(s.段) + ' 里还没有视频：白模渲好放进去，这里就能挑', 'err'); return; }
   const sel = bmSelect(rangeOf(e), ''), err = h('div', { class: 'fld-err' }), fit = [...sel.options].find(o => /段落对得上/.test(o.textContent) && /白模/.test(o.textContent));
   if (fit) sel.value = fit.value;   // 名字里段落对得上的白模先挑上
-  const file = await dialog(close => dlgShell('挂白模 · ' + e.label, '挑一段白模视频挂在这一条上。页面在素材里补两句 sd25-pe 的白模写法：〔〕里白模提供什么、哪个几何体对应谁，要你来填（没填完不让生成任务书）。',
+  const file = await dialog(close => dlgShell('挂白模 · ' + e.label, '挑一段白模视频挂在这一条上。它和别的素材一样，可以只管其中几秒。页面在素材里补两句 sd25-pe 的白模写法：〔〕里它用在哪几秒、提供什么、哪个几何体对应谁，要你来填（没填完不让出片）。',
     [field('白模视频', sel, '放在 资产 / ' + segName(s.段) + '（含下一层文件夹）里的视频'), h('div', null, h('button', { class: 'fl-link', type: 'button', onclick: () => { if (sel.value) seeVideo(sel.value); } }, '先看一眼')), err],
     [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'), h('button', { class: 'btn ink', onclick: () => { if (sel.value) close(sel.value); else err.textContent = '先挑一段白模'; } }, '挂上')]));
   if (!file) return;
@@ -220,30 +214,22 @@ async function attachBm(s, e) {
     const used = [...text.matchAll(/@视频(\d+)/g)].map(m => +m[1]).concat(refs.filter(r => /^@视频/.test(r.ref)).map(r => +r.ref.slice(3)));
     return same ? same.ref : '@视频' + (Math.max(0, ...used) + 1);
   };
-  const fr = frameRefsOf(s, e), cuts = fr.length ? await cutsOfVid(file) : [];
-  if (fr.length) {   // 已经挂着关键帧：挂上白模就换成白模＋关键帧的写法，删哪几句先摆出来给你看
-    let raw;
-    try { raw = C.decodeText((await FS.read(at([...dirOf(s), e.name]))).buf).text; } catch (err) { toast('稿子读不了：' + err.message, 'err'); return; }
-    const pre = BmKey.toBmk(raw, { vid: refFor(raw), frames: fr, cuts });
-    if (!(await confirmDlg({ title: '挂白模 · ' + e.label, body: '这一条已经挂着关键帧，挂上白模就' + BMK_HOW(cuts) + (pre.removed.length ? '这 ' + pre.removed.length + ' 句会删掉：' + pre.removed.map(l => '「' + l + '」').join('') : '') + '改之前的一版收进历史记录。', ok: '挂上，换写法' }))) return;
-  }
-  const ok = await editDraft(s, e, (text, side) => {
-    const ref = refFor(text, side), hang = { ...(side.挂图 || {}), [ref]: file }, f2 = frameRefsOf(s, e, side);
-    if (f2.length) return { text: BmKey.toBmk(text, { vid: ref, frames: f2, cuts }).text, 挂图: hang };
+  const ok = await editDraft(s, e, (text, side) => {   // 11-15 起白模是普通素材：挂着关键帧也不换写法
+    const ref = refFor(text, side), hang = { ...(side.挂图 || {}), [ref]: file };
     return { text: new RegExp(ref + '(?![0-9])').test(text) ? text : insertRefLines(text, BM_LINES(ref)), 挂图: hang };
   });
-  if (ok) toast(fr.length ? '白模挂上了，换成了白模＋关键帧的写法' + (cuts.length ? '' : '。打开接着写，把每一镜开头的〔起〕〔止〕填成整秒，素材里〔〕的几处也填上') : '白模挂上了。打开接着写，把素材里〔〕的几处填上');
+  if (ok) toast('白模挂上了。点「进去改」，把素材里〔〕的几处填上：它用在哪几秒、提供什么、哪个几何体对应谁');
 }
-/* 去掉白模：删含它编号的那几句（先摆出来给你看），挂图里也去掉 */
+/* 去掉白模：素材里含它编号的那几句删掉，事件脚本里提到它的那一处换成〔〕（先摆出来给你看），挂图里也去掉。11-15 起关键帧句子不跟着改 */
 async function dropBm(s, e, r) {
   let raw;
   try { raw = C.decodeText((await FS.read(at([...dirOf(s), e.name]))).buf).text; } catch (err) { toast('稿子读不了：' + err.message, 'err'); return; }
-  const back = (text, side) => { const f = frameRefsOf(s, e, side); return f.length && BmKey.isBmk(text) ? BmKey.fromBmk(text, { frames: f }) : null; };   // 白模＋关键帧的稿：先换回普通写法
-  const pre = back(raw), gone = dropRefLines(pre ? pre.text : raw, r.ref).removed;
-  if (!(await confirmDlg({ title: '去掉白模 · ' + e.label, body: (pre ? '这一条照白模＋关键帧的写法写的，去掉白模就换回普通写法：白模、关键帧、收尾那几句和每一镜开头的秒数去掉，关键帧照 sd25-pe 写回锚点句（〔〕要你填）。' : '')
-    + (gone.length ? '提示词里含 ' + r.ref + ' 的这 ' + gone.length + ' 句会删掉：' + gone.map(l => '「' + l.trim() + '」').join('') : pre ? '' : '提示词里没写 ' + r.ref + '。') + '挂图里也去掉它（' + stemOfFile(r.path) + '）。改之前的一版收进历史记录。', ok: '去掉', danger: true }))) return;
-  const ok = await editDraft(s, e, (text, side) => { const m = { ...(side.挂图 || {}) }; delete m[r.ref]; const b = back(text, side); return { text: dropRefLines(b ? b.text : text, r.ref).text, 挂图: m }; });
-  if (ok) toast(pre ? '白模去掉了，换回了普通写法：打开接着写，把关键帧句子里〔〕的几处填上' : '白模去掉了');
+  const pre = dropRefLines(raw, r.ref), gone = pre.removed, holed = pre.holed;
+  if (!(await confirmDlg({ title: '去掉白模 · ' + e.label, body: (gone.length ? '提示词里含 ' + r.ref + ' 的这 ' + gone.length + ' 句会删掉：' + gone.map(l => '「' + l.trim() + '」').join('') : '')
+    + (holed.length ? '事件脚本里这 ' + holed.length + ' 镜提到了它，句子留着，' + r.ref + ' 换成〔〕要你改写：' + holed.map(l => '「' + l.trim() + '」').join('') : '')
+    + (gone.length || holed.length ? '' : '提示词里没写 ' + r.ref + '。') + '挂图里也去掉它（' + stemOfFile(r.path) + '）。改之前的一版收进历史记录。', ok: '去掉', danger: true }))) return;
+  const ok = await editDraft(s, e, (text, side) => { const m = { ...(side.挂图 || {}) }; delete m[r.ref]; return { text: dropRefLines(text, r.ref).text, 挂图: m }; });
+  if (ok) toast(holed.length ? '白模去掉了：事件脚本里有 ' + holed.length + ' 镜提到它的那一处换成了〔〕，打开改写' : '白模去掉了');
 }
 
 /* ---------- 关键帧：资产那一步「关键帧」一块里的图（只这一场用），挂在这一条上当 @图片N ---------- */
@@ -302,9 +288,9 @@ async function framesDlg(s, e) {
   const picks = new Set(cur.map(r => r.path)), range = rangeOf(e), refOf = f => (cur.find(r => r.path === f) || {}).ref || '';
   if (!cur.length && range) for (const f of files) { const n = KeyFrames.noOf(stemOfFile(f)); if (n != null && n >= range[0] && n <= range[1] && /首帧/.test(stemOfFile(f))) picks.add(f); }   // 老稿名字里带着段落：这几镜的首帧先勾上
   const two = lines.some(l => /^【(人物|道具|场景|动作与声音)】$/.test(headKey(l)));
-  const vid = vidRefs(e)[0] || null, cuts = vid ? await cutsOfVid(vid.path) : [];   // 挂着白模：关键帧照白模＋关键帧的写法
+  if (BmKey.isBmk(lines)) { toast('这一条的关键帧是一镜一镜写参考哪张的（「…是各镜头的关键帧」那一句）：页面不替它重排，打开稿子自己改', 'err'); return; }   // 11-15
   const grid = h('div', { class: 'fl-ag' }), sum = h('div', { class: 'fn-note' });
-  const roleOf = (list, i) => vid ? BmKey.labelOf(cuts, list, i) : KeyFrames.roleOf(list, i);   // 挂着白模：写对上第几镜、几秒
+  const roleOf = (list, i) => KeyFrames.roleOf(list, i);
   const paint = () => {
     const list = orderFiles([...picks]);
     grid.replaceChildren(...files.map(f => {
@@ -316,8 +302,7 @@ async function framesDlg(s, e) {
   paint();
   const ok = await dialog(close => {
     const el = dlgShell((cur.length ? '改关键帧 · ' : '挂关键帧 · ') + e.label, '勾这一条要用的关键帧（资产那一步「关键帧」一块里的）。'
-      + (vid ? '这一条挂着白模，关键帧' + BMK_HOW(cuts) + '关键帧按名字里的镜头号对上那一镜，没有号的按先后。一张都不勾就换回普通的白模写法。'
-        : '按镜头号排：第一张当首帧，后面依次是第二、第三个关键帧，最后一张名字带「尾帧」的当尾帧。页面在素材' + (two ? '【场景】' : '【参考素材职责】') + '最前面写好 sd25-pe 的关键帧句子，〔〕里这一刻看得见什么要你来填（没填完不让生成任务书）。')
+      + ('按镜头号排：第一张当首帧，后面依次是第二、第三个关键帧，最后一张名字带「尾帧」的当尾帧。页面在素材' + (two ? '【场景】' : '【参考素材职责】') + '最前面写好 sd25-pe 的关键帧句子，〔〕里这一刻看得见什么要你来填（没填完不让出片）。')
       + '图里画了爆炸、烟、火的，挂上会被钉住不动，先看一眼。',
       [h('div', { class: 'fl-apick' }, grid), sum],
       [h('button', { class: 'btn ghost', onclick: () => close(false) }, '取消'), h('button', { class: 'btn ink', onclick: () => close(true) }, '好了')]);
@@ -326,34 +311,25 @@ async function framesDlg(s, e) {
   });
   if (!ok) return;
   const want = orderFiles([...picks]).map(x => x.file), side0 = X.side.get(e.name) || {};
-  /* 挂着白模：先拿掉白模＋关键帧的句子和秒数（记着原来的秒数）照普通写法排好号，有关键帧就换成白模＋关键帧的写法；一张不剩就换回普通的白模写法 */
-  const shape = (text, side) => {
-    if (!vid) return framePlan(s, e, text, side, want);
-    const b = BmKey.bare(text), p = framePlan(s, e, b.text, side, want);
-    if (p.list.length) return { ...p, text: BmKey.toBmk(p.text, { vid: vid.ref, frames: p.list, cuts, secs: b.secs }).text };
-    const L = p.text.split(/\r\n|\n/).map(l => l.trim()), add = [];
-    if (!L.some(l => l.startsWith(vid.ref + '是'))) add.push(BM_LINES(vid.ref)[0]);
-    if (!L.some(l => l.startsWith(vid.ref + '中的') || l.startsWith(vid.ref + '里'))) add.push(BM_LINES(vid.ref)[1]);
-    return { ...p, text: add.length ? insertRefLines(p.text, add) : p.text };
-  };
+  const shape = (text, side) => framePlan(s, e, text, side, want);
   const plan = shape(raw, side0);
   if (plan.text === raw && JSON.stringify(plan.hang) === JSON.stringify(side0.挂图 || {})) { toast('关键帧没有变'); return; }
   if ((plan.removed.length || plan.holed.length) && !(await confirmDlg({ title: '去掉关键帧 · ' + e.label,
     body: (plan.removed.length ? '这 ' + plan.removed.length + ' 句是去掉的那几张自己的，会删掉：' + plan.removed.map(l => '「' + l + '」').join('') : '')
-      + (plan.holed.length ? '这 ' + plan.holed.length + ' 句提到了去掉的那几张，句子留着，那一处换成〔〕，要你打开接着写改写：' + plan.holed.map(l => '「' + l + '」').join('') : '')
+      + (plan.holed.length ? '这 ' + plan.holed.length + ' 句提到了去掉的那几张，句子留着，那一处换成〔〕，要你点「进去改」改写：' + plan.holed.map(l => '「' + l + '」').join('') : '')
       + (plan.moved ? '后面的编号往前挪，不留空号。' : '') + '改之前的一版收进历史记录。', ok: '去掉', danger: true }))) return;
   let last = plan;
   const done = await editDraft(s, e, (text, side) => { last = shape(text, side); return { text: last.text, 挂图: last.hang }; });
   if (!done) return;
   let mapErr = '';
   try { if (await moveMapped(s, e, last.renum, last.gone)) { await loadExtra(); rerender(); } } catch (err) { mapErr = err.message; }   // 参考素材映射里登记的：去掉的那几张、挪过的编号跟着改
-  toast((want.length ? '关键帧挂好了（' + want.length + ' 张：' + last.list.map(x => x.ref).join('、') + '）。' + (vid ? '照白模＋关键帧的写法，每一镜开头写了参考哪张' + (cuts.length ? '' : '，〔起〕〔止〕要填成整秒') : '打开接着写，把素材里〔〕的几处填上') : vid ? '关键帧都去掉了，换回了普通的白模写法' : '关键帧都去掉了')
+  toast((want.length ? '关键帧挂好了（' + want.length + ' 张：' + last.list.map(x => x.ref).join('、') + '）。点「进去改」，把素材里〔〕的几处填上' : '关键帧都去掉了')
     + (last.holed.length ? '；有 ' + last.holed.length + ' 句提到去掉的那几张，那一处换成了〔〕，要改写' : '')
-    + (last.gap ? '。编号没理顺：' + last.gap + '，生成任务书时会拦下' : '')
-    + (mapErr ? '。注意：参考素材映射没跟着改（' + mapErr + '），生成任务书时会拦下' : ''), last.gap || mapErr ? 'err' : undefined);
+    + (last.gap ? '。编号没理顺：' + last.gap + '，批准出片时会拦下' : '')
+    + (mapErr ? '。注意：参考素材映射没跟着改（' + mapErr + '），批准出片时会拦下' : ''), last.gap || mapErr ? 'err' : undefined);
 }
 /* ---------- 编号别留空号（11-15）：写稿页里删了某张图的句子（比如「开场参考@图片9」），正文里就不再写它；即梦照挂的先后编号，后面的就全对错了。
-   生成任务书以前算一遍（公用/素材编号.js）：要挪的先写在弹窗里，点「生成任务书」才挪——正文、挂图、参考素材映射一起挪，改之前的一版收进历史记录。
+   排任务书以前算一遍（公用/素材编号.js）：要挪的先写在弹窗里，点「批准出片」才挪——正文、挂图、参考素材映射一起挪，改之前的一版收进历史记录。
    只替你来写的稿挪；AI 写的稿照旧由本机服务拦下 ---------- */
 const mapKeyOf = (s, e) => ['提示词', segName(s.段), e.name].join('/');
 const hangRegs = side => Object.entries((side && side.挂图) || {}).map(([ref, path]) => ({ ref, path }));
@@ -374,20 +350,29 @@ async function gapOf(s, e) {
 }
 const samePlan = (a, b) => JSON.stringify([[...a.moves], a.dropped]) === JSON.stringify([[...b.moves], b.dropped]);
 async function fixGaps(s, e, g) {
-  let p = null, stale = false;
+  let p = null, stale = false, before = '', after = '';
   const ok = await editDraft(s, e, (text, side) => {
     const all = [...g.mapped, ...hangRegs(side)], q = RefNo.plan(text, all);
     if (q.blocked || !q.moves.size || !samePlan(q, g.p)) { stale = true; return null; }   // 稿子刚在别处改过：这回不挪
-    p = q;
+    p = q; before = text; after = RefNo.apply(text, q);
     const patch = {};
     for (const k of ['分镜稿', '自由稿']) if (typeof side[k] === 'string') patch[k] = RefNo.apply(side[k], q);
-    return { text: RefNo.apply(text, q), 挂图: RefNo.hang(side.挂图, q, all), patch };
+    return { text: after, 挂图: RefNo.hang(side.挂图, q, all), patch };
   }, true);
-  if (!ok) { if (stale) toast('稿子刚在别处改过，编号这回没挪：再点一次「生成任务书」', 'err'); return false; }
+  if (!ok) { if (stale) toast('稿子刚在别处改过，编号这回没挪：再点一次「批准出片」', 'err'); return false; }
   try { await moveMapped(s, e, p); }   // 挂图里已经记了挪过的号：这一步万一没成，任务书会拦下，不会挂错图
-  catch (err) { toast('稿子里的编号挪好了，参考素材映射没跟着挪（' + err.message + '），这回没生成任务书', 'err'); await loadExtra(); rerender(); return false; }
+  catch (err) { toast('稿子里的编号挪好了，参考素材映射没跟着挪（' + err.message + '），这回没出片', 'err'); await loadExtra(); rerender(); return false; }
+  try { await remarkSecs(s, e, before, after); } catch (err) { /* 记号没跟上：出片弹窗多提醒一句，不碍事 */ }
   await loadExtra(); rerender();
   return true;
+}
+/* 只挪了编号，镜头没变：AI 估的秒数还算数，指纹换成挪过以后的（不然出片弹窗会说「估完以后改过」） */
+async function remarkSecs(s, e, before, after) {
+  if (!before || !(await hasFile(F.name, ['资产', '参考素材映射.json']))) return;
+  const mp = at([F.name, '资产', '参考素材映射.json']), j = await readJson(mp), v = j && j.prompts && j.prompts[mapKeyOf(s, e)];
+  if (!v || !v.秒数 || v.秒数.记号 !== Secs.mark(before)) return;
+  v.秒数.记号 = Secs.mark(after);
+  await FS.write(mp, C.encodeText(JSON.stringify(j, null, 2) + '\n'));
 }
 /* 参考素材映射里这一条的登记跟着改：p 挪编号、去掉空号上的（RefNo.plan 的结果，可以是 null）；gone：这回去掉的 [{ ref, path }]（旧编号，文件也对得上才去）。
    改了返回 true；没登记过、没有要改的返回 false */
@@ -412,110 +397,67 @@ function rangeOf(e) {
   return [Math.min(a, b), Math.max(a, b)];
 }
 
-/* sd2.5PE 稿：只放你写的两段，【生成目标】和【事件脚本】；事件脚本留空，由你逐镜添加或自由填写。其余几段 AI 铺底时补上。
-   挂了白模、关键帧的，素材里先带上它们的句子（frames：[{ ref, name }]，排好先后）；素材五份以内写法一（【参考素材职责】），多于五份写法二（关键帧放【场景】，白模放【动作与声音】）。
-   两样都挂了的照官方「白模＋关键帧」的写法：素材里三句，事件脚本照白模的镜头一镜一行先铺好秒数和参考哪张（cuts：白模说明里的切点，没有就一张关键帧一镜、秒数留〔〕） */
-function skeleton(bmRef, frames = [], cuts = []) {
-  if (bmRef && frames.length) return BmKey.toBmk(['【生成目标】', '', '【事件脚本】', ''].join('\r\n'), { vid: bmRef, frames, cuts, two: frames.length + 1 > 5 }).text;
-  const fl = KeyFrames.lines(frames), two = frames.length + (bmRef ? 1 : 0) > 5;
-  const refs = two ? ['【场景】', ...fl, '', ...(bmRef ? ['【动作与声音】', ...BM_LINES(bmRef), ''] : [])]
-    : fl.length || bmRef ? ['【参考素材职责】', ...fl, ...(bmRef ? BM_LINES(bmRef) : []), ''] : [];
-  return ['【生成目标】', '', ...refs, '【事件脚本】', ''].join('\r\n');
-}
-/* 新建用独占写入（底座.js 的 FS.create），两个页面同时创建时后写的不会盖掉先写的 */
-const createPromptFile = (parts, text) => FS.create(parts, C.encodeText(text));
-/* 建一份你来写的空稿（和它的写稿过程文件）。bm：挂哪段白模（资产/第N段/……mp4）；frames：挂哪几张关键帧（编号 @图片1 起） */
-async function makeDraft(s, name, mode, bm, frames = []) {
-  const fl = orderFiles(frames).map((x, i) => ({ ...x, ref: '@图片' + (i + 1) }));
-  const hang = { ...(bm ? { '@视频1': bm } : {}), ...Object.fromEntries(fl.map(x => [x.ref, x.file])) };
-  const p = [...dirOf(s), name], side = [...dirOf(s), sideOf(name)], text = skeleton(bm ? '@视频1' : '', fl, bm && fl.length ? await cutsOfVid(bm) : []);
-  if (await hasFile(F.name, p.slice(1))) throw new Error('「' + name + '」已经有了');
-  if (await hasFile(F.name, side.slice(1))) throw new Error('「' + name + '」已有同名写稿资料，请先检查原稿');
-  await createPromptFile(at(p), text);
-  try {
-    await createPromptFile(at(side), JSON.stringify({ 说明: SIDE_NOTE,
-      流水线: '这一份是从「流水线」开的稿：全片的梗概、人物、场景、道具（各自引用了哪张图），和这一场（' + segName(s.段) + '）出场的人物道具、主要表达什么、剧本段落，都写在 定稿的剧本/流水线.json 里；这一场定稿的剧本在 定稿的剧本/' + segName(s.段) + ' 里。这一场的戏分几条写由人定，这一份是' + vpLabel(name) + '，写哪段戏看人写的生成目标和事件脚本。AI 建议、关键词、批注都照它们，镜头不必与剧本段落一一对应。',
-      写法: mode, 写法范围: '分镜', 分镜稿: text, 自由稿: '', 镜头信息: [], 关键词: {}, ...(Object.keys(hang).length ? { 挂图: hang } : {}) }, null, 2) + '\n');
-  } catch (e) { throw new Error('「' + name + '」正文已创建并保留，但写稿资料未保存：' + e.message); }
-}
-/* 写一条提示词：名字照次序起（第一条 视频提示词.txt，再写的 视频提示词_02.txt……），选谁来写、挂不挂白模。写几条、每条写哪段戏由你定，页面不管 */
+/* 写一条提示词：名字照次序起（第一条 视频提示词.txt，再写的 视频提示词_02.txt……）。2026-11-15 他定：一律 AI 写，不再有「我来写」的空稿。
+   写几条、每条写哪段戏由你定，页面不管；挂不挂白模、关键帧在这里勾。AI 写稿时顺手估每一镜几秒（公用/秒数.js） */
 async function newPrompt(s) {
   const busy = AI.jobs.filter(j => j.事 === '写提示词' && j.段 === s.段 && jobLive(j)).map(j => j.名);   // AI 正在写、文件还没落下的，也占着号
   const name = vpNext([...promptsOf(s.段).map(e => e.name), ...busy]), no = vpNo(name);
-  const who = window.UI.chips([['me', '我来写'], ['ai', 'AI 先写一版，我批注']], 'me', () => paint());
-  const mode = window.UI.chips([['分镜', '分镜模式'], ['自由', '自由模式']], '分镜', () => {});
-  const modeField = h('div', { class: 'fld' }, h('span', null, '分镜写法'), mode,
-    h('em', null, '分镜模式：一镜一行，自由添加、排序、编辑。自由模式：只把事件脚本换成一个大输入框。素材职责、基础设定、主体与关系、保持一致等公共内容共用，切换时保留。'));
   const what = h('textarea', { class: 'inp', rows: '2', placeholder: '不填：写这一场整段戏' });
   const whatField = field('这一条写哪段戏', what, '不填就写整段。要分几条写，填这一条写哪段，AI 只写这段；写几镜它看着办');
   const bm = bmSelect(null, '');
-  const bmField = X.vids.length ? field('白模视频', bm, '可以不挂。挂了：素材里带两句白模写法，〔〕里的你来填；又勾了关键帧，就照官方「白模＋关键帧」的写法，每一镜开头写它在白模里的整秒和参考哪张。AI 先写的也照这个写') : null;
+  const bmField = X.vids.length ? field('白模视频', bm, '可以不挂。挂了就是一样普通素材，可以只管其中几秒，AI 照它写素材里的白模那两句') : null;
   const frames = orderFiles(framesOf(s)).map(x => x.file), fpick = new Set(), fGrid = h('div', { class: 'fl-ag' });   // 资产那一步「关键帧」一块里的
-  const fList = () => orderFiles([...fpick]), fHint = h('em');
-  let bmCuts = [];   // 选了白模：它旁边「_说明.md」里的切点
-  const roleF = (list, i) => bm.value ? BmKey.labelOf(bmCuts, list, i) : KeyFrames.roleOf(list, i);
+  const fList = () => orderFiles([...fpick]);
   const paintF = () => {
     const list = fList();
-    fGrid.replaceChildren(...frames.map(f => { const i = list.findIndex(x => x.file === f); return tileEl({ 类别: '关键帧', 文件: f, 名称: stemOfFile(f) }, i >= 0, i >= 0 ? roleF(list, i) : '', () => { fpick.has(f) ? fpick.delete(f) : fpick.add(f); paintF(); }); }));
-    fHint.textContent = (bm.value ? '可以不挂。又挂了白模：照官方「白模＋关键帧」的写法，按名字里的镜头号对上白模那一镜，' + (bmCuts.length ? '秒数照白模说明' : '白模旁边没有「_说明.md」，秒数留〔起〕〔止〕给你填成整秒') + '；AI 先写的也照这个写。'
-      : '可以不挂。勾了：按镜头号排，第一张当首帧，素材里写好关键帧句子，〔〕里的你来填；AI 先写的也照勾的这几张写。') + '画了爆炸、烟、火的图挂上会被钉住不动';
+    fGrid.replaceChildren(...frames.map(f => { const i = list.findIndex(x => x.file === f); return tileEl({ 类别: '关键帧', 文件: f, 名称: stemOfFile(f) }, i >= 0, i >= 0 ? KeyFrames.roleOf(list, i) : '', () => { fpick.has(f) ? fpick.delete(f) : fpick.add(f); paintF(); }); }));
   };
-  bm.addEventListener('change', async () => { const v = bm.value, c = v ? await cutsOfVid(v) : []; if (bm.value === v) { bmCuts = c; paintF(); } });
   paintF();
-  const frameField = frames.length ? h('div', { class: 'fld' }, h('span', null, '关键帧'), h('div', { class: 'fl-apick', style: 'max-height:32vh' }, fGrid), fHint) : null;
-  const okBtn = h('button', { class: 'btn ink' }, '开始');
+  const frameField = frames.length ? h('div', { class: 'fld' }, h('span', null, '关键帧'), h('div', { class: 'fl-apick', style: 'max-height:32vh' }, fGrid),
+    h('em', null, '可以不挂。勾了：按镜头号排，第一张当首帧，AI 照勾的这几张写关键帧句子。画了爆炸、烟、火的图挂上会被钉住不动')) : null;
   const viaSelf = chNow() === SELF_CH;   // 顶栏选的就是「给我提示词」：只摆复制这一个
+  const okBtn = h('button', { class: 'btn ink' }, viaSelf ? '复制任务，自己交给 AI' : '让 ' + chName() + ' 写');
   const selfBtn = h('button', { class: 'btn', title: '不在这里调 AI：把任务复制出来，贴进你自己在 Codex、Claude 里开的对话。它写好，这里自动出现' }, '复制任务，自己交给 AI');
-  const paint = () => {
-    okBtn.textContent = who.get() === 'me' ? '开始写' : viaSelf ? '复制任务，自己交给 AI' : '让 ' + chName() + ' 先写一版';
-    selfBtn.style.display = who.get() !== 'ai' || viaSelf || !selfOk() ? 'none' : '';   // .btn 的 display 会盖掉 hidden
-    modeField.hidden = who.get() !== 'me';
-    whatField.hidden = who.get() !== 'ai';
-  };
-  paint();
+  if (viaSelf || !selfOk()) selfBtn.style.display = 'none';   // .btn 的 display 会盖掉 hidden
   const r = await dialog(close => {
-    const done = self => () => close({ who: who.get(), self, mode: mode.get(), bm: bm.value, what: what.value.trim(), frames: fList().map(x => x.file) });
+    const done = self => () => close({ self, bm: bm.value, what: what.value.trim(), frames: fList().map(x => x.file) });
     okBtn.onclick = done(false); selfBtn.onclick = done(true);
-    return dlgShell((no > 1 ? '再写一条提示词' : '写提示词') + ' · 第' + s.段 + '场', '这是第 ' + no + ' 条。一条提示词出一条视频（一般十五秒，Seedance 2.5 最长三十秒），写几条，这场戏就分几条。',
-      [h('div', { class: 'fld' }, h('span', null, '谁来写'), who,
-        h('em', null, '我来写：从空白开始，AI 在侧边按需给建议。AI 先写：主动生成一份初稿，之后你批注。')), modeField, whatField, bmField, frameField,
-        h('div', { class: 'fname-prev' }, '存成：提示词 / ' + segName(s.段) + ' / ' + name)],
+    return dlgShell((no > 1 ? '再写一条提示词' : '写提示词') + ' · 第' + s.段 + '场', '这是第 ' + no + ' 条。一条提示词出一条视频（一般十五秒，Seedance 2.5 最长三十秒），写几条，这场戏就分几条。AI 照 sd25-pe 写整份，顺手估每一镜几秒；写好你打开看、写批注让它改，也能进去自己改。',
+      [whatField, bmField, frameField, h('div', { class: 'fname-prev' }, '存成：提示词 / ' + segName(s.段) + ' / ' + name)],
       [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'), selfBtn, okBtn]);
   });
   if (!r) return;
-  if (r.who === 'ai') {
-    if (!AI.ok) { await sendAI('写提示词 ' + flowRef() + '｜' + segName(s.段) + '｜' + name + (r.what ? '｜这一条写：' + r.what : '') + (r.frames.length ? '｜挂关键帧：' + r.frames.join('、') : ''), '交给 AI 了。写好这里自动出现'); return; }
-    await (r.self ? startSelf : startJob)({ 事: '写提示词', 段: s.段, 名: name, ...(r.what ? { 写什么: r.what } : {}), ...(r.bm ? { 白模: r.bm } : {}), ...(r.frames.length ? { 关键帧: r.frames } : {}) });
-    rerender();
-    return;
-  }
-  await flush();
-  try { await makeDraft(s, name, r.mode, r.bm, r.frames); }
-  catch (e) { toast('没建成：' + e.message, 'err'); await loadSides(); await loadExtra(); rerender(); return; }
-  await loadSides(); await loadExtra();
+  if (!AI.ok) { await sendAI('写提示词 ' + flowRef() + '｜' + segName(s.段) + '｜' + name + (r.what ? '｜这一条写：' + r.what : '') + (r.frames.length ? '｜挂关键帧：' + r.frames.join('、') : ''), '交给 AI 了。写好这里自动出现'); return; }
+  await (r.self ? startSelf : startJob)({ 事: '写提示词', 段: s.段, 名: name, ...(r.what ? { 写什么: r.what } : {}), ...(r.bm ? { 白模: r.bm } : {}), ...(r.frames.length ? { 关键帧: r.frames } : {}) });
   rerender();
-  openWrite(s.段, name);
 }
 /* 估个价：照以往实扣的（2026-11-11～13）。没实扣过的出法不瞎估 */
 function priceOf(model, res, secs, vid) {
   const per = /2\.5 样片/.test(model) && res === '480p' ? (vid ? 18 : 9) : /2\.0 mini/.test(model) && res === '720p' && vid ? 12 : /2\.0 VIP/.test(model) && res === '720p' && vid ? 28 : 0;
   return per ? { per, total: per * secs } : null;
 }
-/* 生成出片任务书：先问这一条怎么出（哪个模型、多清楚、几秒、最多花多少积分）。挂了白模的，秒数默认取白模时长。
-   用哪个即梦账号不在这里选：和画布一起记在项目的 资产/出片设置.json，服务生成时先核对这个号能不能改这张画布（11-14：两样分开选，出过对不上） */
-async function makeTask(s, e) {
+/* 批准出片（11-15 他定：「生成任务书」「批准出片」两个按钮合成这一个）：先问这一条怎么出（哪个模型、多清楚、几秒、最多花多少积分），
+   点了「批准出片」，本机先排好任务书（不花积分，先核对即梦账号和画布），排好就交出片（给你复制，贴进你自己的 Codex，要花积分）。没排成就停下，不交出片。
+   秒数默认取 AI 写稿时估的每镜秒数的合计（11-15 他定，公用/秒数.js；估完以后稿子又改过的照填、提醒一句）；
+   没估过的（老稿）取事件脚本写到的最后一秒；也没写秒数、挂了白模的取白模时长（11-15：白模可以只管其中几秒）。
+   用哪个即梦账号不在这里选：和画布一起记在项目的 资产/出片设置.json，服务排任务书时先核对这个号能不能改这张画布（11-14：两样分开选，出过对不上） */
+async function approve(s, e) {
   const vids = vidRefs(e), gap = await gapOf(s, e), fix = !!gap && e.draft && !gap.p.blocked;   // 编号有空号：你来写的稿，生成以前先往前挪（11-15）
-  let dur = 0, durs = [];
+  let dur = 0, durs = [], end = 0, txt = '';
+  try { txt = C.decodeText((await FS.read(at([...dirOf(s), e.name]))).buf).text; for (const m of txt.matchAll(/(\d+)\s*[-－—–~～至到]\s*(\d+)\s*秒/g)) end = Math.max(end, +m[2]); } catch (err) { /* 读不了就不看 */ }
+  const est = X.secs.get(e.name), es = Secs.state(est, txt), ai = es.st === 'none' ? 0 : Secs.total(est);   // AI 写稿时估的
   if (vids.length) {
     try { durs = await Promise.all(vids.map(r => vidSecs(r.path))); dur = durs.reduce((x, y) => x + y, 0); } catch (err) { toast('白模读不出时长：' + err.message + '。秒数照默认的填', 'err'); }
   }
   const model = h('select', { class: 'inp' }, ['Seedance 2.5 样片', 'Seedance 2.5', 'Seedance 2.0 mini', 'Seedance 2.0 VIP'].map(v => h('option', { value: v }, v)));
   const res = h('select', { class: 'inp' }, ['480p', '720p', '1080p'].map(v => h('option', { value: v }, v)));
-  const def = dur ? Math.min(30, Math.max(4, Math.round(dur))) : 15;
+  const def = e.patch ? 4 : ai ? Secs.fit(ai) : end >= 4 && end <= 30 ? end : dur ? Math.min(30, Math.max(4, Math.round(dur))) : 15;
+  const aiSay = e.patch ? '补片：按最短的 4 秒出，剪的时候留要的那几秒。' : ai ? 'AI 估的：' + Secs.say(est) + '。' + (ai < Secs.MIN ? '不到 4 秒，按 4 秒出，剪的时候剪短。' : ai > Secs.MAX ? '超过 30 秒，这一条装不下，要分条。' : '')
+    + (es.st === 'changed' ? '估完以后稿子又改过，秒数可能不准。' : es.st === 'missing' ? '镜头' + es.lack.join('、') + ' 没估。' : '') : '这份稿没估过秒数（AI 写稿、改稿时才估）。';
   const sec = h('input', { class: 'inp', type: 'number', min: '4', max: '30', value: String(def) }), cap = h('input', { class: 'inp', type: 'number', min: '0', value: '', placeholder: '比如 300' });
   const err = h('div', { class: 'fld-err' }), price = h('div', { class: 'fn-note' }), warn = h('div', { class: 'fn-note warn' });
-  const gapNote = !gap ? null : h('div', { class: 'fn-note warn' }, fix ? RefNo.say(gap.p) + '点「生成任务书」先挪好再生成，改之前的一版收进历史记录。'
-    : '编号没从 1 连着编，' + (gap.p.blocked ? '页面挪不了：' + gap.p.blocked + '。' : '这份是 AI 写的稿，页面不替它改字：写批注让 AI 改。') + '这样生成会被拦下。');
+  const gapNote = !gap ? null : h('div', { class: 'fn-note warn' }, fix ? RefNo.say(gap.p) + '点「批准出片」先挪好再出，改之前的一版收进历史记录。'
+    : '编号没从 1 连着编，' + (gap.p.blocked ? '页面挪不了：' + gap.p.blocked + '。' : '这份是 AI 写的稿，页面不替它改字：写批注让 AI 改。') + '这样出片会被拦下。');
   const short = vids.filter((r, i) => durs[i] && durs[i] < 2);
   const paint = () => {
     const p = priceOf(model.value, res.value, Math.round(+sec.value || 0), vids.length > 0);
@@ -524,40 +466,37 @@ async function makeTask(s, e) {
   };
   for (const x of [model, res, sec]) x.addEventListener('input', paint);
   paint();
-  const r = await dialog(close => dlgShell('生成出片任务书 · ' + e.label, '任务书是交给 Codex 去即梦出片时照着做的：用哪份提示词、挂哪几个素材、怎么出、存到哪。这一步只是把任务书写出来，不出片、不花积分。',
-    [gapNote, field('模型', model), field('清晰度', res), field('时长（秒）', sec, vids.length && dur ? '白模' + (vids.length > 1 ? '合计' : '') + ' ' + dur.toFixed(1) + ' 秒；可填 4 到 30' : '4 到 30'), price, warn,
+  const r = await dialog(close => dlgShell('批准出片 · ' + e.label, '点「批准出片」：页面先排好任务书（用哪份提示词、挂哪几个素材、怎么出、存到哪），再把出片的话给你，复制贴进你自己的 Codex，它照任务书去即梦出一条样片。要花积分。',
+    [gapNote, field('模型', model), field('清晰度', res), field('时长（秒）', sec, aiSay + (end ? '事件脚本写到第 ' + end + ' 秒；' : '') + (vids.length && dur ? '白模' + (vids.length > 1 ? '合计' : '') + ' ' + dur.toFixed(1) + ' 秒；' : '') + '可填 4 到 30'), price, warn,
       field('最多花多少积分', cap, '报价超过这个数，Codex 会停下来问你；不填就是存好草稿、报完价就停'),
-      h('div', { class: 'fn-note' }, '即梦账号和画布照这个项目的 资产/出片设置.json。生成时先核对这个号能不能改这张画布，对不上就不写任务书。'), err],
+      h('div', { class: 'fn-note' }, '即梦账号和画布照这个项目的 资产/出片设置.json。排任务书时先核对这个号能不能改这张画布，对不上就停下，不出片。'), err],
     [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'),
-      h('button', { class: 'btn ink', onclick: () => {
+      h('button', { class: 'btn zhu', onclick: () => {
         const n = +sec.value;
         if (!(n >= 4 && n <= 30)) { err.textContent = '时长写 4 到 30 之间的整数'; return; }
         if (short.length) { err.textContent = '白模不到 2 秒，即梦不收：' + short.map(x => stemOfFile(x.path)).join('、'); return; }
         if (dur > 30) { err.textContent = '挂的视频合计超过 30 秒（' + dur.toFixed(1) + ' 秒），即梦不收'; return; }
         close({ 模型: model.value, 清晰度: res.value, 秒数: Math.round(n), 积分上限: Math.max(0, Math.round(+cap.value || 0)) });
-      } }, '生成任务书')]));
+      } }, '批准出片')]));
   if (!r) return;
   if (fix && !(await fixGaps(s, e, gap))) return;
-  await startJob({ 事: '出片任务书', 段: s.段, 名: e.name, 参数: r }, true);
-}
-/* 批准出片：把任务书交给 Codex 真去做。要花积分，所以先让人看一眼任务书，再确认一次。
-   挂了白模的不再要勾（11-15 他定：直接跳过核验）；即梦快线要人当面说跳过的那句，由本机服务替他带给 Codex */
-async function approve(s, e) {
-  const tf = taskOf(e.name);
-  let text = '';
-  try { text = C.decodeText((await FS.read(at([...dirOf(s), tf]))).buf).text; } catch (err) { toast('任务书读不了：' + err.message, 'err'); return; }
-  const cap = /报价不超过 (\d+) 积分才提交/.exec(text), hasVid = /^@视频\d+ /m.test(text);
-  const ok = await dialog(close => {
-    const el = dlgShell('批准出片 · ' + e.label, '点「批准，交给 Codex」以后，Codex 会照下面这份任务书去即梦出一条样片。' + (cap ? '报价不超过 ' + cap[1] + ' 积分它才提交。' : '任务书里没写积分上限：它存好草稿、报完价会停下来，不会提交。'),
-      [h('pre', { class: 'mdview' }, text)],
-      [h('button', { class: 'btn ghost', 'data-focus': '', onclick: () => close(false) }, '先不出'), h('button', { class: 'btn zhu', onclick: () => close(true) }, '批准，交给 Codex')]);
-    el.classList.add('wide');
-    return el;
-  });
-  if (!ok) return;
-  /* 跳过核验：11-14 22:19 起的 8766 照这一字不差的一句放行带白模的条；jobs.js 11-15 起不再查它，8766 重开以后这一项用不上 */
-  await startJob({ 事: '出片', 段: s.段, 名: tf, 批准: '用户点了批准出片', 渠道: chNow() === SELF_CH ? SELF_CH : 'codex', ...(hasVid ? { 跳过核验: '用户在页面上勾了「白模我看过了，跳过核验」' } : {}) });   // 顶栏选了「给我提示词」：出片的话也给你，贴进你自己的 Codex
+  const j = await startJob({ 事: '出片任务书', 段: s.段, 名: e.name, 参数: r }, true);
+  if (!j) return;
   rerender();
+  const done = await jobEnd(j.id);
+  if (!done || done.状态 !== '做完') return;   // 没排成：为什么，流水线.js 已经提示过，这一条上也摆着
+  /* 跳过核验：11-14 22:19 起的 8766 照这一字不差的一句放行带白模的条；jobs.js 11-15 起不再查它，8766 重开以后这一项用不上 */
+  await startJob({ 事: '出片', 段: s.段, 名: taskOf(e.name), 批准: '用户点了批准出片', 渠道: SELF_CH, ...(vidRefs(e).length ? { 跳过核验: '用户在页面上勾了「白模我看过了，跳过核验」' } : {}) });   // 出片的话给你，贴进你自己的 Codex
+  rerender();
+}
+/* 等本机排完任务书（几秒钟）：流水线.js 照旧每两秒问一次进度，这里只等结果；换了页面也接着等 */
+async function jobEnd(id) {
+  for (const t0 = Date.now(); Date.now() - t0 < 10 * 60e3;) {
+    await new Promise(ok => setTimeout(ok, 1000));
+    const j = AI.jobs.find(x => x.id === id);
+    if (j && !jobLive(j)) return j;
+  }
+  return null;
 }
 /* 删一条提示词：不是彻底删，移进 历史记录/提示词/第N段/原名__时间.后缀，跟着它的几样用同一个时间一起走。
    流水线.json 里这一条的「选定」「沿用」、参考素材映射里这一条的登记一起去掉。出过的样片不动；别的条不改名（改了，样片名、任务书就对不上） */
@@ -603,11 +542,11 @@ async function removePrompt(s, e) {
   await loadSides(); await loadExtra(); rerender();
   toast(left.length ? '删了，可这几样没移走：' + left.join('、') : '删了，在 历史记录 / ' + rel.join(' / ') + ' 里', left.length ? 'err' : undefined);
 }
-/* 一条改过几版（审片以后照修改方案另存的 _改1、_改2……）：摆的是最新那一版；能和上一版比、看上一版 */
+/* 一条改过几版（审片以后另存的 _改1、_改2……）：摆的是最新那一版；能和上一版比、看上一版 */
 function verLine(s, e) {
   if (!e.vers || e.vers.length < 2) return null;
   const prev = e.vers[e.vers.length - 2];
-  return h('p', { class: 'fn-note', style: 'margin:8px 0 0' }, '这一条照审片的修改方案改过，摆的是最新的「' + vpLabel(e.name) + '」：改稿、生成任务书、出片都用它。前几版（' + e.vers.slice(0, -1).map(vpLabel).join('、') + '）留在原处没动。',
+  return h('p', { class: 'fn-note', style: 'margin:8px 0 0' }, '这一条审片以后改过，摆的是最新的「' + vpLabel(e.name) + '」：改稿、出片都用它。前几版（' + e.vers.slice(0, -1).map(vpLabel).join('、') + '）留在原处没动。',
     h('button', { class: 'fl-link', type: 'button', title: '一行一行比：删的划掉，加的标绿', onclick: () => diffDlg(s, prev, e.name) }, '和上一版比'),
     h('button', { class: 'fl-link', type: 'button', onclick: () => openShell(at([...dirOf(s), prev]), '第' + s.段 + '场 · ' + vpLabel(prev)) }, '看上一版'));
 }
@@ -628,7 +567,7 @@ function notesBox(s, e, note) {
       x.find ? h('div', { class: 'faint small' }, '原文：' + x.find) : null,
       x.why ? h('div', { class: 'faint small' }, '原因：' + x.why) : null,
       x.to ? h('div', { class: 'small', style: 'color:var(--dai)' }, '改成：' + x.to) : null))) : null,
-    open ? h('p', { class: 'faint small', style: 'margin-top:6px;font-family:var(--sans)' }, e.draft ? '点「接着写」，在右边一条一条照改或者不采纳。' : '要照哪一条改：点「打开看、写批注」，在那一行写批注，再交给 AI 改。') : null);
+    open ? h('p', { class: 'faint small', style: 'margin-top:6px;font-family:var(--sans)' }, e.draft ? '点「进去改」，在右边一条一条照改或者不采纳。' : '要照哪一条改：点「打开看、写批注」，在那一行写批注，再交给 AI 改。') : null);
 }
 /* 这一条挂的白模：看、去掉；白模改过要你看一眼 */
 function bmLine(s, e) {
@@ -649,26 +588,6 @@ function frameLine(s, e, skip) {   // skip：下面「出关键帧」那一块�
   return h('div', { class: 'wf-item-bm' }, h('span', { class: 'fs-state zhen' }, '关键帧'),
     fr.map(r => h('span', { class: 'wf-bm' }, h('button', { class: 'fl-link', type: 'button', title: '看这张关键帧：' + r.path, onclick: () => openImage(r.path) }, r.name), h('span', { class: 'faint small' }, r.ref))),
     e.draft ? h('button', { class: 'fl-link mute', type: 'button', title: '多挂几张、去掉几张：素材里的关键帧句子跟着重排', onclick: () => framesDlg(s, e) }, '改…') : null);
-}
-/* 挂了白模又挂了关键帧、还是普通写法的你来写稿：换成白模＋关键帧的写法（删哪几句先摆出来给你看） */
-async function toBmkRow(s, e) {
-  const vid = vidRefs(e)[0];
-  if (!vid) return;
-  let raw;
-  try { raw = C.decodeText((await FS.read(at([...dirOf(s), e.name]))).buf).text; } catch (err) { toast('稿子读不了：' + err.message, 'err'); return; }
-  const cuts = await cutsOfVid(vid.path), pre = BmKey.toBmk(raw, { vid: vid.ref, frames: frameRefsOf(s, e), cuts });
-  if (!(await confirmDlg({ title: '换成白模＋关键帧写法 · ' + e.label, body: '这一条挂了白模又挂了关键帧，要' + BMK_HOW(cuts) + (pre.removed.length ? '这 ' + pre.removed.length + ' 句会删掉：' + pre.removed.map(l => '「' + l + '」').join('') : '') + '改之前的一版收进历史记录。', ok: '换过去' }))) return;
-  const ok = await editDraft(s, e, (text, side) => ({ text: BmKey.toBmk(text, { vid: vid.ref, frames: frameRefsOf(s, e, side), cuts }).text, 挂图: side.挂图 }));
-  if (ok) toast('换好了。打开接着写，' + (cuts.length ? '看一眼每一镜开头的秒数' : '把每一镜开头的〔起〕〔止〕填成整秒'));
-}
-/* 白模＋关键帧的稿写得对不对：照官方写了的标「白模＋关键帧写法」（秒数有问题的标几处要改），还是普通写法的标出来，你来写的稿能一下换过去 */
-function bmkBadge(s, e) {
-  const bk = X.bmk.get(e.name), red = 'color:var(--zhu);border-color:var(--zhu-line)';
-  if (!bk) return null;
-  if (bk.ok) return h('span', { class: 'fs-state bm', style: bk.issues.length ? red : null, title: '挂了白模又挂了关键帧：照官方指南写，每一镜开头写它在白模里的整秒和参考哪张' + (bk.issues.length ? '。还要改：' + bk.issues.map(x => x.msg).join('；') : '') },
-    '白模＋关键帧写法' + (bk.issues.length ? ' · ' + bk.issues.length + ' 处要改' : ''));
-  return [h('span', { class: 'fs-state', style: red, title: '挂了白模又挂了关键帧，可还是普通写法：生成任务书时会拦下。' + (e.draft ? '点「换写法…」' : '点「进去改」换，或者写批注让 AI 改') }, '要换成白模＋关键帧写法'),
-    e.draft ? h('button', { class: 'fl-link', type: 'button', title: '素材换成官方的三句，事件脚本每一镜开头写秒数和参考哪张。删哪几句先给你看', onclick: () => toBmkRow(s, e) }, '换写法…') : null];
 }
 /* ---------- 出关键帧（2026-11-14 文生资产流程图 ⑧，他定的：关键帧在这一步做）：哪一条要关键帧，就在那一条上点「出关键帧…」，定取哪一刻。
    AI 照这一条的分镜写字 → 你批字 → 点「照这个出图」（用到的人物、场景、道具图都确认可用了才出）→ AI 核图 → 你批图 → 确认可用。
@@ -843,45 +762,60 @@ function frameWordLine(s, e, ws, edit) {   // edit：上面那一行没摆（挂
       edit && e.draft && hung.size ? h('button', { class: 'fl-link mute', type: 'button', title: '多挂几张、去掉几张：素材里的关键帧句子跟着重排', onclick: () => framesDlg(s, e) }, '改…') : null),
     h('div', { class: 'wf-grid' }, ws.map(w => kfChip(s, e, w, hung.get(w.img) || ''))));
 }
-/* AI 铺底（2026-11-14 加在这里，11-15 他要挪进写稿页）：在写稿页分区按钮那一行最右边，点「接着写」「进去改」进去点 */
+/* 补片稿（审片后只换有毛病的几秒，AGENTS.md：原名_补1.txt、_补2）：不算一版，摆在它补的那一版这一条下面，能看稿、批准出片。
+   页面不写补片稿，是你和你的 AI 写的；片子出到样片旁边的 样片名_补片/补N.mp4，剪进样片在剪映里做（2026-11-16 加） */
+function patchesOf(s, e) {
+  const rec = F.names.get(s.段);
+  return rec ? [...rec.set].filter(n => { const p = window.Core.vpPatchOf(n); return p && e.vers.includes(p.of); }).sort((a, b) => a.localeCompare(b, 'zh', { numeric: true })) : [];
+}
+function patchRow(s, name) {
+  const p = window.Core.vpPatchOf(name), pt = window.Core.patchOut(segName(s.段), name, clipsOf(s.段).vids), tf = taskOf(name);
+  const pe = { name, key: name, label: vpLabel(name), vers: [name], draft: false, patch: true };   // 批准出片照普通的一条走：稿子、参考素材映射里这份稿的登记
+  const jobs = AI.jobs.filter(j => j.段 === s.段 && jobLive(j) && (j.名 === name || j.名 === tf)), busy = jobs.length > 0;
+  return [h('div', { class: 'wf-item-task', 'data-name': name },
+    h('b', null, '补' + p.no), h('span', { class: 'faint small' }, name),
+    h('span', { class: 'fn-note' + (pt ? '' : ' warn'), title: pt ? '补的样片：' + pt.sample + '\n片子出到：成片 / ' + segName(s.段) + ' / ' + pt.dir + ' / ' + pt.file : null },
+      pt ? '补第' + pt.no + '条样片' : '成片里没找到「' + vpLabel(p.of) + '」出的样片'),
+    h('span', { class: 'sp' }),
+    h('button', { class: 'fl-link', type: 'button', title: '看补片稿；@图片 点一下能看图', onclick: () => openShell(at([...dirOf(s), name]), '第' + s.段 + '场 · ' + pe.label) }, '看稿'),
+    h('button', { class: 'btn sm zhu', type: 'button', disabled: busy || !AI.ok || !pt, title: pt ? '选好怎么出，页面排好任务书，就交给 Codex 去即梦出这一段。要花积分' : '先要有这一版出的样片', onclick: () => approve(s, pe) }, '批准出片'),
+    X.tasks.has(tf) ? h('button', { class: 'fl-link', type: 'button', title: '上回批准出片时排的任务书：' + tf, onclick: () => showText(at([...dirOf(s), tf])) }, '看任务书') : null),
+    jobs.length ? h('div', { class: 'wf-jobs' }, jobs.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题.replace(/ · .*/, ''))))) : null,
+    busy ? null : jobFailed('出片任务书', s.段, j => j.名 === name) || jobFailed('出片', s.段, j => j.名 === tf)];
+}
+/* 一条提示词那一行 */
 function rowOf(s, e) {
   const tf = taskOf(e.name), stale = promptStale(s, e.name), hasTask = X.tasks.has(tf), imp = stale ? impactPrompt(s, e.name) : null;   // imp：影响清单说这一条要再看
-  const tt = hasTask ? timeOfFile(s, tf) : 0, bmNewer = !!tt && vidRefs(e).some(r => { const v = vidOf(r.path); return !!v && v.mtime > tt + 999; });   // 任务书生成以后白模又重渲过：任务书里记的白模校验值对不上了
-  const taskOld = !!tt && (tt + 999 < timeOfFile(s, e.name) || bmNewer);   // 任务书生成以后提示词又改过：任务书里记的校验值对不上了
   const jobs = AI.jobs.filter(j => j.段 === s.段 && jobLive(j) && (j.名 === e.name || j.名 === tf));
   const note = X.notes.get(e.name), busy = jobs.length > 0, bmOld = bmStale(s, e), bmLost = vidRefs(e).some(r => !vidOf(r.path));
   const kws = frameWs(s, e), inStrip = new Set(kws.map(w => w.img)), restFr = frameRefsOf(s, e).filter(r => !inStrip.has(r.path));   // 这一条的关键帧（出关键帧那一套）
-  const bk = X.bmk.get(e.name), bmkBad = !!bk && (!bk.ok || bk.issues.length > 0);   // 挂了白模又挂了关键帧：没照官方写、秒数不对，先不让生成任务书（本机服务那头也拦）
   const btn = (label, fn, cls, title, off) => h('button', { class: 'btn sm ' + (cls || ''), type: 'button', title: title || null, disabled: !!off, onclick: fn }, label);
   const see = () => openShell(at([...dirOf(s), e.name]), '第' + s.段 + '场 · ' + e.label);
   return h('div', { class: 'wf-item', 'data-name': e.name },
-    h('div', { class: 'wf-item-h' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), e.draft ? h('span', { class: 'fs-state', title: '可在分镜模式或自由模式里继续写' }, '手写稿') : null,
+    h('div', { class: 'wf-item-h' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), e.draft ? h('span', { class: 'fs-state', title: '在写稿页里改过：AI 估的每镜秒数可能不准，出片时会提醒' }, '改过') : null,
       stale ? [h('span', { class: 'fs-state', style: 'color:var(--zhu);border-color:var(--zhu-line)', title: imp ? '剧本重新定稿了，AI 对新旧剧本说这一条要再看：' + imp.为什么 : '这一条写好以后，前面（剧本、资产、拍摄风格）又动过。打开看一眼还对得上' }, imp ? '剧本改了，待核对' : '待核对'),
         h('button', { class: 'fl-link', type: 'button', title: '看过了，还对得上，就用这一版', onclick: () => { keepAsIs(s, '提示词/' + e.name); rerender(); } }, '还对得上，沿用')] : null,
-      bmkBadge(s, e),
       h('span', { class: 'sp' }),
-      e.draft ? btn('接着写', () => openWrite(s.段, e.name), 'ink', '打开分镜或自由写稿，右栏看资产、AI 批注、校对和剧本')
-        : [btn('进去改', () => openWrite(s.段, e.name), 'ink', 'AI 写的稿也能自己改：在写稿页里打开，改完点「回到流水线」就存好。打开过一次，这一条就算手写稿（按钮变成「接着写」）'),
+      e.draft ? btn('进去改', () => openWrite(s.段, e.name), 'ink', '在写稿页里打开，自己改字；右栏看资产、AI 批注、校对和剧本')
+        : [btn('进去改', () => openWrite(s.段, e.name), 'ink', 'AI 写的稿也能自己改：在写稿页里打开，改完点「回到流水线」就存好。改过以后，AI 估的每镜秒数可能不准，出片时会提醒'),
           btn('打开看、写批注', see, '', '在这里看提示词、点一段写批注，再交给 AI 改；@图片 点一下能看图')],
       e.draft ? h('button', { class: 'fl-link', type: 'button', title: '看排好的样子、历史版本；@图片 点一下能看图', onclick: see }, '看排好的') : null,
       e.draft && !vidRefs(e).length ? h('button', { class: 'fl-link', type: 'button', title: '挑一段这一段文件夹里的白模视频挂在这一条上', onclick: () => attachBm(s, e) }, '挂白模…') : null,
       e.draft && framesOf(s).length && !frameRefsOf(s, e).length ? h('button', { class: 'fl-link', type: 'button', title: '挑资产那一步「关键帧」一块里的图挂在这一条上', onclick: () => framesDlg(s, e) }, '挂关键帧…') : null,
       h('button', { class: 'fl-link', type: 'button', title: '这一条要关键帧：定取哪一刻，AI 照这一条的分镜先写字，你批过再出图', onclick: () => outFrameDlg(s, e) }, '出关键帧…'),
       btn('让 AI 批一批', () => startJob({ 事: '批注提示词', 段: s.段, 名: e.name }).then(rerender), '', '让 ' + chName() + ' 对着剧本和提示词的规矩看一遍，最多批 8 条。只批不改', busy || !AI.ok),
-      btn(hasTask ? '重新生成任务书' : '生成任务书', () => makeTask(s, e), hasTask && !taskOld ? '' : 'ink', bmLost ? '挂的白模文件不在了：先去掉或者放回去' : bmkBad ? (bk.ok ? '白模＋关键帧的秒数还要改：' + bk.issues[0].msg : '挂了白模又挂了关键帧，可还是普通写法：先换成白模＋关键帧的写法') : '把出片要用的东西排成一份任务书。这一步不出片、不花积分', busy || !AI.ok || bmLost || bmkBad),
+      btn('批准出片', () => approve(s, e), 'zhu', bmLost ? '挂的白模文件不在了：先去掉或者放回去' : stale ? '这一条待核对：先看一眼，点「沿用」或者改好' : bmOld ? '白模改过：先看一眼，点「还对得上」或者改好' : '选好怎么出（模型、清晰度、秒数、积分上限），页面排好任务书，就交给 Codex 去即梦出一条样片。要花积分', busy || !AI.ok || stale || bmOld || bmLost),
+      hasTask ? h('button', { class: 'fl-link', type: 'button', title: '上回批准出片时排的任务书：' + tf, onclick: () => showText(at([...dirOf(s), tf])) }, '看任务书') : null,
       h('button', { class: 'fl-link mute', type: 'button', title: busy ? 'AI 正在做这一条，做完再删' : '移进历史记录，不是彻底删掉', onclick: () => removePrompt(s, e) }, '删除')),
     imp ? h('p', { class: 'fn-note warn', style: 'margin:8px 0 0' }, '剧本改了：' + imp.为什么) : null,
     verLine(s, e),
+    patchesOf(s, e).map(n => patchRow(s, n)),
     bmLine(s, e),
     frameLine(s, e, inStrip),
     frameWordLine(s, e, kws, !restFr.length),
     jobs.length ? h('div', { class: 'wf-jobs' }, jobs.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题.replace(/ · .*/, ''))))) : null,
-    busy ? null : jobFailed('直接铺底', s.段, j => j.名 === e.name) || jobFailed('写提示词', s.段, j => j.名 === e.name) || jobFailed('批注提示词', s.段, j => j.名 === e.name) || jobFailed('按批注改提示词', s.段, j => j.名 === e.name) || jobFailed('出片任务书', s.段, j => j.名 === e.name) || jobFailed('出片', s.段, j => j.名 === tf)
+    busy ? null : jobFailed('写提示词', s.段, j => j.名 === e.name) || jobFailed('批注提示词', s.段, j => j.名 === e.name) || jobFailed('按批注改提示词', s.段, j => j.名 === e.name) || jobFailed('出片任务书', s.段, j => j.名 === e.name) || jobFailed('出片', s.段, j => j.名 === tf)
       || jobFailed('写字', s.段, j => (j.只提示词 || []).includes(e.name)) || jobFailed('出图', s.段, j => j.类别 === '关键帧' && kws.some(w => w.stem === j.文件名)) || jobFailed('改图', s.段, j => j.类别 === '关键帧' && kws.some(w => w.stem === j.文件名)),
-    hasTask ? h('div', { class: 'wf-item-task' }, h('span', { class: 'fn-note' + (taskOld ? ' warn' : '') }, taskOld ? (bmNewer ? '白模在任务书之后重渲过' : '提示词在任务书之后改过') + '：先重新生成任务书，再出片。' : '出片任务书：' + tf),
-      h('button', { class: 'fl-link', type: 'button', onclick: () => showText(at([...dirOf(s), tf])) }, '看任务书'),
-      h('span', { class: 'sp' }),
-      btn('批准出片', () => approve(s, e), 'zhu', stale ? '这一条待核对：先看一眼，点「沿用」或者改好' : bmOld ? '白模改过：先看一眼，点「还对得上」或者改好' : bmkBad ? '挂了白模又挂了关键帧：照白模＋关键帧的写法写好、重新生成任务书再出片' : '把任务书交给 Codex 去即梦出一条样片。要花积分，点了以后还会让你再确认一次', busy || !AI.ok || stale || taskOld || bmOld || bmLost || bmkBad)) : null,
     note ? notesBox(s, e, note) : null);
 }
 function render() {
@@ -890,8 +824,8 @@ function render() {
   const writing = AI.jobs.filter(j => j.事 === '写提示词' && j.段 === seg && jobLive(j) && !list.some(e => e.name === j.名));
   return [
     h('div', { class: 'wf-bar' },
-      h('span', { class: 'fn-note' + (stale.length ? ' warn' : '') }, stale.length ? stale.length + ' 条待核对：它们写好以后，前面（剧本、资产、拍摄风格）又动过。打开看一眼，还对得上就点「沿用」，对不上就改；AI 写的几块，进去点「AI 铺底」，AI 先看要不要改。'
-        : list.length ? '一条提示词出一条视频。写好了让 AI 批一批；满意了生成任务书，再点「批准出片」。'
+      h('span', { class: 'fn-note' + (stale.length ? ' warn' : '') }, stale.length ? stale.length + ' 条待核对：它们写好以后，前面（剧本、资产、拍摄风格）又动过。打开看一眼，还对得上就点「沿用」，对不上就写批注让 AI 改，或者进去自己改。'
+        : list.length ? '一条提示词出一条视频。写好了让 AI 批一批；满意了点「批准出片」。'
           : PROMPT_BTN ? '还没有提示词。点「写提示词」写第一条；写几条，这场戏就分几条（一条一般十五秒，Seedance 2.5 最长三十秒）。' : '还没有提示词。写提示词的入口先收起来了：稿子放进「提示词 / ' + segName(seg) + '」（名字是「视频提示词.txt」「视频提示词_02.txt」这样的），这里自动出现。'),
       h('span', { class: 'sp' }),
       stale.length > 1 ? h('button', { class: 'btn sm', title: '都看过了，都还对得上', onclick: () => { for (const e of stale) keptOf(s)['提示词/' + e.name] = nowText(); touch(); rerender(); } }, '都沿用') : null,

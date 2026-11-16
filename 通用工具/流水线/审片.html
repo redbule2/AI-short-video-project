@@ -23,29 +23,18 @@
    流水线 · 审片（一场的第五道工序）
    这一场出的样片都在 成片/第N段。一条一条看、写批注（审片台.html：旁边对照提示词、白模、关键帧；批注格式和「项目管理」审片那一样）：
      满意：选定它是哪一条提示词的成品；每一条都选定了，再连起来检查衔接，点「这一场定稿」。
-     不满意、东西不改：回「提示词」那一步再批准出一条。
-     不满意、要改：让 AI 照批注出一份修改方案（不改稿）→ 在审片台「方案」那一页逐条定 → 照方案改，另存一份「原名_改1.txt」（原稿不动），回提示词那一步出片（2026-11-14 他定）。
-     不在提示词里改的（长相、台词），方案里会说回哪一道；「回头改…」去那一道。
-   没选上的样片及时移进 历史记录/成片/第N段（批注、修改方案跟着一起移，名字不改）。
+     不满意：写批注 → 点「复制批注」贴给你自己的 AI，商量怎么改 → 回前面那一道重新走（多半是「提示词」那一步改稿、再批准出片）。
+     审片只批注，不出方案（2026-11-15 他定）。
+   没选上的样片及时移进 历史记录/成片/第N段（批注、截图、补片文件夹跟着一起移，名字不改）。
    共用的东西（读写流水线.json、顶栏、步骤条、AI 任务）在 流水线.js。
    ============================================================ */
 'use strict';
-const X = { tips: new Map(), plans: new Map(), open: new Set(), sty: false, map: new Map() };   // map：参考素材映射里这一场各条提示词的登记（字里的 @图片N 点开看大图用）   // 视频名 → AI 的建议（老的）、修改方案；展开着的；风格对照展没展开
-const PLAN_TAIL = '_修改方案.md', PLAN_NOTE_TAIL = '_修改方案_批注.md';
-const planOk = () => AI.ok && LINK.v >= 8;   // 本机服务第 8 版起有「修改方案」「照方案改」
+const X = { sty: false, map: new Map() };   // sty：风格对照展没展开；map：参考素材映射里这一场各条提示词的登记（字里的 @图片N 点开看大图用）
 const stemOf2 = n => n.replace(/\.[^.]+$/, '');
 const dirOf = s => [F.name, '成片', segName(s.段)];
 async function loadExtra() {
   const s = sceneNow();
   if (!s) return;
-  X.tips = new Map();
-  for (const n of clipsOf(s.段).all) if (/_AI建议\.md$/.test(n)) {
-    try { X.tips.set(n.replace(/_AI建议\.md$/, ''), C.decodeText((await FS.read(at([...dirOf(s), n]))).buf).text); } catch (e) { /* 读不了就当没有 */ }
-  }
-  X.plans = new Map();
-  for (const n of clipsOf(s.段).all) if (n.endsWith(PLAN_TAIL)) {
-    try { X.plans.set(n.slice(0, -PLAN_TAIL.length), planHead(C.decodeText((await FS.read(at([...dirOf(s), n]))).buf).text)); } catch (e) { /* 读不了就当没有 */ }
-  }
   try { if (styleName(s)) await loadStyles(); } catch (e) { /* 风格库读不了：不摆风格对照 */ }
   const map = new Map(), pre = '提示词/' + segName(s.段) + '/';
   try { for (const [k, v] of Object.entries((await readJson(at([F.name, '资产', '参考素材映射.json']))).prompts || {})) if (k.startsWith(pre)) map.set(k.slice(pre.length), Array.isArray(v && v.references) ? v.references : []); } catch (e) { /* 还没有映射 */ }
@@ -77,19 +66,13 @@ function verOf(s, vid, e) {
   if (rec && e.vers.includes(rec.提示词)) return rec.提示词;
   return e.vers.length === 1 ? e.vers[0] : '';
 }
-/* 修改方案：照哪一版出的、几条、总的看法、改成了哪一版。读法和审片台、本机服务同一份（公用/审片.js 的 parsePlan），条数也和审片台一样数 */
-function planHead(md) {
-  const P = Review.parsePlan(md), last = P.done.length ? P.done[P.done.length - 1] : '';
-  return { src: P.提示词.split('/').pop(), sum: P.总, n: P.items.length, at: P.出方案, done: P.done, last: last.replace(/（.*$/, '').split('/').pop() };
-}
 /* 对照看片、写批注：审片台.html 整页盖上来（样片旁边对照提示词、白模、关键帧、资产图，批注照旧存在样片旁边）。
    它自己有「← 回审片」：先问它一声（没存的批注先存上），再收起、重读 */
-function openDesk(s, vid, list, tab) {   // tab：一打开就看哪一页（plan：修改方案）
+function openDesk(s, vid, list) {
   closePop(); hideHov();
   if (SHELL) SHELL.remove();
   const q = new URLSearchParams({ p: F.name, s: s.段, v: vid }), e = list.find(x => x.key === guess(s, vid, list)), pr = verOf(s, vid, e) || (e ? e.name : '');
   if (pr) q.set('pr', pr);
-  if (tab) q.set('tab', tab);
   const frame = h('iframe', { class: 'wf-shell-frame', title: '对照审片', src: '审片台.html?' + q });
   const close = async () => {
     if (!SHELL) return;
@@ -104,15 +87,15 @@ function openDesk(s, vid, list, tab) {   // tab：一打开就看哪一页（pla
   document.body.append(SHELL); document.body.classList.add('wf-covered');
   frame.addEventListener('load', () => { try { frame.contentWindow.focus(); } catch (e) { /* 不要紧 */ } });
 }
-/* 没选上的样片：移进 历史记录/成片/第N段，批注、截图、AI 建议、修改方案跟着一起移，名字不改 */
+/* 没选上的样片：移进 历史记录/成片/第N段。旁边带它名字的批注、截图、补片文件夹（还有以前的 AI 建议、修改方案）跟着一起移，名字不改 */
 async function retire(s, vid) {
   if (AI.jobs.some(j => jobLive(j) && j.段 === s.段 && j.视频 === vid)) { toast('AI 正在照这条样片做事，做完再移', 'err'); return; }
-  if (!(await confirmDlg({ title: '这条不要了', body: vid + ' 移进这个项目的「历史记录 / 成片 / ' + segName(s.段) + '」，它的批注、截图、修改方案跟着一起移，名字不改。照方案改出来的提示词留在原处。', ok: '移进历史记录' }))) return;
-  const all = clipsOf(s.段).all, stem = stemOf2(vid), dest = [F.name, '历史记录', '成片', segName(s.段)];
-  const names = [vid, stem + '_批注.md', stem + '_AI建议.md', stem + PLAN_TAIL, stem + PLAN_NOTE_TAIL].filter(n => all.has(n));
+  if (!(await confirmDlg({ title: '这条不要了', body: vid + ' 移进这个项目的「历史记录 / 成片 / ' + segName(s.段) + '」，它的批注、截图、补片文件夹跟着一起移，名字不改。改出来的提示词留在原处。', ok: '移进历史记录' }))) return;
+  const stem = stemOf2(vid), dest = [F.name, '历史记录', '成片', segName(s.段)];
+  const names = [vid, ...[...clipsOf(s.段).all].filter(n => n.startsWith(stem + '_') && n.endsWith('.md'))];
   try {
     for (const n of names) await FS.move(at([...dirOf(s), n]), at([...dest, n]));
-    if (await FS.isDir(at([...dirOf(s), stem + '_批注截图']))) await FS.move(at([...dirOf(s), stem + '_批注截图']), at([...dest, stem + '_批注截图']));
+    for (const d of [stem + '_批注截图', stem + '_补片']) if (await FS.isDir(at([...dirOf(s), d]))) await FS.move(at([...dirOf(s), d]), at([...dest, d]));
   } catch (e) { toast('没移走：' + e.message, 'err'); }
   const sel = selOf(s);
   for (const k of Object.keys(sel)) if (sel[k] === vid) { delete sel[k]; s.成片定稿 = ''; }
@@ -121,38 +104,24 @@ async function retire(s, vid) {
 /* 回头改：回哪一道由你定 */
 function backMenu(anchor, s) {
   popover(anchor, close => [h('div', { class: 'fl-pop-h' }, '回哪一道工序改'),
-    h('div', { class: 'fl-pl' }, [['设定', '工序一　全片设定', '人物、场景、道具写得不对，拍摄风格不合适'], ['分场', '工序二　段落', '这一场的事要改'], ['剧本', '工序二　剧本', '台词、动作要改'], ['资产', '工序三　资产', '长相、道具的样子不对'], ['提示词', '工序四　提示词', '镜头、表演的写法要改；或者只是重出一条']]
+    h('div', { class: 'fl-pl' }, [['设定', '工序一　全片设定', '人物、场景、道具写得不对，拍摄风格不合适'], ['剧本', '工序二　剧本', '这一场的事、台词、动作要改'], ['分场', '工序二　段落', '段落分得不对'], ['资产', '工序三　资产', '长相、道具的样子不对'], ['提示词', '工序四　提示词', '镜头、表演的写法要改；或者只是重出一条']]
       .map(([page, name, why]) => h('button', { type: 'button', class: 'fl-pi', onclick: () => { close(); go(page, page === '设定' ? null : { s: s.段 }); } }, h('span', { class: 'pn' }, h('b', null, name), h('small', null, why))))),
     h('div', { class: 'fl-pop-f' }, h('span', { class: 'fn-note' }, '改了前面的东西，后面用到它的会标成「待核对」。'))]);
 }
-/* 不满意、要改：修改方案那一行。没批注 → 先写批注；有批注 → 让 AI 出方案；有方案 → 到审片台逐条定、照方案改；改好了 → 去提示词那一步出片 */
-function planRow(s, vid, list) {
-  const stem = stemOf2(vid), tm = clipsOf(s.段).time, noted = clipsOf(s.段).all.has(stem + '_批注.md'), plan = X.plans.get(stem);
-  const mk = jobOf('修改方案', s.段, j => j.视频 === vid), fix = jobOf('按方案改提示词', s.段, j => j.视频 === vid), live = [mk, fix].find(jobLive);
-  if (live) return [jobLine(live), h('span', { class: 'fn-note' }, live.事 === '修改方案' ? '在出修改方案' : '在照方案改')];
-  const e = list.find(x => x.key === guess(s, vid, list)), src = verOf(s, vid, e) || (e ? e.name : '');
-  const old = !planOk() ? '本机服务要重开一下才有这一步（跟 Claude 说一声）' : '';
-  const ask = (again) => startJob({ 事: '修改方案', 段: s.段, 视频: vid, 名: src }).then(j => { if (j && again) X.open.add(stem); rerender(); });
-  const failed = jobFailed('按方案改提示词', s.段, j => j.视频 === vid) || jobFailed('修改方案', s.段, j => j.视频 === vid);
-  if (!plan) return [h('button', { class: 'btn sm' + (noted ? ' ink' : ''), type: 'button', disabled: !noted || !!old || !AI.ok, title: old || (noted ? '让 ' + chName() + ' 照你的批注出一份修改方案：每条说清哪里不对、为什么、提示词怎么改。这一回不改稿；你在审片台逐条定过，再照方案改，另存一份「…_改1.txt」，原稿不动' : '先点「对照看片、写批注」写下哪里不满意'), onclick: () => ask(false) }, '不满意：让 AI 出修改方案'), failed];
-  const newer = (tm.get(stem + '_批注.md') || 0) > (tm.get(stem + PLAN_TAIL) || 0) + 999;   // 方案出了以后批注又改过
-  const fresh = plan.last && list.some(x => x.vers.includes(plan.last));
-  return [h('button', { class: 'btn sm' + (plan.done.length ? '' : ' ink'), type: 'button', title: '在审片台「方案」那一页看：每一条旁边能对照片子那一刻、提示词那一句；照这样改、不改，或者写你的意见', onclick: () => openDesk(s, vid, list, 'plan') }, plan.done.length ? '看修改方案' : '看方案、逐条定'),
-    fresh ? h('button', { class: 'btn sm ink', type: 'button', title: '到提示词那一步：' + plan.last + ' 生成任务书、批准出片', onclick: () => go('提示词', { s: s.段 }) }, '去出片 →') : null,
-    newer ? h('span', { class: 'fn-note warn', title: '方案是照之前的批注出的' }, '批注在方案之后改过') : null,
-    h('button', { class: 'fl-link', type: 'button', disabled: !!old || !AI.ok, title: old || '照现在的批注重出一份：这一份和你批的收进历史记录', onclick: async () => { if (await confirmDlg({ title: '重出修改方案', body: '照现在的批注让 ' + chName() + ' 重出一份。这一份方案和你逐条定的，收进历史记录' + (plan.done.length ? '；已经改出来的提示词不动' : '') + '。', ok: '重出' })) ask(true); } }, '重出方案'), failed];
-}
-function planBox(s, vid) {
-  const plan = X.plans.get(stemOf2(vid));
-  if (!plan) return null;
-  return h('div', { class: 'fl-aibox' }, h('div', { class: 'fl-aibox-h' }, '修改方案', h('span', { class: 'faint small', style: 'letter-spacing:0;font-family:var(--sans)' }, plan.n + ' 条' + (plan.src ? ' · 照 ' + vpLabel(plan.src) + ' 出的' : '') + (plan.at ? ' · ' + plan.at.slice(5, 16) : ''))),
-    plan.sum ? h('p', null, plan.sum) : null,
-    plan.done.length ? h('p', { class: 'small', style: 'color:var(--dai)' }, icon('check'), ' 照方案改好了：' + vpLabel(plan.last) + '（' + plan.last + '）' + (promptsOf(s.段).some(e => e.vers.includes(plan.last)) ? '。原稿没动；到提示词那一步生成任务书、出片。' : '，这一版后来删了（在历史记录里）。'))
-      : h('p', { class: 'faint small' }, '还没改稿。点「看方案、逐条定」：同意的不用动，不同意的点「不改」，要换说法的写一句；定好点「照方案改」。'));
+/* 不满意：这条的批注复制下来，贴给你自己的 AI 商量怎么改（审片只批注、不出方案：2026-11-15 他定）。
+   批注文件里记着样片、提示词的完整路径，截图在旁边的文件夹 */
+const absOf = parts => LINK.abs ? [LINK.abs, ...parts].join('\\') : parts.join('/');
+async function copyNotes(s, vid) {
+  const stem = stemOf2(vid), file = at([...dirOf(s), stem + '_批注.md']), shots = at([...dirOf(s), stem + '_批注截图']);
+  let md;
+  try { md = C.decodeText((await FS.read(file)).buf).text.replace(/^\uFEFF/, '').trim(); } catch (e) { toast('批注读不了：' + e.message, 'err'); return; }
+  const pics = await FS.isDir(shots).catch(() => false);
+  const head = '我审第' + s.段 + '场的样片「' + vid + '」写了批注，文件在 ' + absOf(file) + (pics ? '，截图在 ' + absOf(shots) : '') + '。先跟我商量怎么改，商量定了再动手；改好了我回流水线重新走。';
+  await copyText(head + '\n\n' + md + '\n', '复制好了：贴给你自己的 AI，商量怎么改');
 }
 function cardOf2(s, vid, list) {
   const sel = selOf(s), mine = Object.keys(sel).find(k => sel[k] === vid), stem = stemOf2(vid), all = clipsOf(s.段).all;
-  const noted = all.has(stem + '_批注.md'), tip = X.tips.get(stem), open = X.open.has(stem);
+  const noted = all.has(stem + '_批注.md');
   const stale = !!mine && clipStale(s, mine, vid);   // 选定以后，它那条提示词或者前面几道又动过（改出了新的一版也算）
   const pick = h('select', { class: 'ai-ch-sel', title: '这条样片是哪一条提示词出的' }, [h('option', { value: '' }, '是哪一条的？'), ...list.map(e => h('option', { value: e.key }, labelOf2(e.key)))]);
   pick.value = guess(s, vid, list);
@@ -170,14 +139,11 @@ function cardOf2(s, vid, list) {
       h('button', { class: 'btn sm ink', type: 'button', title: '看样片，旁边随时对照提示词、白模、关键帧和资产图；停在哪一帧就在哪一帧写批注', onclick: () => openDesk(s, vid, list) }, icon('play'), '对照看片、写批注'),
       mine ? h('button', { class: 'btn sm ghost', type: 'button', onclick: drop }, '不选它了') : [pick, h('button', { class: 'btn sm', type: 'button', title: '满意：这一条提示词就用这条样片', onclick: choose }, '满意，选定')]),
     h('div', { class: 'wf-item-task' },
-      planRow(s, vid, list),
+      h('button', { class: 'btn sm' + (noted ? ' ink' : ''), type: 'button', disabled: !noted, title: noted ? '把这条的批注复制下来（带样片、提示词、截图的完整路径），贴给你自己的 AI 商量怎么改' : '先点「对照看片、写批注」写下哪里不满意', onclick: () => copyNotes(s, vid) }, '复制批注'),
       h('button', { class: 'btn sm', type: 'button', title: '不在提示词里改的（长相、道具、台词……）：回那一道工序', onclick: e => backMenu(e.currentTarget, s) }, '回头改…'),
       h('span', { class: 'sp' }),
       mine ? null : h('button', { class: 'fl-link', type: 'button', title: '没选上的样片移进历史记录', onclick: () => retire(s, vid) }, '这条不要了')),
-    planBox(s, vid),
-    tip ? h('div', { class: 'fl-aibox' }, h('div', { class: 'fl-aibox-h' }, 'AI 的建议（老的）', h('span', { class: 'sp' }),
-      h('button', { class: 'fl-link', type: 'button', onclick: () => { open ? X.open.delete(stem) : X.open.add(stem); rerender(); } }, open ? '收起' : '展开')),
-      open ? h('pre', { class: 'mdview', style: 'max-height:none' }, tip.replace(/^# .*\n+/, '')) : h('p', { class: 'faint' }, tip.replace(/^# .*\n+/, '').split('\n').filter(l => l.trim()).pop() || '点「展开」看')) : null);
+    noted && !mine ? h('p', { class: 'fn-note', style: 'margin:6px 0 0' }, '不满意：复制批注贴给你的 AI，商量好怎么改，再回前面那一道重新走（多半是「提示词」那一步改稿、批准出片）。') : null);
 }
 const labelOf2 = vpLabel;
 /* ---------- 连起来看：每条选定的样片按第1条、第2条……的顺序在网页里接着放，不存文件（2026-11-13 和 DeepSeek 商量定的，见 白模与分段_讨论.md）。
@@ -233,9 +199,9 @@ function render() {
   const bar = s.成片定稿 && all
     ? [h('span', { class: 'fs-state ok', title: '定稿的时间：' + s.成片定稿 }, icon('check'), '这一场定稿了 ' + s.成片定稿.slice(5, 16)), h('span', { class: 'fn-note' }, '没选上的样片可以移进历史记录。'), h('span', { class: 'sp' }),
       h('button', { class: 'btn ink', onclick: next ? toNext : () => go('总览') }, next ? '下一场 →' : '回首页 →')]
-    : [h('span', { class: 'fn-note' + (stales.length ? ' warn' : '') }, !vids.length ? '还没有样片。回「提示词」那一步，生成任务书、批准出片；出好了这里自动出现。'
+    : [h('span', { class: 'fn-note' + (stales.length ? ' warn' : '') }, !vids.length ? '还没有样片。回「提示词」那一步，点「批准出片」；出好了这里自动出现。'
       : stales.length ? stales.length + ' 条选定的样片待核对：它出了以后，提示词或者前面几道又动过。再看一遍，还能用就点「沿用」，不能用就回提示词重出。'
-        : all ? (list.length > 1 ? '每一条都选定了。点「连起来看」把选定的几条接着放一遍，衔接没问题就定稿。' : '选定了。没问题就定稿。') : '一条一条看。满意的选定它是哪一条提示词的成品（' + done.length + '/' + list.length + '）；不满意的写批注。'), h('span', { class: 'sp' }),
+        : all ? (list.length > 1 ? '每一条都选定了。点「连起来看」把选定的几条接着放一遍，衔接没问题就定稿。' : '选定了。没问题就定稿。') : '一条一条看。满意的选定它是哪一条提示词的成品（' + done.length + '/' + list.length + '）；不满意的写批注，复制给你的 AI 商量怎么改。'), h('span', { class: 'sp' }),
     h('button', { class: 'btn sm', onclick: () => go('提示词', { s: seg }) }, '← 回提示词（再出一条）'),
     done.length > 1 ? h('button', { class: 'btn sm' + (all ? ' ink' : ''), title: '选定的几条按第1条、第2条……的顺序在网页里接着放，不存文件', onclick: () => playAll(s, list) }, icon('play'), '连起来看') : null,
     all && vids.length ? h('button', { class: 'btn ink', onclick: finish }, '这一场定稿') : null];
@@ -252,12 +218,12 @@ start({
   jobDone() { loadExtra().then(rerender); },
 }).then(() => loadExtra().then(() => { if (F.doc && sceneNow()) rerender(); }));
 
-/* 字里的 @图片N 点开看大图（公用/点图.js）：照这条样片出自的那条提示词认图（修改方案照的那一版 → 选的、猜的那一版） */
+/* 字里的 @图片N 点开看大图（公用/点图.js）：照这条样片出自的那条提示词认图（选的、猜的那一版） */
 if (window.RefPic) RefPic.watch((ref, el) => {
   const s = sceneNow(), card = el.closest('.wf-item[data-vid]');
   if (!s || !card) return null;
-  const vid = card.dataset.vid, list = promptsOf(s.段), e = list.find(x => x.key === guess(s, vid, list)), plan = X.plans.get(stemOf2(vid));
-  const src = (plan && plan.src) || verOf(s, vid, e) || (e ? e.name : ''), r = (X.map.get(src) || []).find(x => x && x.ref === ref);
+  const vid = card.dataset.vid, list = promptsOf(s.段), e = list.find(x => x.key === guess(s, vid, list));
+  const src = verOf(s, vid, e) || (e ? e.name : ''), r = (X.map.get(src) || []).find(x => x && x.ref === ref);
   const p = r ? String(r.path || '').replace(/\\/g, '/') : '';
   if (!/\.(png|jpe?g|webp|gif|avif|bmp)$/i.test(p)) return null;
   const file = p.split('/').pop(), label = ref + ' · ' + file.replace(/\.[^.]+$/, '');

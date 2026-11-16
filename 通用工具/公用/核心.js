@@ -1109,8 +1109,25 @@ const RE_VP = /(^|_)视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i;
 const vpVer = name => +((/_改([0-9]+)\.txt$/i.exec(String(name)) || [])[1] || 0);   // 改的第几版；原稿是 0
 const vpBase = name => String(name).replace(/_改[0-9]+(\.txt)$/i, '$1');   // 这一条的原稿名
 const vpNo = name => { const b = vpBase(name); return /^视频提示词\.txt$/i.test(b) ? 1 : +((/^视频提示词_([0-9]+)\.txt$/i.exec(b) || [])[1] || 0); };   // 第几条；老稿是 0
-const vpLabel = name => { const b = vpBase(name), n = vpNo(b), v = vpVer(name); return (n ? '第' + n + '条' : b.replace(/_?视频提示词\.txt$/i, '').replace(/_/g, ' ') || '整场') + (v ? ' 改' + v : ''); };
-const vpTok = name => { const b = vpBase(name), n = vpNo(b), v = vpVer(name); return (n ? '提示词' + String(n).padStart(2, '0') : b.replace(/_?视频提示词\.txt$/i, '') || '整场') + (v ? '改' + v : ''); };   // 样片名、画布节点名里写的（和样片自己的「第N条」分开）
+/* 补片稿（AGENTS.md：审片后只换有毛病的几秒）：原名_补1.txt、_补2……，补几是第几处，不是版本号；它不算一版，RE_VP 不认它。
+   补的是「原名」那一版出的样片：视频提示词_改2_补1.txt 补「提示词01改2」出的那条，片子放样片旁边的 样片名_补片/补1.mp4（2026-11-16 加） */
+const RE_VP_PATCH = /(^|_)视频提示词(_[0-9]+)?(_改[0-9]+)?_补([0-9]+)\.txt$/i;
+const vpPatchOf = name => { const m = RE_VP_PATCH.exec(String(name)); return m ? { of: String(name).replace(/_补[0-9]+\.txt$/i, '.txt'), no: +m[4] } : null; };   // 补的哪一版、补几
+const vpLabel = name => { const p = vpPatchOf(name); if (p) return vpLabel(p.of) + ' 补' + p.no; const b = vpBase(name), n = vpNo(b), v = vpVer(name); return (n ? '第' + n + '条' : b.replace(/_?视频提示词\.txt$/i, '').replace(/_/g, ' ') || '整场') + (v ? ' 改' + v : ''); };
+const vpTok = name => { const p = vpPatchOf(name); if (p) return vpTok(p.of) + '补' + p.no; const b = vpBase(name), n = vpNo(b), v = vpVer(name); return (n ? '提示词' + String(n).padStart(2, '0') : b.replace(/_?视频提示词\.txt$/i, '') || '整场') + (v ? '改' + v : ''); };   // 样片名、画布节点名里写的（和样片自己的「第N条」分开）
+/* 出片任务书和提示词一一对应：视频提示词_02_改1_补1.txt ↔ 出片任务_02_改1_补1.txt（页面、本机服务都用这一份） */
+const RE_TASK = /出片任务(_[0-9]+)?(_改[0-9]+)?(_补[0-9]+)?\.txt$/i;
+const vpTask = name => String(name).replace(/视频提示词(_[0-9]+)?(_改[0-9]+)?(_补[0-9]+)?\.txt$/i, '出片任务$1$2$3.txt');
+const taskVp = name => String(name).replace(RE_TASK, '视频提示词$1$2$3.txt');
+/* 补片出到哪：seg 是段文件夹名（第1-1段），names 是 成片/第N段 里的文件名。补的那一版出过几条样片，取第几条最大的那条；没出过给 null */
+function patchOut(seg, name, names) {
+  const p = vpPatchOf(name);
+  if (!p) return null;
+  const tok = '_' + vpTok(p.of) + '_', re = /^(.+)_第([0-9]+)条_(.+)\.mp4$/i;
+  let best = null;
+  for (const n of names || []) { const m = re.exec(String(n)); if (m && m[1] === seg && ('_' + m[3] + '_').includes(tok) && (!best || +m[2] > best.no)) best = { no: +m[2], stem: String(n).replace(/\.mp4$/i, '') }; }
+  return best && { no: best.no, sample: best.stem + '.mp4', dir: best.stem + '_补片', file: '补' + p.no + '.mp4', patch: p.no };
+}
 const vpNext = names => { const ns = names.map(vpNo).filter(Boolean); return ns.length ? '视频提示词_' + String(Math.max(...ns) + 1).padStart(2, '0') + '.txt' : '视频提示词.txt'; };   // 下一条叫什么
 
 /* ---------- 深拷贝 / 复制 ---------- */
@@ -1131,7 +1148,7 @@ const Core = {
   parsePrompt, serializePrompt, splitWithEol, joinLines, wrapPara, isBlank, edgeRange, ensureTrailingBlank, promptTemplate, promptSectionKey, promptShotTitle, renumberPromptShots, newPromptShot, PROMPT_SKELETON,
   lintPrompt, lintScript, lintShots, decodeText, hasBom, encodeText, cloneDoc,
   units, redline, diffChars, notesToMd, parseNotes,
-  nameOk, sceneStem, RE_VP, vpVer, vpBase, vpNo, vpLabel, vpTok, vpNext,
+  nameOk, sceneStem, RE_VP, vpVer, vpBase, vpNo, vpLabel, vpTok, vpNext, RE_VP_PATCH, vpPatchOf, RE_TASK, vpTask, taskVp, patchOut,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;
 G.Core = Core;

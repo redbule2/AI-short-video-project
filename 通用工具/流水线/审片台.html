@@ -155,7 +155,7 @@ body.dk { display: block; height: 100vh; overflow: hidden; background: var(--nig
 .kf figcaption { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-top: 6px; font-size: 12.5px; color: var(--ink-2); }
 .kf figcaption .sp { flex: 1; }
 .kf .fc-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 关键帧：弃用了的盖个章、变灰；图下面一排：在图上批注、照批注改图、弃用（11-14） */
+/* 关键帧：弃用了的盖个章、变灰；图下面一排：在图上批注、弃用（11-14） */
 .kf-pic { position: relative; }
 .kf.gone .pic { filter: grayscale(1); opacity: .5; }
 .kf-stamp { position: absolute; left: 10px; top: 10px; padding: 1px 10px; border: 2px solid var(--zhu); border-radius: 4px; background: rgba(255, 251, 243, .92); color: var(--zhu); font: 700 14px var(--serif); letter-spacing: .3em; transform: rotate(-5deg); pointer-events: none; }
@@ -165,7 +165,6 @@ body.dk { display: block; height: 100vh; overflow: hidden; background: var(--nig
 .kf-why-h { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--ink-3); }
 .kf-why-h .sp { flex: 1; }
 .kf-why-t { margin-top: 2px; font: 14px/1.75 var(--kai); color: var(--zhu); white-space: pre-wrap; word-break: break-word; }
-.kf .pj-run { margin: 8px 0 0; }
 .ni-gone { font-size: 11.5px; color: var(--zhu); white-space: nowrap; }
 .fkf { min-width: 0; flex: 1; font-size: 12.5px; color: var(--zhu); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bx-gone { max-width: 320px; color: #f3a08e; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -248,135 +247,9 @@ body.dk { display: block; height: 100vh; overflow: hidden; background: var(--nig
 .ni-shot { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ni-text { font: 14px/1.7 var(--kai); color: var(--zhu); white-space: pre-wrap; word-break: break-word; }
 
-/* 修改方案：一次只看一条（2026-11-15 改版）。点「方案」右边这一栏变宽；
-   上面一排小圆点（总的看法、第 1…N 条、照方案改），中间只摆这一步，最下面一条只放这一步要按的 */
-.dk-main { transition: grid-template-columns .22s ease; }
-.dk-main.wide { grid-template-columns: minmax(0, 1fr) clamp(400px, 48vw, 640px); }
-.pane.plan { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
-.pn-head { flex: none; padding: 12px 18px; border-bottom: 1px solid var(--line); background: var(--sheet); }
-.pn-hrow { display: flex; align-items: flex-start; gap: 12px; }
-.pn-pills { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 7px; }
-.pn-pill { min-width: 26px; height: 26px; padding: 0 8px; display: inline-grid; place-items: center; border: 1px solid var(--line-2); border-radius: 13px; background: transparent; color: var(--ink-3); font: 12px/1 var(--sans); font-variant-numeric: tabular-nums; cursor: pointer; transition: background .15s, border-color .15s, color .15s, box-shadow .15s; }
-.pn-pill:hover { border-color: var(--ink-4); color: var(--ink); }
-.pn-pill.txt { font: 13px/1 var(--kai); letter-spacing: .06em; }
-.pn-pill.tip { border-style: dashed; }
-.pn-pill.d-fix { background: var(--dai); border-color: var(--dai); color: #fff; }
-.pn-pill.d-ok { background: var(--dai-soft); border-color: var(--dai-line); color: var(--dai); }
-.pn-pill.d-say { background: var(--zhu); border-color: var(--zhu); color: #fff8f2; }
-.pn-pill.d-skip { background: var(--paper-2); border-color: var(--line-2); color: var(--ink-4); text-decoration: line-through; }
-.pn-pill.bad { box-shadow: 0 0 0 2px var(--sheet), 0 0 0 3.5px var(--zhu); }
-.pn-pill.cur { box-shadow: 0 0 0 2px var(--sheet), 0 0 0 3.5px var(--ink); }
-.pn-count { flex: none; padding-top: 4px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.pn-head .pj-run { margin: 10px 0 0; }
-.pn-body { flex: 1; min-height: 0; overflow: auto; padding: 22px 24px 30px; }
-.pn-body.enter > * { animation: pnin .2s ease backwards; }
-@keyframes pnin { from { opacity: 0; transform: translateY(6px); } }
-.pn-an { display: block; width: 100%; margin: 0 0 24px; padding: 12px 16px 14px; border: 0; border-left: 3px solid var(--zhu); border-radius: 0 10px 10px 0; background: var(--zhu-soft); text-align: left; font: inherit; color: inherit; }
-button.pn-an { cursor: pointer; }
-button.pn-an:hover { box-shadow: inset 0 0 0 1px var(--zhu-line); }
-.pn-an-h { display: block; margin: 0 0 6px; font: 12px var(--mono); color: var(--ink-3); }
-.pn-an-t { display: block; font: 16px/1.85 var(--kai); color: var(--zhu); white-space: pre-wrap; word-break: break-word; }
-.pn-chs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
-.pn-ch { padding: 14px 16px 16px; border: 1px solid var(--line-2); border-radius: 10px; }
-.pn-ch.tip { border-style: dashed; }
-.pn-ch-h { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
-.pn-chn { flex: none; width: 20px; height: 20px; display: inline-grid; place-items: center; border-radius: 50%; background: var(--ink-2); color: #fff; font: 11.5px/1 var(--sans); font-variant-numeric: tabular-nums; }
-.pn-ch.tip .pn-chn { background: transparent; box-shadow: inset 0 0 0 1px var(--ink-3); color: var(--ink-2); }
-.pn-chk { font: 13px var(--kai); color: var(--ink-3); letter-spacing: .1em; }
-.pn-also { margin-left: auto; font-size: 12px; color: var(--ink-4); white-space: nowrap; }
-.pn-ch .pn-prob { margin-bottom: 6px; font-size: 15.5px; }
-.pn-ch .pn-why { margin-bottom: 10px; font-size: 13px; }
-.pn-ch .pn-how { margin-bottom: 10px; font-size: 14px; }
-.pn-ch .pn-seg { margin-top: 12px; }
-.pn-ch .pn-seg button { padding: 6px 14px; font-size: 13.5px; }
-.pn-ch .pn-chose { display: block; margin: 12px 0 0; }
-.pn-ch .pn-say { margin-top: 10px; }
-.pn-ch.fold { padding: 10px 14px 11px; cursor: pointer; transition: border-color .15s; }
-.pn-ch.fold:hover { border-color: var(--ink-4); }
-.pn-ch.fold .pn-ch-h { margin-bottom: 5px; }
-.pn-ch-row { display: flex; align-items: center; gap: 12px; }
-.pn-ch-one { flex: 1; min-width: 0; margin: 0; font-size: 13.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pn-ch-dec { flex: none; padding: 2px 9px; border-radius: 6px; font-size: 12.5px; white-space: nowrap; }
-.pn-ch-dec.d-fix, .pn-ch-dec.d-ok { background: var(--dai-soft); color: var(--dai); }
-.pn-ch-dec.d-say { background: var(--zhu-soft); color: var(--zhu); }
-.pn-ch-dec.d-skip { background: var(--paper-2); color: var(--ink-4); text-decoration: line-through; }
-.pn-pill.none { opacity: .5; }
-.pn-rt { font-size: 13.5px; line-height: 1.6; color: var(--ink-2); }
-.pn-rt.bad { color: var(--zhu); }
-.pn-none { color: var(--ink-3); }
-.pn-prob { margin: 0 0 10px; font: 600 17.5px/1.7 var(--sans); color: var(--ink); letter-spacing: .02em; }
-.pn-why { margin: 0 0 24px; font-size: 13.5px; line-height: 1.85; color: var(--ink-3); }
-.pn-why > span:first-child { margin-right: 8px; font: 12.5px var(--kai); color: var(--ink-4); letter-spacing: .12em; }
-.pn-lab { margin: 0 0 8px; font: 13px var(--kai); color: var(--ink-3); letter-spacing: .16em; }
-.pn-how { margin: 0 0 12px; font-size: 14.5px; line-height: 1.85; color: var(--ink-2); }
-.pn-body .df { font-size: 14px; line-height: 1.85; }
-.pn-say { display: block; width: 100%; min-height: 64px; max-height: 34vh; margin-top: 16px; padding: 8px 12px; resize: none; overflow: auto; field-sizing: content; border: 1px solid var(--zhu-line); border-radius: 7px; outline: 0; background: #fffefa; font: 15px/1.75 var(--kai); color: var(--zhu); }
-.pn-say::placeholder { color: var(--ink-4); font-size: 14px; }
-.pn-say:focus { box-shadow: 0 0 0 3px var(--zhu-soft); }
-.pn-say:disabled { background: transparent; }
-.pn-sumt { margin: 0 0 20px; font: 16px/2 var(--kai); color: var(--ink); }
-.pn-line { margin: 0 0 12px; font-size: 13.5px; line-height: 1.8; color: var(--ink-2); }
-.pn-meta { margin: 16px 0 0; font-size: 12px; line-height: 1.7; color: var(--ink-4); word-break: break-all; }
-.pn-end-h { display: flex; align-items: center; gap: 8px; margin: 0 0 18px; font: 600 18px var(--serif); letter-spacing: .08em; color: var(--ink); }
-.pn-end-h.ok { color: var(--dai); }
-.pn-end-h .ic { width: 20px; height: 20px; stroke-width: 2; }
-.pn-rows { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 12px 16px; align-items: center; margin: 0 0 22px; }
-.pn-rk { font-size: 14px; color: var(--ink-2); white-space: nowrap; }
-.pn-rv { display: flex; flex-wrap: wrap; gap: 7px; }
-.pn-more { margin: 0 0 18px; padding: 0; border: 0; background: none; color: var(--dai); font-size: 13.5px; cursor: pointer; }
-.pn-more:hover { text-decoration: underline; text-underline-offset: 3px; }
-.pn-gen { margin: 0 0 18px; }
-.pn-pick { margin: 2px 0 8px; }
-.pn-dock { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 12px 18px 14px; border-top: 1px solid var(--line); background: var(--sheet); }
-.pn-dock .sp { flex: 1; }
-.pn-seg { display: inline-flex; gap: 3px; padding: 3px; border-radius: 10px; background: var(--paper-2); }
-.pn-seg button { padding: 8px 16px; border: 0; border-radius: 7px; background: transparent; color: var(--ink-2); font: 14px/1.2 var(--sans); letter-spacing: .06em; cursor: pointer; white-space: nowrap; transition: background .15s, color .15s; }
-.pn-seg button:hover:not(.on) { background: rgba(255, 255, 255, .75); color: var(--ink); }
-.pn-seg button.on { color: #fff; font-weight: 600; }
-.pn-seg button.on.o-fix, .pn-seg button.on.o-ok { background: var(--dai); }
-.pn-seg button.on.o-say { background: var(--zhu); }
-.pn-seg button.on.o-skip { background: var(--ink-3); }
-.pn-nav { display: inline-flex; gap: 2px; }
-.pn-nav button { padding: 8px 10px; border: 0; border-radius: 7px; background: none; color: var(--ink-2); font-size: 13.5px; cursor: pointer; white-space: nowrap; }
-.pn-nav button:hover:not(:disabled) { background: var(--paper-2); color: var(--ink); }
-.pn-nav button:disabled { opacity: .3; cursor: default; }
-.pn-chose { font-size: 13.5px; color: var(--ink-3); }
-.pn-chose b { margin-left: 4px; color: var(--ink); font-weight: 600; }
-.pn-err { flex-basis: 100%; font-size: 12px; color: var(--zhu); }
-.pn-chl { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
-.pn-chl-box { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.pn-chl select { padding: 3px 6px; border: 1px solid var(--line-2); border-radius: 6px; background: #fff; font: 12.5px var(--sans); color: var(--ink); }
+/* 关键帧下面的小字按钮（改理由、撤回） */
 .pj-link { padding: 0; border: 0; background: none; color: var(--dai); font-size: 12.5px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
 .pj-link:disabled { color: var(--ink-4); cursor: default; text-decoration: none; }
-.pj-run { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--sheet); font-size: 13px; color: var(--ink-2); }
-.pj-run b { font: 12px var(--mono); font-weight: 400; color: var(--ink-3); }
-.pj-run .sp { flex: 1; }
-.pj-run .wt-ring { font-size: 14px; color: var(--zhu); }   /* 转着的墨环：公用/等待.js */
-/* 照方案改做到哪：改字、白模、看关键帧、每一张关键帧各一行 */
-.pj-steps { margin: -6px 0 12px; padding: 6px 12px 8px 14px; border-left: 2px solid var(--line-2); list-style: none; font-size: 12.5px; line-height: 1.75; color: var(--ink-4); }
-.pj-steps li { display: grid; grid-template-columns: 16px max-content minmax(0, 1fr); gap: 8px; align-items: baseline; }
-.pj-steps li > i { font-style: normal; text-align: center; }
-.pj-steps li > b { font-weight: 600; white-space: nowrap; }
-.pj-steps li.s-在做 { color: var(--ink); }
-.pj-steps li.s-做完 { color: var(--ink-3); }
-.pj-steps li.s-做完 > i { color: var(--dai); }
-.pj-steps li.s-没成 { color: var(--zhu); }
-.pj-steps .wt-ring { font-size: 12px; color: var(--zhu); }
-/* 照方案改好了：关键帧一张一行（原来的 → 新的），红的是没出成、拿掉的 */
-.rs-kfs { margin: 0 0 18px; padding: 0; list-style: none; }
-.rs-kf { display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; border-top: 1px solid var(--line); }
-.rs-kf:first-child { border-top: 0; }
-.rs-ims { flex: none; display: flex; align-items: center; gap: 6px; }
-.rs-th { padding: 0; border: 1px solid var(--line-2); border-radius: 5px; background: var(--paper-2); cursor: zoom-in; overflow: hidden; line-height: 0; }
-.rs-th img { width: 104px; height: 58px; object-fit: cover; }
-.rs-to { color: var(--ink-4); font-size: 13px; }
-.rs-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.65; color: var(--ink-2); }
-.rs-t b { font-weight: 600; color: var(--ink); }
-.rs-why { color: var(--ink-3); font-size: 12.5px; }
-.rs-kf.bad .rs-t, .rs-kf.bad .rs-t b, .rs-kf.bad .rs-why { color: var(--zhu); }
-.rs-kf.bad .rs-th { border-color: var(--zhu-line); }
-.rs-list { margin: 0 0 10px; padding-left: 20px; font-size: 13.5px; line-height: 1.8; color: var(--ink-2); }
-.rs-box { margin: 0 0 18px; }
 
 /* 看大图 */
 .dk-box { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; background: rgba(12, 10, 8, .88); animation: fade .12s ease both; }
@@ -412,7 +285,7 @@ button.pn-an:hover { box-shadow: inset 0 0 0 1px var(--zhu-line); }
   .dk-main { display: block; }
   .views { flex: none; height: min(44vw, 60vh); }
   .dk-rail { border-left: 0; border-top: 1px solid var(--line-2); min-height: 50vh; }
-  .pane, .pane.plan, .pn-body { overflow: visible; }
+  .pane { overflow: visible; }
 }
 </style>
 </head>
@@ -426,24 +299,21 @@ button.pn-an:hover { box-shadow: inset 0 0 0 1px var(--zhu-line); }
 <script src="../公用/审片.js"></script>
 <script src="../公用/关键帧写法.js"></script>
 <script src="../公用/白模关键帧写法.js"></script>
-<script src="../公用/对照.js"></script>
 <script src="../公用/点图.js"></script>
 <script src="../公用/找旧版.js"></script>
-<script src="../公用/交给AI.js"></script>
-<script src="../公用/等待.js"></script>
 <script>
 /* ============================================================
    对照审片（流水线第五道工序「审片」：一条样片一页）
    看片的时候，旁边随时能对照：这条提示词挂的白模（同一时刻一起放）、这一镜的关键帧、另一条样片、哪一张资产图；
    放到哪一镜，画面下面和右边「这一镜」就跟到哪一镜：提示词这一镜怎么写的、关键帧、提到的图、这一镜的批注。
    批注照「项目管理」审片那一样的格式存在样片旁边（视频名_批注.md、视频名_批注截图），多记一行「对照」：写这条时旁边摆着什么。
-   右边「方案」那一页（2026-11-14 加）：让 AI 照批注出修改方案（视频名_修改方案.md，这一回不改稿）→ 逐条定（视频名_修改方案_批注.md）→ 照方案改，另存一份「原名_改N.txt」，原稿不动。
-   网址：审片台.html?p=项目&s=第几场&v=样片文件名&pr=提示词文件名&tab=plan（pr 可不给：批注里记过的、名字里看得出的、只有一条的；tab=plan 一打开就看方案）
+   审片只批注、不出方案（2026-11-15 他定）：怎么改由他拿着批注和自己的 AI 商量，再回前面那一道重新走。
+   网址：审片台.html?p=项目&s=第几场&v=样片文件名&pr=提示词文件名（pr 可不给：批注里记过的、名字里看得出的、只有一条的）
    嵌在审片那一页里时，那一页给 window.DESK_HOST.close；这一页给它 window.DESK.leave（没存的先存上）
    ============================================================ */
 'use strict';
-const { C, LINK, FS, CH, at, isComposing } = window.Base;
-const { h, add, icon, toast, dialog, dlgShell, confirmDlg, thumbImg, hoverable, hideHov, popover, closePop } = window.UI;
+const { C, LINK, FS, at, isComposing } = window.Base;
+const { h, add, icon, toast, confirmDlg, thumbImg, hoverable, hideHov, popover, closePop } = window.UI;
 const fill = (el, ...kids) => { el.replaceChildren(); return add(el, kids); };   // 换掉里面的东西；null、空串跳过（原生 replaceChildren 会写成字）
 
 const Q = new URLSearchParams(location.search);
@@ -456,7 +326,6 @@ const NOTES_TAIL = '_批注.md', SHOTS_TAIL = '_批注截图';
 const VIDEO_RE = /\.(mp4|m4v|mov|webm)$/i;
 const { RE_VP, vpVer, vpBase, vpNo, vpLabel, vpTok } = window.Core;   // 视频提示词的名字：和流水线、本机服务共用 公用/核心.js 那一份
 const RATES = [0.5, 1, 2];
-const TE = new TextEncoder();
 const BOM = String.fromCharCode(0xFEFF);
 const unbom = t => t.startsWith(BOM) ? t.slice(1) : t;
 const stem = n => String(n).replace(/\.[^.]+$/, '');
@@ -489,7 +358,7 @@ const VURL = new Map(), IURL = new Map();   // 读出来的视频、原图：路
 const host = () => { try { return window.parent !== window ? window.parent.DESK_HOST || null : null; } catch (e) { return null; } };
 
 /* ---------- 从 mp4 头里读帧率帧数、时间和帧号怎么写、批注文件怎么读写、截图：和看文件那一页（项目管理.html）共用 公用/审片.js ---------- */
-const { CATS, HAS_RVFC, videoInfo, fmt, fpsText, frameText, byFrame, mdEsc, kfParse, seekRaw, parsePlan, parsePlanNote } = window.Review;
+const { CATS, HAS_RVFC, videoInfo, fmt, fpsText, frameText, byFrame, kfParse, seekRaw } = window.Review;
 const fmtF = f => Review.fmtF(f, D.fps);
 const rangeText = n => Review.rangeText(n, D.fps);
 const nowSec = () => (P ? P.f : 0) / D.fps + 1e-6;   // 画面上这一帧从第几秒起（看它在哪一镜）
@@ -533,7 +402,7 @@ const vidRefs = () => D.refs.filter(r => r.kind === '白模' || r.kind === '视�
 const imgRefs = () => D.refs.filter(r => /^@图片/.test(r.ref));
 const isImgRef = r => !!r && /^@图片/.test(r.ref);
 /* 登记的素材原处换过新版、或者挪走了：看的、放的都是历史记录里登记的那一份（公用/找旧版.js）。
-   r.at 是真去读的那一份，r.rel 还是登记的路径（认类别、关键帧改图、弃用照旧用它） */
+   r.at 是真去读的那一份，r.rel 还是登记的路径（认类别、弃用照旧用它） */
 async function placeRefs(refs) {
   if (!window.RefFile) return;
   await Promise.all(refs.filter(r => r.sha).map(async r => {
@@ -1092,7 +961,7 @@ async function saveForm() {
   if (old) await dropUnused([old.img, old.img2]);
   await saveNow();
   paintComposer(); paintMarks(); paintShots(); paintRail();
-  toast(old ? '改好了' : note.kf ? '记下了：' + note.kf.ref + ' 这一版不用，照方案改的时候去掉' : '记下了：' + rangeText(note));
+  toast(old ? '改好了' : note.kf ? '记下了：' + note.kf.ref + ' 不用了，理由在批注里' : '记下了：' + rangeText(note));
 }
 /* 写了一半要走：问一句 */
 async function leaveForm() {
@@ -1149,7 +1018,7 @@ function renderForm() {
     h('div', { class: 'frow' }, h('span', { class: 'flab' }, '镜头'), shot, h('span', { class: 'flab' }, '分类'), chips),
     fm.cmp ? h('div', { class: 'frow' }, h('span', { class: 'flab' }, '对照'), h('span', { class: 'fcmp', title: fm.cmp }, shortCmp(fm.cmp)),
       h('button', { class: 'btn ghost sm', type: 'button', title: '这条批注不记旁边对照的是什么', onclick: () => { fm.cmp = ''; fm.changed = true; paintComposer(); } }, '不记')) : null,
-    fm.kf ? h('div', { class: 'frow' }, h('span', { class: 'flab' }, '弃用'), h('span', { class: 'fkf', title: fm.kf.rel || fm.kf.raw || '' }, fm.kf.ref + ' · ' + kfName(fm.kf) + '　照方案改时重出一张，或者拿掉'),
+    fm.kf ? h('div', { class: 'frow' }, h('span', { class: 'flab' }, '弃用'), h('span', { class: 'fkf', title: fm.kf.rel || fm.kf.raw || '' }, fm.kf.ref + ' · ' + kfName(fm.kf) + '　写一句为什么不要它'),
       h('button', { class: 'btn ghost sm', type: 'button', title: '不弃用了：这条留成一条普通批注', onclick: () => { fm.kf = null; fm.changed = true; paintComposer(); } }, '不弃用了')) : null,
     ta,
     h('div', { class: 'form-f' },
@@ -1168,33 +1037,26 @@ function paintComposer() {
 /* ============================================================
    右边一栏：这一镜、提示词、资产、批注
    ============================================================ */
-const TABS = [['shot', '这一镜'], ['prompt', '提示词'], ['assets', '资产'], ['notes', '批注'], ['plan', '方案']];
-function setTab(k) { const was = D.tab; D.tab = k; paintRail(); if (k === 'prompt') markPrompt(true, true); if (k === 'plan' && was !== 'plan') planSync(); }
+const TABS = [['shot', '这一镜'], ['prompt', '提示词'], ['assets', '资产'], ['notes', '批注']];
+function setTab(k) { D.tab = k; paintRail(); if (k === 'prompt') markPrompt(true, true); }
 function paintTabs() {
   if (!RAIL.tabs) return;
-  const busy = PL.jobs.some(jobLive);
-  RAIL.tabs.replaceChildren(...TABS.map(([k, n]) => h('button', { type: 'button', class: 'rt-tab' + (D.tab === k ? ' on' : ''), title: k === 'plan' ? '不满意：让 AI 照批注出修改方案，逐条定，照方案改另存一份' : null, onclick: () => setTab(k) }, n,
-    k === 'notes' && D.notes.length ? h('span', { class: 'n' }, D.notes.length) : null, k === 'assets' && D.refs.length ? h('span', { class: 'n soft' }, D.refs.length) : null,
-    k === 'plan' && (busy || PL.plan) ? h('span', { class: 'n soft' }, busy ? '…' : PL.plan.items.length) : null)));
+  RAIL.tabs.replaceChildren(...TABS.map(([k, n]) => h('button', { type: 'button', class: 'rt-tab' + (D.tab === k ? ' on' : ''), onclick: () => setTab(k) }, n,
+    k === 'notes' && D.notes.length ? h('span', { class: 'n' }, D.notes.length) : null, k === 'assets' && D.refs.length ? h('span', { class: 'n soft' }, D.refs.length) : null)));
 }
 function paintRail() {
   if (!RAIL.body) return;
   const a = document.activeElement, mine = !!a && RAIL.body.contains(a) && a.tagName === 'TEXTAREA';   // 正在写的那一格：重画以后接着写
   const sc = RAIL.body.scrollTop, fk = mine ? a.dataset.fk || (a.classList.contains('gen') ? 'gen' : '') : '', s0 = fk ? a.selectionStart : 0, e0 = fk ? a.selectionEnd : 0;
-  const ib = RAIL.body.querySelector('.pn-body'), isc = ib ? ib.scrollTop : 0, ist = ib ? ib.dataset.step || '' : '';   // 方案那一页自己滚的那一块：同一步重画时接着停在原处，换了一步淡入
-  const make = { shot: paneShot, prompt: panePrompt, assets: paneAssets, notes: paneNotes, plan: panePlan }[D.tab] || paneShot;
-  RAIL.body.classList.toggle('plan', D.tab === 'plan');
-  if (RAIL.main) RAIL.main.classList.toggle('wide', D.tab === 'plan');   // 看方案时右边这一栏变宽
+  const make = { shot: paneShot, prompt: panePrompt, assets: paneAssets, notes: paneNotes }[D.tab] || paneShot;
   RAIL.body.replaceChildren(...[make()].flat(Infinity).filter(Boolean));
   RAIL.body.scrollTop = sc;
-  const nb = RAIL.body.querySelector('.pn-body');
-  if (nb) { if ((nb.dataset.step || '') === ist) nb.scrollTop = isc; else if (ist) nb.classList.add('enter'); }
   if (fk) { const g = RAIL.body.querySelector('[data-fk="' + fk + '"]') || (fk === 'gen' ? RAIL.body.querySelector('.gen') : null); if (g) { g.focus(); try { g.setSelectionRange(s0, e0); } catch (e) { /* 不要紧 */ } } }
   paintTabs();
 }
 const noPrompt = () => h('p', { class: 'hint' }, D.prompts.length ? '没对上这条样片出自哪一条提示词。在上面「出自」那里选一条。' : '这一场还没有提示词。');
 const navBtn = (d, i) => h('button', { class: 'nav', type: 'button', disabled: i + d < 0 || i + d >= D.shots.length, title: d < 0 ? '上一镜（↑）' : '下一镜（↓）', onclick: () => gotoShot(i + d) }, d < 0 ? '‹' : '›');
-function figureOf(r, acts, more) {   // more：图下面另外摆的（关键帧：弃用的理由、改图做到哪、那一排按钮）
+function figureOf(r, acts, more) {   // more：图下面另外摆的（关键帧：弃用的理由、那一排按钮）
   const img = thumbImg(pjAt(r.at || r.rel), 720), gone = isKf(r) && goneOf(r);
   img.className = 'pic'; img.title = '点一下看大图';
   img.addEventListener('click', () => { const list = imgRefs(); openBox(list, list.indexOf(r)); });
@@ -1293,7 +1155,7 @@ function noteItem(n, i) {
         h('span', { class: 'ni-acts' },
           h('button', { class: 'mini', type: 'button', title: '改这条', onclick: e => { e.stopPropagation(); openForm(n); } }, '改'),
           h('button', { class: 'mini del', type: 'button', title: '删掉这条', onclick: e => { e.stopPropagation(); delNote(n); } }, '删'))),
-      n.cats.length || n.shot || n.cmp || n.kf ? h('div', { class: 'ni-tags' }, n.kf ? h('span', { class: 'ni-gone', title: '这张关键帧不要了（照方案改的时候重出一张，或者拿掉）' }, '弃用 ' + n.kf.ref) : null, n.cats.map(c => h('span', { class: 'tag c' + CATS.indexOf(c) }, c)),
+      n.cats.length || n.shot || n.cmp || n.kf ? h('div', { class: 'ni-tags' }, n.kf ? h('span', { class: 'ni-gone', title: '这张关键帧不要了，理由写在这条批注里' }, '弃用 ' + n.kf.ref) : null, n.cats.map(c => h('span', { class: 'tag c' + CATS.indexOf(c) }, c)),
         n.shot ? h('span', { class: 'ni-shot', title: '镜头 ' + n.shot }, '镜头 ' + n.shot.split('｜')[0]) : null,
         n.cmp ? h('span', { class: 'ni-shot', title: '对照：' + n.cmp }, '对照' + shortCmp(n.cmp).split(' ')[0]) : null) : null,
       h('div', { class: 'ni-text' }, n.text)));
@@ -1306,431 +1168,6 @@ function paneNotes() {
   D.notes.forEach((n, i) => out.push(noteItem(n, i)));
   if (D.notes.length || D.general.trim()) out.push(h('p', { class: 'faint small path' }, '存在 ' + shown(D.notesAt)));
   return out;
-}
-
-/* ============================================================
-   修改方案（2026-11-14 他定）：先让 AI 照批注出修改方案（成片/第N段/视频名_修改方案.md，这一回不改稿）；
-   你在这里逐条定（视频名_修改方案_批注.md：照这样改、不改、照我说的改）；定好点「照方案改」，另存一份「原名_改N.txt」，原稿不动。
-   方案、你定的，格式和本机服务 jobs.js 里 parsePlan、parsePlanNote 一样；两件事都是本机服务的 AI 任务（第 8 版起有）
-   ============================================================ */
-const PLAN_TAIL = '_修改方案.md', PLAN_NOTE_TAIL = '_修改方案_批注.md';
-const PLAN_REL = '成片/' + SEGD + '/' + stem(VID) + PLAN_TAIL, PNOTE_REL = '成片/' + SEGD + '/' + stem(VID) + PLAN_NOTE_TAIL;
-const PL = { plan: null, mtime: 0, dec: new Map(), general: '', saveT: 0, err: '', src: '', last: '', next: '', again: false, jobs: [], pollT: 0,
-  step: 1, seen: new Set(), open: new Set(), genOpen: false, advT: 0 };   // 下面一行：方案那一页看到哪一步（0 总的看法，1…N 你的第几条批注，最后一步照方案改）、看过哪几步、点开了哪几处折起来的
-const planOk = () => LINK.v >= 8;
-const DEC_FIX = ['照这样改', '不改', '照我说的改'], DEC_TIP = ['知道了', '照我说的改'];   // 有原文改成的；只给建议的（不改提示词）
-const DEC_NAME = { 照我说的改: '我来说', 知道了: '不改提示词' };   // 按钮上的字；存进文件的还是左边的词（本机服务 jobs.js 认这几个词）
-const defDec = it => it.原文 != null ? '照这样改' : '知道了';
-function decOf(it) {
-  const d = PL.dec.get(it.no) || {}, ok = (it.原文 != null ? DEC_FIX : DEC_TIP).includes(d.定);
-  return { 定: ok ? d.定 : defDec(it), 批注: str(d.批注) };
-}
-const planTouched = () => !!PL.plan && (!!PL.general.trim() || PL.plan.items.some(it => { const d = decOf(it); return d.定 !== defDec(it) || (d.定 === '照我说的改' && d.批注.trim()); }));
-function planNoteText() {
-  const L = ['# 修改方案批注｜' + VID, '', '方案：' + shown(pjAt(PLAN_REL)), '',
-    '用户在审片台「方案」那一页逐条定的。「定」：照这样改（照方案原样换）、不改、照我说的改（「批注」写怎么改）、知道了（只是建议，不改提示词）；「整体」是方案里没有、还要改的。', ''];
-  for (const it of PL.plan.items) {
-    const d = decOf(it);
-    L.push('## ' + it.no, '定：' + d.定);
-    if (d.定 === '照我说的改' && d.批注.trim()) L.push('批注：' + mdEsc(d.批注.trim()));
-    L.push('');
-  }
-  if (PL.general.trim()) L.push('## 整体', '批注：' + mdEsc(PL.general.trim()), '');
-  return L.join('\n');
-}
-/* 下一版叫什么：这一条（去掉 _改N）在 提示词/第N段、历史记录/提示词/第N段 里改到第几版了，再加一（和本机服务 nextVer 一样） */
-async function nextName(src) {
-  if (!src) return '';
-  const base = vpBase(src).replace(/\.txt$/i, ''), re = new RegExp('^' + base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '_改([0-9]+)(__[0-9]{8}-[0-9]{6})?\\.txt$', 'i');
-  let n = 0;
-  for (const dir of ['提示词/' + SEGD, '历史记录/提示词/' + SEGD]) for (const e of await listRel(dir)) { const m = re.exec(e.name); if (m) n = Math.max(n, +m[1]); }
-  return base + '_改' + (n + 1) + '.txt';
-}
-async function loadPlan() {
-  let r = null;
-  try { r = await FS.read(pjAt(PLAN_REL)); } catch (e) { r = null; }
-  Object.assign(PL, { plan: r ? parsePlan(C.decodeText(r.buf).text) : null, mtime: r ? r.mtime : 0, dec: new Map(), general: '', err: '', src: '', last: '', next: '', res: null });
-  if (!PL.plan) return;
-  try { const n = parsePlanNote(C.decodeText((await FS.read(pjAt(PNOTE_REL))).buf).text); PL.dec = n.items; PL.general = n.general; } catch (e) { /* 还没定 */ }
-  PL.src = baseName(PL.plan.提示词);
-  PL.last = PL.plan.done.length ? baseName(PL.plan.done[PL.plan.done.length - 1].replace(/（.*$/, '')) : '';
-  const rec = PL.plan.done.length ? (/；记录[：:](.+?)）\s*$/.exec(PL.plan.done[PL.plan.done.length - 1]) || [])[1] : '';   // 照方案改那一回的任务文件夹：结果.json 里有关键帧、白模各成了什么样
-  if (rec) { try { PL.res = JSON.parse(await readText(rec.trim() + '/结果.json')); } catch (e) { PL.res = null; } }
-  PL.next = await nextName(PL.src);
-  loadView();
-}
-function planSaveNow() {
-  clearTimeout(PL.saveT); PL.saveT = 0;
-  if (!PL.plan) return D.q;
-  const plan = PL.plan, text = planTouched() ? planNoteText() : '';
-  D.q = D.q.then(async () => {
-    if (PL.plan !== plan) return;   // 方案换了（重出了）：上一份的不存
-    try {
-      const np = pjAt(PNOTE_REL);
-      if (text) await FS.write(np, TE.encode(text));
-      else if (await FS.stat(np)) await FS.remove(np);   // 一条都没动：不留文件（照方案原样改）
-      PL.err = '';
-    } catch (e) { PL.err = e.message; toast('你定的没存上：' + e.message, 'err'); }
-    paintPlanFoot();
-  });
-  return D.q;
-}
-function planSaveLater() { clearTimeout(PL.saveT); PL.saveT = setTimeout(planSaveNow, 600); }
-
-/* ---------- AI 任务：交给本机服务（和流水线那几页同一套，用哪个 AI 也记在同一处） ---------- */
-const JOB_KINDS = ['修改方案', '按方案改提示词'];
-const jobLive = j => !!j && (j.状态 === '排队' || j.状态 === '在做');
-const chNow = CH.now, chName = CH.name, handOf = CH.hand, SELF_CH = CH.SELF;   // 用哪个 AI：和流水线顶栏「AI 用」选的同一个（底座.js 的 CH）
-const lastJob = 事 => PL.jobs.filter(j => j.事 === 事).pop() || null;
-async function loadJobs() {
-  clearTimeout(PL.pollT); PL.pollT = 0;
-  let r;
-  try { r = await (await LINK.req('GET', '/api/job?p=' + encodeURIComponent(PJ))).json(); } catch (e) { PL.pollT = setTimeout(loadJobs, 4000); return; }
-  const was = new Map(PL.jobs.map(j => [j.id, j.状态])), sig = j => j.id + j.状态 + j.步骤, before = PL.jobs.map(sig).join();
-  PL.jobs = (r.jobs || []).filter(j => JOB_KINDS.includes(j.事) && j.段 === SEG && j.视频 === VID);
-  await kfJobsIn(r.jobs || []);   // 这一场关键帧的「改图」
-  const ended = PL.jobs.filter(j => !jobLive(j) && jobLive({ 状态: was.get(j.id) }));
-  for (const j of ended) toast(j.状态 === '做完' ? j.结果 : j.标题 + (j.状态 === '停了' ? ' 停掉了' : ' 没成：' + j.错误), j.状态 === '做完' ? '' : 'err');
-  if (ended.some(j => j.状态 === '做完')) {
-    clearTimeout(PL.saveT); PL.saveT = 0;
-    if (ended.some(j => j.事 === '按方案改提示词' && j.状态 === '做完')) { IURL.clear(); await loadMap(); await loadPromptList(); for (const r of D.refs) { delete r.at; delete r.note; } await placeRefs(D.refs); await kfLoad(); paintSel(); }   // 新的一版出来了；关键帧可能换了新图（同一个名字，读过的图不能再用）、图上的批注收走了
-    await loadPlan();
-    if (ended.some(j => j.事 === '修改方案' && j.状态 === '做完') && D.tab !== 'plan' && !D.form) D.tab = 'plan';
-  }
-  if (ended.length || before !== PL.jobs.map(sig).join()) { if (D.tab === 'plan') paintRail(); else paintTabs(); }
-  if (PL.jobs.some(jobLive) || KF.jobs.some(jobLive)) PL.pollT = setTimeout(loadJobs, 2000);
-}
-async function startJob(body) {
-  try {
-    const b = CH.fill({ 项目: PJ, 渠道: chNow(), ...body });   // 带上选的模型、推理深度
-    const j = await (await LINK.req('POST', '/api/job', TE.encode(JSON.stringify(b)))).json();
-    PL.jobs = PL.jobs.filter(x => x.id !== j.id).concat(j);
-    const hand = j.渠道 === b.渠道 ? handOf(j.渠道) : '';
-    if (hand === 'self' && window.HandAI) HandAI.wait(j, () => loadJobs());   // 给我提示词：话备好就弹出来给你复制（不用 AI 的那几处照方案原样换，不弹）
-    toast(hand === 'self' ? '要交给 AI 的话备好就弹出来：复制，贴进你自己开的对话。它做完这里自动出现'
-      : hand === 'claude' ? '在 Claude 桌面版开了一个新对话，任务填好了：到 Claude 窗口里按发送。做完这里自动出现'
-      : hand === 'deepseek' ? '交给 DeepSeek 了：它在自己的窗口里做，做完这里自动出现'
-      : '交给 ' + j.渠道名 + ' 了。做完这里自动出现');
-    paintRail();
-    PL.pollT = PL.pollT || setTimeout(loadJobs, 1500);
-    return j;
-  } catch (e) { toast('没交上：' + e.message, 'err'); return null; }
-}
-function runLine(j) {
-  return h('div', { class: 'pj-run' }, h('i', { class: 'wt-ring' }),
-    h('span', { class: 'wt-t' }, j.状态 === '排队' ? j.渠道名 + ' 排着队，前面还有别的任务' : (j.步骤 || j.渠道名 + ' 在做') + (j.事 === '修改方案' ? '（出修改方案）' : '（照方案改）')),
-    h('b', { 'data-t0': String(j.开始 || j.建) }, ''), h('span', { class: 'sp' }),
-    ...(window.HandAI ? HandAI.buttons(j, () => loadJobs()) : []),   // 等你交给 AI 的、Claude 等你按发送的
-    h('button', { class: 'pj-link', type: 'button', title: '不等了，停掉这个任务', onclick: async () => { await LINK.req('POST', '/api/job/' + j.id + '?cancel').catch(() => {}); loadJobs(); } }, '停掉'));
-}
-function stepList(j) {   // 照方案改做到哪：本机服务一行一行报（改字、白模、看关键帧、每一张关键帧）；没轮到的灰着
-  const a = Array.isArray(j.分步) ? j.分步 : [];
-  if (!a.length) return null;
-  const mark = s => s.态 === '在做' ? h('i', { class: 'wt-ring' }) : h('i', null, s.态 === '做完' ? '✓' : s.态 === '没成' ? '✕' : '·');
-  return h('ol', { class: 'pj-steps' }, a.map(s => h('li', { class: s.态 ? 's-' + s.态 : '' }, mark(s), h('b', null, s.名), h('span', null, s.说 || (s.态 ? '' : '还没轮到')))));
-}
-setInterval(() => document.querySelectorAll('.pj-run b[data-t0]').forEach(b => {
-  const s = Math.max(0, Math.round((Date.now() - +b.dataset.t0) / 1000));
-  b.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
-}), 1000);
-function failLine(事) {   // 上一回没做成：说一句为什么（过了半小时就不提了）
-  const j = lastJob(事);
-  return j && j.状态 === '没成' && Date.now() - j.结束 < 30 * 60e3 ? h('p', { class: 'warn', title: '任务书和 AI 的回答留在：' + j.记录 }, '上一回没做成：' + j.错误) : null;
-}
-const chPick = () => window.UI.aiPicker('pn-chl', '交给哪个 AI（和流水线里选的是同一个）');
-async function askPlan(again) {
-  if (again && !(await confirmDlg({ title: '重出修改方案', body: '照现在的批注让 ' + chName() + ' 重出一份。这一份方案和你逐条定的，收进历史记录' + (PL.plan && PL.plan.done.length ? '；已经改出来的提示词不动' : '') + '。', ok: '重出' }))) return;
-  if (D.saveT) saveNow();
-  if (PL.saveT) planSaveNow();
-  await D.q;
-  await startJob({ 事: '修改方案', 段: SEG, 视频: VID, 名: D.prompt || PL.src || '' });
-}
-async function askFix() {
-  const P0 = PL.plan, bad = P0.items.filter(it => { const d = decOf(it); return d.定 === '照我说的改' && !d.批注.trim(); });
-  if (bad.length) {
-    toast('有 ' + bad.length + ' 处选了「我来说」，还没写要怎么改', 'err');
-    planGo(stepOf(bad[0]));
-    const ta = RAIL.body.querySelector('[data-fk="say-' + bad[0].no + '"]'); if (ta) ta.focus();
-    return;
-  }
-  const again = P0.done.length > 0;
-  if (again && !(await confirmDlg({ title: '再照方案改一份', body: '已经照这份方案改出了「' + vpLabel(PL.last) + '」（' + PL.last + '）。再改一份：在「' + vpLabel(PL.src) + '」上照你现在定的重新改，另存成 ' + PL.next + '；「' + vpLabel(PL.last) + '」留着不动。', ok: '再改一份' }))) return;
-  if (PL.saveT) planSaveNow();
-  if (D.saveT) saveNow();
-  await D.q;
-  if (await startJob({ 事: '按方案改提示词', 段: SEG, 视频: VID, ...(again ? { 重写: '再改一份' } : {}) })) PL.again = false;
-}
-async function verDiff(a, b) {
-  let ta, tb;
-  try { ta = await readText('提示词/' + SEGD + '/' + a); tb = await readText('提示词/' + SEGD + '/' + b); } catch (e) { toast('读不了：' + e.message, 'err'); return; }
-  await dialog(close => { const el = dlgShell('改了哪儿 · ' + vpLabel(a) + ' → ' + vpLabel(b), a + ' → ' + b + '。删的划掉，加的标绿；没改的行收起来了。', [window.Diff.view(ta, tb, h)], [h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close() }, '看完了')]); el.classList.add('wide'); return el; });
-}
-
-/* ---------- 方案那一页：一条批注一步（2026-11-14 他说「以我的批注为核心，针对一个批注不管改几点，都放在一起」；早先说「极简，注意力一次只有一个聚焦点」） ----------
-   上面一排小圆点：总的看法、你的第 1…N 条批注、照方案改，点哪个看哪个。中间先摆你写的这条批注，下面是方案对它的几处改法，每处各自定；最下面一条只放上一条、下一条。
-   一处改法管几条批注的，在方案里写在头一个的那条批注下面摆全，别的批注下面折成一行（点开看全）。片子跟着跳到这条批注那一刻。
-   看到哪一步、看过哪几步记在这台电脑的浏览器里（方案换了从头算）。你定的还是一处一处存，_修改方案_批注.md 的格式没变 */
-const noteNos = it => [...new Set((str(it.批注).match(/\d+/g) || []).map(Number))].filter(n => n > 0);
-const refsOf = it => noteNos(it).filter(k => k <= D.notes.length);   // 它管的、现在还在的几条批注（照方案里写的先后）
-const homeOf = it => { const r = refsOf(it); return r.length ? String(r[0]) : /整体/.test(str(it.批注)) ? 'g' : 'x'; };   // 摆全的那一步
-function planGroups() {   // 一条批注一步：你的第 1…N 条；再是整条的意见、方案里没对上批注的
-  const its = PL.plan.items, gs = D.notes.map((n, i) => ({ key: String(i + 1), label: String(i + 1), note: n, items: its.filter(it => refsOf(it).includes(i + 1)) }));
-  const g = its.filter(it => homeOf(it) === 'g'), x = its.filter(it => homeOf(it) === 'x');
-  if (g.length || D.general.trim()) gs.push({ key: 'g', label: '整体', note: null, items: g });
-  if (x.length) gs.push({ key: 'x', label: '其他', note: null, items: x });
-  return gs;
-}
-const pnClip = (s, n) => {   // 截短；@图片12 这种编号不截一半
-  const t = str(s).replace(/\s+/g, ' ').trim();
-  if (t.length <= n) return t;
-  for (const m of t.matchAll(/@(?:图片|视频|音频)\s*[0-9]+/g)) if (m.index < n && n < m.index + m[0].length) n = m.index;
-  return t.slice(0, n) + '…';
-};
-const DEC_CLS = { 照这样改: 'fix', 不改: 'skip', 照我说的改: 'say', 知道了: 'ok' };
-const DEC_HINT = { 照这样改: '照方案原样换上这一句', 不改: '这一处不要了', 照我说的改: '写一句你要怎么改：照抄你写的句子，或者照你说的改', 知道了: '只是建议，提示词不改' };
-const stepMin = () => PL.plan && PL.plan.总 ? 0 : 1;   // 0 是总的看法（方案里没写就没有这一步）
-const stepEnd = () => PL.plan ? planGroups().length + 1 : 1;   // 最后一步：照方案改
-const planFin = () => !!PL.plan && PL.plan.done.length > 0 && !PL.again;   // 照这份方案改好了（没在「再改一份」）
-const viewKey = () => 'antou:plan:view2:' + pjAt(PLAN_REL).join('/');   // view2：一步一条批注（以前一步一处改法，记的步数对不上）
-const curGroup = () => PL.plan && PL.step >= 1 ? planGroups()[PL.step - 1] || null : null;
-const stepOf = it => { const i = planGroups().findIndex(g => g.key === homeOf(it)); return i >= 0 ? i + 1 : stepMin(); };
-function loadView() {
-  let v = null;
-  try { v = JSON.parse(localStorage.getItem(viewKey()) || 'null'); } catch (e) { v = null; }
-  const ok = !!v && v.m === PL.mtime;
-  PL.seen = new Set(ok && Array.isArray(v.seen) ? v.seen.map(String) : []);
-  PL.step = planFin() ? stepEnd() : ok && v.step >= stepMin() && v.step <= stepEnd() ? v.step : stepMin();
-  PL.open = new Set(); PL.genOpen = false;
-}
-function saveView() { try { localStorage.setItem(viewKey(), JSON.stringify({ m: PL.mtime, step: PL.step, seen: [...PL.seen] })); } catch (e) { /* 记不下就算了 */ } }
-function planSync() {   // 片子跳到这条批注那一刻；整条的意见、其他：跳到头一处改法说的那一镜开头
-  const g = curGroup();
-  if (!g || !P) return;
-  if (g.note) { jump(g.note); return; }
-  const it = g.items[0], no = it ? +((/镜头\s*0*([0-9]+)/.exec(str(it.位置)) || [])[1] || 0) : 0, si = no ? D.shots.findIndex(s => s.no === no) : -1;
-  if (si >= 0) gotoShot(si);
-}
-function planGo(s) {
-  if (!PL.plan) return;
-  clearTimeout(PL.advT);
-  if (PL.saveT) planSaveNow();
-  PL.step = Math.max(stepMin(), Math.min(stepEnd(), s));
-  PL.open = new Set();
-  saveView(); paintRail(); planSync();
-}
-function itemDiff(a, b) {   // 原文 → 改成：一行换一行只标改了的几个字；删掉的只摆一行
-  if (!window.Diff) return h('p', { class: 'pn-how' }, '改成：' + (b || '（删掉这一句）'));
-  const v = window.Diff.view(a, b, h);
-  if (!b) { const add = v.querySelector('.df-l.add'); if (add) add.replaceWith(h('div', { class: 'df-gap' }, '删掉这一句')); }
-  return v;
-}
-function groupState(g) {   // 这一步定成什么样（圆点的颜色）：有我来说的红；有照方案改的黛；改提示词的都不改灰；只有另外要做的浅
-  const ds = g.items.map(it => [it, decOf(it)]);
-  return {
-    bad: ds.some(([, d]) => d.定 === '照我说的改' && !d.批注.trim()),
-    touched: ds.some(([it, d]) => d.定 !== defDec(it)),
-    cls: !ds.length ? (g.note && g.note.kf ? 'fix' : '') : ds.some(([, d]) => d.定 === '照我说的改') ? 'say' : ds.some(([it, d]) => it.原文 != null && d.定 === '照这样改') ? 'fix' : ds.some(([it]) => it.原文 != null) ? 'skip' : 'ok',
-  };
-}
-function groupSay(g) {   // 这条批注照你定的会怎样
-  let a = 0, s = 0, k = 0, t = 0;
-  for (const it of g.items) { const d = decOf(it).定; if (d === '照我说的改') s++; else if (it.原文 == null) t++; else if (d === '照这样改') a++; else k++; }
-  const kf = g.note && g.note.kf ? '关键帧 ' + g.note.kf.ref + ' 重出或拿掉' : '';   // 弃用关键帧的那条：照方案改的时候 AI 定
-  return g.items.length ? [kf, a && '照方案改 ' + a + ' 处', s && '我来说 ' + s + ' 处', k && '不改 ' + k + ' 处', t && '另外要做 ' + t + ' 件'].filter(Boolean).join('，') : kf || '方案里没出改法';
-}
-const groupName = g => g.note ? '批注 ' + g.label + ' · ' + rangeText(g.note) : g.key === 'g' ? '整条的意见' : '方案里没对上批注的';
-function groupPill(g, s, extra) {
-  const st = groupState(g), fin = planFin(), seen = fin || PL.seen.has(g.key) || st.touched, bad = !fin && st.bad;
-  const cls = [g.note ? '' : 'txt', g.items.length && g.items.every(it => it.原文 == null) ? 'tip' : '', g.items.length || (g.note && g.note.kf) ? '' : 'none', seen && st.cls ? 'd-' + st.cls : '', bad ? 'bad' : '', extra || ''].filter(Boolean).join(' ');
-  return h('button', { type: 'button', class: 'pn-pill' + (cls ? ' ' + cls : ''), onclick: () => planGo(s),
-    title: groupName(g) + (g.note ? '\n' + pnClip(g.note.text, 40) : '') + '\n' + (bad ? '有一处选了「我来说」，还没写要怎么改' : seen ? groupSay(g) : '还没看') }, g.label);
-}
-function planPills() {
-  const fin = planFin(), gs = planGroups();
-  const txt = (s, label, cls, tip) => h('button', { type: 'button', class: 'pn-pill txt' + (cls ? ' ' + cls : '') + (PL.step === s ? ' cur' : ''), title: tip, onclick: () => planGo(s) }, label);
-  return h('div', { class: 'pn-pills' },
-    PL.plan.总 ? txt(0, '总', '', '总的看法') : null,
-    gs.map((g, i) => groupPill(g, i + 1, PL.step === i + 1 ? 'cur' : '')),
-    txt(gs.length + 1, fin ? '✓' : '改', fin ? 'd-fix' : '', fin ? '改好了' : '最后一步：照方案改'));
-}
-function planHead(live) {
-  const gs = planGroups(), s = PL.step, g = curGroup();
-  return h('div', { class: 'pn-head' },
-    h('div', { class: 'pn-hrow' }, planPills(), h('span', { class: 'pn-count' }, s === 0 ? '总的看法' : !g ? (planFin() ? '改好了' : '最后一步') : g.note ? '批注 ' + g.label + ' / ' + D.notes.length : groupName(g))),
-    live ? runLine(live) : null, live ? stepList(live) : null);
-}
-function staleWarn() {   // 方案出了以后又改过批注
-  return D.mdMtime > PL.mtime + 999 ? h('p', { class: 'warn' }, '这份方案出了以后，你又改过批注。要照新的批注出，点',
-    h('button', { class: 'pj-link', type: 'button', disabled: PL.jobs.some(jobLive), onclick: () => askPlan(true) }, '重出方案'), '。') : null;
-}
-function sumBody() {
-  const P0 = PL.plan, n = P0.items.length, fix = P0.items.filter(it => it.原文 != null).length, nN = D.notes.length, [when, who] = P0.出方案.split('　');
-  return [
-    h('p', { class: 'pn-sumt' }, P0.总),
-    h('p', { class: 'pn-line' }, (nN ? '你写了 ' + nN + ' 条批注，' : '') + '方案一共出了 ' + n + ' 处改法' + (fix === n ? '，都改提示词。' : !fix ? '，提示词都不动，要另外做。' : '：' + fix + ' 处改提示词，' + (n - fix) + ' 处提示词不动、要另外做（虚线框的）。')),
-    staleWarn(),
-    h('p', { class: 'pn-meta' }, [PL.src ? '照「' + vpLabel(PL.src) + '」出的' : '', when ? when.slice(5, 16) : '', who || ''].filter(Boolean).join(' · ')),
-  ];
-}
-function groupBody(g, ro) {   // 你写的这条批注，下面是方案对它的几处改法
-  if (!PL.seen.has(g.key)) { PL.seen.add(g.key); saveView(); }
-  const anchor = g.note
-    ? h('button', { type: 'button', class: 'pn-an', title: '点一下，片子跳到这条批注', onclick: () => jump(g.note) },
-      h('span', { class: 'pn-an-h' }, '你的批注 ' + g.label + ' · ' + rangeText(g.note) + (g.note.shot ? ' · 镜头 ' + g.note.shot.split('｜')[0] : '') + (g.note.kf ? ' · 弃用关键帧 ' + g.note.kf.ref : '')),
-      h('span', { class: 'pn-an-t' }, g.note.text))
-    : h('div', { class: 'pn-an' }, h('span', { class: 'pn-an-h' }, g.key === 'g' ? '你对整条的意见' : '方案里没对上哪条批注的'), g.key === 'g' && D.general.trim() ? h('span', { class: 'pn-an-t' }, D.general.trim()) : null);
-  const kf = g.note && g.note.kf ? h('p', { class: 'pn-line' }, '照方案改的时候，字改完以后照新稿重出一张 ' + g.note.kf.ref + ' 换上（旧图收进历史记录）；你的理由说这一镜不要关键帧的，就从新稿里拿掉，后面的 @图片 编号往前挪。原稿不动。') : null;   // 弃用关键帧
-  if (!g.items.length) return [anchor, kf, kf ? null : h('p', { class: 'pn-line pn-none' }, '方案里没给这条出改法。要改，到最后一步写在「方案里没有、还要改的」。')];
-  return [anchor, kf, h('div', { class: 'pn-lab' }, '方案的改法 · ' + g.items.length + ' 处'), h('ol', { class: 'pn-chs' }, g.items.map((it, i) => changeCard(it, i + 1, g, ro)))];
-}
-function changeCard(it, i, g, ro) {   // 一处改法；它也管别的批注、又不是摆全的那一步：折成一行，点开看全
-  const d = decOf(it), fix = it.原文 != null, where = str(it.位置).trim(), home = homeOf(it), others = refsOf(it).map(String).filter(k => k !== g.key);
-  const fold = home !== g.key && !PL.open.has(it.no) && d.定 !== '照我说的改';
-  const head = h('div', { class: 'pn-ch-h' }, h('span', { class: 'pn-chn' }, String(i)),
-    h('span', { class: 'pn-chk' }, fix ? '改提示词' + (where && !/不改/.test(where) ? ' · ' + where : '') : '提示词不动 · 另外要做'),
-    others.length ? h('span', { class: 'pn-also' }, fold ? '在批注 ' + home + ' 里看全' : '也管批注 ' + others.join('、')) : null);
-  if (fold) return h('li', { class: 'pn-ch fold' + (fix ? '' : ' tip'), title: '点开看全', onclick: () => { PL.open.add(it.no); paintRail(); } },
-    head, h('div', { class: 'pn-ch-row' }, h('p', { class: 'pn-ch-one' }, pnClip(it.怎么改 || it.问题 || where, 60)), h('span', { class: 'pn-ch-dec d-' + DEC_CLS[d.定] }, DEC_NAME[d.定] || d.定)));
-  return h('li', { class: 'pn-ch' + (fix ? '' : ' tip') },
-    head,
-    h('p', { class: 'pn-prob' }, it.问题 || where || '（没写哪里不对）'),
-    it.原因 ? h('p', { class: 'pn-why' }, h('span', null, '为什么'), it.原因) : null,
-    it.怎么改 ? h('p', { class: 'pn-how' }, it.怎么改) : null,
-    fix ? itemDiff(it.原文, it.改成) : null,
-    ro ? h('p', { class: 'pn-chose' }, '定的是', h('b', null, DEC_NAME[d.定] || d.定))
-      : h('div', { class: 'pn-seg' }, (fix ? DEC_FIX : DEC_TIP).map(o => h('button', { type: 'button', class: 'o-' + DEC_CLS[o] + (d.定 === o ? ' on' : ''), title: DEC_HINT[o], onclick: () => setDec(it, o) }, DEC_NAME[o] || o))),
-    d.定 === '照我说的改' ? h('textarea', { class: 'pn-say', 'data-fk': 'say-' + it.no, disabled: ro, value: d.批注,
-      placeholder: fix ? '要怎么改：直接写换上去的句子，或者说想要什么样' : '提示词要怎么改：直接写句子，或者说想要什么样',
-      oninput: e => setSay(it, e.target.value), onblur: () => { if (PL.saveT) planSaveNow(); },
-      onkeydown: e => { if (e.key === 'Escape') e.target.blur(); else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); planGo(PL.step + 1); } } }) : null);
-}
-function whyText() {   // 最后一步：照方案改要改几处、关键帧怎么办、存成什么
-  const { a, b, c, k, go } = planCount(), kfs = D.notes.filter(n => n.kf).map(n => n.kf.ref);
-  if (!go) return '每一处都选了「不改」，没有要改的。';
-  const words = a + b ? '要改 ' + (a + b) + ' 处：' + [a ? '照方案原样换 ' + a + ' 处（不经 AI）' : '', b ? '照你说的 ' + b + ' 处交给 ' + chName() : ''].filter(Boolean).join('，') + '。' : '';
-  const kf = k ? (words ? '字改完以后，' : '') + chName() + ' 把挂的 ' + k + ' 张关键帧一张张看' + (c ? '（弃用的 ' + kfs.join('、') + ' 重出或拿掉）' : '') + '；要改的' + (chNow() === SELF_CH ? '一张一张交给你出图' : '几张同时开几个 Codex 对话出图') + '，再核图；出不成的从新稿里拿掉，标红告诉你。'
-    : c ? '弃用的 ' + kfs.join('、') + ' 重出或拿掉。' : '';
-  return words + kf + '另存成 ' + (PL.next || '新的一版') + '，原稿不动。';
-}
-/* 照方案改好了：关键帧、白模各成了什么样（本机服务写的 结果.json）。红的是没出成、拿掉的：回「提示词」那一步补 */
-function resThumb(rel, label) {
-  const img = h('img', { alt: '' }), url = () => FS.file(pjAt(rel)).then(f => URL.createObjectURL(f));
-  if (rel) url().then(u => { img.src = u; }).catch(() => { img.alt = '图不在了'; });
-  return h('button', { type: 'button', class: 'rs-th', title: '点开看大图', onclick: () => RefPic.show(url(), label, rel) }, img);
-}
-function resBody(R) {
-  const fr = Array.isArray(R.关键帧) ? R.关键帧 : [], bm = R.白模 && Array.isArray(R.白模.要改) && R.白模.要改.length ? R.白模 : null, add = Array.isArray(R.要加) ? R.要加 : [];
-  const what = f => f.结果 === '换上' ? (f.做法 === '小改' ? '小改了' : '重出了') + '，换上了' + (f.再出 ? '（核图第一回说不行，再出了一回）' : '')
-    : f.结果 === '留着' ? '留着' : f.结果 === '拿掉' ? '从新稿里拿掉了' : '没出成，从新稿里拿掉了';   // 为什么（等白模、出不成）写在下面一行
-  const row = f => h('li', { class: 'rs-kf' + (f.结果 === '拿掉' || f.结果 === '没出成' ? ' bad' : '') },
-    h('div', { class: 'rs-ims' }, f.结果 === '换上' && f.旧图 ? [resThumb(f.旧图, f.编号 + ' 原来的'), h('span', { class: 'rs-to' }, '→'), resThumb(f.图, f.编号 + ' 新的')] : resThumb(f.图, f.编号)),
-    h('div', { class: 'rs-t' }, h('b', null, f.编号 + (f.新编号 && f.新编号 !== f.编号 ? ' → ' + f.新编号 : '') + (f.时刻 ? ' · ' + f.时刻 : '')), h('span', null, what(f)),
-      f.为什么 ? h('span', { class: 'rs-why' }, f.为什么) : null, f.结果 === '换上' && f.核图 ? h('span', { class: 'rs-why' }, '核图：' + f.核图) : null));
-  return [
-    fr.length ? h('div', { class: 'rs-box' }, h('div', { class: 'pn-lab' }, '关键帧 · ' + fr.length + ' 张'), h('ol', { class: 'rs-kfs' }, fr.map(row))) : null,
-    bm ? h('div', { class: 'rs-box' }, h('div', { class: 'pn-lab' }, '要回白模改的 · 这里改不了'), h('ol', { class: 'rs-list' }, bm.要改.map(b => h('li', null, (b.shots && b.shots.length ? '镜头' + b.shots.join('、') + '：' : '') + b.text))),
-      h('button', { class: 'btn sm', type: 'button', title: bm.话, onclick: () => copyText(bm.话, '复制好了：贴给 Claude，让它改白模') }, '复制交给 Claude 的话')) : null,
-    add.length ? h('div', { class: 'rs-box' }, h('div', { class: 'pn-lab' }, 'AI 觉得还能加关键帧的（没自动加）'), h('ol', { class: 'rs-list' }, add.map(a => h('li', null, (a.镜头 ? '镜头' + a.镜头 + '：' : '') + a.为什么)))) : null,
-    Array.isArray(R.留空) && R.留空.length ? h('p', { class: 'warn' }, '有 ' + R.留空.length + ' 句提到拿掉的关键帧，那一处换成了〔〕：生成任务书前要改写。') : null,
-    Array.isArray(R.没登记) && R.没登记.length ? h('p', { class: 'warn' }, '新稿写了 ' + R.没登记.join('、') + '，可是没登记是哪个文件：生成任务书前要补上。') : null,
-  ];
-}
-function endBody(ro) {
-  const P0 = PL.plan, srcOk = D.prompts.some(p => p.name === PL.src), busy = PL.jobs.some(jobLive);
-  if (planFin()) {
-    const has = D.prompts.some(p => p.name === PL.last), R = PL.res && PL.res.新稿 === PL.last ? PL.res : null, kfN = R && Array.isArray(R.关键帧) ? R.关键帧.length : 0;
-    return [
-      h('h3', { class: 'pn-end-h ok' }, icon('check'), '改好了'),
-      h('p', { class: 'pn-how' }, '照这份方案改出了「' + vpLabel(PL.last) + '」' + (P0.done.length > 1 ? '（改过 ' + P0.done.length + ' 回）' : '') + (has ? '，原稿没动。' : '。这一版后来删了，在历史记录里。')),
-      has && srcOk ? h('div', { class: 'rs-box' }, h('button', { class: 'btn sm', type: 'button', title: '一行一行比：删的划掉，加的标绿', onclick: () => verDiff(PL.src, PL.last) }, '看字改了哪儿')) : null,
-      R ? resBody(R) : null,
-      has ? h('p', { class: 'pn-meta' }, kfN ? '下一步：回流水线「提示词」那一步，看一眼新关键帧、生成任务书；你点「批准出片」才出片。' : '下一步：回流水线「提示词」那一步，生成任务书；你点「批准出片」才出片。') : null,
-      R && R.记录 ? h('p', { class: 'pn-meta', title: '任务书、AI 的回复、每一张图的出图和核图都在这里' }, 'AI 做过的：' + R.记录) : null,
-    ];
-  }
-  const rows = planGroups().map((g, i) => { const st = groupState(g); return [groupPill(g, i + 1), h('span', { class: 'pn-rt' + (st.bad ? ' bad' : '') }, st.bad ? '有一处选了「我来说」，还没写要怎么改' : groupSay(g))]; });
-  const gen = PL.genOpen || PL.general.trim() ? h('div', { class: 'pn-gen' }, h('div', { class: 'pn-lab' }, '方案里没有、还要改的'),
-    h('textarea', { class: 'gen', 'data-fk': 'pgen', rows: 2, disabled: ro, placeholder: '可不写。写了，照方案改的时候 AI 一起改', value: PL.general,
-      oninput: e => { PL.general = e.target.value; planSaveLater(); paintPlanFoot(); }, onblur: () => { if (PL.saveT) planSaveNow(); }, onkeydown: e => { if (e.key === 'Escape') e.target.blur(); } }))
-    : ro ? null : h('button', { class: 'pn-more', type: 'button', onclick: () => { PL.genOpen = true; paintRail(); const t = RAIL.body.querySelector('[data-fk="pgen"]'); if (t) t.focus(); } }, '＋ 方案里没有、还要改的');
-  const newest = D.prompts.filter(p => vpBase(p.name) === vpBase(PL.src)).pop();
-  return [
-    h('h3', { class: 'pn-end-h' }, PL.again ? '再照方案改一份' : '定好了'),
-    h('div', { class: 'pn-rows' }, rows),
-    gen,
-    staleWarn(),
-    !srcOk ? h('p', { class: 'warn' }, '方案照的那份提示词（' + (PL.src || '没写') + '）不在了，没法照方案改。') : null,
-    srcOk && newest && newest.name !== PL.src && newest.name !== PL.last ? h('p', { class: 'warn' }, '这一条后来又改出了「' + vpLabel(newest.name) + '」。照这份方案改，是在「' + vpLabel(PL.src) + '」上改；「' + vpLabel(newest.name) + '」里改的不会带上。') : null,
-    D.prompt && PL.src && vpBase(D.prompt) === vpBase(PL.src) && D.prompt !== PL.src ? h('p', { class: 'hint small' }, '方案是照「' + vpLabel(PL.src) + '」出的（上面「出自」选的是「' + vpLabel(D.prompt) + '」），改的是「' + vpLabel(PL.src) + '」。') : null,
-    failLine('按方案改提示词'), failLine('修改方案'),
-    srcOk ? h('p', { class: 'pn-line pn-why-line' }, whyText()) : null,
-    srcOk && !busy ? h('div', { class: 'pn-pick', hidden: !planCount().ai }, chPick()) : null,   // 有要交给 AI 的才摆「交给哪个 AI」（照你说的改字、看关键帧）
-    h('p', { class: 'pn-meta' }, h('button', { class: 'pj-link', type: 'button', disabled: busy, title: '照现在的批注重出一份：这一份和你定的收进历史记录', onclick: () => askPlan(true) }, '重出方案')),
-  ];
-}
-function planDock() {   // 最下面一条：只放这一步要按的
-  const s = PL.step, gs = planGroups(), live = PL.jobs.find(jobLive);
-  const err = PL.err ? h('span', { class: 'pn-err' }, '你定的没存上：' + PL.err) : null;
-  if (s === 0) return h('div', { class: 'pn-dock' }, h('span', { class: 'sp' }), h('button', { class: 'btn ink', type: 'button', onclick: () => planGo(1) }, '一条一条看 →'), err);
-  if (s <= gs.length) return h('div', { class: 'pn-dock' }, h('span', { class: 'sp' }),
-    h('span', { class: 'pn-nav' }, h('button', { type: 'button', disabled: s <= stepMin(), onclick: () => planGo(s - 1) }, '‹ 上一条')),
-    h('button', { class: 'btn ink', type: 'button', onclick: () => planGo(s + 1) }, s === gs.length ? '看完了 ›' : '下一条 ›'),
-    err);
-  const srcOk = D.prompts.some(p => p.name === PL.src);
-  if (planFin()) return h('div', { class: 'pn-dock' },
-    h('button', { class: 'pj-link', type: 'button', disabled: !srcOk || !!live, title: srcOk ? '在原来那一版上照你重新定的再改一份，另存成 ' + PL.next : '方案照的那份提示词不在了', onclick: () => { PL.again = true; planGo(1); } }, '改主意了：再照方案改一份'),
-    h('span', { class: 'sp' }),
-    h('button', { class: 'pj-link', type: 'button', disabled: !!live, title: '照现在的批注重出一份：这一份和你定的收进历史记录', onclick: () => askPlan(true) }, '重出方案'), err);
-  const { go } = planCount();
-  return h('div', { class: 'pn-dock' }, h('span', { class: 'sp' }),
-    PL.again ? h('button', { class: 'btn ghost', type: 'button', disabled: !!live, onclick: () => { PL.again = false; planGo(stepEnd()); } }, '取消') : null,
-    h('button', { class: 'btn zhu', type: 'button', disabled: !!live || !srcOk || !go, title: srcOk ? whyText() : '方案照的那份提示词不在了', onclick: askFix }, PL.again ? '再照方案改一份' : '照方案改'),
-    err);
-}
-function setDec(it, o) {   // 一步里有几处，各自定；不自动翻页，看完点「下一条」
-  PL.dec.set(it.no, { 定: o, 批注: decOf(it).批注 });
-  planSaveLater(); paintRail();
-  if (o === '照我说的改') { const ta = RAIL.body.querySelector('[data-fk="say-' + it.no + '"]'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }
-}
-function setSay(it, v) { PL.dec.set(it.no, { 定: decOf(it).定, 批注: v }); planSaveLater(); paintPlanFoot(); }
-function planCount() {   // 要改几处：照方案原样换的、交给 AI 照你说的改的；关键帧几张
-  let a = 0, b = 0, w = false;
-  for (const it of PL.plan.items) { const d = decOf(it); if (d.定 !== '不改') w = true; if (d.定 === '照这样改' && it.原文 != null) a++; else if (d.定 === '照我说的改' && d.批注.trim()) b++; }
-  b += PL.general.trim() ? 1 : 0;
-  const c = D.notes.filter(n => n.kf).length, k = kfCount(), go = a + b + c > 0 || (k > 0 && w);   // c：弃用的关键帧；k：挂的关键帧（照方案改的时候 AI 一张张看）；w：有一处没选「不改」
-  return { a, b, c, k, go, ai: b > 0 || (k > 0 && (w || c > 0)) };
-}
-function kfCount() {   // 方案照的那份提示词挂了几张关键帧（「出自」选的就是它：照这一页认的；不然照参考素材映射里登记的名字认）
-  if (D.prompt === PL.src) return D.refs.filter(isKf).length;
-  return (MAP.get(PL.src) || []).filter(r => r && /^@图片\d+$/.test(r.ref) && clean(r.path).startsWith('资产/' + SEGD + '/') && /首帧|尾帧|关键帧/.test(fileOf(clean(r.path)))).length;
-}
-function paintPlanFoot() {   // 只换最下面那一条，和最后一步那句「要改几处」：正在写的那一格不动
-  if (!RAIL.body || D.tab !== 'plan' || !PL.plan) return;
-  const old = RAIL.body.querySelector('.pn-dock'); if (old) old.replaceWith(planDock());
-  const w = RAIL.body.querySelector('.pn-why-line'); if (w) w.textContent = whyText();
-  const pk = RAIL.body.querySelector('.pn-pick'); if (pk) pk.hidden = !planCount().ai;
-}
-function panePlan() {
-  if (!planOk()) return h('div', { class: 'pn-body' }, h('p', { class: 'hint' }, '本机服务还是老版本，要重开一下才有这一步（让 AI 照批注出修改方案、逐条定、照方案改）。跟 Claude 说一声。'));
-  const live = PL.jobs.find(jobLive), noted = D.notes.length || D.general.trim();
-  if (!PL.plan) {
-    const nN = D.notes.length;
-    return [h('div', { class: 'pn-body' },
-      h('h3', { class: 'pn-end-h' }, '修改方案'),
-      live ? [runLine(live), h('p', { class: 'pn-line' }, '做完这里自动出现，可以先接着看片。')]
-        : h('p', { class: 'pn-how' }, noted ? '让 AI 照你的' + (nN ? ' ' + nN + ' 条批注' : '') + (D.general.trim() ? (nN ? '和' : '') + '整条的意见' : '') + '出一份修改方案：每一条批注说清哪里不对、为什么、提示词怎么改。这一回不改稿，你一条一条定了再改。'
-          : '先写批注：看到哪里不对，停下来按回车写一句。写好了，回这里让 AI 出修改方案。'),
-      !live && noted && !CH.list.length ? h('p', { class: 'warn' }, '这台电脑上一个 AI 都调不起来（Claude、Codex、DeepSeek）。') : null,
-      !live && noted && CH.list.length ? h('div', { class: 'pn-pick' }, chPick()) : null,
-      failLine('修改方案')),
-    !live && noted ? h('div', { class: 'pn-dock' }, h('span', { class: 'sp' }),
-      h('button', { class: 'btn zhu', type: 'button', disabled: !CH.list.length, onclick: () => askPlan(false) }, '让 AI 出修改方案')) : null];
-  }
-  if (PL.step > stepEnd()) PL.step = stepEnd();   // 批注删了几条，步数少了
-  const ro = planFin() || !!live, g = curGroup();
-  return [planHead(live),
-    h('div', { class: 'pn-body', 'data-step': String(PL.step) }, PL.step === 0 ? sumBody() : g ? groupBody(g, ro) : endBody(ro)),
-    planDock()];
 }
 
 /* ---------- 看大图：← → 翻，Esc 关；能放到片子旁边对照 ---------- */
@@ -1762,19 +1199,17 @@ function closeBox() { if (D.box) { D.box.el.remove(); D.box = null; } }
 /* ============================================================
    关键帧（2026-11-14 他要「审片中的关键帧，应该可以批注，弃用，并且标注弃用的理由」）
    弃用：记成一条批注，多一行「弃用关键帧：@图片9 路径」，理由写在「批注」里；停在这一镜开头、截一帧。
-     照方案改的时候（11-15 改）：字改完以后 AI 把挂的关键帧一张张看，弃用的照新稿重出一张换上；理由说这一镜不要关键帧的，或者出不成的，从新稿里拿掉（后面的 @图片 往前挪）。原稿不动。
    图上批注：和「资产」那一步一样，项目管理的看图页整页盖上来，框出来写，存在图旁边（图名_批注.md、图名_批注截图）；
-     「照批注改图」交给 Codex，以这张为底只改说到的地方，改出来的先当候选（图名_候选.png），回「提示词」那一步点「看新图」，选「用新图」才换上。出修改方案时 AI 也看这些批注
+   怎么改由他拿着批注和自己的 AI 商量（11-15 他定审片只批注），这一页不改图
    ============================================================ */
-const KF = { st: new Map(), jobs: [], sig: '', shell: null };   // st：图的路径 → { note 图上写了批注, cand 有改好的候选 }；jobs：这一场关键帧的「改图」任务；shell：盖着的看图页
+const KF = { st: new Map(), shell: null };   // st：图的路径 → { note 图上写了批注 }；shell：盖着的看图页
 const isKf = r => !!r && /^@图片/.test(r.ref) && r.rel.startsWith('资产/' + SEGD + '/') && (r.kind === '关键帧' || D.shots.some(s => s.kf === r.ref));   // 这一场文件夹里的图：名字带首帧、尾帧、关键帧，或者哪一镜开头参考它
 const kfStem = r => stem(fileOf(r.rel));
 const kfSide = (r, tail) => r.rel.split('/').slice(0, -1).concat(kfStem(r) + tail).join('/');
 const kfRefOf = kf => !kf ? null : D.refs.find(r => kf.rel && r.rel === kf.rel) || D.refs.find(r => r.ref === kf.ref && (!kf.rel || fileOf(r.rel) === fileOf(kf.rel))) || null;
 const kfName = kf => { const r = kfRefOf(kf); return r ? r.label : stem(fileOf(kf.rel || clean(kf.raw))); };
 const goneOf = r => D.notes.find(n => n.kf && kfRefOf(n.kf) === r) || null;   // 弃用这张的那条批注
-const kfJob = r => KF.jobs.filter(j => (j.文件名 || j.名) === kfStem(r)).pop() || null;
-async function kfLoad() {   // 这一条挂的关键帧：图上写没写批注、有没有改好的候选（一个文件夹只读一回清单，不一张张去问）。变了给 true
+async function kfLoad() {   // 这一条挂的关键帧：图上写没写批注（一个文件夹只读一回清单，不一张张去问）。变了给 true
   const st = new Map(), dirs = new Map();
   const find = async rel => {
     const k = rel.lastIndexOf('/'), d = k >= 0 ? rel.slice(0, k) : '';
@@ -1782,56 +1217,42 @@ async function kfLoad() {   // 这一条挂的关键帧：图上写没写批注�
     return (await dirs.get(d)).get(rel.slice(k + 1)) || null;
   };
   for (const r of D.refs.filter(isKf)) {
-    const [n, c] = await Promise.all([find(kfSide(r, NOTES_TAIL)), find(kfSide(r, '_候选.png'))]);
-    st.set(r.rel, { note: !!n, cand: !!c, sig: (n ? n.mtime : 0) + '/' + (c ? c.mtime : 0) });
+    const n = await find(kfSide(r, NOTES_TAIL));
+    st.set(r.rel, { note: !!n, sig: String(n ? n.mtime : 0) });
   }
   const sig = m => [...m].map(([k, v]) => k + v.sig).join('|'), changed = sig(st) !== sig(KF.st);
   KF.st = st;
   return changed;
 }
-async function kfJobsIn(all) {   // 本机服务的任务里这一场关键帧的「改图」：做完了说一声，重读候选
-  const was = new Map(KF.jobs.map(j => [j.id, j.状态]));
-  KF.jobs = all.filter(j => j.事 === '改图' && j.段 === SEG && j.类别 === '关键帧');
-  const ended = KF.jobs.filter(j => !jobLive(j) && jobLive({ 状态: was.get(j.id) })), sig = KF.jobs.map(j => j.id + j.状态 + j.步骤).join();
-  for (const j of ended) toast(j.状态 === '做完' ? j.结果 : j.标题 + (j.状态 === '停了' ? ' 停掉了' : ' 没成：' + j.错误), j.状态 === '做完' ? '' : 'err');
-  if (ended.length) await kfLoad();
-  if (ended.length || sig !== KF.sig) { KF.sig = sig; if (D.tab === 'shot') paintRail(); }
-}
-function kfRun(j) {   // 改图做到哪了
-  return h('div', { class: 'pj-run' }, h('i', { class: 'wt-ring' }),
-    h('span', { class: 'wt-t' }, j.状态 === '排队' ? 'Codex 排着队，前面还有别的任务' : (j.步骤 || 'Codex 在照批注改图')),
-    h('b', { 'data-t0': String(j.开始 || j.建) }, ''), h('span', { class: 'sp' }),
-    ...(window.HandAI ? HandAI.buttons(j, () => loadJobs()) : []),   // 等你交给 AI 的、Claude 等你按发送的
-    h('button', { class: 'pj-link', type: 'button', title: '不等了，停掉这个任务', onclick: async () => { await LINK.req('POST', '/api/job/' + j.id + '?cancel').catch(() => {}); loadJobs(); } }, '停掉'));
-}
-function kfActs(r) {   // 在图上批注、照批注改图、弃用
-  const st = KF.st.get(r.rel) || {}, live = jobLive(kfJob(r)), gone = goneOf(r);
+function kfActs(r) {   // 在图上批注、弃用
+  const st = KF.st.get(r.rel) || {}, gone = goneOf(r);
   return [
-    h('button', { class: 'btn sm', type: 'button', title: '在这张关键帧上框出来写批注（和资产那一步一样）。写好了点「照批注改图」', onclick: () => openImgNote(r) }, st.note ? '改图上的批注' : '在图上批注'),
-    st.note ? h('button', { class: 'btn sm', type: 'button', disabled: live, title: 'Codex 以这张为底，只改你在图上批注说到的地方；改出来的先当候选，原图不动', onclick: () => askKfEdit(r) }, live ? 'Codex 在改…' : '照批注改图') : null,
-    gone ? null : h('button', { class: 'btn sm ghost danger', type: 'button', title: '这张关键帧不要了：写一句为什么。照方案改的时候照新稿重出一张换上；你说这一镜不要关键帧的，就从新的一版拿掉', onclick: () => dropKf(r) }, '弃用'),
+    h('button', { class: 'btn sm', type: 'button', title: '在这张关键帧上框出来写批注（和资产那一步一样）', onclick: () => openImgNote(r) }, st.note ? '改图上的批注' : '在图上批注'),
+    gone ? null : h('button', { class: 'btn sm ghost danger', type: 'button', title: '这张关键帧不要了：写一句为什么，记进这条样片的批注', onclick: () => dropKf(r) }, '弃用'),
   ];
 }
-function kfMore(r) {   // 这一镜关键帧下面：弃用的理由、改图做到哪、改好的候选，再是那一排按钮
-  const st = KF.st.get(r.rel) || {}, job = kfJob(r), gone = goneOf(r);
+function kfMore(r) {   // 这一镜关键帧下面：弃用的理由，再是那一排按钮
+  const gone = goneOf(r);
   return [
     gone ? h('div', { class: 'kf-why' }, h('div', { class: 'kf-why-h' }, '弃用了 · 理由', h('span', { class: 'sp' }),
       h('button', { class: 'pj-link', type: 'button', onclick: () => openForm(gone) }, '改理由'),
       h('button', { class: 'pj-link', type: 'button', title: '这张照旧挂着：弃用写的这条批注删掉', onclick: () => undropKf(gone) }, '撤回')),
       h('div', { class: 'kf-why-t' }, gone.text)) : null,
-    jobLive(job) ? kfRun(job)
-      : st.cand ? h('div', { class: 'kf-row' }, '照批注改好了一张新图', h('button', { class: 'pj-link', type: 'button', onclick: () => seeCand(r) }, '看一眼'), h('span', { class: 'sp' }), h('span', null, '回流水线「提示词」那一步点「看新图」，选「用新图」才换上'))
-      : job && job.状态 === '没成' && Date.now() - job.结束 < 30 * 60e3 ? h('p', { class: 'warn', title: '任务书和回答留在：' + job.记录 }, '照批注改图没成：' + job.错误) : null,
     h('div', { class: 'kf-row' }, kfActs(r)),
   ];
 }
-function boxKf(r) {   // 看大图时：弃用了的一句、在图上批注、照批注改图、弃用
-  const st = KF.st.get(r.rel) || {}, live = jobLive(kfJob(r)), gone = goneOf(r), go = fn => () => { closeBox(); fn(); };
+function boxKf(r) {   // 看大图时：弃用了的一句、在图上批注、弃用
+  const st = KF.st.get(r.rel) || {}, gone = goneOf(r), go = fn => () => { closeBox(); fn(); };
   return [gone ? h('span', { class: 'bx-gone', title: gone.text }, '弃用了：' + gone.text.replace(/\s+/g, ' ')) : null,
     h('button', { class: 'btn sm', type: 'button', onclick: go(() => openImgNote(r)) }, st.note ? '改图上的批注' : '在图上批注'),
-    st.note ? h('button', { class: 'btn sm', type: 'button', disabled: live, onclick: go(() => askKfEdit(r)) }, live ? 'Codex 在改…' : '照批注改图') : null,
     gone ? h('button', { class: 'btn sm', type: 'button', onclick: go(() => openForm(gone)) }, '改理由') : h('button', { class: 'btn sm', type: 'button', onclick: go(() => dropKf(r)) }, '弃用')];
 }
+const pnClip = (s, n) => {   // 截短；@图片12 这种编号不截一半
+  const t = str(s).replace(/\s+/g, ' ').trim();
+  if (t.length <= n) return t;
+  for (const m of t.matchAll(/@(?:图片|视频|音频)\s*[0-9]+/g)) if (m.index < n && n < m.index + m[0].length) n = m.index;
+  return t.slice(0, n) + '…';
+};
 async function dropKf(r) {   // 弃用一张关键帧：停在这一镜开头（关键帧管的是那一刻），写一条批注说为什么
   const old = goneOf(r);
   if (old) { openForm(old); return; }
@@ -1845,17 +1266,6 @@ async function undropKf(n) {   // 撤回弃用：这条批注删掉（截图跟�
   await dropNote(n);
   toast(n.kf.ref + ' 照旧挂着');
 }
-async function askKfEdit(r) {   // 照图上的批注改图：Codex 一次一张，改出来的先当候选（和资产那一步同一个任务）
-  if (!(KF.st.get(r.rel) || {}).note) { toast('还没在图上写批注：点「在图上批注」，框出来写好再点这里', 'err'); return; }
-  const j = await startJob({ 事: '改图', 段: SEG, 类别: '关键帧', 名: kfStem(r), 参数: { 图: r.rel } });
-  if (!j) return;
-  PL.jobs = PL.jobs.filter(x => x.id !== j.id);   // 改图不算方案那一页的
-  KF.jobs = KF.jobs.filter(x => x.id !== j.id).concat(j);
-  paintRail();
-}
-function seeCand(r) {   // 改好的候选：看一眼（换不换回「提示词」那一步定）
-  RefPic.show(FS.file(pjAt(kfSide(r, '_候选.png'))).then(f => URL.createObjectURL(f)), r.ref + ' 照批注改好的新图', '旧图还在用着。回流水线「提示词」那一步点这张关键帧的「看新图」，选「用新图」才换上。');
-}
 function openImgNote(r) {   // 在关键帧图上写批注：项目管理的看图页整页盖上来；回来时看一眼写没写
   closeBox(); closePop(); hideHov(); if (P) halt();
   if (KF.shell) KF.shell.remove();
@@ -1864,12 +1274,12 @@ function openImgNote(r) {   // 在关键帧图上写批注：项目管理的看�
     KF.shell.remove(); KF.shell = null;
     const had = (KF.st.get(r.rel) || {}).note;
     await kfLoad(); paintRail();
-    if (!had && (KF.st.get(r.rel) || {}).note) toast('图上的批注存好了：要 Codex 照着改，点「照批注改图」');
+    if (!had && (KF.st.get(r.rel) || {}).note) toast('图上的批注存好了');
     window.focus();
   };
   KF.shell = h('div', { class: 'dk-shell' },
     h('div', { class: 'dk-shell-h' }, h('button', { class: 'btn sm ink', type: 'button', onclick: close }, '← 回审片台'),
-      h('b', null, r.ref + ' · ' + r.label), h('span', null, '在图上框出来写批注；写好点左边回来，再点「照批注改图」'), h('span', { class: 'sp' })),
+      h('b', null, r.ref + ' · ' + r.label), h('span', null, '在图上框出来写批注；写好点左边回来'), h('span', { class: 'sp' })),
     h('iframe', { class: 'dk-shell-f', title: '在关键帧图上写批注', src: window.Base.shellUrl(pjAt(r.rel)) }));
   document.body.append(KF.shell);
 }
@@ -1922,8 +1332,7 @@ function render() {
   RAIL.body = h('div', { class: 'pane' });
   RAIL.body.addEventListener('wheel', () => { RAIL.userScroll = Date.now(); }, { passive: true });
   RAIL.body.addEventListener('pointerdown', () => { RAIL.userScroll = Date.now(); });
-  RAIL.main = h('div', { class: 'dk-main' + (D.tab === 'plan' ? ' wide' : '') }, buildStage(), h('aside', { class: 'dk-rail' }, RAIL.tabs, RAIL.body));   // 一打开就看方案：一开始就是宽的，不从窄的滑过去
-  document.getElementById('app').replaceChildren(renderTop(), RAIL.main);
+  document.getElementById('app').replaceChildren(renderTop(), h('div', { class: 'dk-main' }, buildStage(), h('aside', { class: 'dk-rail' }, RAIL.tabs, RAIL.body)));
   paintStatus(); paintCmp(); paintShots(); onShot(shotAt(0)); paintMarks(); paintComposer(); paintPlay(); paintTime(); paintRail();
 }
 const fatal = msg => h('div', { class: 'dk-fatal' }, msg, h('div', { style: 'margin-top:16px' }, h('button', { class: 'btn', type: 'button', onclick: goBack }, '← 回审片')));
@@ -1931,7 +1340,6 @@ async function leave() {
   if (!(await leaveForm())) return false;
   if (P) halt();
   if (D.saveT) saveNow();
-  if (PL.saveT) planSaveNow();
   await D.q;
   return true;
 }
@@ -1966,7 +1374,6 @@ document.addEventListener('keydown', e => {
 document.addEventListener('mousedown', e => { const b = e.target.closest && e.target.closest('button'); if (b && !b.closest('.form, .dk-box, #layer, .fl-pop')) e.preventDefault(); });
 window.addEventListener('beforeunload', e => {
   if (D.saveT) saveNow();
-  if (PL.saveT) planSaveNow();
   if (D.form && D.form.changed && D.form.text.trim()) { e.preventDefault(); e.returnValue = ''; }
 });
 /* 隔几秒看一眼批注文件：AI 改了、移走了，就重新读 */
@@ -1981,11 +1388,7 @@ setInterval(async () => {
       paintMarks(); paintShots(); paintRail(); paintStatus();
       toast(st ? '批注在外面改过，已重新读取' : '批注文件被移走了');
     }
-    if (D.refs.some(isKf) && await kfLoad() && (D.tab === 'shot' || D.tab === 'assets')) paintRail();   // 关键帧图上的批注、改好的候选：外面写了、换了
-    if (planOk() && !PL.saveT && !PL.jobs.some(jobLive)) {   // 修改方案在外面出了、改了、移走了：重新读
-      const ps = await FS.stat(pjAt(PLAN_REL)), pm = ps ? ps.mtime : 0;
-      if (pm !== PL.mtime && !PL.saveT) { await loadPlan(); if (D.tab === 'plan') paintRail(); else paintTabs(); }
-    }
+    if (D.refs.some(isKf) && await kfLoad() && (D.tab === 'shot' || D.tab === 'assets')) paintRail();   // 关键帧图上的批注：外面写了、改了
   } catch (e) { /* 下回再看 */ }
   finally { D.checking = false; }
 }, 3000);
@@ -2011,12 +1414,9 @@ setInterval(async () => {
   await loadPrompt(want || '');
   await kfLoad();
   await loadClips();
-  if (planOk()) { await loadPlan(); try { await CH.load(); } catch (e) { /* 一个 AI 都调不起来：照旧能批，只是没法交给 AI */ } await loadJobs(); }   // 修改方案（本机服务第 8 版起有）
-  if (Q.get('tab') === 'plan') D.tab = 'plan';
   restoreCmp();
   render();
   if (window.RefPic) RefPic.watch(ref => { const r = refBy(ref); return r && isImgRef(r) ? { tip: ref + ' · ' + r.label + '　点开看大图', open: () => openRef(r) } : null; }, '.dk-box');   // 字里的 @图片N 都能点开看大图（公用/点图.js），照「出自」选的那条提示词认图
-  if (D.tab === 'plan') planSync();   // 一打开就看方案：片子跳到正看的那一条
   window.focus();
 })();
 </script>

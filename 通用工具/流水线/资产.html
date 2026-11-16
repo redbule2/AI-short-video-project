@@ -14,9 +14,11 @@
 <script src="../公用/核心.js"></script>
 <script src="../公用/底座.js"></script>
 <script src="../公用/界面.js"></script>
+<script src="../公用/音色.js"></script>
 <script src="流水线.js"></script>
 <script src="资产详情.js"></script>
 <script src="电脑找图.js"></script>
+<script src="音色绑定.js"></script>
 <script>
 
 /* ============================================================
@@ -48,7 +50,7 @@ async function usedByPrompts(file) {
 }
 /* 删一张图。两种删法：只是不引用（图还在原处，以后点那一块的「＋ 新增」能再挂回来）；图不要了（移进这个项目的 历史记录，全片各处都不再引用它；
    想重出：那一格的字还在，点「批字」→「照这个出图」；想要回来就点那一块的「＋ 新增」，在最下面「删掉的」里放回来） */
-async function removeAsset(s, it) {
+async function removeAsset(s, it, stay) {   // stay：在一样东西自己的那一页上删的，删完那一页自己换到别处，这里不重画。回 'unref'、'del'，没删回 false
   const file = it.at, isRow = !!KIND[it.类别], e = isRow ? entryOf(it.类别, it.名称) : null, k = kindOf(it.类别), frame = it.类别 === '关键帧';
   const field = isRow || frame ? '' : it.类别 === '人物图' || it.类别 === '道具图' ? it.类别 : '场景图';   // 不是表里一行的：这一场哪一格记着它
   const canUnref = it.own && (frame || (isRow ? !!e && e.资产.includes(file) : s[field].includes(file)));
@@ -60,18 +62,18 @@ async function removeAsset(s, it) {
     [h('button', { class: 'btn ghost', 'data-focus': '', onclick: () => close(null) }, '取消'),
       canUnref ? h('button', { class: 'btn', onclick: () => close('unref') }, isRow ? '只是不引用' : '只是这一场不用') : null,
       h('button', { class: 'btn zhu', onclick: () => close('del') }, '图不要了')]));
-  if (!r) return;
+  if (!r) return false;
   if (r === 'unref') {
     if (isRow) { e.资产 = e.资产.filter(f => f !== file); e.不用 = [...new Set([...(Array.isArray(e.不用) ? e.不用 : []), file])]; }   // 记下「不用」：AI 清单里再列着它，也不替你对回去
     else if (frame) dropFrame(s, file);   // 名字带首帧的：记进这一场的「关键帧不用」，不再自己冒出来
     else s[field] = s[field].filter(f => f !== file);
-    touch(); paint();
-    return;
+    touch(); if (!stay) paint();
+    return r;
   }
   const parts = file.split('/'), dir = parts.slice(0, -1), name = parts[parts.length - 1], dot = name.lastIndexOf('.'), stem = dot > 0 ? name.slice(0, dot) : name, stamp = stampNow();
   const dest = [F.name, '历史记录', ...dir, stem + '__' + stamp + (dot > 0 ? name.slice(dot) : '')];
   try { await FS.move(at([F.name, ...parts]), at(dest)); }
-  catch (err) { toast('没移走：' + err.message, 'err'); return; }
+  catch (err) { toast('没移走：' + err.message, 'err'); return false; }
   // 看大图时写的批注、批注截图跟着一起收走：不然重出的同名图一打开就带着旧批注
   try { if (await hasFile(F.name, [...dir, stem + '_批注.md'])) await FS.move(at([F.name, ...dir, stem + '_批注.md']), at([F.name, '历史记录', ...dir, stem + '_批注__' + stamp + '.md'])); } catch (err) { /* 挪不动就留着 */ }
   try { if (await FS.isDir(at([F.name, ...dir, stem + SHOTS_TAIL]))) await FS.move(at([F.name, ...dir, stem + SHOTS_TAIL]), at([F.name, '历史记录', ...dir, stem + SHOTS_TAIL + '__' + stamp])); } catch (err) { /* 挪不动就留着 */ }
@@ -84,8 +86,10 @@ async function removeAsset(s, it) {
   window.UI.dropThumbs();   // 重出的图会回到同一个名字：做好的缩小图不能再用
   try { F.pool = await loadPool(F.name); } catch (err) { /* 下回再读 */ }
   await loadSides();
+  if (stay) return r;
   rerender();
   toast('移进历史记录了：' + dest.slice(1).join(' / '));
+  return r;
 }
 /* ---------- 用已有的图：项目 资产/全局资产 里的图点一张，这一场就用上它；删掉的（在历史记录里）点一下放回来 ---------- */
 /* 这一张图该挂到哪一行：从哪一格点开的就是那一行；不然看哪一行已经引用它，再不然照图名里的叫法找（老名字「项目_类别_叫法_资产」也认） */
@@ -467,7 +471,6 @@ function fabEls(s) {
       const fresh = has.filter(it => !okOf(it));
       for (const it of fresh) F.doc.可用[it.at] = t;
       s.资产确认 = t; touch(); paint(); toast('第' + seg + '场的图都确认可用了');
-      for (const it of fresh) { const w = wordOf(s, it); if (w) askGeoCheck(s, w); }
     } }, icon('check'), okN ? '剩下的都确认可用' : '都确认可用')];
   return [next(barInfo(s).cast)];   // 只差缺的图、AI 在出图：图的事在顶上那一行，这里只管往下走（还没选出场的：先选，这里不抢眼）
 }
@@ -475,7 +478,7 @@ function fabEls(s) {
    架子不在、或者这一场又锁上了（剧本不算定稿了），返回 false，让外面整页重画 */
 function repaint() {
   const s = sceneNow(), bar = document.getElementById('as-bar');
-  if (!s || !bar || !s.定稿 || scriptState(s).st !== 'final') return false;
+  if (!s || !bar || scriptState(s).st !== 'final') return false;
   const flat = a => [a].flat(Infinity).filter(Boolean);
   IMPACT = new Map(impactTodo(s).map(x => [kindOf(x.类别) + '/' + x.名称, x.影响 + '：' + x.为什么]));
   const { list, rec } = assetsOf(s), jobs = AI.jobs.filter(j => WORD_JOBS.includes(j.事) && j.段 === s.段 && jobLive(j)), last = AI.jobs.filter(j => WORD_JOBS.includes(j.事) && j.段 === s.段).pop(), bad = jobs.length || !last ? null : jobFailed(last.事, s.段);
@@ -522,15 +525,17 @@ const secEls = (s, list) => SEG_KINDS.map(k => {
     h('div', { class: 'as-sec-h' }, h('b', null, k), mine.length ? h('small', null, String(mine.length)) : null, h('span', { class: 'fn-note' }, SEC_NOTE[k]),
       k === '道具' && s.道具.length ? h('button', { class: 'btn sm ghost', type: 'button', title: '一个道具几种样子（比如面车白天、夜里），一种一张图：写个名字和要求，AI 先写字', onclick: () => addLookDlg(s) }, '加一种样子') : null,
       h('button', { class: 'btn sm ' + kindCls(k), type: 'button', title: SEC_ADD[k], onclick: () => addDlg(s, k) }, icon('plus'), '新增' + k)),
-    mine.length ? h('div', { class: 'wf-grid' }, mine.map(it => chipEl(s, it))) : h('p', { class: 'fn-note as-sec-e' }, SEC_EMPTY[k]));
+    mine.length ? h('div', { class: 'wf-grid' }, k === '人物' ? withVoices(s, mine) : mine.map(it => chipEl(s, it))) : h('p', { class: 'fn-note as-sec-e' }, SEC_EMPTY[k]));
 });
+/* 人物那一块：人物表里的每个人，最后一张图后面跟一格音色（试听、挑一段、不用，音色绑定.js，11-15） */
+const withVoices = (s, mine) => mine.flatMap((it, i) => { const n = it.名称, el = chipEl(s, it); return entryOf('人物', n) && !mine.slice(i + 1).some(x => x.名称 === n) ? [el, VoiceBind.chip(n, paint)] : [el]; });
 const DETAIL = adMode();   // 网址带 a=…：这一页是一样东西自己的那一页（资产详情.js，11-14）
 const paint = () => { if ((DETAIL ? adRepaint : repaint)() === false) rerender(); };
 function render() {
   const s = sceneNow(), seg = s.段;
-  if (!s.定稿 || scriptState(s).st !== 'final') return h('div', { class: 'wf-lock' },
-    !s.定稿 ? '这一场的段落还没定下来。' : '剧本定稿以后才能出资产图。先到「剧本」那一步，看完点「剧本定稿」。',
-    h('button', { class: 'btn ink', onclick: () => go(s.定稿 ? '剧本' : '分场', { s: seg }) }, s.定稿 ? '← 去看剧本' : '← 回去写段落'));
+  if (scriptState(s).st !== 'final') return h('div', { class: 'wf-lock' },
+    '剧本定稿以后才能出资产图。先到「剧本」那一步，看完点「剧本定稿」。',
+    h('button', { class: 'btn ink', onclick: () => go('剧本', { s: seg }) }, '← 去看剧本'));
   setTimeout(repaint, 0);   // 架子先摆上，里面的东西接着填
   pickFromHash(s);
   return [h('div', { class: 'as-head', id: 'as-bar' }), h('div', { id: 'as-more' }), h('div', { class: 'as-secs', id: 'as-grid' }), h('div', { class: 'wf-fab', id: 'as-fab' })];

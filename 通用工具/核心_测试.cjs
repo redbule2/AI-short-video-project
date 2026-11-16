@@ -79,3 +79,35 @@ test('视频提示词的名字：第几条、改几、样片名里写的、下�
   assert.equal(Core.vpNext([]), '视频提示词.txt');
   assert.equal(Core.vpNext(['视频提示词.txt', '视频提示词_02_改1.txt', '老_视频提示词.txt']), '视频提示词_03.txt');
 });
+
+test('补片稿：原名_补N.txt 不算一版，补的是原名那一版出的样片', () => {
+  assert.equal(Core.RE_VP.test('视频提示词_改2_补1.txt'), false);   // 流水线、审片台、vpLatest 都不把它当新的一版
+  assert.deepEqual(Core.vpPatchOf('视频提示词_改2_补1.txt'), { of: '视频提示词_改2.txt', no: 1 });
+  assert.deepEqual(Core.vpPatchOf('视频提示词_02_补3.txt'), { of: '视频提示词_02.txt', no: 3 });
+  assert.deepEqual(Core.vpPatchOf('镜头1-5_视频提示词_补1.txt'), { of: '镜头1-5_视频提示词.txt', no: 1 });
+  assert.equal(Core.vpPatchOf('视频提示词_改2.txt'), null);
+  assert.equal(Core.vpPatchOf('视频提示词_改2_补1_写稿.json'), null);
+  assert.equal(Core.vpLabel('视频提示词_改2_补1.txt'), '第1条 改2 补1');
+  assert.equal(Core.vpTok('视频提示词_改2_补1.txt'), '提示词01改2补1');
+  assert.equal(Core.vpTok('视频提示词_02_补2.txt'), '提示词02补2');
+  assert.equal(Core.vpLabel('视频提示词_改2.txt'), '第1条 改2');   // 不是补片的照旧
+  assert.equal(Core.vpTok('镜头1-5_视频提示词_改1.txt'), '镜头1-5改1');
+});
+
+test('出片任务书和提示词一一对应，补片也是', () => {
+  const pairs = [['视频提示词.txt', '出片任务.txt'], ['视频提示词_02.txt', '出片任务_02.txt'], ['视频提示词_改2.txt', '出片任务_改2.txt'],
+    ['视频提示词_02_改1_补3.txt', '出片任务_02_改1_补3.txt'], ['视频提示词_改2_补1.txt', '出片任务_改2_补1.txt'], ['镜头1-5_视频提示词_改1.txt', '镜头1-5_出片任务_改1.txt']];
+  for (const [vp, tf] of pairs) { assert.equal(Core.vpTask(vp), tf, vp); assert.equal(Core.taskVp(tf), vp, tf); assert.ok(Core.RE_TASK.test(tf), tf); }
+  assert.equal(Core.RE_TASK.test('出片任务_改2_补1_旧.txt'), false);
+});
+
+test('补片出到哪：那一版出的样片里第几条最大的，旁边的 样片名_补片/补N.mp4', () => {
+  const names = ['第1-1段_第2条_提示词01改1_720p.mp4', '第1-1段_第3条_提示词01改2_样片480p.mp4', '第1-1段_第3条_提示词01改2_样片480p_批注.md',
+    '第1-1段_第3条_提示词01改2_样片480p_批注截图', '第1-1段_第4条_第3条补片_720p.mp4', '第1-1段_第5条_提示词01改21_样片480p.mp4', '第1-1段_第6条_提示词01_样片480p.mp4'];
+  assert.deepEqual(Core.patchOut('第1-1段', '视频提示词_改2_补1.txt', names),
+    { no: 3, sample: '第1-1段_第3条_提示词01改2_样片480p.mp4', dir: '第1-1段_第3条_提示词01改2_样片480p_补片', file: '补1.mp4', patch: 1 });
+  assert.equal(Core.patchOut('第1-1段', '视频提示词_改2_补1.txt', names.concat('第1-1段_第7条_提示词01改2_720p.mp4')).no, 7);   // 那一版出过几条：取最后一条
+  assert.equal(Core.patchOut('第1-1段', '视频提示词_改3_补1.txt', names), null);   // 改3 还没出过样片
+  assert.equal(Core.patchOut('第1-2段', '视频提示词_改2_补1.txt', names), null);   // 别的段的不算
+  assert.equal(Core.patchOut('第1-1段', '视频提示词_改2.txt', names), null);   // 不是补片稿
+});

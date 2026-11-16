@@ -464,7 +464,7 @@ async function run() {
       assert(!basic.hidden && basic.getClientRects().length, '点击 AI 批注没有展开基础设定');
       assert(!requestLog.some(line => line.startsWith('POST ') || line.startsWith('PUT ')), '批注定位测试意外提交了写请求');
     });
-    await check('资产页签只列确认可用的：没确认、确认后重出、描写改过的图不列；白模照列，别的视频、音频不列；挂上没确认的在「这份已用」里标出来', async () => {
+    await check('资产页签只列确认可用的：没确认、确认后重出、描写改过的图不列；白模、人物音色（叫法_音色）照列，别的视频、音频不列；挂上没确认的在「这份已用」里标出来', async () => {
       reset();
       const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
       const mp4 = new Uint8Array([0, 0, 0, 24, 102, 116, 121, 112, 109, 112, 52, 50]), mp3 = new Uint8Array([73, 68, 51, 3, 0, 0, 0, 0]);
@@ -473,7 +473,7 @@ async function run() {
       add('全局资产/道具/大刀.png', png, 'image/png', Date.parse('2026-11-15T12:00:00'));   // 确认以后重出过
       add('全局资产/道具/铁锅.png', png, 'image/png');   // 确认以后描写改过
       add('全局资产/场景/街口.png', png, 'image/png'); add('第1段/镜头1-5_白模.mp4', mp4, 'video/mp4');
-      add('全局资产/人物/跑步测试.mp4', mp4, 'video/mp4'); add('全局资产/人物/老李_音色.mp3', mp3, 'audio/mpeg');
+      add('全局资产/人物/跑步测试.mp4', mp4, 'video/mp4'); add('全局资产/人物/老李_音色.mp3', mp3, 'audio/mpeg'); add('全局资产/人物/街上录音.mp3', mp3, 'audio/mpeg');
       const ok = '2026-11-15 10:00:00';
       put('项目/' + testProject + '/定稿的剧本/流水线.json', JSON.stringify({
         人物: [{ 名: '老李', 资产: '资产/全局资产/人物/老李.png' }],
@@ -487,7 +487,11 @@ async function run() {
       const tiles = [...doc.querySelectorAll('#as-list .as-t img')].map(n => n.alt).sort();
       assert(equal(tiles, ['街口', '老李'].sort()), '图只该列确认可用的老李、街口：' + tiles.join('、'));
       assert(equal([...doc.querySelectorAll('#as-list .vc .vc-n')].map(n => n.textContent), ['镜头1-5_白模']), '视频只该列白模');
-      assert(!doc.querySelector('#as-list .av-row'), '没确认的音频不该列');
+      const avs = [...doc.querySelectorAll('#as-list .av-row .av-n')].map(n => n.textContent);
+      assert(equal(avs, ['老李_音色']), '音频只该列人物音色：' + avs.join('、'));
+      assert([...doc.querySelectorAll('#as-list .as-h')].some(n => n.textContent.startsWith('人物音色')), '人物音色没有单独的标题');
+      [...doc.querySelectorAll('#as-list .av-row button')].find(n => n.textContent === '挂上').click();   // 挂人物音色：正文不动，素材里补一句、写上称谓
+      await waitFor(() => [...doc.querySelectorAll('section[data-sec="refs"] .blk')].some(n => /@音频1/.test(n.textContent) && n.textContent.includes('老李') && !n.textContent.includes('〔称谓〕')), '挂上人物音色，素材里没补写着称谓的那一句');
       const row = doc.querySelector('#as-list .used-row');
       assert(row && row.textContent.includes('老李_候选') && row.textContent.includes('还没确认可用'), '挂上没确认的图没标出来：' + (row ? row.textContent : '没有「这份已用」'));
       assert(doc.querySelector('#pane-assets .as-hint').textContent.startsWith('只列确认可用的'), '资产页签顶上没说只列确认可用的');

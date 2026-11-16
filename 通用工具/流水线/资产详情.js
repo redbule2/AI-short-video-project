@@ -7,6 +7,7 @@
      左边是字：要撑住什么戏、AI 替你定的（剧本里没写的）、参考图、GEO 底稿（场景）、出图提示词、批注，底下「存」「交给 AI 改」「批准出图」；
      右边是图：现在的图、AI 核图说了什么；出了新图（候选）时旧图、新图并排，各自下面一个钮「用旧图」「用新图」；
      最下面：AI 在这一样上做过的事（每一回的任务书、它的回复都能点开看）、以前的字。
+   顶上「上一样」「下一样」；关键帧是「上一张」「下一张」，只在这一场的关键帧里翻，还有「删除」（和资产页那一格的 × 一个做法，11-15 他要的）。
    右下角悬浮的是眼下该做的那一件，和「下一样要你看的」。改了的字离开这一页时自动存上（改之前的那一版收进历史记录），Ctrl+S 也能存。
    写字、出图、候选、确认这些做法和资产格子共用，在 流水线.js「文生资产」那一节；这里只管这一页怎么摆
    ============================================================ */
@@ -35,8 +36,9 @@ function adFind(s) {
   }
   return null;
 }
-/* 这一场的人物、场景、道具，照资产格子的先后（上一样、下一样用）。关键帧在提示词那一步，不排进来 */
-const adOrder = s => { const list = assetsOf(s).list; return KINDS.flatMap(k => list.filter(it => kindOf(it.类别) === k)).map(it => ({ it, w: wordOf(s, it) })).filter(x => x.w); };
+/* 上一样、下一样用：人物、场景、道具照资产格子的先后排；关键帧只在这一场的关键帧里排（照镜头号） */
+const adOrder = (s, w) => { const list = assetsOf(s).list, mine = w.frame ? list.filter(it => it.类别 === '关键帧') : KINDS.flatMap(k => list.filter(it => kindOf(it.类别) === k)); return mine.map(it => ({ it, w: wordOf(s, it) })).filter(x => x.w); };
+const adUnit = w => w.frame ? '张' : '样';
 /* 这一样眼下在做的 AI 任务、上一回没做成的 */
 function adMine(s, w) {
   const key = w.cat + '/' + w.stem;
@@ -126,6 +128,13 @@ async function adDraw(s, w) {   // 批准出图：照现在的字交给 Codex，
   if (!(await adSave(s, w, true))) return;
   if (await askDraw(s, w)) await pageRepaint();
 }
+/* 删掉这张关键帧：和资产页那一格的 × 一个做法（removeAsset）。删完去下一张，没有就去上一张，都没有就回到来的那一步 */
+async function adDelete(s, it, w) {
+  const list = adOrder(s, w), i = list.findIndex(x => x.w.img === w.img), to = list[i + 1] || list[i - 1];
+  const cell = it || { 类别: '关键帧', 名称: w.stem, sub: '', at: w.img, 文件: w.img, own: true };   // 提示词那一步加的、资产格子里没有的
+  if (!(await removeAsset(s, cell, true))) return;
+  if (to) openWord(s, to.w); else go(adFrom(), { s: s.段 });
+}
 async function adEditImg(s, w) { if (await askEditImg(s, w)) await pageRepaint(); }
 async function adConfirm(s, it, w, on) {
   if (it && it.at) confirmImg(s, it, on); else confirmW(s, w, on);
@@ -135,8 +144,6 @@ async function adConfirm(s, it, w, on) {
 async function adUseCand(s, it, w) {
   if (!(await takeCand(w))) return;
   await pageRepaint();
-  const r = adFind(sceneNow());
-  if (r) askGeoCheck(s, r.w);
 }
 async function adNoCand(s, w) { if (await dropCand(w)) await pageRepaint(); }
 async function adUseScene(s, it, w) { useSceneImg(s, it.文字, w.img); await flush(); adRepaint(); toast('这一场改用「' + w.stem + '」这张图了'); }
@@ -197,22 +204,33 @@ async function adScan(s, w) {
 }
 
 /* ---------- 摆出来 ---------- */
+/* 标题那一行（上一张、下一张、删除）钉在步骤条下面，往下滚也看得见（11-15 他要的）。步骤条窄了会折成两行，钉的高度跟着量；钉住时底下一道线 */
+function adPin() {
+  const st = document.getElementById('wf-steps'), head = document.getElementById('ad-head');
+  if (!head) return;
+  const pin = st ? (parseFloat(getComputedStyle(st).top) || 0) + st.offsetHeight : 0;
+  head.style.top = pin + 'px';
+  head.classList.toggle('stuck', head.getBoundingClientRect().top <= pin + 1);
+}
+window.addEventListener('scroll', () => { if (adMode()) adPin(); }, { passive: true });
+window.addEventListener('resize', () => { if (adMode()) adPin(); });
 const AD_TRACK = ['AI 写字', '你批字', 'AI 出图', '你看图', '确认可用'];
 function adTrackEls(w) {
   const at0 = { none: 0, 'ai-word': 0, word: 1, 'ai-img': 2, cand: 3, img: 3, ok: 5 }[w.step], ai = w.step === 'ai-word' || w.step === 'ai-img';
   return AD_TRACK.map((t, i) => [i ? h('span', { class: 'wf-arrow' }, '→') : null,
     h('span', { class: 'ad-st ' + (i < at0 ? 'ok' : i === at0 ? (ai ? 'ai' : 'you') : 'lock') }, h('i', null, i < at0 ? icon('check') : String(i + 1)), t)]);
 }
-function adHeadEls(s, w) {
-  const from = adFrom(), list = w.frame ? [] : adOrder(s), i = list.findIndex(x => x.w.img === w.img);
+function adHeadEls(s, it, w) {
+  const from = adFrom(), list = adOrder(s, w), i = list.findIndex(x => x.w.img === w.img), u = adUnit(w);
   const prev = i > 0 ? list[i - 1] : null, next = i >= 0 && i < list.length - 1 ? list[i + 1] : null, users = w.frame ? [] : usersOf(w.img);
   const where = ['第' + s.段 + '场', w.frame && w.forPrompt ? vpLabel(w.forPrompt) + '的一刻' : '', users.length > 1 ? '用在 ' + users.map(x => '第' + x + '场').join('、') : ''].filter(Boolean).join(' · ');
   return [h('button', { class: 'btn sm ghost', type: 'button', onclick: () => go(from, { s: s.段 }) }, '← 回到' + from),
     h('div', { class: 'ad-title ' + kindCls(w.frame ? '关键帧' : w.cat) }, h('b', null, adLabel(w)), h('small', null, where)),
     h('span', { class: 'sp' }),
-    list.length > 1 && i >= 0 ? h('span', { class: 'fn-note' }, '这一场第 ' + (i + 1) + ' / ' + list.length + ' 样') : null,
-    prev ? h('button', { class: 'btn sm ghost', type: 'button', title: adLabel(prev.w), onclick: () => openWord(s, prev.w) }, '← 上一样') : null,
-    next ? h('button', { class: 'btn sm ghost', type: 'button', title: adLabel(next.w), onclick: () => openWord(s, next.w) }, '下一样 →') : null];
+    list.length > 1 && i >= 0 ? h('span', { class: 'fn-note' }, '这一场第 ' + (i + 1) + ' / ' + list.length + ' ' + u) : null,
+    prev ? h('button', { class: 'btn sm ghost', type: 'button', title: adLabel(prev.w), onclick: () => openWord(s, prev.w) }, '← 上一' + u) : null,
+    next ? h('button', { class: 'btn sm ghost', type: 'button', title: adLabel(next.w), onclick: () => openWord(s, next.w) }, '下一' + u + ' →') : null,
+    w.frame && w.hasImg ? h('button', { class: 'btn sm', type: 'button', disabled: adBusy(s, w), title: '删掉这张关键帧：只是这一场不用，或者图也不要了（移进历史记录）', onclick: () => adDelete(s, it, w) }, icon('x'), '删除') : null];
 }
 function adNowEls(s, it, w, jobs) {
   const txtScene = !!(it && it.文字 && w.hasImg);
@@ -341,9 +359,9 @@ function adLogEls(s, w) {
     H && (H.txt.length || H.geo.length) ? h('div', { class: 'ad-hist' }, h('span', { class: 'fn-note' }, '以前的版本（收在历史记录里，点一下看）：'), H.txt.map(x => chip(x, '字')), H.geo.map(x => chip(x, 'GEO'))) : null];
 }
 function adFabEls(s, it, w) {
-  const list = w.frame ? [] : adOrder(s), i = list.findIndex(x => x.w.img === w.img);
+  const list = adOrder(s, w), i = list.findIndex(x => x.w.img === w.img);
   const todo = i >= 0 ? [...list.slice(i + 1), ...list.slice(0, i)].find(x => adNeedsYou(x.w)) : null, from = adFrom();
-  const more = ink => todo ? h('button', { class: 'btn' + (ink ? ' ink' : ' sub'), type: 'button', title: adLabel(todo.w) + '：' + WORD_TX[todo.w.step], onclick: () => openWord(s, todo.w) }, '下一样要你看的 →')
+  const more = ink => todo ? h('button', { class: 'btn' + (ink ? ' ink' : ' sub'), type: 'button', title: adLabel(todo.w) + '：' + WORD_TX[todo.w.step], onclick: () => openWord(s, todo.w) }, '下一' + adUnit(w) + '要你看的 →')
     : h('button', { class: 'btn' + (ink ? ' ink' : ' sub'), type: 'button', onclick: () => go(from, { s: s.段 }) }, '回到' + from + ' →');
   if (adBusy(s, w)) return [h('div', { class: 'wf-fab-note' }, 'AI 在做这一样，做完这里自动换'), more(false)];
   if (it && it.文字 && w.hasImg && w.step !== 'cand') return [more(false), h('button', { class: 'btn ink', type: 'button', onclick: () => adUseScene(s, it, w) }, '用上这张图')];
@@ -356,7 +374,7 @@ function adFabEls(s, it, w) {
 /* 只换会变的几块：字的框子不重做（正在写的字、光标都留着），图和记录变了才重做 */
 function adRepaint() {
   const s = sceneNow(), root = document.getElementById('ad'), fab = document.getElementById('ad-fab');
-  if (!s || !root || !s.定稿 || scriptState(s).st !== 'final') return false;
+  if (!s || !root || scriptState(s).st !== 'final') return false;
   const r = adFind(s);
   if (!r) {
     const from = adFrom();
@@ -377,7 +395,8 @@ function adRepaint() {
   const pt = [F.words.get(w.cand) || 0, fileTimeOf(w.img)].join('/');
   if (AD.picT && AD.picT !== pt) window.UI.dropThumbs();   // 图重出过、候选换了一张：缩小图重做
   AD.picT = pt;
-  document.getElementById('ad-head').replaceChildren(...adHeadEls(s, w).filter(Boolean));
+  document.getElementById('ad-head').replaceChildren(...adHeadEls(s, it, w).filter(Boolean));
+  adPin();
   document.getElementById('ad-track').replaceChildren(...adTrackEls(w).flat().filter(Boolean));
   document.getElementById('ad-now').replaceChildren(adNowEls(s, it, w, jobs));
   adPaintWord(s, it, w);
@@ -390,9 +409,9 @@ function adRepaint() {
 }
 function adRender() {
   const s = sceneNow(), from = adFrom();
-  if (!s.定稿 || scriptState(s).st !== 'final') return h('div', { class: 'wf-lock' },
-    !s.定稿 ? '这一场的段落还没定下来。' : '剧本定稿以后才能出资产图。先到「剧本」那一步，看完点「剧本定稿」。',
-    h('button', { class: 'btn ink', onclick: () => go(s.定稿 ? '剧本' : '分场', { s: s.段 }) }, s.定稿 ? '← 去看剧本' : '← 回去写段落'));
+  if (scriptState(s).st !== 'final') return h('div', { class: 'wf-lock' },
+    '剧本定稿以后才能出资产图。先到「剧本」那一步，看完点「剧本定稿」。',
+    h('button', { class: 'btn ink', onclick: () => go('剧本', { s: s.段 }) }, '← 去看剧本'));
   AD.imgSig = ''; AD.logSig = '';   // 整页重画了：图和记录也要重摆
   setTimeout(adRepaint, 0);
   return [h('div', { class: 'ad', id: 'ad' },

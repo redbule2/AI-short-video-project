@@ -14,7 +14,9 @@
 <script src="../公用/核心.js"></script>
 <script src="../公用/底座.js"></script>
 <script src="../公用/界面.js"></script>
+<script src="../公用/音色.js"></script>
 <script src="流水线.js"></script>
+<script src="音色绑定.js"></script>
 <script>
 /* ============================================================
    流水线 · 全片设定（梗概、人物、场景、道具、风格）
@@ -43,6 +45,7 @@ function listSection(K) {
         picsEl(it),
         h('span', { class: 'fr-name' }, it.名),
         h('span', { class: 'fr-desc' }, oneLine(it.描写) || h('span', { class: 'faint' }, '还没写' + (K.key === '人物' ? '他什么样' : '它什么样'))),
+        K.key === '人物' ? VoiceBind.buttons(it.名, paint) : null,   // 人物的音色：试听、挑一段（音色绑定.js，11-15）
         hint ? h('button', { class: 'fl-link', type: 'button', title: '项目里有叫这个名字的图：' + hint.map(x => x.文件).join('、'), onclick: e => { e.stopPropagation(); it.资产 = hint.map(x => x.文件); touch(); repaintRefs(); } }, hint.length > 1 ? '引用这 ' + hint.length + ' 张图' : '引用「' + hint[0].名称 + '」') : null,
         aiText(K.key, it.名) ? h('span', { class: 'fr-ai', title: 'AI 把描写补细了，点开看，合适就采用' }, 'AI 补了描写') : aiWaiting(K.key, it.名) ? h('span', { class: 'fr-ai wait', title: aiWaiting(K.key, it.名) + ' 交给 AI 了，补好这里会提示' }, 'AI 在补…') : null,
         used.length ? h('span', { class: 'fr-use', title: '这几场用了' }, used.map(x => x + ' 场').join('、')) : null,
@@ -51,6 +54,7 @@ function listSection(K) {
       return row;
     }));
     if (!list.length) box.append(h('div', { class: 'fr-empty' }, '还没有' + K.key + '。点右边「加' + K.key + '」，一行一个。'));
+    if (K.key === '人物') box.append(h('div', { class: 'fr-note' }, '音色：录音放进 资产 / 全局资产 / 人物，点「＋ 音色」挑一段给他（起名「叫法_音色.wav」的不挑也认得上）。写提示词时他有台词就挂上。'));
     const free = poolOf(K).filter(x => !list.some(e => e.资产.includes(x.文件))).length;
     bulk.hidden = !free;
     bulk.textContent = '从已有的图里加（' + free + '）';
@@ -170,7 +174,7 @@ function styleSection() {
       h('dl', null, rows.filter(r => r[1]).flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)])),
       h('div', null, media, c && c.样片 && st.vids.has(c.样片) ? sampleBtn(c.样片, media) : null)));
   })();
-  const when = film ? '定于 ' + str(film.定).slice(5, 16) + (film.换 ? '（从别的风格换过来的）' : '') + '。出资产图、写提示词、铺底都照它写；审片对着「一眼认出」看像不像。' : '';
+  const when = film ? '定于 ' + str(film.定).slice(5, 16) + (film.换 ? '（从别的风格换过来的）' : '') + '。出资产图、写提示词都照它写；审片对着「一眼认出」看像不像。' : '';
   return h('section', { class: 'fl-sec fl-syn' },
     secHead('五', film ? '风　格｜' + film.名 : '风　格', '全片的拍摄风格，剧本定稿以后照剧本挑', h('button', { class: 'btn sm' + (film ? '' : ' ink'), type: 'button', onclick: () => styleDlg(null) }, film ? '换一个' : '挑一个')),
     when ? h('p', { class: 'fn-note', style: 'margin-bottom:10px' }, when) : null, box,
@@ -185,7 +189,7 @@ function tabNote(k) {
   if (k === '风格') return filmStyle() ? filmStyle().名 : '还没定';
   return d[k].length ? d[k].length + ' ' + KIND[k].unit : '还没有';
 }
-const tabTodo = k => k === '梗概' ? !F.doc.梗概.trim() : k === '场景' ? !F.doc.场景.trim() : k === '风格' ? !filmStyle() && F.doc.场.some(s => s.定稿 && scriptState(s).st === 'final') : !F.doc[k].length;   // 风格：有一场剧本定稿了还没定才催
+const tabTodo = k => k === '梗概' ? !F.doc.梗概.trim() : k === '场景' ? !F.doc.场景.trim() : k === '风格' ? !filmStyle() && F.doc.场.some(s => scriptState(s).st === 'final') : !F.doc[k].length;   // 风格：有一场剧本定稿了还没定才催
 const tabsEls = () => TABS.map(k => h('button', { class: 'wf-tab' + (KINDS.includes(k) ? ' ' + kindCls(k) : '') + (k === TAB ? ' on' : '') + (tabTodo(k) ? ' todo' : ''), type: 'button', onclick: () => setTab(k) }, k, h('small', null, tabNote(k))));
 function setTab(k) {
   TAB = k;
@@ -207,7 +211,7 @@ function render() {
 start({
   name: '设定', render,
   steps() { const el = document.getElementById('wf-tabs'); if (el) el.replaceChildren(...tabsEls()); },   // 写了字、加了行：分页上的小字跟着变
-  sides(changed) { if (changed.has('*')) repaintRefs(); },   // AI 补了描写、出了图：表里跟着换
+  sides(changed) { if (changed.has('*')) { VoiceBind.reset(); repaintRefs(); } },   // AI 补了描写、出了图：表里跟着换（音色也重新列一遍）
 });
 </script>
 </body>

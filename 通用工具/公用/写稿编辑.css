@@ -14,14 +14,13 @@
 .sheet { width: 100%; max-width: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 .sheet::after { display: none; }
 .doc-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 14px; margin: 0; text-align: left; }
-/* 钉在正文顶上的一条：宽的时候标题、分区按钮、「AI 铺底」一行摆下；窄了标题和「AI 铺底」一行、分区按钮一行 */
+/* 钉在正文顶上的一条：宽的时候标题、分区按钮一行摆下；窄了标题一行、分区按钮一行 */
 .sheet-head { container-type: inline-size; position: sticky; top: 0; z-index: 20; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 16px; padding: 0 0 12px; background: var(--paper); }
 .sheet-head .doc-seg { font-size: 22px; }
 .sheet-head .section-nav { flex: 1 1 auto; margin: 0; }
 .canvas.stuck .sheet-head { box-shadow: 0 1px 0 var(--line), 0 12px 12px -12px rgba(30, 28, 24, .22); }
 @container (max-width: 820px) {
   .sheet-head .section-nav { flex-basis: 100%; }
-  .sheet-head .lay-b { position: absolute; top: 0; right: 0; }
 }
 .doc-kicker, .ornament { display: none; }
 .doc-name { margin-top: 0; }

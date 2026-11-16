@@ -154,6 +154,19 @@ body.wf-covered .wf-fab { display: none; }
 .fr-use { flex: none; padding: 0 9px; border: 1px solid var(--line); border-radius: 999px; font-size: 11.5px; line-height: 1.8; color: var(--ink-3); white-space: nowrap; }
 .fr .fl-ib { opacity: .35; }
 .fr:hover .fl-ib, .fr:focus-within .fl-ib { opacity: 1; }
+/* 人物的音色（音色绑定.js，11-15）：设定页那一行的按钮、资产页那一格、挑录音的弹窗 */
+.fr-use.vb-play, .fr-use.vb-btn { background: var(--sheet); font-family: inherit; cursor: pointer; }
+.fr-use.vb-play:hover, .fr-use.vb-btn:hover, .vb-play.on { border-color: var(--dai-line); color: var(--dai); }
+.fr-use.vb-btn.warn { border-color: var(--zhu-line); color: var(--zhu); }
+.vb-chip .ph { display: grid; place-items: center; font-size: 20px; color: var(--ink-3); }
+.vb-chip.vb-play.on { background: var(--dai-soft); }
+.vb-list { display: grid; gap: 6px; max-height: 52vh; overflow: auto; min-width: 380px; }
+.vb-row { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+.vb-row.on { border-color: var(--dai-line); background: var(--dai-soft); }
+.vb-row .vb-play { flex: none; padding: 1px 10px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--sheet); font: 12px/1.6 var(--sans); color: var(--ink-2); cursor: pointer; }
+.vb-nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.vb-nm small { margin-left: 8px; font-size: 11.5px; color: var(--ink-3); }
+.fr-note { padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink-3); }
 .fr-empty { padding: 22px 20px; text-align: center; font: 15px var(--kai); color: var(--ink-3); letter-spacing: .06em; }
 /* AI 补的：一行上的小牌子，和摆出来等你采用的那一版 */
 .fr-ai { flex: none; padding: 0 10px; border: 1px solid var(--dai-line); border-radius: 999px; background: var(--dai-soft); font-size: 11.5px; line-height: 1.8; color: var(--dai); white-space: nowrap; }
@@ -561,7 +574,8 @@ button.as-warn:hover { border-color: var(--zhu); }
 .fl-asset.wd-impact { box-shadow: 0 0 0 2px var(--zhu-line); }
 /* 一样东西自己的那一页（11-14，资产.html?a=…，资产详情.js）：顶上走到哪一步、眼下该做的；左边字、右边图；底下 AI 做过的事 */
 .ad { display: flex; flex-direction: column; gap: 16px; }
-.ad-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.ad-head { position: sticky; top: 117px; z-index: 18; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: -8px -14px 0; padding: 8px 14px; background: var(--paper); }   /* 钉在步骤条下面（top 由 资产详情.js 的 adPin 量了再填） */
+.ad-head.stuck { box-shadow: 0 1px 0 var(--line), 0 12px 18px -16px rgba(40, 28, 16, .4); }
 .ad-head .sp { flex: 1; }
 .ad-title { display: flex; flex-direction: column; gap: 2px; padding-left: 12px; border-left: 4px solid var(--k, var(--ink-4)); }
 .ad-title b { font: 600 22px/1.35 var(--serif); letter-spacing: .06em; color: var(--k, var(--ink)); }
@@ -631,21 +645,6 @@ button.as-warn:hover { border-color: var(--zhu); }
 .ad-hist { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
 .ad-files { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 @media (max-width: 1000px) { .ad-cols { grid-template-columns: minmax(0, 1fr); } .ad-row { grid-template-columns: minmax(0, 1fr); } }
-/* 先写提示词的场（分场页 revCard、剧本页反推那一块，11-14） */
-.rv-start { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.rv-go { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.rv-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
-.rv-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255, 253, 249, .7); }
-.rv-row .sp { flex: 1; }
-.rv-more { padding: 2px 0 6px; }
-.fl-ref[aria-pressed] { cursor: pointer; }
-.rv-side h4 { margin: 14px 0 6px; font: 14px var(--kai); letter-spacing: .2em; color: var(--ink-2); }
-.rv-side h4:first-child { margin-top: 0; }
-.rv-side ol { margin: 0; padding-left: 1.6em; line-height: 1.7; }
-.rv-side ol small { display: block; color: var(--ink-3); }
-.rv-new { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0; line-height: 1.6; }
-.rv-new input { margin-top: 5px; }
-.rv-new small { display: block; color: var(--ink-3); }
 /* 自己交给 AI（11-14）：要复制的那段话、几步说明、贴回复的框 */
 .self-steps { margin: 0 0 12px; padding-left: 1.4em; font-size: 13px; line-height: 1.8; color: var(--ink-2, inherit); }
 .mdview.self-msg { max-height: 34vh; margin-bottom: 12px; user-select: text; }

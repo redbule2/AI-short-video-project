@@ -167,7 +167,12 @@ description: 即梦视频快线。用于将已选图片或视频上传即梦画�
   只有余额差或资源 creditsAmount 快照时，说明证据来源，不能当作独立账单或最终净结算证明。
 - 仅在已有任务条目记录准备、上传、批准等待、服务端生成耗时，区分可减少的准备步骤与平台排队；无实测不承诺秒数或倍数。
 - 受理后先报告“已提交”与画布链接；成功后检查真实视频内容、时长、比例及连续性，再报告“已完成”。
-  用户要求本地交付时，使用当前实际支持的视频下载方式并回读验证；不能把仅支持图片的下载命令硬套到视频。
+- 要下到本地的，用命令行下载：
+  `dreamina-canvas resource download <resourceId> --project-id <projectId> --output <本地路径> --format json`
+- 帮助写的是图片素材，视频也能下。
+- 目标文件已存在就停，不覆盖。
+- 自己算大小和 sha256，和回执对不上就停。
+- 命令行下载失败，才照「720P 正片」第 7 步走网页。
 - 按 AGENTS.md 保存当前提示词和成片，清理本轮已无消费者的临时文件；只对本轮确切清单操作。
 
 ## 单视频参考生成 720P 正片：CLI 1.2.0 实测路径
@@ -180,7 +185,7 @@ description: 即梦视频快线。用于将已选图片或视频上传即梦画�
 4. `node show` 回读目标：将 `generation.prompt` 与文件全文做 Ordinal 相等比较，并核对 UTF-8 SHA-256、非空行数、去换行字数和 `@` 数量；检查 `generation.references` 仅一项、指向那个视频节点，模型、分辨率、比例、时长和数量均正确。核对失败就不提交。
 5. `node quote` 读取真实报价；在用户已有授权内，用 `node confirm --credit-ceiling <已获准上限>` 取得 token，随即执行一次 `node run --node-id <目标节点> --submit-id <稳定UUID> --credit-token <token>`。token 只在进程内传递，不输出、不落盘；不要把本次价格固化为以后任务的授权。
 6. 用同一 submitId 执行 `operation wait <submitId> --project-id <projectId> --timeout 50s --interval 20s`。`cli.operation_wait_timeout` 只说明本次等待窗口结束，继续只读等待，不再次运行。直到 operation 与输出资源都成功，再用 `resource get` 核对 `generationKind=normal`、`resolution=720p` 等实际参数；积分以提交前后 `auth account` 的余额事实核对。
-7. **该版本 `resource download` 只支持图片。** 视频下载走浏览器：用画布搜索定位准确标题，选中该节点；从该节点的 DOM 内唯一 `<video>` 读取 `currentSrc || src`，同时核对尺寸和时长。若节点已就绪但只有封面、没有 `<video>`，先点击该节点的播放按钮，再读取媒体源。URL 只放在当前浏览器会话内存，不输出或写入文件。在同一浏览器工具的 JavaScript 会话中，已实测可用以下方式直接写入用户指定文件，无需 Windows 文件选择框或中转目录：
+7. **先照第 6 节用命令行下载。** 命令行失败才走浏览器：用画布搜索定位准确标题，选中该节点；从该节点的 DOM 内唯一 `<video>` 读取 `currentSrc || src`，同时核对尺寸和时长。若节点已就绪但只有封面、没有 `<video>`，先点击该节点的播放按钮，再读取媒体源。URL 只放在当前浏览器会话内存，不输出或写入文件。在同一浏览器工具的 JavaScript 会话中，已实测可用以下方式直接写入用户指定文件，无需 Windows 文件选择框或中转目录：
 
    ```javascript
    const fs = await import('node:fs/promises');

@@ -6,7 +6,7 @@
 <title>案头 · 写稿（试用版）</title>
 <link rel="stylesheet" href="公用/提示条.css">
 <style>
-/* 写稿 · 试用版：人写提示词、AI 批注。读写真文件，走 annotate-live 的本机服务（另开一个端口）。
+/* 写稿 · 试用版：提示词一律 AI 写（2026-11-15 他定），这里是「进去改」：自己改 AI 写的稿，也能请 AI 批、写批注让 AI 改。读写真文件，走 annotate-live 的本机服务（另开一个端口）。
    样式照 项目管理.html 起家。2026-11-13 换配色：暖白底、白卡片、字加深；青＝你写的和选中，靛＝AI 写的和 AI 批注，朱＝你的批注和警告。
    现在由「流水线」提示词那一步整页盖上来用（流水线.js 的 openWrite），不再并进 项目管理.html。
    2026-11-13 晚：@ 白模视频（名字里有「白模」的视频）时，素材里补的是 sd25-pe 白模那两句。 */
@@ -384,13 +384,6 @@ body.norail .rail { display: none; }
 .jobrow b { font: 600 12.5px ui-monospace, Consolas, monospace; min-width: 2.6em; }
 .jobrow .wt-ring { font-size: 13px; color: var(--dian); }
 .jobacts { display: contents; }
-/* AI 铺底（2026-11-15 从流水线提示词页挪进来）：分区按钮那一行最右边一个按钮；铺的时候按钮上转个圈，进度和「停掉」在左下角那一条里，这一页照样能写 */
-.section-nav .lay-b { margin-left: auto; }
-.lay-b .wt-ring { margin-right: 6px; }
-.lay-dlg { width: min(480px, 90vw); }
-.lay-dlg p { margin-top: 12px; line-height: 1.85; color: var(--ink-2); }
-.lay-dlg footer { flex-wrap: wrap; }
-
 @media (max-width: 1040px) {
   .rail { width: 286px; }
   .canvas { padding: 14px 14px 60px; }
@@ -416,7 +409,6 @@ body.norail .rail { display: none; }
       <button class="btn sm zhu" id="sendNotes" title="把你写给 AI 那几区的批注交给 AI，它照着改，改好这里自动换上" hidden>把批注交给 AI 改</button>
       <button class="btn sm" id="previewBtn">预览全文</button>
       <button class="btn sm ghost" id="railBtn" title="收起或展开右侧资产、批注">收起侧栏</button>
-      <button class="btn zhu" id="revBtn" hidden>让 AI 反推剧本</button>
       <button class="btn dian" id="askAll" title="AI 批整条提示词" disabled>请 AI 批</button>
     </div>
   </div>
@@ -460,6 +452,7 @@ body.norail .rail { display: none; }
 <script src="公用/写稿交互.js"></script>
 <script src="公用/关键帧写法.js"></script>
 <script src="公用/白模关键帧写法.js"></script>
+<script src="公用/音色.js"></script>
 <script src="公用/点图.js"></script>
 <script src="公用/交给AI.js"></script>
 <script src="公用/等待.js"></script>
@@ -499,14 +492,12 @@ function jobBody(line, ch) {
   let m;
   if (/^请批注 [^｜]+$/.test(line)) return { ...base, 事: '批注提示词' };
   if ((m = /^按批注修改 (.+)$/.exec(line))) return { 渠道: ch, 项目: PJ, 事: '按批注改提示词', 批注: m[1] };
-  if (/^直接铺底 /.test(line)) return { ...base, 事: '直接铺底' };   // AI 铺底：直接写进正文（不是右栏的建议）
-  if (/^反推剧本 /.test(line)) return { 渠道: ch, 项目: PJ, 段: base.段, 事: '反推剧本' };   // 照这一场所有的提示词反推，不只这一条
   return null;
 }
-async function tellAI(line, ch) {   // ch：这一回指定交给谁（AI 铺底里点了「复制任务，自己交给 AI」）；不写就照流水线顶栏「AI 用」选的
+async function tellAI(line) {   // 交给谁：照流水线顶栏「AI 用」选的
   if (SVC == null) { try { SVC = (await (await fetch('/api/ping', { headers: HDR })).json()).v || 0; } catch (e) { SVC = 0; } }
   const now = SVC >= 5 ? await channelNow() : '';
-  const body = SVC >= 5 ? jobBody(line, ch || now) : null;
+  const body = SVC >= 5 ? jobBody(line, now) : null;
   if (!body) return (await fetch('/api/ai', { method: 'POST', headers: HDR, body: line })).json();
   CH.fill(body);   // 模型、推理深度：流水线顶栏选的
 
@@ -531,8 +522,6 @@ async function tickJobs() {
     Object.assign(j, n);
     if (jobLive(j)) continue;
     JOBS.live = JOBS.live.filter(x => x.id !== j.id);
-    if (layJob(j)) { layDone(j); continue; }   // AI 铺底完了：先把它写的换上，再放开这一页
-    if (j.事 === '反推剧本') { REV.st = ''; revCheck(); }   // 反推完了（没成也一样）：按钮照盘上的反推结果换
     if (j.状态 === '做完') toast(j.结果);
     else { toast(j.标题 + (j.状态 === '停了' ? ' 停掉了' : ' 没成：' + j.错误)); if (j.事 === '批注提示词' && AI.busy) { AI.busy = false; setAsk(); paintAi(); paintSteps(); } }
     poll();
@@ -543,7 +532,7 @@ async function tickJobs() {
 function paintJobs() {   // 一秒走一次表：每一行建一次，以后只换字（整行重建，转着的环每秒跳回原处）
   let box = $('#jobs');
   if (!box) { box = h('div', { id: 'jobs' }); document.body.append(box); }
-  const live = JOBS.live;   // AI 铺底也摆在这里（11-15 他说等的时候要能接着干别的：不盖住页面）
+  const live = JOBS.live;
   for (const row of [...box.children]) if (!live.some(j => j.id === row.dataset.id)) row.remove();
   for (const j of live) {
     let row = [...box.children].find(r => r.dataset.id === j.id);
@@ -552,7 +541,6 @@ function paintJobs() {   // 一秒走一次表：每一行建一次，以后只�
     row.children[2].textContent = jobClock(j);
     jobActs(row.children[3], j);
   }
-  paintLay();
 }
 const jobSay = j => j.状态 === '排队' ? j.渠道名 + ' 排着队' : j.步骤 || j.渠道名 + ' 在做';
 const jobClock = j => { const sec = Math.max(0, Math.round((Date.now() - (j.开始 || j.建)) / 1000)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); };
@@ -563,16 +551,15 @@ function jobActs(box, j) {   // 交给 AI 的话、再开一次（等你交给 A
   box.replaceChildren(...(window.HandAI ? HandAI.buttons(j, () => {}) : []),
     h('button', { class: 'linkb', tabindex: '-1', title: '不等了，停掉这个任务', onclick: () => fetch('/api/job/' + j.id + '?cancel', { method: 'POST', headers: HDR }).catch(() => {}) }, '停掉'));
 }
-/* 打开页面时，这份稿已经有任务在做（比如刚在流水线里点了铺底）：接着显示 */
+/* 打开页面时，这份稿已经有任务在做（比如 AI 在批、在照批注改）：接着显示 */
 async function resumeJobs() {
   try {
     if (SVC == null) SVC = (await (await fetch('/api/ping', { headers: HDR })).json()).v || 0;
     if (SVC < 5) return;
     const seg = SEGDIR.replace(/^第|段$/g, ''), mine = HNF.join('/');
     for (const j of (await (await fetch('/api/job?p=' + encodeURIComponent(PJ), { headers: HDR })).json()).jobs) {
-      if (!jobLive(j) || !((j.段 === seg && j.名 === STEM + '.txt') || j.批注 === mine || (j.事 === '反推剧本' && j.段 === seg))) continue;
+      if (!jobLive(j) || !((j.段 === seg && j.名 === STEM + '.txt') || j.批注 === mine)) continue;
       watchJob(j);
-      if (j.事 === '反推剧本') { REV.st = 'run'; paintRev(); }
       if (j.事 === '批注提示词') { AI.busy = true; AI.since = j.开始 || j.建; setAsk(); paintAi(); paintSteps(); }
     }
   } catch (e) { /* 服务是老的，或者断了一下 */ }
@@ -656,6 +643,9 @@ async function scanAssets() {
   return out.sort((a, b) => a.name.localeCompare(b.name, 'zh', { numeric: true }));   // 镜头2 排在镜头10 前面
 }
 const isNamed = a => a.type === '图片' && (a.kind === 'person' || a.kind === 'prop');   // 镜头里用称谓写的两类
+/* 人物的音色：资产/全局资产/人物 里的录音，流水线人物表里挑给谁的、或照文件名「叫法_音色」认到的（公用/音色.js）。voiceOf 给叫法，不是谁的音色给 '' */
+const voiceOf = a => a && a.type === '音频' && a.cat === '人物' ? Voice.ownerOf(a.path, FLOW_ALL && FLOW_ALL.人物, ASSETS.filter(x => x.type === '音频' && x.cat === '人物' && !x.sub).map(x => x.file)) : '';
+const isVoice = a => !!voiceOf(a);
 /* 缩小图：520 宽，做法在 公用/界面.js；顺手记下宽高，悬停的小窗先按比例占位 */
 function thumbUrl(a) {
   return thumbOf(a.parts, 520).then(u => { const s = thumbSize(u); if (s) [a.w, a.h] = s; return u; });
@@ -741,8 +731,8 @@ const REF_LINE_PE = {
   fx: (n, r, two) => two ? `${n}对应${r}，只采用〔形态、颜色、规模〕。` : `${r}用于${n}的〔形态、颜色、规模〕，不采用图片背景。`,
   scene: (n, r, two) => two ? `〔场景叫法〕参考${r}，只采用〔空间布局、材质和光线〕，不采用图中人物。` : `${r}用于〔场景叫法〕的〔空间布局、陈设、材质、灯光〕，不采用图中人物。`,
   frame: (n, r) => /尾帧/.test(n) ? [`${r}作为尾帧。`, '该尾帧定义〔视频结束时的构图、人物位置、姿态和镜头方向〕。'] : /首帧/.test(n) ? [`${r}作为首帧。`, '该首帧定义〔视频开始时的构图、人物位置、姿态和镜头方向〕。'] : `${r}定义〔第几个〕关键帧：〔这一刻看得见的状态〕。`,
-  audio: (n, r) => `${r}用于〔称谓〕的音色和说话特征，台词以事件脚本为准。`,
-  video: (n, r) => /白模/.test(n) ? [`${r}是粗粒度白模参考，仅提供〔动作路径、主体站位、机位、运镜和切镜〕，不采用其中的白模外观、材质和场景。`, `${r}中的〔哪个白模几何体〕对应〔哪个人物或道具〕。`]
+  audio: (n, r, two, a) => Voice.line(voiceOf(a), r),   // 人物的音色写上称谓，别的录音留〔称谓〕给人填
+  video: (n, r) => /白模/.test(n) ? [`${r}是粗粒度白模参考，用在〔哪几秒，如第2-4秒；整条都用写整条〕，仅提供〔动作路径、主体站位、机位、运镜和切镜〕，不采用其中的白模外观、材质和场景。`, `${r}中的〔哪个白模几何体〕对应〔哪个人物或道具〕。`]
     : `${r}用于〔动作、运镜或节奏〕，不采用视频中的人物身份、服装和场景。`,
 };
 const PE_GROUP = { person: '【人物】', prop: '【道具】', fx: '【道具】', scene: '【场景】', frame: '【场景】', audio: '【动作与声音】', video: '【动作与声音】' };
@@ -754,7 +744,7 @@ function addPeRefLines(a, ref, makers = REF_LINE_PE) {
   const list = $('section[data-sec="refs"] .blist');
   if (list.children.length === 1 && !lineOf(list.firstElementChild)) list.replaceChildren();
   const blocks = [...list.children].filter(b => b.classList.contains('blk')), headOf = b => { const t = lineOf(b).replace(/\s+/g, ''); return PromptDraft.isPeRefHead(t) ? t : ''; };
-  const two = peTwo(), made = makers[a.kind](a.name, ref, two), lines = Array.isArray(made) ? made : [made];
+  const two = peTwo(), made = makers[a.kind](a.name, ref, two, a), lines = Array.isArray(made) ? made : [made];
   let before = null, lead = [];
   if (two) {
     const g = PE_GROUP[a.kind], gi = blocks.findIndex(b => headOf(b) === g);
@@ -776,7 +766,7 @@ const REF_LINE = {
   fx: (n, r) => `${n}对应${r}，只采用〔形态、颜色、规模〕。`,
   scene: (n, r) => `${r}是〔总场景或哪个分场景〕从〔哪〕往〔哪〕看的样子，只采用〔空间布局、陈设、材质、灯光〕。`,
   frame: (n, r) => `${r}定义镜头〔编号〕在〔阶段〕的关键状态：〔该刻可见状态〕。`,
-  audio: (n, r) => `〔称谓〕的声音参考${r}，只采用音色和说话特征，台词以分镜为准。`,
+  audio: (n, r, a) => `${voiceOf(a) || '〔称谓〕'}的声音参考${r}，只采用音色、口音、语速和情绪，台词以分镜为准。`,
   video: (n, r) => /白模/.test(n) ? `${r}是白模参考，只采用〔动作路径、站位、机位、运镜和切镜〕，不采用白模外观、材质和场景；〔哪个几何体〕对应〔哪个人物或道具〕。` : `${r}是参考视频，只采用〔运镜或动作〕。`,
 };
 /* PE 稿挂关键帧（11-13 夜）：素材里的关键帧句子整组照 sd25-pe 重排（顺序句、首帧、第几个关键帧、尾帧），填过的照旧带上；
@@ -794,80 +784,16 @@ function addPeFrame(a, ref) {
   mark.remove();
   flash(els[els.length - 1]);
 }
-/* 白模＋关键帧（2026-11-14 他定：和普通写法分开，照官方《Seedance 2.5 提示词指南》「粗粒度白模 + 阶段关键帧」；和流水线、本机服务同一套，公用/白模关键帧写法.js）：
-   PE 稿同时挂了白模和关键帧，素材里写白模、关键帧、收尾三句，不用 sd25-pe 的锚点句和白模那一句；每一镜开头写它在白模里的整秒和参考哪张。
-   白模：名字带「白模」的视频，或者素材里已经当白模写了的那段视频 */
-function bmkVid() {
-  const lines = $$('section[data-sec="refs"] .blist > .blk').map(lineOf), refs = NUM.视频.map((p, i) => ({ ref: '@视频' + (i + 1), a: A[p] })).filter(x => x.a);
-  return refs.find(x => /白模/.test(x.a.name)) || refs.find(x => lines.some(l => l.startsWith('以' + x.ref + '作为整支视频') || (l.startsWith(x.ref + '是') && BmKey.RE_ROLE.test(l)))) || null;
-}
-const bmkFrames = () => KeyFrames.order(NUM.图片.map((p, i) => ({ ref: '@图片' + (i + 1), a: A[p] })).filter(x => x.a && x.a.kind === 'frame').map(x => ({ ref: x.ref, name: x.a.name })));
-const bmkOn = () => isPe() && !!bmkVid() && bmkFrames().length > 0;
-/* 白模旁边「_说明.md」里的切点（一镜一行「镜头1：0-4秒」），读一次记着；没有说明是空的 */
-const BMK_CUTS = new Map();
-function bmkCuts(a) {
-  if (!BMK_CUTS.has(a.path)) BMK_CUTS.set(a.path, (async () => {
-    const p = [HOME, PJ, ...(a.path.replace(/\.[^.]+$/, '') + '_说明.md').split('/')];
-    try { return (await has(p)) ? BmKey.cutsOf((await FS.text(p)).text) : []; } catch (e) { return []; }
-  })().then(c => { a.cuts = c; return c; }));
-  return BMK_CUTS.get(a.path);
-}
-/* 素材换成白模＋关键帧的三句（一字没变的行原样留着）；要删你填过的句子先问一声。换了返回 true */
-function bmkRefs() {
-  const v = bmkVid(), fr = bmkFrames();
-  if (!v || !fr.length) return false;
-  const list = $('section[data-sec="refs"] .blist');
-  if (list.children.length === 1 && !lineOf(list.firstElementChild)) list.replaceChildren();
-  const blocks = [...list.children].filter(b => b.classList.contains('blk')), lines = blocks.map(lineOf), r = BmKey.refsLines(lines, { vid: v.ref, frames: fr });
-  if (r.lines.join('\n') === lines.join('\n')) return true;
-  const mine = r.removed.filter(l => !/〔[^〔〕]*〕/.test(l) && !/^以@图片.*的顺序作为关键帧。?$/.test(l) && !/^@图片\d+作为[首尾]帧。?$/.test(l));   // 你填过的（不是页面补的空句）
-  if (mine.length && !confirm('挂了白模又挂了关键帧，素材要照官方「白模＋关键帧」的写法。这几句会删掉：\n\n' + mine.join('\n') + '\n\n换过去？')) return false;
-  const spare = [...blocks], mark = document.createComment('');
-  list.insertBefore(mark, blocks[0] || null);
-  const els = r.lines.map(t => { const i = spare.findIndex(b => lineOf(b) === t); return i >= 0 ? spare.splice(i, 1)[0] : blockEl({ t }, 'refs'); });
-  for (const el of els) list.insertBefore(el, mark);
-  for (const b of spare) b.remove();
-  mark.remove();
-  flash(els[0]);
-  return true;
-}
-/* 校对里点一下：素材换过去，每一镜开头补上秒数和参考哪张（秒数照白模说明；没有说明留〔起〕〔止〕，原来填过的照旧） */
-async function bmkFix() {
-  if (MODE === '自由') return toast('自由模式的事件脚本页面不替你改：每一镜开头自己写「0-4秒，首帧参考@图片1。」这样的');
-  if (!bmkRefs()) return;
-  const v = bmkVid(), pl = BmKey.plan(await bmkCuts(v.a), bmkFrames()), tas = $$('#sheet .wr-ta[data-kind="shot"]');
-  tas.forEach((ta, k) => {
-    const t = BmKey.tagOf(ta.value), next = BmKey.makeTag(pl[k] || null, k, t) + (t ? ta.value.slice(t.len) : ta.value);
-    if (next !== ta.value) { ta.value = next; ta.dispatchEvent(new Event('input', { bubbles: true })); }
-  });
-  touch(); paintMarks();
-  toast(pl.length > tas.length ? '白模有 ' + pl.length + ' 个镜头，这里只有 ' + tas.length + ' 镜：后面几镜自己加上' : '换好了：看一眼每一镜开头的秒数' + (v.a.cuts && v.a.cuts.length ? '' : '，〔起〕〔止〕填成整秒'));
-}
-/* 校对用：素材是不是照这一套写的、每一镜开头的秒数（白模多长、切点读好了再查一遍） */
-function bmkLint() {
-  const v = bmkVid(), tas = $$('#sheet .wr-ta[data-kind="shot"]'), byTa = new Map(), doc = [];
-  if (!BmKey.isBmk($$('section[data-sec="refs"] .blist > .blk').map(lineOf))) doc.push({ msg: '挂了白模又挂了关键帧：素材要照官方「白模＋关键帧」的写法，点这一条换过去', fix: bmkFix });
-  if (!BMK_CUTS.has(v.a.path)) bmkCuts(v.a).then(() => paintMarks());
-  if (!v.a.dur && !v.a.durAsked) { v.a.durAsked = true; posterOf(v.a).then(() => paintMarks(), () => {}); }
-  const issues = BmKey.check(tas.map((ta, i) => ({ no: +(ta.closest('.p-shot') || ta).dataset.no || i + 1, body: ta.value })), v.a.dur || 0, v.a.cuts || null);
-  if (issues.some(x => /开头没写/.test(x.msg))) doc.push({ msg: '点这一条：每一镜开头一下补上秒数和参考哪张', fix: bmkFix });
-  for (const x of issues) {
-    const ta = tas[x.i];
-    if (!ta) continue;
-    const t = BmKey.tagOf(ta.value);
-    if (!byTa.has(ta)) byTa.set(ta, []);
-    byTa.get(ta).push({ msg: x.msg, s: 0, e: t ? t.len : Math.min(2, ta.value.length) });
-  }
-  return { byTa, doc };
-}
+/* 一镜一镜写参考哪张的稿（「@图片…是各镜头的关键帧」；11-14 起白模＋关键帧的老稿就是这样）：每一镜开头本来就写整秒和参考哪张。
+   2026-11-15 他定白模只当普通素材：不再换成白模＋关键帧的写法、不再拿白模的切点核秒数（公用/白模关键帧写法.js 只用来认这种老稿） */
+const shotOn = () => isPe() && BmKey.isBmk($$('section[data-sec="refs"] .blist > .blk').map(lineOf));
 function bind(a, quiet) {
   let ref = refOf(a);
   if (ref) return ref;
   NUM[a.type].push(a.path); ref = refOf(a);
-  const bmkHit = () => bmkOn() && (a.kind === 'frame' || (a.type === '视频' && (bmkVid() || {}).a === a));   // 挂上它以后白模、关键帧都有了：素材换成白模＋关键帧的写法
-  if (!quiet && isPe() && bmkHit() && bmkRefs()) toast('挂了白模又挂了关键帧：素材照官方「白模＋关键帧」的写法换好了。每一镜开头写秒数和参考哪张，「校对」里能一下补上');
+  if (!quiet && isPe() && a.kind === 'frame' && shotOn()) toast('这一条是一镜一镜写参考哪张的：在那一镜开头写「参考' + ref + '」，再把它加进「…是各镜头的关键帧」那一句');   // 页面不替它加锚点句（11-15）
   else if (!quiet && isPe()) (a.kind === 'frame' ? addPeFrame : addPeRefLines)(a, ref);
-  else if (!quiet) { const blk = blockEl({ t: REF_LINE[a.kind](a.name, ref) }, 'refs'); $('section[data-sec="refs"] .blist').append(blk); flash(blk); }
+  else if (!quiet) { const blk = blockEl({ t: REF_LINE[a.kind](a.name, ref, a) }, 'refs'); $('section[data-sec="refs"] .blist').append(blk); flash(blk); }
   paintSum(); saveBind(ref, a.path);
   return ref;
 }
@@ -1098,175 +1024,6 @@ async function loadFlow() {
     if (names.includes(mf)) { const m = JSON.parse((await FS.text([...dir, mf])).text.replace(BOM, '')); if (m && Array.isArray(m.对应)) FLOW_MAP = m.对应.map(x => (Array.isArray(x) ? x : [x]).map(Number)); }
   } catch (e) { /* 读不了就不摆 */ }
 }
-/* 先写提示词的场（流水线里这一场选了「先写提示词」、剧本还没定稿）：写好了就在这里让 AI 反推剧本，不用回流水线（2026-11-14 用户要的）。
-   照这一场所有的提示词反推；反推好了，按钮换成「去看剧本」，到流水线的剧本页看、点「采用」 */
-const REV = { st: '', at: '' };   // st：'' 不是这种场；'go' 能反推；'run' AI 在反推；'ok' 反推好了、还没采用。at：盘上那一份反推的时间
-const revOn = () => !!(FLOW && FLOW.先写提示词 === true && !FLOW.剧本定稿);
-const revSeg = () => SEGDIR.replace(/^第|段$/g, '');
-const revEdited = t => { const ms = Date.parse(String(t).replace(' ', 'T')); return !!ms && MTIME > ms + 999; };   // 这一份稿在那次反推以后又存过
-async function revCheck() {
-  if (!revOn()) { REV.st = ''; return paintRev(); }
-  let v = null;
-  const p = [HOME, PJ, '定稿的剧本', SEGDIR, SEGDIR + '_反推.json'];
-  try { if (await has(p)) v = JSON.parse((await FS.text(p)).text.replace(BOM, '')); } catch (e) { /* 读不了当没有 */ }
-  if (REV.st === 'run') return paintRev();   // 读的工夫里任务开了：照在做显示
-  REV.at = v && typeof v.时间 === 'string' && Array.isArray(v.段落) && v.段落.length ? v.时间 : '';
-  REV.st = REV.at && REV.at > String(FLOW.反推采用 || '') ? 'ok' : 'go';
-  paintRev();
-}
-function paintRev() {
-  const b = $('#revBtn');
-  if (!b) return;
-  if (REV.st === 'ok' && revEdited(REV.at)) REV.st = 'go';
-  b.hidden = !REV.st;
-  b.disabled = !READY || REV.st === 'run';
-  b.classList.toggle('dian', REV.st === 'ok'); b.classList.toggle('zhu', REV.st !== 'ok');
-  b.textContent = REV.st === 'run' ? 'AI 在反推剧本…' : REV.st === 'ok' ? '反推好了，去看剧本 →' : REV.at || (FLOW && FLOW.反推采用) ? '照提示词再反推' : '让 AI 反推剧本';
-  b.title = REV.st === 'run' ? '左下角能看到它做到哪了；好了这里会变成「去看剧本」'
-    : REV.st === 'ok' ? '到流水线的剧本页，看 AI 照提示词写的剧本、段落和出场的，点「采用」才算数'
-    : '照这一场写好的几条提示词写剧本、分段落，列出出场的人物、场景、道具；你写的提示词一个字不动。提示词里新写的人物不用先加，采用时打勾就补进全片设定';
-}
-async function revRun() {
-  if (!revOn() || REV.st === 'run') return;
-  try {
-    if (!await save()) return toast('稿子还没存上，先存好再反推');
-    if (SVC == null) { try { SVC = (await (await fetch('/api/ping', { headers: HDR })).json()).v || 0; } catch (e) { SVC = 0; } }
-    if (SVC < 5) return toast('本机服务是老版本，开不了这个任务：回流水线去点「让 AI 反推剧本」');
-    REV.st = 'run'; paintRev();
-    await tellAI('反推剧本 ' + revSeg());
-    toast('AI 在照这一场的提示词反推剧本，一两分钟。好了这里的按钮会变成「去看剧本」');
-  } catch (e) { REV.st = ''; revCheck(); toast('没交上：' + e.message); }
-}
-async function revGo() {
-  if (!await save()) return toast('稿子还没存上，先存好再走');
-  const P = window.parent !== window ? window.parent : null;
-  if (P && typeof P.go === 'function') return P.go('剧本', { s: revSeg() });   // 盖在流水线上：照流水线自己的走法换页（它先存好自己的）
-  location.href = '/' + ['通用工具', '流水线', '剧本.html'].map(encodeURIComponent).join('/') + '?p=' + encodeURIComponent(PJ) + '&s=' + encodeURIComponent(revSeg());
-}
-/* ---------- AI 铺底（2026-11-15 他要的：从流水线「提示词」那一步挪进写稿页，在分区按钮那一行最右边）----------
-   AI 照定稿的剧本和这一场的资产，把素材、基础设定、主体与关系、保持一致写进正文；你写的生成目标、事件脚本不动，原来那一版先进历史记录。
-   铺过的，AI 先判断要不要改，对得上一个字不动（本机服务的「直接铺底」，和原来流水线里那个按钮同一个任务）。
-   点了二选一：让流水线顶栏「AI 用」选的 AI 直接铺；或者复制任务，贴进你自己开的对话。
-   铺的时候不挡人（11-15 他说：等的时候要能接着干别的、能换项目）：任务和别的 AI 任务一样摆在左下角，这一页照样能写，也能回流水线干别的。
-   AI 写进文件那一下你还有没存的字：AI 只动了它那几块、你只动了你那两块，就把 AI 写的换进这一页、和你写的一起存，不算冲突（layMerge）；
-   两边动了同一块，照旧摆冲突条 ---------- */
-const SELF_CH = CH.SELF;   // 「给我提示词」的渠道号
-const LAY = { fin: false, sync: false, grace: 0 };   // fin：剧本定稿了（打开时、点的时候各查一次）；sync：铺完了、正在把 AI 写的换上；grace：铺完以后再照看一会儿，晚到的存盘撞上了也照样合
-const layJob = j => !!j && j.事 === '直接铺底' && j.段 === revSeg() && j.名 === STEM + '.txt';
-const layLive = () => JOBS.live.find(layJob) || null;
-const layOn = () => !!layLive() || LAY.sync;
-const layWatch = () => layOn() || Date.now() < LAY.grace;
-const humanOf = d => ({ event: String(d.event || '').trim(), shots: PromptDraft.shotText(d).split(/\r\n|\n|\r/).map(l => l.trim()).filter(l => l && !PromptDraft.isLook(l)) });   // 你写的两块
-const layLaid = d => !!d && (!!String(d.keep || '').trim() || (d.basic || []).some(l => !PromptDraft.isLook(l)));   // 铺过了：基础设定、保持一致有字（和本机服务一个算法）
-async function layFinal(s) {   // 剧本定稿了没有，和流水线、本机服务一个算法：定稿时间不早于段落定下来的时间，也不早于剧本最后改的时间。不给 s 就现读流水线
-  if (s === undefined) {
-    s = FLOW;
-    try { const j = JSON.parse((await FS.text([HOME, PJ, '定稿的剧本', '流水线.json'])).text.replace(BOM, '')); s = (Array.isArray(j.场) ? j.场 : []).find(x => x && '第' + x.段 + '段' === SEGDIR) || null; } catch (e) { /* 读不了照打开时读的 */ }
-  }
-  const fin = timeOf(s && s.剧本定稿);
-  if (!fin || fin < timeOf(s.定稿)) return false;
-  const st = await FS.stat([HOME, PJ, '定稿的剧本', SEGDIR, SEGDIR + '_剧本.docx']).catch(() => null);
-  return !!st && fin + 999 >= st.mtime;
-}
-const layWhyNot = () => FLOW && FLOW.先写提示词 === true ? '剧本定稿以后才能铺。这一场先写提示词：写好了先「让 AI 反推剧本」，剧本头一回定稿时 AI 自动铺' : '剧本定稿以后才能铺：回流水线，到剧本那一步点「剧本定稿」';
-function layNav() {   // 分区按钮那一行，最右边摆「AI 铺底」；旧格式的稿、没有流水线的老项目不摆
-  const nav = commonControls();
-  if (isPe() && FLOW) nav.append(h('button', { id: 'layBtn', class: 'btn sm lay-b', type: 'button', onclick: layAsk }, 'AI 铺底'));
-  return nav;
-}
-function paintLay() {   // 按钮的样子：在铺的时候按钮上转个圈（进度、停掉在左下角那一条里）
-  setAsk();
-  const b = $('#layBtn');
-  if (!b) return;
-  const on = layOn();
-  b.disabled = !READY || on || !LAY.fin;
-  b.classList.toggle('dian', !b.disabled && !layLaid(DOC));   // 你写好了、AI 那几块还空着：这一步就该点它
-  b.title = on ? 'AI 在铺底：进度和「停掉」在左下角。这一页照样能写，铺好自动换上'
-    : !LAY.fin ? layWhyNot() : 'AI 照定稿的剧本和这一场的资产，把素材、基础设定、主体与关系、保持一致写进正文；你写的生成目标、事件脚本不动。铺过的，AI 先看要不要改，对得上一个字不动';
-  if (b.dataset.on !== String(on)) { b.dataset.on = String(on); b.replaceChildren(...(on ? [h('i', { class: 'wt-ring' }), 'AI 在铺底'] : ['AI 铺底'])); }   // 变了才换：每秒都来，换了转着的环会跳回原处
-}
-async function layAsk() {
-  if (!READY || layOn()) return;
-  if (CONFLICT) return toast('这份稿有修改冲突：先在上面处理好，再铺');
-  const d = PromptDraft.parse(activeText()), hm = humanOf(d);
-  if (!hm.event && !hm.shots.length) return toast('生成目标、事件脚本都还空着：先写好再铺底');
-  LAY.fin = await layFinal(); paintLay();
-  if (!LAY.fin) return toast(layWhyNot());
-  if (SVC == null) { try { SVC = (await (await fetch('/api/ping', { headers: HDR })).json()).v || 0; } catch (e) { SVC = 0; } }
-  if (SVC < 5) return toast('本机服务是老版本，铺不了：重开本机服务再试');
-  const now = await channelNow(), name = (CH.info() || { 名: 'AI' }).名;
-  const pick = await layDialog(layLaid(d), CH.list.some(c => c.id === SELF_CH), now === SELF_CH, name);
-  if (!pick || layOn()) return;
-  try {
-    clearTimeout(ST); if (!await save()) return toast('稿子还没存上，先存好再铺');
-    const r = await tellAI('直接铺底 ' + OPENPATH, pick === 'self' ? SELF_CH : now);
-    toast(r.say || '交给 ' + name + ' 了：进度在左下角，铺好自动换上。这一页照样能写，也能先去干别的');   // 给我提示词、Claude 桌面版、DeepSeek 窗口：说一句去哪儿看
-  } catch (e) { toast('没交上：' + e.message); }
-}
-function layDialog(laid, selfOk, viaSelf, name) {   // 二选一：让 AI 直接铺／复制任务自己交给 AI（顶栏选的就是「给我提示词」时只摆复制）
-  return new Promise(done => {
-    let pick = null;
-    const pickAs = v => () => { pick = v; dlg.close(); };
-    const dlg = h('dialog', { class: 'editor-dialog lay-dlg' }, h('b', null, 'AI 铺底 · ' + vpShort(STEM)),
-      h('p', null, laid ? '这一条铺过了：AI 先看现在这几块和剧本、资产还对不对得上，对得上一个字不动；对不上才改，改前原来那一版先进历史记录。'
-        : 'AI 照定稿的剧本和这一场的资产，把素材、基础设定、主体与关系、保持一致写进正文，原来那一版先进历史记录。'),
-      h('p', null, '你写的生成目标、事件脚本不动。铺的时候不用等：照样能写，也能先去干别的，铺好自动换上，一般一两分钟。'),
-      h('footer', null,
-        h('button', { class: 'btn ghost', type: 'button', onclick: pickAs(null) }, '取消'),
-        selfOk ? h('button', { class: 'btn' + (viaSelf ? ' dian' : ''), type: 'button', autofocus: viaSelf, title: '不在这里调 AI：把任务复制出来，贴进你自己在 Codex、Claude 里开的对话。它做完，这里自动写进正文', onclick: pickAs('self') }, '复制任务，自己交给 AI') : null,
-        viaSelf ? null : h('button', { class: 'btn dian', type: 'button', autofocus: true, title: '调流水线顶栏「AI 用」选的那个，做完自动写进正文', onclick: pickAs('ai') }, '让 ' + name + ' 直接铺')));
-    dlg.addEventListener('close', () => { dlg.remove(); done(pick); });
-    document.body.append(dlg); dlg.showModal();
-  });
-}
-async function layDone(j) {   // 铺完了（没成、停掉也一样）：把 AI 写的换进这一页
-  LAY.sync = true; LAY.grace = Date.now() + 20e3; paintLay();
-  try {
-    for (let i = 0; i < 80 && (POLLING || PULLING || SAVING); i++) await new Promise(r => setTimeout(r, 100));   // 正在读、正在存的先让它做完
-    if (CONFLICT) { if (await layHeal()) await save(); }   // 存盘撞上了 AI 写文件的那一下：合上接着存
-    else await poll();   // 文件变了就换上；你有没存的字，走 layMerge 只换 AI 那几块
-  } finally {
-    LAY.sync = false; paintLay();
-    toast(j.状态 === '做完' ? j.结果 : j.标题 + (j.状态 === '停了' ? ' 停掉了' : ' 没成：' + j.错误));
-  }
-}
-/* AI 写进文件了，这一页还是它写之前的底：AI 只动了它那几块、你只动了你那两块，就把 AI 写的换进来（你在写的地方不重画、光标不丢），你没存的字接着存。
-   返回 true：换好了，或者文件本来就和这一页的底一样（是一笔过时的存盘撞上的），接着存就行；false：两边动了同一块，照旧摆冲突条 */
-const AI_KEYS = ['refs', 'basic', 'seg', 'keep'];
-const aiSig = d => JSON.stringify(AI_KEYS.map(k => [].concat(d[k] || []).map(l => String(l).trim()).filter(Boolean)));
-async function layMerge(r, ss) {
-  if (!r) [r, ss] = await Promise.all([FS.text(PROMPT), readSideState()]);
-  if (r.text === LASTTEXT) return JSON.stringify(editorPart(ss.side)) === JSON.stringify(BASE_EDITOR);
-  const scoped = MODE !== '自由' || (ss.side.写法 === '自由' && ss.side.写法范围 === '分镜' && typeof ss.side.分镜稿 === 'string');
-  if (!scoped) return false;   // 老的整页自由稿：照原来的办法整页换
-  const base = parsePrompt(LASTTEXT), disk = parsePrompt(r.text), mine = parsePrompt(activeText());
-  if (JSON.stringify(humanOf(disk)) !== JSON.stringify(humanOf(base)) || aiSig(mine) !== aiSig(base)) return false;
-  const src = MODE === '自由' ? parsePrompt(ss.side.分镜稿) : disk;   // 自由写法：AI 那几块照写稿资料里的结构化稿取（和整页换上时一样）
-  const wrote = dirty(), binding = editorSnapshot().挂图;   // 你刚挂、还没存的图留着
-  LASTTEXT = r.text; MTIME = r.mtime; SIDE = { ...ss.side, 挂图: { ...ss.side.挂图, ...binding } }; SIDE_MT = ss.mtime; BASE_EDITOR = structuredClone(editorPart(ss.side));
-  for (const k of AI_KEYS) DOC[k] = src[k];
-  layPaintAi();
-  if (wrote) touch();   // 你写的两块还没存：和 AI 写的几块一起存
-  await loadRefs(); paintMarks(); paintAssets();
-  return true;
-}
-async function layHeal() {   // 冲突条是 AI 铺底写文件撞出来的：能合就合上、收起冲突条
-  try { if (!await layMerge()) return false; } catch (e) { return false; }
-  CONFLICT = false; $('#saveConflict')?.remove(); setStatus('正在保存…');
-  return true;
-}
-function layPaintAi() {   // 只换 AI 那几区；生成目标、事件脚本不重画
-  const keys = SECS.map(s => s.key).join(), box = $('.shared-settings'), ev = box && $('section[data-sec="event"]', box);
-  if (!ev) return;
-  pickSecs();
-  for (const el of [...box.children]) if (el !== ev) el.remove();
-  ev.after(...SECS.filter(s => s.key !== 'shots').map((s, i) => s.key === 'event' ? null : secEl(s, i)).filter(Boolean));
-  if (SECS.map(s => s.key).join() !== keys) {   // 写法一、写法二换了（主体与关系那一区有没有）：分区按钮、事件脚本的序号跟着换
-    $('#sheet .section-nav').replaceWith(layNav());
-    const no = $('section[data-sec="shots"] .sec-no'); if (no) no.textContent = CN[SECS.findIndex(s => s.key === 'shots')];
-  }
-  paintSum(); updateCommonSections(); paintHNotes(); paintLay();
-}
 /* 这一场的剧本段落（早先叫「镜头」，里面的「写什么」早先叫「拍什么」） */
 /* 提示词的叫法：一场几条（2026-11-13），第一条 视频提示词、第二条起 视频提示词_02……显示成「第N条」；老稿（段落a-b_…、镜头a-b_…）照旧 */
 const vpShort = stem => { const v = (/_改([0-9]+)$/.exec(stem) || [])[1], b = stem.replace(/_改[0-9]+$/, ''), m = /^视频提示词(?:_([0-9]+))?$/.exec(b); return (m ? '第' + (+(m[1] || 1)) + '条' : b.replace(/_?视频提示词$/, '')) + (v ? ' 改' + v : ''); };   // 审片以后照修改方案另存的 _改1、_改2……（2026-11-14）
@@ -1332,7 +1089,7 @@ function secEl(s, i) {
   const ai = s.by === 'ai', fold = s.fold && !OPEN.has(s.key);
   const sec = h('section', { class: 'sec' + (fold ? ' fold' : ''), 'data-sec': s.key },
     h('div', { class: 'sec-h' }, h('span', { class: 'sec-no' }, CN[i]), h('span', { class: 'sec-name' }, s.name),
-      h('span', { class: 'who ' + s.by }, s.who || (ai ? 'AI 铺底' : '你写')), h('span', { class: 'sec-line' }),
+      h('span', { class: 'who ' + s.by }, s.who || 'AI 写'), h('span', { class: 'sec-line' }),
       s.fold ? h('button', { class: 'mini-b fold-b', tabindex: '-1', onclick: () => toggleFold(sec) }, fold ? '展开看' : '收起') : null,
       s.key === 'event' ? h('button', { class: 'mini-b fold-me', tabindex: '-1', title: '写好了就收起来，只留开头两行', onclick: () => foldMine(sec) }, '收起') : null));
   if (s.key === 'event') sec.append(h('div', { class: 'peek', title: '点一下展开', onclick: () => foldMine(sec, false) }), writer('event', 3, isPe() ? '这条视频拍什么：谁要什么，所以发生了什么；结束时什么样。情绪从哪来，也写在这里。' : '谁要什么，所以发生了什么；结束时什么样。两人的情绪从哪来，也写在这里。', DOC.event));
@@ -1361,13 +1118,13 @@ function render() {
   $('#sheet').replaceChildren(
     h('div', { class: 'sheet-head' },
       h('header', { class: 'doc-title' }, h('div', { class: 'doc-kicker' }, '视 频 提 示 词'), h('div', { class: 'doc-seg' }, SEGDIR), short ? h('div', { class: 'doc-name' }, short.replace(/_/g, ' · ')) : null, h('div', { class: 'ornament' }, h('span'))),
-      layNav()),
+      commonControls()),
     h('div', { id: 'gnote' }),
     h('div', { id: 'general-notes' }),
     h('div', { class: 'shared-settings' }, SECS.filter(s => s.key !== 'shots').map((s, i) => secEl(s, i))),
     secEl(SECS.find(s => s.key === 'shots'), SECS.findIndex(s => s.key === 'shots')),
     h('div', { class: 'sheet-foot' }, OPENPATH.split('/').join(' / ')));
-  renderShotEditor(); paintSum(); restoreFolds(); updateCommonSections(); $$('.wr-ta').forEach(grow); paintHNotes(); renderNotes(); paintLay();
+  renderShotEditor(); paintSum(); restoreFolds(); updateCommonSections(); $$('.wr-ta').forEach(grow); paintHNotes(); renderNotes();
   headRO.disconnect(); headRO.observe($('#sheet .sheet-head')); pinHead();
 }
 function addShot() {
@@ -1386,13 +1143,7 @@ const savedText = () => SAVED_AT ? '已保存 ' + two(SAVED_AT.getHours()) + ':'
 function touch() { if (!READY) return; VER++; rememberDraft(); setStatus(CONFLICT ? '有修改冲突，输入已保留' : '正在保存…', CONFLICT); clearTimeout(ST); ST = setTimeout(save, 700); }
 let PULLING = false;   // 正在把外面改的换上：这时候不存（页面上 AI 那几区还是旧的，存了就把 AI 刚写的盖掉）
 async function save() {
-  if (READY && !CONFLICT && !SAVING && layWatch()) {   // AI 铺底刚写进文件：先把它写的换进来再存，免得拿旧底去存、闪一下冲突条
-    try { if ((await FS.stat(PROMPT)).mtime !== MTIME) await layMerge(); } catch (e) { /* 看不了就照常存，撞上了下面再合 */ }
-  }
-  let ok = await saveEditor();
-  if (!ok && CONFLICT && layWatch() && await layHeal()) ok = await saveEditor();   // 撞上了 AI 铺底写文件的那一下：合上再存一次
-  if (ok) paintRev();   // 先写提示词的场：反推以后又改了稿，按钮换回「再反推」
-  return ok;
+  return saveEditor();
 }
 async function pullExternal(saving) {   // saving：存盘的半路上调的（这时你写的两处一定以页面为准，换完由存盘那边接着写）
   PULLING = true;
@@ -1402,10 +1153,6 @@ async function pullExternal0(saving) {
   const version = VER;
   const [r, ss] = await Promise.all([FS.text(PROMPT), readSideState()]);
   if (r.text === LASTTEXT && JSON.stringify(editorPart(ss.side)) === JSON.stringify(BASE_EDITOR)) { MTIME = r.mtime; return; }
-  if (layWatch()) {   // AI 铺底写进来了：正在存的，等存盘那边（撞上了 save 会合）；能合就只换 AI 那几块，你在写的地方不动
-    if (saving || SAVING) return;
-    if (await layMerge(r, ss)) return;
-  }
   if (saving || dirty() || VER !== version || SAVING) return reportConflict();
   SIDE = ss.side; SIDE_MT = ss.mtime;
   BASE_EDITOR = structuredClone(editorPart(SIDE));
@@ -1482,20 +1229,19 @@ const LINT_OLD = [
 const LINT_PE = [
   { re: /[“”"‘’「」『』]/g, msg: '台词放进 {}，不用引号' },
   { re: /（[^（）]*）/g, msg: '圆括号在 Seedance 里是音乐的记号：音乐写成 (……)，别的说明不加括号' },
-  { re: /[0-9０-９]+(?:\.[0-9]+)?\s*秒/g, msg: '不写秒数，时长在生成参数里设', id: 'secs' },
+  { re: /[0-9０-９]+[.．][0-9０-９]+\s*秒/g, msg: '秒数只写整秒（Seedance 2.5 认整秒；总时长在生成参数里设）', id: 'secs' },   // 11-15 起整秒不标：白模可以只管其中几秒，要写第几秒
   { re: /首帧参考|参考首帧|首帧构图参考|尾帧参考|参考尾帧/g, msg: '固定首帧、尾帧单独写一句「@图片N作为首帧。」「@图片N作为尾帧。」', id: 'head' },
   { re: /(?<!其)[她他](?!们)/g, msg: '镜头里用称谓指人，不用他、她', shot: true },
 ];
-/* 白模＋关键帧的 PE 稿（11-14）：每一镜开头本来就要写整秒和「首帧参考@图片N」，不查这两条；另查素材和每一镜开头（bmkLint） */
+/* 一镜一镜写参考哪张的 PE 稿：每一镜开头本来就写「首帧参考@图片N」，不查这一条（11-15 起不再另查白模的秒数） */
 const LINT_BMK = LINT_PE.filter(r => r.id !== 'secs' && r.id !== 'head');
 let LINT_RULES = LINT_OLD;
 let LINT = [];
 function paintMarks() {
   if (!READY) return;
-  const bmk = bmkOn() ? bmkLint() : null;
-  LINT_RULES = isPe() ? (bmk ? LINT_BMK : LINT_PE) : LINT_OLD;
+  LINT_RULES = isPe() ? (shotOn() ? LINT_BMK : LINT_PE) : LINT_OLD;
   const sets = { say: [], sfx: [], ph: [], lint: [] };
-  LINT = bmk ? bmk.doc.slice() : [];
+  LINT = [];
   let phN = 0, phFirst = null, changed = false;
   for (const ed of $$('#sheet .ed')) for (const run of runsOf(ed)) {   // AI 写的几区
     const each = (re, fn) => { for (const m of run.t.matchAll(re)) fn(rangeIn(run, m.index, m.index + m[0].length), m[0]); };
@@ -1513,7 +1259,6 @@ function paintMarks() {
     if (shot) for (const a of named) add(new RegExp(reEsc(a.name), 'g'), 'm-nm', mk => { mk.aid = a.path; });
     add(/@(?:图片|视频|音频)[0-9]+/g, 'm-ref', (mk, t) => { const a = assetOfRef(t); if (!a) { LINT.push({ msg: t + ' 还没挂上图', text: '', ta, s: mk.s, e: mk.e }); mk.c = 'm-lint'; return; } mk.aid = a.path; });
     for (const rule of LINT_RULES) if (MODE !== '自由' && (!rule.shot || shot)) add(rule.re, 'm-lint', (mk, t) => { LINT.push({ msg: rule.msg, text: t, ta, s: mk.s, e: mk.e }); });
-    for (const x of (bmk && shot && MODE !== '自由' && bmk.byTa.get(ta)) || []) { marks.push({ s: x.s, e: x.e, c: 'm-lint' }); LINT.push({ msg: x.msg, text: '', ta, s: x.s, e: x.e }); }   // 白模＋关键帧：每一镜开头
     for (const n of NOTES) {
       if (boxOf(n) !== ta || !n.find) continue;
       if (n.state === 'done' && n.to && !v.includes(n.to) && v.includes(n.find)) { n.state = null; keepStates(); changed = true; }   // 照改以后你按 Ctrl+Z 撤了：这条批注回到没处理
@@ -1567,7 +1312,7 @@ const hitAsset = (a, s) => !s || a.name.toLowerCase().includes(s) || pyOf(a).som
 const usedAssets = () => ['图片', '音频', '视频'].flatMap(t => NUM[t].map(p => A[p])).filter(Boolean);
 const CAT_RANK = a => { const i = ['人物', '道具', '特效', '本段', '场景'].indexOf(a.cat); return i < 0 ? 9 : i; };
 function closeAt() { AT = null; pop.hidden = true; }
-/* 全片设定里还没有图的人物、道具（11-14 先写提示词：人物先加、图以后才有）：@ 里也摆出来，插进去就是叫法，不挂图、不排号。这一场选上的排前面 */
+/* 全片设定里还没有图的人物、道具（人物先加、图以后才有）：@ 里也摆出来，插进去就是叫法，不挂图、不排号。这一场选上的排前面 */
 function castOnly() {
   if (!FLOW_ALL) return [];
   const have = new Set(ASSETS.map(a => a.path)), mine = FLOW ? [...(Array.isArray(FLOW.人物) ? FLOW.人物 : []), ...(Array.isArray(FLOW.道具) ? FLOW.道具 : [])] : [], out = [];
@@ -1720,18 +1465,18 @@ let AT_T;
 function afterEdit() { touch(); paintMarks(); clearTimeout(AT_T); AT_T = setTimeout(paintAssets, 400); }
 const GUIDE = {
   /* 提示每条不超过 10 个字，只留最要紧的两三条 */
-  event: ['本段事件 · 你写', ['谁要什么', '发生了什么', '情绪从哪来']],
-  refs: ['素材 · AI 铺底', ['点一行写批注', '输入 @ 引用素材']],
-  basic: ['基础设定 · AI 铺底', ['点一行写批注']],
-  seg: ['本段 · AI 铺底', ['点一行写批注']],
-  shots: ['分镜 · 你写', ['一镜只写一两件事', '一句台词配一个动作', '听的人要有反应']],
-  keep: ['保持一致 · AI 铺底', ['点一行写批注']],
+  event: ['本段事件 · AI 写', ['谁要什么', '发生了什么', '情绪从哪来']],
+  refs: ['素材 · AI 写', ['点一行写批注', '输入 @ 引用素材']],
+  basic: ['基础设定 · AI 写', ['点一行写批注']],
+  seg: ['本段 · AI 写', ['点一行写批注']],
+  shots: ['分镜 · AI 写', ['一镜只写一两件事', '一句台词配一个动作', '听的人要有反应']],
+  keep: ['保持一致 · AI 写', ['点一行写批注']],
 };
 const GUIDE_PE = {
-  event: ['生成目标 · 你写', ['拍什么', '谁要什么', '结束时什么样']],
-  seg: ['主体与关系 · AI 铺底', ['点一行写批注']],
-  basic: ['基础设定 · AI 铺底', ['风格写在镜头前面', '点一行写批注']],
-  shots: ['事件脚本 · 你写', ['一镜一行', '台词 {} 音效 <>', '听的人要有反应']],
+  event: ['生成目标 · AI 写', ['拍什么', '谁要什么', '结束时什么样']],
+  seg: ['主体与关系 · AI 写', ['点一行写批注']],
+  basic: ['基础设定 · AI 写', ['风格写在镜头前面', '点一行写批注']],
+  shots: ['事件脚本 · AI 写', ['一镜一行', '台词 {} 音效 <>', '听的人要有反应']],
 };
 function setGuide(key) {
   const g = (isPe() && GUIDE_PE[key]) || GUIDE[key];
@@ -1822,7 +1567,7 @@ function undoNote(n) {
   n.state = null; afterNotes();
 }
 let LASTF = null, LAST = null;   // 最后一次光标在哪：文字框（LASTF）或 AI 那几行里的位置（LAST）
-const setAsk = () => { const off = !READY || AI.busy || layOn(); $('#askAll').disabled = off; $('#askAll').textContent = AI.busy ? 'AI 正在看稿…' : '请 AI 批'; };   // AI 在铺底时也先不批：稿子马上要换
+const setAsk = () => { const off = !READY || AI.busy; $('#askAll').disabled = off; $('#askAll').textContent = AI.busy ? 'AI 正在看稿…' : '请 AI 批'; };
 async function askAI() {
   if (AI.busy || !READY) return;
   if (!$$('#sheet .wr-ta').some(t => t.value.trim())) return toast(evName() + '和' + (isPe() ? '事件脚本' : '分镜') + '都还空着，先写一点再请 AI 批');
@@ -1878,8 +1623,7 @@ function paintLint() {
   if (RAIL !== 'lint') return;
   const pane = $('#pane-lint');
   const intro = h('div', { class: 'tab-intro' }, h('b', null, '机器自动查格式，不用 AI。'), '写错的字下面会画红波浪线，点一条就跳到那一处。',
-    h('small', null, bmkOn() ? '查这几样：用了引号或圆括号、写了他／她、@ 编号没挂上图、〔 〕还没填。这一条挂了白模又挂了关键帧，还查素材是不是照官方「白模＋关键帧」的写法、每一镜开头的整秒和参考哪张。'
-      : '查这几样：用了引号或圆括号、写了几秒、写了他／她、@ 编号没挂上图、〔 〕还没填。'));
+    h('small', null, '查这几样：用了引号或圆括号、' + (isPe() ? '秒数写了小数' : '写了几秒') + '、写了他／她、@ 编号没挂上图、〔 〕还没填。'));
   if (!LINT.length) return pane.replaceChildren(intro, h('p', { class: 'faint', style: 'padding:22px 0;text-align:center' }, '查过了，没发现问题。'));
   pane.replaceChildren(intro,
     h('div', { class: 'lint' }, LINT.map(x => h('button', { class: 'issue' + (x.info ? ' info' : ''), onclick: () => x.fix ? x.fix() : go(x) }, h('i', { class: 'lv' }), h('span', null, x.msg, x.text ? h('em', null, x.text) : null)))));
@@ -1955,6 +1699,11 @@ function usage(a) {
 const drag = (e, a) => { e.dataTransfer.setData('text/x-asset', a.path); e.dataTransfer.effectAllowed = 'copy'; };
 const canInsert = () => !!((LASTF && LASTF.isConnected) || (LAST && LAST.startContainer.isConnected));
 function insertFromRail(a) {
+  if (isVoice(a)) {   // 人物的音色（11-15）：不往正文里插，只挂上、在「素材」里补一句
+    const had = refOf(a), ref = bind(a), who = voiceOf(a);
+    paintAssets();
+    return toast(had ? who + '的音色已经挂成 ' + ref : who + '的音色挂成 ' + ref + '，「素材」里补了一句');
+  }
   if (LASTF && LASTF.isConnected) return insertAsset(a, { ta: LASTF, s: LASTF.selectionStart, e: LASTF.selectionEnd });
   if (LAST && LAST.startContainer.isConnected) return insertAsset(a, LAST.cloneRange());
   toast('先点一下正文里要插的位置');
@@ -2036,7 +1785,7 @@ function audioRow(a, list) {
   const ref = refOf(a);
   return h('div', { class: 'av-row', draggable: 'true', title: a.path + '　点击试听', ondragstart: e => drag(e, a), onclick: e => { if (!e.target.closest('button')) lightbox(a, list); } },
     h('span', { class: 'av-ic' }, '♪'), h('span', { class: 'av-n' }, a.name), ref ? h('b', null, ref) : null,
-    h('button', { class: 'mini-b', onclick: () => lightbox(a, list) }, '听'), h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'));
+    h('button', { class: 'mini-b', onclick: () => lightbox(a, list) }, '听'), h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a), title: isVoice(a) ? '挂成 @音频N，「素材」里补一句，正文不动' : null }, isVoice(a) ? '挂上' : '插入'));
 }
 function imageTile(a, list) {
   const img = thumb(a); img.title = '点击放大'; img.addEventListener('click', () => lightbox(a, list));
@@ -2053,12 +1802,12 @@ function paintAssets() {
   const q = $('#as-q').value.trim().toLowerCase(), out = [], hit = a => hitAsset(a, q), used = usedAssets().filter(hit);
   const head = (label, sub) => h('div', { class: 'as-h' }, h('span', null, label), h('em', null, sub));
   if (used.length) out.push(head('这份已用', '编号页面自己管，不用记'), h('div', { class: 'used-list' }, used.map(a => usedRow(a, used))));
-  // 只列确认可用的时候：白模没有确认这一步，照旧列；别的视频、音频不列（正文用了的在「这份已用」里）
+  // 只列确认可用的时候：白模没有确认这一步，照旧列；人物的音色（叫法_音色.wav，11-15 加）也照列；别的视频、音频不列（正文用了的在「这份已用」里）
   const vids = ASSETS.filter(a => a.type === '视频' && hit(a)).sort(byName), bm = vids.filter(isBaimo), other = OK ? [] : vids.filter(a => !isBaimo(a));
   if (bm.length) out.push(head('白模视频', bm.length + ' 个　资产 / ' + SEGDIR), ...bm.map(a => videoCard(a, bm)));
   if (other.length) out.push(head('其他视频', other.length + ' 个'), ...other.map(a => videoCard(a, other)));
-  const auds = OK ? [] : ASSETS.filter(a => a.type === '音频' && hit(a)).sort(byName);
-  if (auds.length) out.push(head('音频', auds.length + ' 个'), ...auds.map(a => audioRow(a, auds)));
+  const auds = ASSETS.filter(a => a.type === '音频' && (!OK || isVoice(a)) && hit(a)).sort(byName);
+  if (auds.length) out.push(head(OK ? '人物音色' : '音频', auds.length + ' 个' + (OK ? '　有台词的人物挂上' : '')), ...auds.map(a => audioRow(a, auds)));
   const imgs = ASSETS.filter(a => a.type === '图片' && (!OK || OK.has(a.path))), rank = c => (CAT_ORDER.indexOf(c) + 1) || 9;
   for (const cat of [...new Set(imgs.map(a => a.cat))].sort((a, b) => rank(a) - rank(b))) {
     const list = imgs.filter(a => a.cat === cat && hit(a)).sort(byName);
@@ -2238,7 +1987,6 @@ addEventListener('pagehide', () => { if (READY && dirty()) rememberDraft(); });
 addEventListener('beforeunload', e => { if (READY && (dirty() || SAVING || CONFLICT)) { rememberDraft(); e.preventDefault(); e.returnValue = ''; } });
 $('#as-q').addEventListener('input', paintAssets);
 $('#askAll').onclick = () => askAI();
-$('#revBtn').onclick = () => REV.st === 'ok' ? revGo() : revRun();
 $('#railBtn').onclick = () => { document.body.classList.toggle('norail'); $('#railBtn').textContent = document.body.classList.contains('norail') ? '展开侧栏' : '收起侧栏'; $$('.wr-ta').forEach(grow); };
 $('#previewBtn').onclick = previewDraft;   // 「保存草稿」11-15 去掉了：边写边自动存（touch 停 0.7 秒就存），Ctrl+S 照旧能立刻存
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (READY) { touch(); save(); } } });
@@ -2293,12 +2041,11 @@ async function boot() {
     ASSETS = await scanAssets(); A = Object.fromEntries(ASSETS.map(a => [a.path, a]));
     await loadRefs();
     await loadFlow();
-    LAY.fin = await layFinal(FLOW);   // 剧本定稿了才能 AI 铺底
     for (const f of FLOW && Array.isArray(FLOW.关键帧) ? FLOW.关键帧 : []) if (A[f] && A[f].type === '图片') A[f].kind = 'frame';   // 流水线资产那一步「关键帧」一块里挑的（名字不带首帧尾帧的也算）
     DOC = hydrateShots(DOC, SIDE.镜头信息, !SIDE.写法);
   } catch (e) { return fail(e.message); }
   render(); READY = true;
-  setStatus(savedText()); setAsk(); paintLay(); paintMarks(); showRail('assets'); paintScript();
+  setStatus(savedText()); setAsk(); paintMarks(); showRail('assets'); paintScript();
   $('#tip').hidden = true;
   $('#railBtn').textContent = document.body.classList.contains('norail') ? '展开侧栏' : '收起侧栏';
   await offerRecovery();
@@ -2307,7 +2054,6 @@ async function boot() {
   await loadHNotes();
   setInterval(poll, 2500);
   resumeJobs();
-  revCheck();
   if (window.RefPic) RefPic.watch(ref => { const a = assetOfRef(ref); return a && a.type === '图片' ? { tip: ref + ' · ' + a.name + '　点开看大图', open: () => lightbox(a, NUM.图片.map(p => A[p]).filter(Boolean)) } : null; }, '.wr, .at-pop, .lb');   // 侧栏、批注里的 @图片N 也能点开看大图（公用/点图.js）；文字框里照旧
 }
 addEventListener('hashchange', () => location.reload());

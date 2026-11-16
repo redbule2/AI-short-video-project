@@ -9,7 +9,7 @@
 'use strict';
 const C = window.Core;
 const HDR = { 'X-Antou': '1' };
-const MIME = { mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif' };
+const MIME = { mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif', wav: 'audio/wav', mp3: 'audio/mpeg', m4a: 'audio/mp4' };
 const mimeOf = n => MIME[(n.split('.').pop() || '').toLowerCase()] || '';
 
 /* ---------- 本机服务 ---------- */

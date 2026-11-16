@@ -169,7 +169,7 @@ function aiPicker(cls, tip) {
     const say = [...new Set([!md && c.模型说明, !dp && c.深度说明].filter(Boolean))].join('\n');
     return box([md, dp, label ? h('span', { class: cls, title: say }, label, h('span', { class: cls + '-fixed' }, '照 ' + c.名 + (fixed ? '（' + fixed + '）' : ''))) : null]);
   };
-  if (CH.list.length < 2) return box([h('span', { class: cls }, '交给 ' + CH.name()), opts()]);
+  if (CH.list.length < 2) return box([CH.now() === CH.SELF ? h('span', { class: cls, title: '流水线不直接调 AI（11-15 定）：点了把要交代的话给你，贴进你自己开的 Claude、Codex、DeepSeek 对话；它做完告诉项目，这里自动接着做' }, 'AI：复制给你自己的对话') : h('span', { class: cls }, '交给 ' + CH.name()), opts()]);
   const sel = h('select', { class: cls + '-sel', title: tip }, CH.list.map(c => h('option', { value: c.id, title: c.说明 }, c.名)));
   sel.value = CH.now();
   let op = opts();

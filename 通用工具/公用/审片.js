@@ -141,7 +141,7 @@
     if (o.prompt) L.push('提示词：' + o.prompt);
     L.push('', '用户在' + o.where + '里边看这条样片边写的批注。时间是样片里的位置（分:秒.十分之一秒），括号里是第几帧（从 1 数，每秒 ' + fpsText(o.fps) + ' 帧）；「镜头」对应提示词里的「' + o.shotWord + '」；'
       + (o.notes.some(n => n.cmp) ? '「对照」是写这一条时旁边摆着对照的东西（白模、另一条样片是同一时刻的画面，关键帧是这一镜开头那一刻该有的样子）；' : '')
-      + (o.notes.some(n => n.kf) ? '写了「弃用关键帧」的，是用户不要这张关键帧了，「批注」写的是为什么；照方案改的时候照新稿重出一张换上，理由说这一镜不要关键帧的就从新稿里拿掉；' : '')
+      + (o.notes.some(n => n.kf) ? '写了「弃用关键帧」的，是用户不要这张关键帧了，「批注」写的是为什么；' : '')
       + '截图是写这条批注时停住的那一帧，先看截图再读批注。' + (o.rel ? '路径都相对这份批注所在的文件夹。' : ''), '');
     if (o.general.trim()) L.push('## 整体', '批注：' + mdEsc(o.general.trim()), '');
     o.notes.forEach((n, i) => {
@@ -155,62 +155,6 @@
       L.push('批注：' + mdEsc(n.text), '');
     });
     return L.join('\n');
-  }
-
-  /* ---------- 修改方案（样片名_修改方案.md，AI 出的）和你定的（_修改方案_批注.md）：审片台、本机服务 jobs.js 都用这一份 ---------- */
-  const str = v => typeof v === 'string' ? v : '';
-  const unbom = t => str(t).replace(/^\uFEFF/, '');
-  const PLAN_KEYS = ['批注', '位置', '问题', '原因', '怎么改', '原文', '改成'];
-  const DEL_RE = /^[（(]?(删掉|删除|删去|去掉)[）)]?$/;
-  const unq = s => { const t = str(s).trim(), m = /^[「“"『](.*)[」”"』]$/s.exec(t); return m && !/[「“"『」”"』]/.test(m[1]) ? m[1] : t; };   // AI 爱给原话加引号
-  function planItems(t) {   // 「## 1」一节一条，「- 键：值」；原文、改成可以接着写几行
-    return str(t).replace(/\r\n?/g, '\n').split(/^#{2,3}[ \t]+/m).slice(1).map(p => {
-      const no = parseInt(p.replace(/^[^0-9\n]*/, ''), 10), g = { no };   // 「## 1」；AI 写成「## 第1条」也认
-      let cur = '';
-      for (const line of p.split('\n').slice(1)) {
-        const s = line.trim(), m = /^(?:[-*•]|\d+[.、])?[ \t]*\**[ \t]*(批注|位置|问题|原因|怎么改|原文|改成)[ \t]*\**[ \t]*[：:][ \t]*\**[ \t]*(.*)$/.exec(s);   // 「- 原文：」；带 **加粗** 的也认
-        if (m) { cur = m[1]; g[cur] = m[2].trim(); }
-        else if (/^改成了[：:]/.test(s)) cur = '';
-        else if (cur && s) g[cur] += (cur === '原文' || cur === '改成' ? '\n' : '') + s;
-      }
-      if (!(no > 0)) return null;
-      if (g.原文 != null) { g.原文 = unq(g.原文); if (!g.原文) delete g.原文; }
-      if (g.改成 != null) g.改成 = DEL_RE.test(g.改成.trim()) ? '' : unq(g.改成);
-      if (g.原文 == null) delete g.改成; else if (g.改成 == null) g.改成 = '';   // 有原文没写改成：当删掉
-      return g;
-    }).filter(Boolean).map((g, i) => ({ ...g, no: i + 1 }));
-  }
-  function planText(it) {   // 一条写回去：「## N」「- 键：值」，改成空着写「（删掉）」
-    const out = ['## ' + it.no];
-    for (const k of PLAN_KEYS) {
-      if (it[k] == null || (k !== '改成' && !str(it[k]).trim())) continue;
-      const v = k === '改成' && !it[k] ? '（删掉）' : str(it[k]);
-      const ls = v.split('\n');
-      out.push('- ' + k + '：' + ls[0], ...ls.slice(1).map(l => '  ' + l));
-    }
-    return out.join('\n');
-  }
-  function parsePlan(md) {   // 头上几行（视频、提示词、出方案、总的看法），「改成了：」记的改过的几版，一条一条
-    const t = unbom(md).replace(/\r\n?/g, '\n'), head = t.split(/^##[ \t]+/m)[0];
-    const get = k => ((new RegExp('^' + k + '[：:][ \\t]*(.*)$', 'm')).exec(head) || [])[1] || '';
-    return { 视频: get('视频').trim(), 提示词: get('提示词').trim(), 出方案: get('出方案').trim(), 总: get('总的看法').trim(), done: [...t.matchAll(/^改成了[：:][ \t]*(.+)$/gm)].map(m => m[1].trim()), items: planItems(t) };
-  }
-  function parsePlanNote(md) {   // 「## 1」下面「定：照这样改 / 不改 / 照我说的改」「批注：……」（批注写在最后，后面几行都算它的）；「## 整体」下面「批注：……」
-    const out = { items: new Map(), general: '' };
-    for (const p of unbom(md).replace(/\r\n?/g, '\n').split(/^##[ \t]+/m).slice(1)) {
-      const head = p.split('\n')[0].trim(), d = { 定: '', 批注: '' };
-      let inNote = false;
-      for (const line of p.split('\n').slice(1)) {
-        if (inNote) { d.批注 += '\n' + line; continue; }
-        const m = /^(定|批注)[：:][ \t]*(.*)$/.exec(line.trim());
-        if (!m) continue;
-        if (m[1] === '定') d.定 = m[2].trim(); else { d.批注 = m[2]; inNote = true; }
-      }
-      d.批注 = d.批注.trim();
-      if (/^整体/.test(head)) out.general = d.批注;
-      else if (parseInt(head, 10) > 0) out.items.set(parseInt(head, 10), d);
-    }
-    return out;
   }
 
   /* ---------- 网页里用的：画面、文件（经本机服务）。st 是一条样片的状态：notesAt、shotsDir、fps、notes、general、mdMtime、q、saveT、saving、err、thumbs ---------- */
@@ -292,7 +236,7 @@
 
   return Object.freeze({
     videoInfo, snapFps, fmt, fmtF, fpsText, rangeText, frameText, shotFileName, byFrame, brief, CATS, catsOf, shotOf,
-    mdEsc, relPath, framesOf, kfParse, parseNotes, notesText, planItems, planText, parsePlan, parsePlanNote,
+    mdEsc, relPath, framesOf, kfParse, parseNotes, notesText,
     HAS_RVFC, seekRaw, grab, grabEnd, readNotes, saveNotes, writeShot, shotImg, dropUnused,
   });
 });
