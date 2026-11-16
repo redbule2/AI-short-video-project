@@ -2,8 +2,8 @@
 /* 核心.js 里各页共用的几样：认「标签：内容」、读 DOCX、读文字。写稿页、写稿状态.js 都改用这一份（2026-11-15） */
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const Core = require('./公用/核心.js');
-const PromptDraft = require('./公用/写稿状态.js');
+const Core = require('../公用/核心.js');
+const PromptDraft = require('../公用/写稿状态.js');
 
 test('splitLabel：标签 1–10 个字，只认汉字、字母、/、｜、·', () => {
   const cases = [

@@ -5,7 +5,7 @@
    一段录音只给一个人（sd25-pe：不同人物用不同的素材）：挑过的那段，别人照文件名也认不走。
    写提示词时（sd25-pe）：出场的人物有音色、这一条里他有台词，就挂成 @音频N，素材里一人一行；台词照文字，录音只给音色、口音、语速和情绪。
    用到的：流水线 资产.html、设定.html（音色绑定.js：试听、挑一段、不用）、写稿页（资产栏列出来、挂上）、本机服务 jobs.js（AI 写提示词时当能用的素材）。
-   测试：node --test 通用工具/音色_测试.cjs */
+   测试：node --test 通用工具/测试/音色_测试.cjs */
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;

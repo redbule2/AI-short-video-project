@@ -10,12 +10,12 @@ const TMP = fs.mkdtempSync(path.join(os.tmpdir(), '网盘测试-'));
 process.env.AIVIDEO_STATE = TMP;
 process.env.AIVIDEO_LOCAL = TMP;
 process.env.AIVIDEO_RCLONE = process.execPath;
-const S = require('./网盘同步/网盘同步.js');
+const S = require('../网盘同步/网盘同步.js');
 process.on('exit', () => fs.rmSync(TMP, { recursive: true, force: true }));
 
 test('网盘管理.js 拿得到共用的那几样', () => {
   for (const k of ['COMMON', 'rcAsync', 'rcSpawn', 'rcLog', 'listFile', 'dropList', 'sum', 'under', 'sameL', 'sameContent']) assert.ok(S[k], '少了 ' + k);
-  assert.equal(typeof require('./网盘同步/网盘管理.js'), 'function');
+  assert.equal(typeof require('../网盘同步/网盘管理.js'), 'function');
 });
 
 test('rclone 的 JSON 输出：一行断成几段也认，进度、出错分开给，别的不管', () => {

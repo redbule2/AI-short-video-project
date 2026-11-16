@@ -181,6 +181,7 @@ async function saveEditor() {
   if (SAVE_PROMISE) { AGAIN = true; return SAVE_PROMISE; }
   SAVE_PROMISE = (async () => {
     SAVING = true;
+    SAVE_RETRY = false;
     let ok = true;
     do {
       AGAIN = false;
@@ -199,7 +200,13 @@ async function saveEditor() {
         if (!dirty()) { try { localStorage.removeItem(draftKey()); } catch (e) { /* 下次打开会比较内容 */ } }
         setStatus(dirty() ? '正在保存…' : savedText());
         AGAIN = AGAIN || VER !== version;
-      } catch (e) { rememberDraft(); setStatus('没存上：' + e.message + '；输入已保留', true); ok = false; break; }
+      } catch (e) {
+        SAVE_RETRY = true;
+        rememberDraft();
+        const message = e.message === 'Failed to fetch' ? '暂时连不上本机保存服务，恢复后会自动重试' : e.message;
+        setStatus('没存上：' + message + '；输入已保留', true);
+        ok = false; break;
+      }
     } while (AGAIN && !CONFLICT);
     SAVING = false; return ok;
   })();

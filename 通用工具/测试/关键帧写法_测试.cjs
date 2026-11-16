@@ -2,7 +2,7 @@
 /* 公用/关键帧写法.js 里往素材那一组放句子（提示词那一步、本机服务照方案改共用，2026-11-15 并成一份） */
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const KF = require('./公用/关键帧写法.js');
+const KF = require('../公用/关键帧写法.js');
 
 test('关键帧句子：写法一放【参考素材职责】最前面，写法二放【场景】最前面', () => {
   assert.deepEqual(KF.put(['【参考素材职责】', '@图片1是老李。', '', '【事件脚本】'], ['@图片2作为首帧。']),

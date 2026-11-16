@@ -2,7 +2,7 @@
 /* 公用/审片.js：审片台.html 和 项目管理.html 审片共用的那一份（2026-11-15 并成一份） */
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const R = require('./公用/审片.js');
+const R = require('../公用/审片.js');
 
 /* 造一个最小的 mp4：只有 moov > trak > mdia > hdlr、mdhd、minf > stbl > stts */
 function box(type, ...kids) {

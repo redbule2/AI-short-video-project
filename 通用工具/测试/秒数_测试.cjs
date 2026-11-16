@@ -2,7 +2,7 @@
 /* 公用/秒数.js：AI 写稿时估的每镜秒数（读【秒数】、记下来、出片弹窗算合计） */
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const S = require('./公用/秒数.js');
+const S = require('../公用/秒数.js');
 
 const PROMPT = ['【生成目标】', '一碗面。', '', '【事件脚本】', '镜头1：远景。', '镜头2：近景，{老板！}', '镜头 03：中景。', '声音包括环境声。'].join('\n');
 

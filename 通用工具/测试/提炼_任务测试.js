@@ -1,12 +1,12 @@
 'use strict';
-// node 通用工具/提炼_任务测试.js
+// node 通用工具/测试/提炼_任务测试.js
 // 11-16 他定：第一步直接写剧本（不用先选出场的、不带段落）；剧本定稿以后 AI 一次提炼梗概、人物、道具、场景、段落，人改或批注交回 AI 改。项目读写都在内存里，不碰真项目。
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { EventEmitter } = require('node:events');
-const backend = path.resolve(__dirname, '../.agents/skills/annotate-live/jobs.js');
+const backend = path.resolve(__dirname, '../../.agents/skills/annotate-live/jobs.js');
 const source = fs.readFileSync(backend, 'utf8');
 const root = path.resolve(__dirname, '__内存测试根__');
 const P = (...a) => path.join(root, '项目', '测试', ...a);
@@ -48,7 +48,7 @@ function setup(scene, more = {}) {
     require: name => name === 'fs' ? mockFs : name === 'child_process' ? { spawn } : require(name.startsWith('.') ? path.resolve(path.dirname(backend), name) : name),
   };
   vm.runInNewContext(source, box, { filename: backend });
-  const api = box.module.exports({ ROOT: root, TOOLS: __dirname, log() {}, withFileLocks: async (paths, fn) => fn() });
+  const api = box.module.exports({ ROOT: root, TOOLS: path.resolve(__dirname, '..'), log() {}, withFileLocks: async (paths, fn) => fn() });
   const hist = dir => [...files.keys()].filter(p => p.startsWith(P('历史记录', ...dir)));
   return { K: api.KINDS, files, hist, json: p => JSON.parse(files.get(p).toString()) };
 }

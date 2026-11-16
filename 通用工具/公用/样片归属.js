@@ -2,7 +2,7 @@
    样片名是本机服务起的：第N段_第M条_<记号>_480p.mp4，记号是 Core.vpTok（提示词01、提示词02改1、老稿 镜头1-5改1）。
    一条提示词 e：{ key: 原稿名, name: 最新那一版, vers: [几版] }（流水线.js 的 promptsOf 给的）。
    ClipOf.scene(s) 在网页里用（要先引 流水线.js）：照这一场的选定、成片文件夹、出片记录认。别的在 node 里也能跑。
-   测试：node --test 通用工具/样片归属_测试.cjs */
+   测试：node --test 通用工具/测试/样片归属_测试.cjs */
 (function (G) {
 'use strict';
 const Core = G.Core || (typeof require === 'function' ? require('./核心.js') : null);

@@ -2,8 +2,8 @@
 /* 公用/素材编号.js 的测试：node --test 素材编号_测试.cjs */
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const R = require('./公用/素材编号.js');
-const B = require('./公用/白模关键帧写法.js');
+const R = require('../公用/素材编号.js');
+const B = require('../公用/白模关键帧写法.js');
 
 /* 3-4 镜头1-5 的样子：白模＋关键帧，五张首帧 @图片6～10，镜头4 那张（@图片9）在写稿页里删了 */
 const regs = [

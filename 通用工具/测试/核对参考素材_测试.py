@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-spec = importlib.util.spec_from_file_location("check_refs", HERE / "核对参考素材.py")
+spec = importlib.util.spec_from_file_location("check_refs", HERE.parent / "核对参考素材.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 

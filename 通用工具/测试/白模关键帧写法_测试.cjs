@@ -2,7 +2,7 @@
 /* 公用/白模关键帧写法.js 的测试：node --test 白模关键帧写法_测试.cjs */
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const B = require('./公用/白模关键帧写法.js');
+const B = require('../公用/白模关键帧写法.js');
 
 const frames = [1, 2, 3].map(n => ({ ref: '@图片' + (n + 3), name: '镜头' + n + '_首帧' }));
 const cuts = B.cutsOf('# 白模说明\n镜头1：0-4秒\n镜头2：4-7秒\n镜头3：7-10秒\n');

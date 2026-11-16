@@ -2,7 +2,7 @@
 /* 公用/音色.js 的测试：node --test 音色_测试.cjs */
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const V = require('./公用/音色.js');
+const V = require('../公用/音色.js');
 
 test('照文件名认人：叫法_音色.wav', () => {
   assert.equal(V.whoOf('童爸爸_音色.wav'), '童爸爸');

@@ -5,8 +5,8 @@ const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const fs = require('node:fs');
 const path = require('node:path');
-const P = require('../.agents/skills/annotate-live/pe-shots.js');
-const SKILL = path.resolve(__dirname, '../.agents/skills/sd25-pe/SKILL.md');
+const P = require('../../.agents/skills/annotate-live/pe-shots.js');
+const SKILL = path.resolve(__dirname, '../../.agents/skills/sd25-pe/SKILL.md');
 
 test('真的 sd25-pe：七节都摘得到，起止对', () => {
   const { parts, missing } = P.pick(fs.readFileSync(SKILL, 'utf8'));

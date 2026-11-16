@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { parse, serialize, shotText, withShotText } = require('./公用/写稿状态.js');
+const { parse, serialize, shotText, withShotText } = require('../公用/写稿状态.js');
 
 const fixture = '\uFEFF说明  \r\n\r\n本段事件：  夜里来人  \r\n\r\n素材\r\n  @图片1 是场景。  \r\n\r\n基础设定\r\n风格:  写实  \r\n\r\n本段\r\n人物：  两个人  \r\n\r\n分镜\r\n说明文字\r\n\r\n  镜头 01 | 开门  \r\n  门开了。  \r\n\r\n\r\n镜头 02｜回头\r\n屋里人回头。\r\n\r\n保持一致：  光线一致';
 
@@ -149,7 +149,7 @@ test('自由分镜拒绝非字符串，避免误清空正文', () => {
 });
 
 /* ---------- sd2.5PE 格式（2026-11-13 起新写的稿） ---------- */
-const { skeleton } = require('./公用/写稿状态.js');
+const { skeleton } = require('../公用/写稿状态.js');
 const PEBOM = String.fromCharCode(0xFEFF);
 const pe = PEBOM + '【生成目标】  \r\n生成咖啡师递咖啡的视频。  \r\n\r\n【参考素材职责】\r\n@图片1用于咖啡师的五官。  \r\n【未采用素材】\r\n@图片2未参与本任务。\r\n\r\n【主体与关系】\r\n咖啡师：  站在吧台内侧。\r\n\r\n【事件脚本】\r\n镜头1：  咖啡师注水。  \r\n镜头2：咖啡师递杯。\r\n最终画面采用写实质感，声音包括注水声。\r\n\r\n【保持一致】\r\n保持杯子只有一个。';
 test('PE 稿认得出格式和各区内容', () => {

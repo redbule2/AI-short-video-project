@@ -2,7 +2,7 @@
 /* 公用/样片归属.js：样片是哪一条提示词、哪一版出的（审片、提示词两页共用；2026-11-16 从 审片.html 挪出来） */
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const C = require('./公用/样片归属.js');
+const C = require('../公用/样片归属.js');
 
 const P = (key, ...more) => ({ key, name: more.length ? more[more.length - 1] : key, vers: [key, ...more] });
 const list = [

@@ -569,7 +569,7 @@ async function resumeJobs() {
 let PJ = '', OPENPATH = '', PROMPT = [], DIR = [], STEM = '', SEGDIR = '', KEY = '', SIDEF = [], NOTESF = [], HIST = [];
 let DOC = null, MTIME = 0, LASTTEXT = '', VER = 0, SAVEDVER = 0, SAVING = false, AGAIN = false, READY = false;
 const dirty = () => VER !== SAVEDVER;
-let MODE = '分镜', FREE = '', BASE_EDITOR = {}, SAVE_PROMISE = null, CONFLICT = false, ARCHIVED = false, SELECTED_ID = '', RECOVERY_PENDING = false;
+let MODE = '分镜', FREE = '', BASE_EDITOR = {}, SAVE_PROMISE = null, SAVE_RETRY = false, CONFLICT = false, ARCHIVED = false, SELECTED_ID = '', RECOVERY_PENDING = false;
 const EDITOR_KEYS = ['写法', '写法范围', '分镜稿', '自由稿', '镜头信息', '挂图'];
 const editorPart = side => Object.fromEntries(EDITOR_KEYS.filter(k => Object.prototype.hasOwnProperty.call(side, k)).map(k => [k, side[k]]));
 const newShotId = () => 'shot-' + crypto.randomUUID();
@@ -1186,6 +1186,7 @@ async function poll() {
     if ((ns ? ns.mtime : 0) !== NOTES_MT) await loadNotes(ns);
     const hs = await stOf(HNF);
     if ((hs ? hs.mtime : 0) !== HN_MT && !$('.hnote.edit')) await loadHNotes(hs);   // 你写的批注：AI 改完会把它收进历史记录，这里跟着清掉
+    if (SAVE_RETRY && !RECOVERY_PENDING && !CONFLICT) await save();   // 服务恢复后补存当前输入，不必再打字触发保存
   } catch (e) { /* 服务断了一下：下一轮再看 */ }
   finally { POLLING = false; }
 }

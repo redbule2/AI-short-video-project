@@ -1,12 +1,12 @@
 'use strict';
-// node 通用工具/分镜提示词_任务测试.js
+// node 通用工具/测试/分镜提示词_任务测试.js
 // 所有项目读写都在内存文件系统中，不访问或修改用户的提示词。
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const Secs = require('./公用/秒数.js');   // 每镜秒数（11-15）：本机服务记进参考素材映射，出片弹窗照它填
-const backend = path.resolve(__dirname, '../.agents/skills/annotate-live/jobs.js');
+const Secs = require('../公用/秒数.js');   // 每镜秒数（11-15）：本机服务记进参考素材映射，出片弹窗照它填
+const backend = path.resolve(__dirname, '../../.agents/skills/annotate-live/jobs.js');
 const source = fs.readFileSync(backend, 'utf8');
 const root = path.resolve(__dirname, '__内存测试根__');
 const job = () => ({ 项目: '测试', 段: '1', 名: '视频提示词.txt', assets: [] });
@@ -40,7 +40,7 @@ function setup(raw, side) {
     require: name => name === 'fs' ? mockFs : name === 'child_process' ? { spawn() { throw Error('测试不能调用外部 AI'); } } : require(name.startsWith('.') ? path.resolve(path.dirname(backend), name) : name),   // jobs.js 里的 ./canvas.js 这种照 jobs.js 那边找
   };
   vm.runInNewContext(source, box, { filename: backend });
-  const api = box.module.exports({ ROOT: root, TOOLS: __dirname, log() {}, withFileLocks: async (paths, fn) => { locks.push(paths); return fn(); } });
+  const api = box.module.exports({ ROOT: root, TOOLS: path.resolve(__dirname, '..'), log() {}, withFileLocks: async (paths, fn) => { locks.push(paths); return fn(); } });
   return { K: api.KINDS, files, writes, locks, side: () => JSON.parse(files.get(sidePath).toString()), raw: () => files.get(promptPath).toString() };
 }
 
