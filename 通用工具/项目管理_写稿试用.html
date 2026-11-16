@@ -1025,9 +1025,9 @@ async function loadFlow() {
   } catch (e) { /* 读不了就不摆 */ }
 }
 /* 这一场的剧本段落（早先叫「镜头」，里面的「写什么」早先叫「拍什么」） */
-/* 提示词的叫法：一场几条（2026-11-13），第一条 视频提示词、第二条起 视频提示词_02……显示成「第N条」；老稿（段落a-b_…、镜头a-b_…）照旧 */
-const vpShort = stem => { const v = (/_改([0-9]+)$/.exec(stem) || [])[1], b = stem.replace(/_改[0-9]+$/, ''), m = /^视频提示词(?:_([0-9]+))?$/.exec(b); return (m ? '第' + (+(m[1] || 1)) + '条' : b.replace(/_?视频提示词$/, '')) + (v ? ' 改' + v : ''); };   // 审片以后照修改方案另存的 _改1、_改2……（2026-11-14）
-const flowFree = () => /^视频提示词(_[0-9]+)?(_改[0-9]+)?$/.test(STEM);   // 一场几条的稿：写哪段戏人定，镜头不对段落
+/* 提示词的叫法：照镜头号起名的（2026-11-16）1-5 显示成「镜头1-5」；老稿 视频提示词、视频提示词_02……显示成「第N条」，段落a-b_…、镜头a-b_… 照旧；改几的带「改N」（公用/核心.js 的 vpLabel） */
+const vpShort = stem => Core.vpLabel(stem + '.txt');
+const flowFree = () => /^视频提示词(_[0-9]+)?(_改[0-9]+)?$/.test(STEM) || !!Core.vpCode(STEM + '.txt');   // 一场几条的稿、照镜头号起名的稿：分镜照戏设计，镜头不和镜头表一一对上
 const flowParas = () => !FLOW ? [] : Array.isArray(FLOW.段落) && FLOW.段落.length ? FLOW.段落 : Array.isArray(FLOW.镜头) ? FLOW.镜头 : [];
 /* 这一镜对着你的哪一个段落：没扩写时一段当一镜；扩写以后照「镜头对应」找，找不到就不摆 */
 const flowAt = no => {
@@ -2005,7 +2005,7 @@ async function findDrafts() {
     for (const seg of await FS.list([HOME, pj.name, '提示词'])) {
       if (seg.kind !== 'directory' || !/^第.+段$/.test(seg.name)) continue;
       const files = await FS.list([HOME, pj.name, '提示词', seg.name]), names = new Set(files.map(f => f.name));
-      for (const f of files) if (/视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i.test(f.name)) out.push([pj.name, '提示词', seg.name, f.name]);
+      for (const f of files) if (Core.RE_VP.test(f.name)) out.push([pj.name, '提示词', seg.name, f.name]);
     }
   }
   return out;
@@ -2022,7 +2022,7 @@ async function boot() {
   paintSteps(); setGuide(null); paintTabs();
   let open = [];
   try { open = decodeURIComponent((/[#&]open=([^&]*)/.exec(location.hash) || [])[1] || '').split('/').filter(Boolean); } catch (e) { /* 网址不对 */ }
-  if (open.length < 3 || !/视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i.test(open[open.length - 1])) {   // 网址里没写开哪一份：自己去找铺好底的稿，只有一份就直接开
+  if (open.length < 3 || !Core.RE_VP.test(open[open.length - 1])) {   // 网址里没写开哪一份：自己去找铺好底的稿，只有一份就直接开
     let list;
     try { list = await findDrafts(); } catch (e) { return fail('本机服务连不上：' + e.message); }
     if (list.length === 1) { location.hash = 'open=' + list[0].map(encodeURIComponent).join('/'); return; }   // 网址一变，页面自己重开

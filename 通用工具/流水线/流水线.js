@@ -25,10 +25,10 @@ const { h, icon, toast, dialog, dlgShell, confirmDlg, choiceDlg, field, copyText
 if (!window.HandAI && document.currentScript) document.head.append(Object.assign(document.createElement('script'), { src: new URL('../公用/交给AI.js', document.currentScript.src).href }));
 /* 等 AI 做事时的样子（转着的墨环、字上扫光）：公用/等待.js，这里替各页引好；页面里摆 <i class="wt-ring">、<span class="wt-t"> 就行 */
 if (!window.Wait && document.currentScript) document.head.append(Object.assign(document.createElement('script'), { src: new URL('../公用/等待.js', document.currentScript.src).href }));
-/* 提示词的名字：一场写几条就分几条。第一条叫 视频提示词.txt，第二条起 视频提示词_02.txt、_03.txt……（2026-11-13 他定的：加第二条时第一条不改名）。
-   老稿还有 段落a-b_视频提示词.txt、镜头a-b_视频提示词.txt，照旧认。
+/* 提示词的名字（2026-11-16 他定）：就是这一条拍的镜头表镜头号，1-5.txt、4-9.txt（写的时候勾镜头）。
+   老稿还有 视频提示词.txt、视频提示词_02.txt、段落a-b_视频提示词.txt、镜头a-b_视频提示词.txt，照旧认。
    审片以后改的另存一份，名字后面加 _改1、_改2……（2026-11-14 他定）：原稿、前几版留在原处；一条只摆最新那一版，出片也用它 */
-const { RE_VP, vpVer, vpBase, vpNo, vpLabel, vpTok, vpNext, nameOk, sceneStem } = window.Core;   // 视频提示词怎么起名、文件名能不能用：和审片台、本机服务共用 公用/核心.js 那一份
+const { RE_VP, vpVer, vpBase, vpNo, vpCode, vpShots, vpShotName, vpLabel, vpTok, nameOk, sceneStem } = window.Core;   // 视频提示词怎么起名、文件名能不能用：和审片台、本机服务共用 公用/核心.js 那一份
 const VID_RE = /\.(mp4|m4v|mov|webm)$/i;
 const SHOTS_TAIL = '_批注截图';
 const FILE = '流水线.json';

@@ -85,6 +85,13 @@ const sideData = () => ({ 写法: '分镜', 分镜稿: structured, 自由稿: '�
     assert.ok(md.includes('- 原文：甲递书。')); assert.ok(md.includes('- 改成：甲双手把书递过去。'));
     assert.doesNotMatch(md, /原文：【保持一致】/);
   });
+  await check('写提示词：名字要是镜头号（11-16），改几的不让 AI 新写', async () => {
+    const s = setup(structured, sideData());
+    await s.K.写提示词.prep({ ...job(), 名: '1-5.txt' });
+    await s.K.写提示词.prep({ ...job(), 名: '1-3、5.txt' });
+    await assert.rejects(s.K.写提示词.prep({ ...job(), 名: '1-5_改1.txt' }), /镜头号/);
+    await assert.rejects(s.K.写提示词.prep({ ...job(), 名: '第一条.txt' }), /镜头号/);
+  });
   await check('写提示词任务书只照 sd25-pe，回的稿从【生成目标】读起', async () => {
     const book = fs.readFileSync(backend, 'utf8');
     assert.doesNotMatch(book, /seedance-prompt-format'\)/);
@@ -100,7 +107,8 @@ const sideData = () => ({ 写法: '分镜', 分镜稿: structured, 自由稿: '�
     assert.doesNotMatch(whole.text, /接着|留给下一条|留给别的条/);
     const part = sc(2, two, '小磊进门到坐下', null);
     assert.match(part.text, /这一条写这段戏：小磊进门到坐下。/); assert.match(part.text, /另外还有 1 条/); assert.equal(part.others, two);
-    assert.match(sc(1, [], '', [2, 3]).text, /只写镜头表里镜头 2 到镜头 3/);   // 老请求带着镜头范围的照旧
+    const shot = sc(0, two, '镜头3慢一点', [2, 3, 5]);   // 11-16：名字是镜头号的，只写勾的那几个镜头
+    assert.match(shot.text, /这一份是拍镜头 2、3、5 的一条/); assert.match(shot.text, /只写镜头表里镜头 2、3、5 的戏/); assert.match(shot.text, /人另外交代：镜头3慢一点。/); assert.equal(shot.others, two);
   });
   /* 11-15：AI 写稿、照批注改稿时顺手估每镜几秒，回复最后另起一块【秒数】；秒数不进稿子，记进参考素材映射 */
   await check('写提示词：任务书要【秒数】；回的【秒数】不进稿子，记进映射，和稿子对得上', async () => {

@@ -688,7 +688,7 @@ const VIDEO_RE = /\.(mp4|m4v|mov|webm)$/i;
 const IMG_RE = /\.(png|jpe?g|webp|gif|avif)$/i;
 const TEXT_RE = /\.(md|txt|json|csv|log)$/i;
 const NOTES_TAIL = '_批注.md', SHOTS_TAIL = '_批注截图';
-const RE_VIDEO_PROMPT = /(^|_)视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i;   // 一场几条：视频提示词.txt、视频提示词_02.txt……（2026-11-13）
+const RE_VIDEO_PROMPT = window.Core.RE_VP;   // 视频提示词的名字：照镜头号起名的 1-5.txt（2026-11-16）；老稿 视频提示词.txt、视频提示词_02.txt……（公用/核心.js 那一份）
 const STD_DIRS = ['定稿的剧本', '提示词', '资产', '成片', '历史记录'];
 const hiddenName = n => /^[.$]|^~\$|^(node_modules|__pycache__|System Volume Information|desktop\.ini|Thumbs\.db)$/i.test(n) || /\.antou-tmp$/.test(n);
 /* 总文件夹 项目 里的项目，路径从项目名写起（剧本、提示词那边这么认）；还没挪进 项目 的旧项目照原样 */
@@ -884,7 +884,7 @@ const CAT_ORDER = ['人物', '场景', '道具', '特效'];
 /* 批注分两处，各管各的：剧本和镜头表一处，各段的视频提示词一处 */
 const AREA_KINDS = { script: ['script', 'shots'], prompt: ['prompt'] };
 const areaOf = kind => kind === 'prompt' ? 'prompt' : 'script';
-const RE_VIDEO_PROMPT = /(^|_)视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i;   // 一场几条：视频提示词.txt、视频提示词_02.txt……（2026-11-13）
+const RE_VIDEO_PROMPT = window.Core.RE_VP;   // 视频提示词的名字：照镜头号起名的 1-5.txt（2026-11-16）；老稿 视频提示词.txt、视频提示词_02.txt……（公用/核心.js 那一份）
 
 const S = {
   ready: false, rootName: '', projects: [], cache: {}, pj: null, scroll: 0,
@@ -964,6 +964,7 @@ function promptLabel(fname, pjName, seg) {
   s = s.replace(new RegExp('第\\s*' + seg.replace(/-/g, '\\s*[-－—–]\\s*') + '\\s*段'), '');
   const ver = (/_改([0-9]+)$/.exec(s) || [])[1], tail = ver ? ' 改' + ver : '';   // 审片以后照修改方案另存的 _改1、_改2……（2026-11-14）
   s = s.replace(/_改[0-9]+$/, '');
+  if (window.Core.vpCode(s + '.txt')) return '镜头' + window.Core.vpCode(s + '.txt') + tail;   // 照镜头号起名的：1-5 叫「镜头1-5」（2026-11-16）
   const no = /^[_\s]*视频提示词_([0-9]+)$/.exec(s);   // 一场几条：第二条起 视频提示词_02……叫「第N条」；第一条 视频提示词 照旧是「本段」（目录拿它当这一段的简介）
   if (no) return '第' + (+no[1]) + '条' + tail;
   s = s.replace(/_?视频提示词$/, '').replace(/_?提示词$/, '');
@@ -1542,7 +1543,7 @@ async function copyForAI(paths) {
     if (S.ed) await S.ed.q;   // 批注先写完
     if (LINK.v >= 5) {   // 直接开 AI 任务（用哪个 AI，看流水线顶栏选的那个）：剧本、镜头表的批注，和各段视频提示词的批注
       const list = (paths || [S.ed.notesAt]).map(p => at(p));
-      const isVp = p => p.length === 5 && p[0] === '项目' && p[2] === '提示词' && /^第[0-9-]+段$/.test(p[3]) && /视频提示词(_[0-9]+)?(_改[0-9]+)?_批注\.md$/.test(p[4]);
+      const isVp = p => p.length === 5 && p[0] === '项目' && p[2] === '提示词' && /^第[0-9-]+段$/.test(p[3]) && /_批注\.md$/.test(p[4]) && window.Core.RE_VP.test(p[4].replace(/_批注\.md$/, '.txt'));
       const mine = list.filter(p => (p[0] === '项目' && p[2] === '定稿的剧本') || isVp(p));
       for (const p of mine) aiJob({ 事: isVp(p) ? '按批注改提示词' : '按批注改', 项目: p[1], 批注: p.join('/') });
       if (mine.length === list.length) return;
@@ -2464,6 +2465,7 @@ function promptLabel(n, pj, seg) {
   s = s.replace(`第${seg}段`, '');
   const ver = (/_改([0-9]+)$/.exec(s) || [])[1], tail = ver ? ' 改' + ver : '';   // 审片以后照修改方案另存的 _改1、_改2……（2026-11-14）
   s = s.replace(/_改[0-9]+$/, '');
+  if (window.Core.vpCode(s + '.txt')) return '镜头' + window.Core.vpCode(s + '.txt') + tail;   // 照镜头号起名的：1-5 叫「镜头1-5」（2026-11-16）
   const no = /^[_\s]*视频提示词_([0-9]+)$/.exec(s);   // 一场几条：第二条起 视频提示词_02……叫「第N条」；第一条 视频提示词 照旧是「本段」（目录拿它当这一段的简介）
   if (no) return '第' + (+no[1]) + '条' + tail;
   s = s.replace(/_?视频提示词$/, '');
@@ -2478,7 +2480,7 @@ async function promptsFor(g, seg) {
     const dseg = segOf(parts[parts.length - 1]);   // 文件名里没写段落的，看所在的 第N段 文件夹
     for (const e of ents) {
       if (e.kind === 'directory') { if (depth > 0 && !/^[.$]|^(历史记录|全局资产)$/.test(e.name)) await walk([...parts, e.name], depth - 1); }
-      else if (/视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i.test(e.name) && (segOf(e.name) || dseg) === seg) out.push({ name: e.name, path: [...parts, e.name], label: promptLabel(e.name, g.name, seg) });
+      else if (window.Core.RE_VP.test(e.name) && (segOf(e.name) || dseg) === seg) out.push({ name: e.name, path: [...parts, e.name], label: promptLabel(e.name, g.name, seg) });
     }
   };
   await walk(g.pr, 2);

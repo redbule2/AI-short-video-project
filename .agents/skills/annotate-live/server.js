@@ -32,7 +32,8 @@ const waiters = new Set();   // 正在等的 AI，各记着自己等哪几种
 const online = k => [...waiters].some(w => w.kinds.includes(k)) || Date.now() - lastSeen[k] < ONLINE_MS;
 const log = (...a) => console.log(new Date().toLocaleTimeString('zh-CN', { hour12: false }), ...a);
 const httpErr = (status, msg) => Object.assign(new Error(msg), { status });
-const drafts = require('./draft-store.js')({ ROOT });
+const Core = require(path.join(TOOLS, '公用', '核心.js'));   // 视频提示词的名字（RE_VP）：和页面、jobs.js 共用一份
+const drafts = require('./draft-store.js')({ ROOT, RE_VP: Core.RE_VP });
 const jobs = require('./jobs.js')({ ROOT, TOOLS, log, withFileLocks: drafts.withLocks });   // AI 任务与页面共用文件锁
 const pc = require('./pc-files.js')({ ROOT, log, resolveParts, withLocks: drafts.withLocks });   // 资产页「从电脑里找」：整台电脑找图、复制进项目（11-14 加）
 /* 流水线「网盘」那一页：项目文件夹在阿里云网盘上的那一份（通用工具\网盘同步\网盘管理.js）。没装好不碍别的 */
@@ -311,7 +312,7 @@ function relParts(file) {
 function fileKind(parts) {
   const name = parts[parts.length - 1];
   if (parts[1] === '定稿的剧本' && /\.docx$/i.test(name)) return '剧本';
-  if (parts[1] === '提示词' && /(^|_)视频提示词(_[0-9]+)?(_改[0-9]+)?\.txt$/i.test(name) && parts.slice(2, -1).some(d => /第.+段/.test(d))) return '提示词';   // 一场几条：视频提示词.txt、视频提示词_02.txt……
+  if (parts[1] === '提示词' && Core.RE_VP.test(name) && parts.slice(2, -1).some(d => /第.+段/.test(d))) return '提示词';   // 照镜头号起名的 1-5.txt……；老稿 视频提示词.txt、视频提示词_02.txt……
   if (/\.(mp4|m4v|mov|webm)$/i.test(name)) return '审片';
   if (/\.(png|jpe?g|webp|gif|avif)$/i.test(name)) return '图片';
   return null;

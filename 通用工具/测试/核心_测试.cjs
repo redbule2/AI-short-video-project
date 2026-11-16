@@ -68,7 +68,7 @@ test('文件名：Windows 能不能用、场景文字起名', () => {
   assert.equal(Core.sceneStem(null), '');
 });
 
-test('视频提示词的名字：第几条、改几、样片名里写的、下一条', () => {
+test('视频提示词的名字（老稿）：第几条、改几、样片名里写的', () => {
   const t = n => [Core.RE_VP.test(n), Core.vpNo(n), Core.vpVer(n), Core.vpLabel(n), Core.vpTok(n)];
   assert.deepEqual(t('视频提示词.txt'), [true, 1, 0, '第1条', '提示词01']);
   assert.deepEqual(t('视频提示词_02_改3.txt'), [true, 2, 3, '第2条 改3', '提示词02改3']);
@@ -76,8 +76,29 @@ test('视频提示词的名字：第几条、改几、样片名里写的、下�
   assert.deepEqual(t('甲_乙_视频提示词_改1.txt'), [true, 0, 1, '甲 乙 改1', '甲_乙改1']);
   assert.equal(Core.RE_VP.test('出片任务.txt'), false);
   assert.equal(Core.vpBase('视频提示词_02_改3.txt'), '视频提示词_02.txt');
-  assert.equal(Core.vpNext([]), '视频提示词.txt');
-  assert.equal(Core.vpNext(['视频提示词.txt', '视频提示词_02_改1.txt', '老_视频提示词.txt']), '视频提示词_03.txt');
+});
+
+test('视频提示词照镜头号起名（11-16）：1-5.txt、3.txt、1-3、5.txt', () => {
+  const t = n => [Core.RE_VP.test(n), Core.vpNo(n), Core.vpVer(n), Core.vpLabel(n), Core.vpTok(n)];
+  assert.deepEqual(t('1-5.txt'), [true, 0, 0, '镜头1-5', '1-5']);
+  assert.deepEqual(t('4-9_改2.txt'), [true, 0, 2, '镜头4-9 改2', '4-9改2']);
+  assert.deepEqual(t('3.txt'), [true, 0, 0, '镜头3', '3']);
+  assert.deepEqual(t('1-3、5.txt'), [true, 0, 0, '镜头1-3、5', '1-3、5']);
+  for (const bad of ['1-5_写稿.json', '1-5_批注.md', '1-5_出片任务.txt', '1-5_补1.txt', 'a1-5.txt', '1-.txt', '1-5_02.txt']) assert.equal(Core.RE_VP.test(bad), false, bad);
+  assert.equal(Core.vpBase('4-9_改2.txt'), '4-9.txt');
+  assert.deepEqual(Core.vpShots('1-3、5_改1.txt'), [1, 2, 3, 5]);
+  assert.deepEqual(Core.vpShots('4-9.txt'), [4, 5, 6, 7, 8, 9]);
+  assert.equal(Core.vpShots('镜头1-5_视频提示词.txt'), null);   // 老稿不算：那时的镜头号和现在的镜头表对不上
+  assert.equal(Core.vpShotName([5, 1, 2, 3]), '1-3、5.txt');
+  assert.equal(Core.vpShotName([4, 5, 6, 7, 8, 9]), '4-9.txt');
+  assert.equal(Core.vpShotName([3]), '3.txt');
+  assert.equal(Core.vpShotName([]), '');
+  assert.deepEqual(Core.vpPatchOf('1-5_改2_补1.txt'), { of: '1-5_改2.txt', no: 1 });
+  assert.equal(Core.vpLabel('1-5_补3.txt'), '镜头1-5 补3');
+  assert.equal(Core.vpTok('1-5_改2_补1.txt'), '1-5改2补1');
+  const pairs = [['1-5.txt', '1-5_出片任务.txt'], ['1-5_改1.txt', '1-5_出片任务_改1.txt'], ['1-3、5_改2_补1.txt', '1-3、5_出片任务_改2_补1.txt']];
+  for (const [vp, tf] of pairs) { assert.equal(Core.vpTask(vp), tf, vp); assert.equal(Core.taskVp(tf), vp, tf); assert.ok(Core.RE_TASK.test(tf), tf); }
+  assert.equal(Core.patchOut('第3-5段', '1-5_补1.txt', ['第3-5段_第2条_1-5_样片480p.mp4', '第3-5段_第3条_1-5改1_样片480p.mp4']).no, 2);
 });
 
 test('补片稿：原名_补N.txt 不算一版，补的是原名那一版出的样片', () => {

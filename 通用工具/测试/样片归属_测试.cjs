@@ -22,6 +22,15 @@ test('哪一条：名字里带记号就认它；「镜头6-9拼接」不算「�
   assert.equal(C.promptOf('第1-1段_第1条_提示词01_480p.mp4', list, {}), p1.key);
 });
 
+test('照镜头号起名的（11-16）：样片里记 1-5、1-5改1；老稿 镜头1-5 出的不算它的', () => {
+  const n15 = P('1-5.txt', '1-5_改1.txt'), n3 = P('3.txt'), all = [...list, n15, n3];
+  assert.equal(C.promptOf('第3-4段_第20条_1-5改1_样片480p.mp4', all, {}), n15.key);
+  assert.equal(C.verOf('第3-4段_第20条_1-5改1_样片480p.mp4', n15), '1-5_改1.txt');
+  assert.equal(C.promptOf('第3-4段_第14条_镜头1-5改6_样片480p.mp4', all, {}), a15.key);
+  assert.equal(C.promptOf('第3-4段_第21条_3_样片480p.mp4', all, {}), n3.key);
+  assert.equal(C.promptOf('第3-4段_第22条_13_样片480p.mp4', all, {}), '');   // 「13」不算「3」
+});
+
 test('哪一条：选定过的照选定的；只有一条提示词就是它', () => {
   assert.equal(C.promptOf('第3-4段_第12条_镜头1快剪_推弹_样片480p.mp4', list, { [a7.key]: '第3-4段_第12条_镜头1快剪_推弹_样片480p.mp4' }), a7.key);
   assert.equal(C.promptOf('随便起的名字.mp4', [a7], {}), a7.key);

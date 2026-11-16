@@ -893,17 +893,18 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     /* ---------- 工序四：提示词 ---------- */
     写提示词: {
       title: j => '写提示词 · 第' + j.段 + '段 ' + vpLabel(j), need: ['段'], key: j => j.段 + '/' + j.名, file: j => j.段 + '/' + j.名,
-      /* 这一条写哪段戏（11-15 他定）：人没写就写这一场整段，别的条不附；人写了哪段（老请求带着段落范围的也一样）就只写那段，别的条附在后面好接上。
-         me：第几条；others：这一场别的条 [{ f, no, text }]。给 { text：任务书里说范围的那几句, others：要附上的别的条 } */
-      scope(me, others, what, pa) {
-        const no = me ? '第 ' + me + ' 条' : '其中一条';
-        if (!pa && !what) return { text: '这一份是' + no + '，写这一段的整段戏，从开头写到结尾。一条视频一般 15 秒、最长 30 秒。', others: [] };
-        const where = pa ? '这一条只写镜头表里镜头 ' + pa[0] + (pa[1] > pa[0] ? ' 到镜头 ' + pa[1] : '') + ' 的戏，别的镜头留给别的条，不要写进来。'
+      /* 这一条写哪段戏：11-16 他定，写的时候勾镜头表里的镜头，名字就是镜头号（1-5.txt），只写勾的那几个镜头，别的条附在后面好接上。
+         老稿（视频提示词.txt……）照 11-15 的：人没写就写这一场整段，别的条不附；写了哪段（老请求带着段落范围的也一样）就只写那段。
+         me：第几条；others：这一场别的条 [{ f, no, text }]；shots：勾的镜头号 [1, 2, 3]。给 { text：任务书里说范围的那几句, others：要附上的别的条 } */
+      scope(me, others, what, shots) {
+        const no = shots ? '拍镜头 ' + shots.join('、') + ' 的一条' : me ? '第 ' + me + ' 条' : '其中一条';
+        if (!shots && !what) return { text: '这一份是' + no + '，写这一段的整段戏，从开头写到结尾。一条视频一般 15 秒、最长 30 秒。', others: [] };
+        const where = shots ? '这一条只写镜头表里镜头 ' + shots.join('、') + ' 的戏，别的镜头留给别的条，不要写进来。' + (what ? '人另外交代：' + what + '。' : '')
           : '这一条写这段戏：' + what + '。别的戏留给别的条，不要写进来。';
         return { text: '这一段的戏分几条写由人定，这一份是' + no + (others.length ? '，这一段另外还有 ' + others.length + ' 条（附在后面，接头处要接得上）' : '') + '。' + where + '一条视频一般 15 秒、最长 30 秒，装不下的戏留给下一条。', others };
       },
       async prep(j) {
-        if (!nameOk(str(j.名)) || !RE_VP.test(j.名) || vpVer(j.名)) throw fail('提示词的文件名要是「视频提示词.txt」「视频提示词_02.txt」这样的');
+        if (!nameOk(str(j.名)) || !RE_VP.test(j.名) || vpVer(j.名)) throw fail('提示词的文件名要是镜头号，像「1-5.txt」「4-9.txt」');
         if (await exists(vpPath(j))) throw fail('这份提示词已经存在，请打开接着写；AI 初稿不会覆盖它');
         if (j.白模) {   // 这一条要挂的白模：只认这一段文件夹（含下一层）里的视频
           const f = str(j.白模).replace(/\\/g, '/'), q = f.split('/');
@@ -925,8 +926,9 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         const flow = await readFlow(j.项目), s = sceneOf(flow, j.段), sp = scriptPath(j.项目, j.段);
         if (!s) throw fail('流水线里没有第' + j.段 + '段');
         if (!(await exists(sp))) throw fail('要先有定稿的剧本，才能写提示词');
-        const ps = parasOf(s), pa = Array.isArray(j.段落) && j.段落.length === 2 ? j.段落 : null;
-        if (pa && !(pa[0] >= 1 && pa[1] >= pa[0] && pa[1] <= ps.length)) throw fail('镜头表的范围不对');
+        const ps = parasOf(s), pa = Array.isArray(j.段落) && j.段落.length === 2 ? j.段落 : null;   // 段落：老请求带着的范围 [从, 到]
+        const shots = vpShots(str(j.名)) || (pa && pa[1] >= pa[0] ? Array.from({ length: pa[1] - pa[0] + 1 }, (x, i) => pa[0] + i) : null);   // 名字就是镜头号（11-16）
+        if (shots && !(shots[0] >= 1 && shots[shots.length - 1] <= ps.length)) throw fail('镜头表只有 ' + ps.length + ' 个镜头，没有镜头 ' + shots.filter(n => n > ps.length).join('、'));
         const assets = [];
         for (const k of ['人物', '道具']) for (const n of s[k] || []) { const e = (flow[k] || []).find(x => x && x.名 === n); for (const f of (e && (Array.isArray(e.资产) ? e.资产 : e.资产 ? [e.资产] : [])) || []) assets.push(k + '「' + n + '」：' + f); }
         for (const x of segRefs(s)) assets.push(x.k + '参考「' + x.n + '」（这一段的图）：' + x.f);
@@ -948,7 +950,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           }
         } catch (e) { /* 还没有别的条 */ }
         others.sort(byNo);
-        const sc = KINDS.写提示词.scope(vpNo(str(j.名)), others, str(j.写什么).trim(), pa);
+        const sc = KINDS.写提示词.scope(vpNo(str(j.名)), others, str(j.写什么).trim(), shots);
         const range = sc.text + (j.白模 ? '这一条挂白模视频 @视频1：它和别的素材一样，管哪几秒、参考它什么照下面「这一条挂的白模视频」写，可以只管其中几秒。' : '') + (frames.length ? '这一条挂 ' + frames.length + ' 张关键帧（见下面「这一条挂的关键帧」），对应镜头的开场照关键帧。' : '');
         const otherText = sc.others.length ? ['', '## 这一段的其他几条提示词（只看，别改；接头处的人物位置、动作、光线要接得上）', ...sc.others.map(o => '### ' + o.f + (o.no ? '（第 ' + o.no + ' 条）' : '') + '\n' + (o.text || '（还是空的）'))].join('\n') : '';
         return ['# 任务：给一段戏写 Seedance 视频提示词', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面有定稿的剧本、镜头表、全片设定、这一段能用的资产图。请照 sd25-pe 的格式写视频提示词。' + range,
@@ -1178,14 +1180,13 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
      只有分镜部分可在逐镜编辑、自由文本间切换；其余公共区共用。
      读成几区、照原样写回去，和写稿页（通用工具/项目管理_写稿试用.html）是同一套读法 */
   const BOMCH = String.fromCharCode(0xFEFF);
-  /* 提示词的名字：一场写几条就分几条，第一条 视频提示词.txt，第二条起 视频提示词_02.txt、_03.txt……（2026-11-13 定，加第二条时第一条不改名）；
-     老稿 段落a-b_视频提示词.txt、镜头a-b_视频提示词.txt 照旧认。和 通用工具/流水线/流水线.js 里的 vpNo、vpLabel、vpTok 一个算法 */
-  /* 审片以后改出来的另存一份，名字后面加 _改1、_改2……（2026-11-14 他定）：视频提示词_改1.txt、视频提示词_02_改1.txt、镜头1-5_视频提示词_改1.txt。
+  /* 提示词的名字（11-16 他定）：就是这一条拍的镜头表镜头号，1-5.txt、4-9.txt；老稿 视频提示词.txt、视频提示词_02.txt、镜头a-b_视频提示词.txt 照旧认。
+     算法都在 公用/核心.js（和流水线各页共用）。审片以后改出来的另存一份，名字后面加 _改1、_改2……（2026-11-14 他定）：1-5_改1.txt。
      原稿和前几版留在原处不动；流水线里一条只摆最新的那一版，出片也用它 */
   const RE_VP = Core ? Core.RE_VP : { test: core('RE_VP') };
   const vpPath = j => pj(j.项目, '提示词', segDir(j.段), str(j.名));
   const viaStr = f => n => f(str(n));   // 不是字的当空字
-  const vpVer = viaStr(core('vpVer')), vpBase = viaStr(core('vpBase')), vpNo = viaStr(core('vpNo')), vpLabelOf = viaStr(core('vpLabel')), vpTok = viaStr(core('vpTok'));   // 样片名、画布节点名里写的是 vpTok（和样片自己的「第N条」分开）
+  const vpVer = viaStr(core('vpVer')), vpBase = viaStr(core('vpBase')), vpNo = viaStr(core('vpNo')), vpShots = viaStr(core('vpShots')), vpLabelOf = viaStr(core('vpLabel')), vpTok = viaStr(core('vpTok'));   // 样片名、画布节点名里写的是 vpTok（和样片自己的「第N条」分开）
   const vpLabel = j => vpLabelOf(j.名);
   const taskOfVp = viaStr(core('vpTask')), vpOfTask = viaStr(core('taskVp')), vpPatchOf = viaStr(core('vpPatchOf'));   // 视频提示词_改1.txt ↔ 出片任务_改1.txt；补片稿 视频提示词_改2_补1.txt ↔ 出片任务_改2_补1.txt
   const RE_TASK = Core ? Core.RE_TASK : { test: core('RE_TASK') };

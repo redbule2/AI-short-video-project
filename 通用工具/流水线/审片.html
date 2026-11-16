@@ -136,7 +136,7 @@ function cardOf2(s, vid, list) {
 const labelOf2 = vpLabel;
 /* ---------- 连起来看：每条选定的样片按第1条、第2条……的顺序在网页里接着放，不存文件（2026-11-13 和 DeepSeek 商量定的，见 白模与分段_讨论.md）。
    两个播放器轮流：放这一条时把下一条先备好，接缝处不黑一下 ---------- */
-const startOf = name => vpNo(name) || +((/^(?:段落|镜头)\s*([0-9]+)/.exec(name) || [])[1] || 1e9);   // 第1条、第2条……；老稿按名字里的段落、镜头号
+const startOf = name => vpNo(name) || +((/^(?:段落|镜头)?\s*([0-9]+)/.exec(name) || [])[1] || 1e9);   // 老稿第1条、第2条……；照镜头号起名的（1-5.txt）、老稿 段落a-b_…、镜头a-b_… 按头一个镜头号
 async function playAll(s, list) {
   const sel = selOf(s), vids = clipsOf(s.段).vids;
   const seq = list.filter(e => sel[e.key] && vids.includes(sel[e.key])).sort((a, b) => startOf(a.key) - startOf(b.key) || a.key.localeCompare(b.key, 'zh', { numeric: true })).map(e => ({ e, vid: sel[e.key] }));
