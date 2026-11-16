@@ -25,7 +25,7 @@
    流水线 · 资产（一场的第三道工序）
    剧本定稿、提炼定了以后才开（11-16 起出场的是剧本定稿以后提炼的）：这一场出场的人物、道具、场景图各对着哪张图。
    用已有的：点「选出场的」，从全片设定的表里选上；点「用已有的图」，从项目的图里挑一张（删掉的也能放回来）；
-     剧本、段落里提到了还没选的，摆在下面点一下选上。
+     剧本、镜头表里提到了还没选的，摆在下面点一下选上。
    字先定，图后出（2026-11-14 他定的，流程图 文生资产_流程图.html；共用的做法在 流水线.js「文生资产」那一节）：
      顶上「让 AI 写字」：AI 读定稿的剧本，给这一场还没有字的写字（出图提示词，场景先写 GEO 底稿），已经有的图核一遍撑不撑得住。
      每一格右边是眼下该做的：写字 → 批字（自己改，或写批注交给 AI 改；字定了点「照这个出图」）→ 图出好了点开看（框出来写批注点「照批注改图」，或者「看字」回去改字）
@@ -387,7 +387,7 @@ async function addLookDlg(s) {
   const w = wordFor(s, '道具', n + '_' + st, '', { 类别: '道具', 名称: n, sub: st, own: true });
   if (await askWords(s, [w], req.value.trim())) paint();
 }
-/* 提到了、还没选上的：段落的字里、定稿的剧本里提到了表里的人物、道具；全片只引用了一张场景图。
+/* 提到了、还没选上的：镜头表的字里、定稿的剧本里提到了表里的人物、道具；全片只引用了一张场景图。
    剧本的人物表里有、全片设定里没有的（比如只在这一场出来的城管）：点一下加进人物表、这一场也选上 */
 function suggest(s) {
   const out = mentioned(s), extra = [], sc = docsOf(s.段).script, doc = sc && sc.doc;
@@ -410,7 +410,7 @@ function sugEls(s) {
     toast('「' + c.name + '」加进人物表、这一段也选上了。它还没有图');
   };
   return [h('div', { class: 'wf-sug' },
-    out.length ? [h('span', { class: 'fn-note' }, '提到了、还没选上：'), out.map(x => h('button', { class: 'fl-ref sug ' + kindCls(x.key), type: 'button', title: x.only ? (x.key === '场景文字' ? '全片设定里只写了这一处场景，点一下这一段也用它（不用图）' : '全片只引用了这一张场景图，点一下这一段也用它') : '这一段的段落、剧本里提到了它，点一下选上', onclick: () => take(x) },
+    out.length ? [h('span', { class: 'fn-note' }, '提到了、还没选上：'), out.map(x => h('button', { class: 'fl-ref sug ' + kindCls(x.key), type: 'button', title: x.only ? (x.key === '场景文字' ? '全片设定里只写了这一处场景，点一下这一段也用它（不用图）' : '全片只引用了这一张场景图，点一下这一段也用它') : '这一段的镜头表、剧本里提到了它，点一下选上', onclick: () => take(x) },
       x.file && !F.gone.has(x.file) ? thumbImg(x.file) : h('i', { class: 'ph' }, kindOf(x.key)[0]), h('span', null, x.name), h('small', null, kindOf(x.key) + ' · ' + (x.only ? '用它？' : '选上'))))] : null,
     extra.length ? [h('span', { class: 'fn-note' }, '剧本里有、人物表里没有：'), extra.map(c => h('button', { class: 'fl-ref sug k-ren', type: 'button', title: '加进全片的人物表（描写：' + (c.desc || '剧本里没写') + '），这一段也选上。它还没有图，加了以后可以让 AI 出', onclick: () => add(c) },
       h('i', { class: 'ph' }, '人'), h('span', null, c.name), h('small', null, '加进人物表')))] : null)];

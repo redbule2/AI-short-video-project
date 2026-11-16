@@ -100,7 +100,7 @@ const sideData = () => ({ 写法: '分镜', 分镜稿: structured, 自由稿: '�
     assert.doesNotMatch(whole.text, /接着|留给下一条|留给别的条/);
     const part = sc(2, two, '小磊进门到坐下', null);
     assert.match(part.text, /这一条写这段戏：小磊进门到坐下。/); assert.match(part.text, /另外还有 1 条/); assert.equal(part.others, two);
-    assert.match(sc(1, [], '', [2, 3]).text, /只写段落 2 到段落 3/);   // 老请求带着段落范围的照旧
+    assert.match(sc(1, [], '', [2, 3]).text, /只写镜头表里镜头 2 到镜头 3/);   // 老请求带着镜头范围的照旧
   });
   /* 11-15：AI 写稿、照批注改稿时顺手估每镜几秒，回复最后另起一块【秒数】；秒数不进稿子，记进参考素材映射 */
   await check('写提示词：任务书要【秒数】；回的【秒数】不进稿子，记进映射，和稿子对得上', async () => {

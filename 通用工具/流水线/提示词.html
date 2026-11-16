@@ -177,11 +177,11 @@ async function editDraft(s, e, fn, free) {
   await loadSides(); await loadExtra(); rerender();
   return true;
 }
-/* 挑一段白模：这一段文件夹里的视频，名字带「白模」的排前面；段落范围对得上的标出来 */
+/* 挑一段白模：这一段文件夹里的视频，名字带「白模」的排前面；镜头号对得上的标出来 */
 function bmSelect(range, cur) {
   const fit = v => range && new RegExp('(^|[^0-9])' + range[0] + (range[1] > range[0] ? '\\s*[-－—–~～]\\s*' + range[1] : '') + '([^0-9]|$)').test(v.name);
   const sel = h('select', { class: 'inp' }, h('option', { value: '' }, '不用白模'),
-    X.vids.map(v => h('option', { value: v.file }, (v.dir ? v.dir + ' / ' : '') + v.name + (fit(v) ? '　（段落对得上）' : '') + (/白模/.test(v.name) ? '' : '　（名字里没有「白模」）'))));
+    X.vids.map(v => h('option', { value: v.file }, (v.dir ? v.dir + ' / ' : '') + v.name + (fit(v) ? '　（镜头号对得上）' : '') + (/白模/.test(v.name) ? '' : '　（名字里没有「白模」）'))));
   sel.value = cur || '';
   return sel;
 }
@@ -207,8 +207,8 @@ async function vidSecs(file) {
 /* 已经写了一半的你来写稿：挂上白模（素材段补两句 sd25-pe 白模写法，记进挂图） */
 async function attachBm(s, e) {
   if (!X.vids.length) { toast('资产 / ' + segName(s.段) + ' 里还没有视频：白模渲好放进去，这里就能挑', 'err'); return; }
-  const sel = bmSelect(rangeOf(e), ''), err = h('div', { class: 'fld-err' }), fit = [...sel.options].find(o => /段落对得上/.test(o.textContent) && /白模/.test(o.textContent));
-  if (fit) sel.value = fit.value;   // 名字里段落对得上的白模先挑上
+  const sel = bmSelect(rangeOf(e), ''), err = h('div', { class: 'fld-err' }), fit = [...sel.options].find(o => /镜头号对得上/.test(o.textContent) && /白模/.test(o.textContent));
+  if (fit) sel.value = fit.value;   // 名字里镜头号对得上的白模先挑上
   const file = await dialog(close => dlgShell('挂白模 · ' + e.label, '挑一段白模视频挂在这一条上。它和别的素材一样，可以只管其中几秒。页面在素材里补两句 sd25-pe 的白模写法：〔〕里它用在哪几秒、提供什么、哪个几何体对应谁，要你来填（没填完不让出片）。',
     [field('白模视频', sel, '放在 资产 / ' + segName(s.段) + '（含下一层文件夹）里的视频'), h('div', null, h('button', { class: 'fl-link', type: 'button', onclick: () => { if (sel.value) seeVideo(sel.value); } }, '先看一眼')), err],
     [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'), h('button', { class: 'btn ink', onclick: () => { if (sel.value) close(sel.value); else err.textContent = '先挑一段白模'; } }, '挂上')]));

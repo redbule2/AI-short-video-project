@@ -41,7 +41,7 @@
 /* ============================================================
    流水线 · 提炼（一场的第二步。页面文件还叫 分场.html）
    2026-11-16 他定：第一步直接写剧本，梗概、人物、场景、道具不先写。剧本定稿以后，AI 照定稿的剧本一次提炼出：
-   全片的梗概、这一场出场的人物道具场景（连描写，并进全片设定）、这一场的段落（每段写什么、起什么作用）。
+   全片的梗概、这一场出场的人物道具场景（连描写，并进全片设定）、这一场的镜头表（每个镜头写什么、起什么作用）。
    提炼好你可以直接改，也可以在每一样上点笔写批注、点「交给 AI 照批注改」。改好点「定下来」，下一步是资产。
    AI 提炼的写在 定稿的剧本/第N段/第N段_提炼.json（页面只读），流水线.js 看到新的一版就并进全片设定和这一场；
    批注交给 AI 时存成旁边的 第N段_提炼_批注.md，AI 改完收进历史记录。
@@ -50,7 +50,7 @@
    ============================================================ */
 'use strict';
 const swapCard = () => rerender();
-const OPEN = new WeakSet();   // 这一回点开了「批注」的段落（写了字的一直开着）
+const OPEN = new WeakSet();   // 这一回点开了「批注」的镜头（写了字的一直开着）
 const OPENK = new Set();   // 这一回点开了「批注」的梗概、人物、道具、场景
 const notesOf = s => s.段落.map((x, i) => ({ i, t: str(x.批注).trim() })).filter(x => x.t);
 const batOf = s => (s.提炼批 && typeof s.提炼批 === 'object' && !Array.isArray(s.提炼批) ? s.提炼批 : (s.提炼批 = {}));
@@ -66,7 +66,7 @@ const wasP = (was, what) => h('p', { class: 'fq-was', title: 'AI 改过，定下
 /* ---------- 交给 AI：照定稿的剧本提炼；照你的批注改 ---------- */
 async function distill(s) {
   if (!AI.ok) { toast('本机服务是旧的，重开一次才能让 AI 提炼', 'err'); return; }
-  if (hasParas(s) && !(await confirmDlg({ title: '让 AI 重新提炼', body: 'AI 照定稿的剧本重新提炼。这一段出场的、段落' + (noteCount(s) ? '和写的批注' : '') + '都换成 AI 新提炼的；梗概和人物、道具、场景的描写，AI 会照着现在的改（换之前流水线留一版在历史记录）。', ok: '重新提炼' }))) return;
+  if (hasParas(s) && !(await confirmDlg({ title: '让 AI 重新提炼', body: 'AI 照定稿的剧本重新提炼。这一段出场的、镜头表' + (noteCount(s) ? '和写的批注' : '') + '都换成 AI 新提炼的；梗概和人物、道具、场景的描写，AI 会照着现在的改（换之前流水线留一版在历史记录）。', ok: '重新提炼' }))) return;
   if (s.定稿) { s.定稿 = ''; touch(); }
   await flush();   // AI 照流水线里现在的全片设定提炼，先存上
   if (F.err) return;
@@ -85,7 +85,7 @@ function notesMd(s) {
     const e = k === '场景' ? null : entryOf(k, id);
     out.push('', '## ' + k + '「' + (k === '场景' ? sceneLabel(id) : id) + '」', '原文：' + (k === '场景' ? id : (e && e.描写.trim()) || '（没写描写）'), '批注：' + t);
   }
-  for (const { i, t } of notesOf(s)) { const x = s.段落[i]; out.push('', '## 段落' + (i + 1), '原文：写什么：' + (x.写什么.trim() || '（空）') + '　作用：' + (x.作用.trim() || '（空）'), '批注：' + t); }
+  for (const { i, t } of notesOf(s)) { const x = s.段落[i]; out.push('', '## 镜头' + (i + 1), '原文：写什么：' + (x.写什么.trim() || '（空）') + '　作用：' + (x.作用.trim() || '（空）'), '批注：' + t); }
   return out.join('\n') + '\n';
 }
 async function fixByNotes(s) {
@@ -148,19 +148,19 @@ function editCard(s) {
     const m = missing(s), n = noteCount(s);
     miss.textContent = m.length ? '还差：' + m.map(shortNos).join('；') : n ? '还有 ' + n + ' 条批注没交给 AI' : '都写了，可以定下来。';
     miss.classList.toggle('todo', m.length > 0 || n > 0);
-    cnt.textContent = s.段落.length ? s.段落.length + ' 段' : '';
+    cnt.textContent = s.段落.length ? s.段落.length + ' 个镜头' : '';
     fixBtn.textContent = '交给 AI 照批注改（' + n + ' 条）';
     fixBtn.hidden = !n;
     doneBtn.classList.toggle('ghost', n > 0);   // 有批注：先交给 AI，定下来退成次要的
   };
   const bad = jobFailed('提炼', seg) || jobFailed('提炼按批注改', seg);
   const bar = h('div', { class: 'pz-bar' }, ...(job ? [jobLine(job), h('span', { class: 'fn-note' }, job.事 === '提炼' ? 'AI 照定稿的剧本在提炼，好了这里自动出现。' : 'AI 照你的批注在改，改好这里自动换上，改过的地方标红。')]
-    : !has ? [bad, h('span', { class: 'fn-note' }, '剧本定稿了。让 AI 照剧本提炼：全片梗概、这一段出场的人物场景道具（连描写）、这一段的段落。提炼好以后你可以直接改，也可以写批注交给 AI 改。'), h('span', { class: 'sp' }),
+    : !has ? [bad, h('span', { class: 'fn-note' }, '剧本定稿了。让 AI 照剧本提炼：全片梗概、这一段出场的人物场景道具（连描写）、这一段的镜头表。提炼好以后你可以直接改，也可以写批注交给 AI 改。'), h('span', { class: 'sp' }),
       h('button', { class: 'btn sm ink', type: 'button', onclick: () => distill(s) }, '让 AI 提炼')]
     : [bad, h('span', { class: 'fn-note' }, '直接在下面改；或者点一样右上角的笔写批注，写完交给 AI 照批注改。'), h('span', { class: 'sp' }),
-      h('button', { class: 'btn sm ghost', type: 'button', title: 'AI 照定稿的剧本重新提炼，出场的、段落换掉', onclick: () => distill(s) }, '让 AI 重新提炼')]).filter(Boolean));
+      h('button', { class: 'btn sm ghost', type: 'button', title: 'AI 照定稿的剧本重新提炼，出场的、镜头表换掉', onclick: () => distill(s) }, '让 AI 重新提炼')]).filter(Boolean));
   /* 整体批注：对这一场提炼的整体意见 */
-  const all = h('textarea', { class: 'fl-ta sm', spellcheck: 'false', 'data-f': '总批', placeholder: '对这一段提炼的整体意见，写给 AI（比如：漏了卖菜大妈；段落分得太碎）。没有就空着' });
+  const all = h('textarea', { class: 'fl-ta sm', spellcheck: 'false', 'data-f': '总批', placeholder: '对这一段提炼的整体意见，写给 AI（比如：漏了卖菜大妈；镜头分得太碎）。没有就空着' });
   all.value = str(s.提炼总批);
   all.addEventListener('input', () => { s.提炼总批 = all.value; fit(all); touch(); foot(); });
   /* 出场的：选上的人物、场景、道具（小牌子，能去掉、能再选）；下面一样一张卡写描写 */
@@ -181,10 +181,10 @@ function editCard(s) {
   const move = (i, d) => { const j = i + d; if (j < 0 || j >= s.段落.length) return; [s.段落[i], s.段落[j]] = [s.段落[j], s.段落[i]]; unfoldShots(); touch(); paint(); };
   const del = async i => {
     const x = s.段落[i];
-    if ((x.写什么.trim() || x.作用.trim()) && !(await confirmDlg({ title: '删掉段落 ' + (i + 1), body: '「' + (x.写什么.trim() || x.作用.trim()) + '」这个段落删掉，后面的往前排。', ok: '删掉', danger: true }))) return;
+    if ((x.写什么.trim() || x.作用.trim()) && !(await confirmDlg({ title: '删掉镜头 ' + (i + 1), body: '「' + (x.写什么.trim() || x.作用.trim()) + '」这个镜头删掉，后面的往前排。', ok: '删掉', danger: true }))) return;
     s.段落.splice(s.段落.indexOf(x), 1); unfoldShots(); touch(); paint();
   };
-  /* 一个段落：写什么、起什么作用，下面可以写批注；AI 照批注改过的，标出原来是什么。写好了可以收成一行 */
+  /* 一个镜头：写什么、起什么作用，下面可以写批注；AI 照批注改过的，标出原来是什么。写好了可以收成一行 */
   function shotRow(i) {
     const sh = s.段落[i];
     const mk = (key, ph) => {
@@ -203,18 +203,18 @@ function editCard(s) {
       });
       return ta;
     };
-    const note = h('label', { class: 'fq-f fq-note' }, h('span', null, '批注'), mk('批注', '这个段落要怎么改，写给 AI。比如：作用没写到点上，这个段落是让观众知道他已经没钱了'));
+    const note = h('label', { class: 'fq-f fq-note' }, h('span', null, '批注'), mk('批注', '这个镜头要怎么改，写给 AI。比如：作用没写到点上，这个镜头是让观众知道他已经没钱了'));
     note.hidden = !(str(sh.批注).trim() || OPEN.has(sh));
     const body = h('div', null,
-      h('label', { class: 'fq-f' }, h('span', null, '写什么'), mk('写什么', '这个段落写什么，一句话')),
-      sh.AI改 ? wasP(sh.AI改, '一个段落') : null,
-      h('label', { class: 'fq-f' }, h('span', null, '起什么作用'), mk('作用', '为什么要有这个段落：它让观众看到什么、明白什么。')),
+      h('label', { class: 'fq-f' }, h('span', null, '写什么'), mk('写什么', '这个镜头写什么，一句话')),
+      sh.AI改 ? wasP(sh.AI改, '一个镜头') : null,
+      h('label', { class: 'fq-f' }, h('span', null, '起什么作用'), mk('作用', '为什么要有这个镜头：它让观众看到什么、明白什么。')),
       note);
     const tog = folder(seg + '/段落' + i, body, () => (sh.写什么.trim() || '还空着') + (sh.作用.trim() ? ' —— ' + sh.作用 : '') + (str(sh.批注).trim() ? '　〔批注〕' + sh.批注 : ''), () => focusAt(i, '写什么'));
-    const pen = ibtn('pen', '写批注：这个段落要怎么改，交给 AI', () => { OPEN.add(sh); if (body.classList.contains('fold')) { setFold(seg + '/段落' + i, false); paint(); } const n = rows.querySelector(`.fq[data-i="${s.段落.indexOf(sh)}"] .fq-note`); if (n) { n.hidden = false; n.querySelector('textarea').focus(); } });
+    const pen = ibtn('pen', '写批注：这个镜头要怎么改，交给 AI', () => { OPEN.add(sh); if (body.classList.contains('fold')) { setFold(seg + '/段落' + i, false); paint(); } const n = rows.querySelector(`.fq[data-i="${s.段落.indexOf(sh)}"] .fq-note`); if (n) { n.hidden = false; n.querySelector('textarea').focus(); } });
     return h('div', { class: 'fq' + (sh.AI改 ? ' chg' : ''), 'data-i': i },
-      h('div', { class: 'fq-h' }, h('span', { class: 'fq-no' }, '段落 ' + (i + 1)), h('span', { class: 'ln' }), tog,
-        h('div', { class: 'fq-acts' }, pen, ibtn('up', '往前挪', () => move(i, -1), i === 0), ibtn('down', '往后挪', () => move(i, 1), i === s.段落.length - 1), ibtn('x', '删掉这个段落', () => del(i)))),
+      h('div', { class: 'fq-h' }, h('span', { class: 'fq-no' }, '镜头 ' + (i + 1)), h('span', { class: 'ln' }), tog,
+        h('div', { class: 'fq-acts' }, pen, ibtn('up', '往前挪', () => move(i, -1), i === 0), ibtn('down', '往后挪', () => move(i, 1), i === s.段落.length - 1), ibtn('x', '删掉这个镜头', () => del(i)))),
       body);
   }
   const foldAll = on => { s.段落.forEach((_, i) => setFold(seg + '/段落' + i, on)); paint(); };
@@ -226,11 +226,11 @@ function editCard(s) {
       has ? h('div', { class: 'pz-all' }, h('div', { class: 'fs-lab', style: 'margin-top:0' }, '整体批注', h('em', null, '可以不写')), all) : null,
       h('div', { class: 'fs-lab' }, '梗概', h('em', null, '全片的，各段共用')), syn,
       h('div', { class: 'fs-lab pz-sec' }, '出场的', h('em', null, '人物、道具的描写和场景那一句是全片通用的，改了全片设定也跟着变')), picks, items,
-      h('div', { class: 'fs-lab pz-sec' }, '段落', cnt, h('em', null, '照定稿的剧本分：一个段落一件事，写什么、起什么作用。镜头到写提示词的时候再设计'), h('span', { class: 'sp' }),
-        has ? [h('button', { class: 'fl-fold', type: 'button', tabindex: '-1', title: '几个段落都收成一行', onclick: () => foldAll(true) }, '都收起'),
+      h('div', { class: 'fs-lab pz-sec' }, '镜头表', cnt, h('em', null, '照定稿的剧本分：一个镜头一件事，写什么、起什么作用'), h('span', { class: 'sp' }),
+        has ? [h('button', { class: 'fl-fold', type: 'button', tabindex: '-1', title: '几个镜头都收成一行', onclick: () => foldAll(true) }, '都收起'),
           h('button', { class: 'fl-fold', type: 'button', tabindex: '-1', onclick: () => foldAll(false) }, '都展开')] : null),
       rows,
-      h('button', { class: 'fl-add', type: 'button', onclick: () => addShot() }, has ? '＋ 加一个段落' : '＋ 自己写一个段落')],
+      h('button', { class: 'fl-add', type: 'button', onclick: () => addShot() }, has ? '＋ 加一个镜头' : '＋ 自己写一个镜头')],
     /* 「定下来」悬在右下角，页面多长都看得见（2026-11-13 他要的）；上面一行小字说还差什么 */
     !job && has ? h('div', { class: 'wf-fab' }, miss, fixBtn, doneBtn) : null);
   if (!job) { syn.replaceChildren(itemRow(s, '梗概', '', foot)); paintCast(); paint(); }
@@ -241,7 +241,7 @@ async function finalize(s) {
   const before = s.段落.length;
   s.段落 = s.段落.filter(x => x.写什么.trim() || x.作用.trim() || str(x.批注).trim());   // 整条空着的不算
   if (s.段落.length !== before) touch();
-  if (!s.段落.some(x => x.写什么.trim())) { swapCard(s); toast('至少要有一个段落写了「写什么」，才能定下来', 'err'); return; }
+  if (!s.段落.some(x => x.写什么.trim())) { swapCard(s); toast('至少要有一个镜头写了「写什么」，才能定下来', 'err'); return; }
   const n = noteCount(s);
   if (n && !(await confirmDlg({ title: '批注还没交给 AI', body: '还有 ' + n + ' 条批注没交给 AI 改。就这样定下来，这些批注清掉。', ok: '就这样定', cancel: '回去' }))) { swapCard(s); return; }
   const m = missing(s);
@@ -257,7 +257,7 @@ async function finalize(s) {
   toast('第' + s.段 + '段的提炼定下来了。下一步：资产');
 }
 
-/* ---------- 只看：梗概、出场的（连描写）、段落 ---------- */
+/* ---------- 只看：梗概、出场的（连描写）、镜头表 ---------- */
 function doneBody(s) {
   const desc = castItems(s).map(([k, id]) => {
     const e = k === '场景' ? null : entryOf(k, id), lab = k === '场景' ? sceneLabel(id) : id, cut = lab.endsWith('…');   // 场景那一句没有「地方名：」的，整句摆出来
@@ -265,7 +265,7 @@ function doneBody(s) {
   });
   return [h('dl', { class: 'fs-info' }, h('dt', null, '梗概'), h('dd', null, F.doc.梗概.trim() || h('span', { class: 'faint' }, '没写')),
       h('dt', null, '出场'), h('dd', { class: 'fs-sel' }, castRefs(s).length ? castRefs(s) : h('span', { class: 'faint' }, '没选')), ...desc),
-    h('div', { class: 'fs-lab' }, '段落'), paraList(s)];
+    h('div', { class: 'fs-lab' }, '镜头表'), paraList(s)];
 }
 /* 定下来以后：只看不改；剧本后来重新定稿了，要你看一眼（待核对） */
 function doneView(s) {
@@ -281,12 +281,12 @@ function doneView(s) {
     h('div', { class: 'wf-foot' }, h('span', { class: 'fn-note' }, '提炼定下来了。下一步：资产。')),
     h('div', { class: 'wf-fab' }, h('button', { class: 'btn ink', type: 'button', onclick: () => go('资产', { s: seg }) }, '下一步：资产 →')));   // 和「定下来」在同一个地方
 }
-/* 剧本还没定稿：先去写剧本。以前就有段落的（老项目、剧本定稿以后又改过），照旧摆出来看 */
+/* 剧本还没定稿：先去写剧本。以前就有镜头表的（老项目、剧本定稿以后又改过），照旧摆出来看 */
 function lockView(s) {
-  return [h('div', { class: 'wf-lock' }, '剧本定稿以后，AI 照剧本提炼梗概、出场的人物场景道具和段落。先到「剧本」那一步写好剧本、点「剧本定稿」。', h('button', { class: 'btn ink', onclick: () => go('剧本', { s: s.段 }) }, '← 去写剧本')),
+  return [h('div', { class: 'wf-lock' }, '剧本定稿以后，AI 照剧本提炼梗概、出场的人物场景道具和镜头表。先到「剧本」那一步写好剧本、点「剧本定稿」。', h('button', { class: 'btn ink', onclick: () => go('剧本', { s: s.段 }) }, '← 去写剧本')),
     hasParas(s) || pickCount(s) ? h('section', { class: 'fl-scene done' }, h('div', { class: 'fs-lab', style: 'margin-top:0' }, '现在的', h('em', null, '剧本定稿以后再看要不要重新提炼')), doneBody(s)) : null];
 }
-/* 「段落 1、2、3、4、7 没写作用」缩成「段落 1～4、7 没写作用」：十几段都没写时，悬着的那行小字别太长 */
+/* 「镜头 1、2、3、4、7 没写作用」缩成「镜头 1～4、7 没写作用」：十几段都没写时，悬着的那行小字别太长 */
 function shortNos(t) {
   return t.replace(/[0-9]+(?:、[0-9]+)+/g, list => {
     const n = list.split('、').map(Number), out = [];

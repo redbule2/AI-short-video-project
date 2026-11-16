@@ -46,7 +46,7 @@ async function addSceneDlg() {
       [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'), h('button', { class: 'btn ink', onclick: ok }, '加上')]);
   });
   if (!r) return;
-  putScene({ 段: r.seg, 名: r.name, 人物: [], 道具: [], 场景图: [], 表达: '', 段落: [], 定稿: '', 剧本定稿: '' });   // 梗概、出场的、段落等剧本定稿以后 AI 提炼
+  putScene({ 段: r.seg, 名: r.name, 人物: [], 道具: [], 场景图: [], 表达: '', 段落: [], 定稿: '', 剧本定稿: '' });   // 梗概、出场的、镜头表等剧本定稿以后 AI 提炼
 }
 function putScene(s) {
   F.doc.场.push({ 场景文字: [], 人物图: [], 道具图: [], ...s });   // 这一段的图当人物、道具用的（流水线.js 的 SEG_FIELD），先空着
@@ -66,7 +66,7 @@ function legacyBlock() {
       h('span', { class: 'fl-old-name' }, title || h('span', { class: 'faint' }, '未命名'), n ? h('small', null, n + ' 镜') : null),
       h('span', { class: 'fl-old-acts' },
         h('button', { class: 'btn ghost sm', onclick: () => seeOld(seg, sc ? 'script' : 'shots') }, sc ? '看剧本' : '看镜头表'),
-        h('button', { class: 'btn sm', title: '把段名搬过来，剧本里的人物加进人物表、场景并进场景，镜头表的镜头搬成一个个段落。原来的剧本、镜头表不动', onclick: () => adopt(seg) }, '搬进流水线'))));
+        h('button', { class: 'btn sm', title: '把段名搬过来，剧本里的人物加进人物表、场景并进场景，镜头表一镜一行搬过来。原来的剧本、镜头表文件不动', onclick: () => adopt(seg) }, '搬进流水线'))));
   }
   if (!rows.length) return null;
   return h('section', { class: 'fl-sec fl-old' }, secHead('', '以前写的段', '剧本、镜头表是 AI 写、你批注的'), rows);
@@ -192,7 +192,7 @@ function render() {
     h('div', { class: 'fl-head' }, h('div', { class: 'fl-kicker' }, '流 水 线'),
       h('div', { class: 'fl-trow' }, h('div', { class: 'fl-title' }, F.name), h('button', { class: 'btn sm', title: '每个项目有自己的流水线。写之前先看一眼是不是这个项目', onclick: pickProject }, icon('folder'), '换项目'))),
     h('section', { class: 'fl-sec' }, secHead('', '剧　本', d.场.length ? '一个剧本一条线：写剧本 → 提炼 → 资产 → 提示词 → 审片。点哪一格进哪一步' : ''),
-      d.场.length ? scenesTable() : h('div', { class: 'fl-empty' }, h('p', null, '还没有剧本。'), h('p', { class: 'faint small' }, '一个一个加，自己写剧本；写完 AI 照你的批注改，定稿以后 AI 提炼梗概、出场的人物场景道具和段落。')),
+      d.场.length ? scenesTable() : h('div', { class: 'fl-empty' }, h('p', null, '还没有剧本。'), h('p', { class: 'faint small' }, '一个一个加，自己写剧本；写完 AI 照你的批注改，定稿以后 AI 提炼梗概、出场的人物场景道具和镜头表。')),
       h('div', { class: 'wf-acts' }, h('button', { class: 'btn sm ink', onclick: addSceneDlg }, icon('plus'), '添加剧本'))),
     h('section', { class: 'fl-sec' }, secHead('', '全片设定', '各段剧本定稿以后 AI 提炼的，各段共用；也能自己改'), setupTiles()),
     legacyBlock(),

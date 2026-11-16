@@ -46,7 +46,7 @@
    流水线 · 剧本（一场的第一步，工序一。2026-11-16 他定：第一步直接写剧本，梗概、人物、场景、道具剧本定稿以后再提炼）
    左边给这一段起名。右边写剧本：人自己写（点「写剧本」，直接从正文写；11-16 晚他定：不让 AI 写剧本，「想写什么」和场景、人物、梗概几格都删了）；
    写好就在这一页看、点一段写批注、交给 AI 改，也能点「自己改」直接改；看完没问题点「剧本定稿」。
-   定稿了，下一步 AI 照剧本提炼梗概、出场的人物场景道具和段落（提炼那一页），提炼定了才出资产图。剧本再改，要再定一次。
+   定稿了，下一步 AI 照剧本提炼梗概、出场的人物场景道具和镜头表（提炼那一页），提炼定了才出资产图。剧本再改，要再定一次。
    镜头表这一步 2026-11-12 取消了（他定的）：剧本定稿、资产确认以后直接写提示词，镜头在提示词的「分镜」里设计。
    看剧本、写批注用的是「项目管理」里剧本那一样，嵌在这一页下面。
    共用的东西（读写流水线.json、顶栏、步骤条、剧本现在什么样）在 流水线.js。
@@ -65,7 +65,7 @@ async function finalScript(s) {
   await flush();
   swapCard(s);
   if (prev) { s.影响上回 = prev; touch(); await flush(); swapCard(s); toast('第' + s.段 + '段重新定稿了：提炼、资产、提示词标成待核对。想让 AI 列出具体哪几样资产、提示词，点剧本上方的「让 AI 列影响」'); }   // 11-15 起不自动开（只复制、不自动开）
-  else toast('第' + s.段 + '段剧本定稿了。下一步：让 AI 照剧本提炼梗概、人物、场景、道具和段落');
+  else toast('第' + s.段 + '段剧本定稿了。下一步：让 AI 照剧本提炼梗概、人物、场景、道具和镜头表');
   if (!filmStyle()) styleDlg(null, { first: true });   // 片子还没定拍摄风格：照剧本挑一个（关上也行，以后在全片设定、这一场顶上都能定）
 }
 /* ---------- 自己写剧本（2026-11-14 他要的：「剧本页面为什么只有让AI扩写，不能自己写吗？我需要支持自己写」；11-16 晚起只能自己写） ----------
@@ -302,8 +302,8 @@ function barEls(s) {
   if (st === 'none') out.push(barNote(d.combined ? '汇总稿里有这一段，还没有单独的剧本。点「写剧本」，先摆上汇总稿里这一段。' : '还没有剧本。点「写剧本」，直接从正文写。'), sp(), mine('写剧本', 'ink'));
   else if (st === 'final') out.push(h('span', { class: 'fs-state ok', title: '剧本定稿的时间：' + s.剧本定稿 }, icon('check'), '剧本定稿了 ' + s.剧本定稿.slice(5, 16)), impactNote(s) || barNote('剧本再改，要重新定稿。'),
     h('button', { class: 'fl-link', type: 'button', title: '在下面直接改。改了要重新定稿', onclick: () => edOpen(s) }, '自己改'), sp(),
-    h('button', { class: 'btn ink', title: 'AI 照定稿的剧本提炼梗概、人物、场景、道具和段落，你再改或者批注', onclick: () => go('分场', { s: s.段 }) }, '下一步：提炼 →'));
-  else out.push(barNote(again ? '定稿以后又改过。看完没问题，再定一次。' : '在下面看剧本、写批注交给 AI 改，或者点「自己改」。没问题了就定稿；定稿以后 AI 提炼人物、场景、道具和段落。', again), sp(), mine('自己改'), fin('剧本定稿', 'ink'));
+    h('button', { class: 'btn ink', title: 'AI 照定稿的剧本提炼梗概、人物、场景、道具和镜头表，你再改或者批注', onclick: () => go('分场', { s: s.段 }) }, '下一步：提炼 →'));
+  else out.push(barNote(again ? '定稿以后又改过。看完没问题，再定一次。' : '在下面看剧本、写批注交给 AI 改，或者点「自己改」。没问题了就定稿；定稿以后 AI 提炼人物、场景、道具和镜头表。', again), sp(), mine('自己改'), fin('剧本定稿', 'ink'));
   return out;
 }
 /* 重新定稿以后的影响清单：AI 在列、列好了（资产几样、提示词几条要再看）、没列成 */
@@ -335,7 +335,7 @@ function sideBox(s) {
 }
 async function deleteScene(s) {
   const has = s.表达.trim() || s.段落.some(x => x.写什么.trim() || x.作用.trim()) || promptsOf(s.段).length || docsOf(s.段).script;   // 写了剧本、提示词也问一声
-  if (has && !(await confirmDlg({ title: '删掉第' + s.段 + '段', body: '这一段提炼的出场和段落从流水线里删掉。' + segName(s.段) + ' 文件夹里已经有的剧本、资产、提示词不动。', ok: '删掉', danger: true }))) return;
+  if (has && !(await confirmDlg({ title: '删掉第' + s.段 + '段', body: '这一段提炼的出场和镜头表从流水线里删掉。' + segName(s.段) + ' 文件夹里已经有的剧本、资产、提示词不动。', ok: '删掉', danger: true }))) return;
   const i = F.doc.场.indexOf(s);
   if (i >= 0) F.doc.场.splice(i, 1);
   touch(); go('总览');   // 正在自己写的剧本，换页前先存上（leave）

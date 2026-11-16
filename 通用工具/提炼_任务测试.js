@@ -58,7 +58,7 @@ const scene = extra => ({ 段: '1', 名: '吃面', 表达: '老李嘴硬心软',
 const job = extra => ({ 项目: '测试', 段: '1', 渠道: 'self', ...extra });
 const script = { [scriptPath]: { text: 'docx', mtime: finMs - 5000 } };
 const REPLY = '好的\n' + JSON.stringify({ 梗概: ' 老李开面摊，嘴硬心软。 ', 人物: [{ 名: '老李', 描写: '五十岁' }, { 名: ' 小孩\n', 描写: '七八岁' }, { 名: '老李', 描写: '重复的' }, { 名: '', 描写: '没名字' }],
-  道具: [{ 名: '面碗', 描写: '白瓷大碗' }], 场景: ['面摊：路边一个小面摊', '面摊：路边一个小面摊', ' '], 段落: [{ 写什么: '老李\n 端碗', 作用: ' 先让人看见他嘴硬 ' }, { 写什么: '', 作用: '' }, { 写什么: '烫着了', 作用: '心软露出来' }] });
+  道具: [{ 名: '面碗', 描写: '白瓷大碗' }], 场景: ['面摊：路边一个小面摊', '面摊：路边一个小面摊', ' '], 镜头表: [{ 写什么: '老李\n 端碗', 作用: ' 先让人看见他嘴硬 ' }, { 写什么: '', 作用: '' }, { 写什么: '烫着了', 作用: '心软露出来' }] });
 
 (async () => {
   let tested = 0;
@@ -84,24 +84,32 @@ const REPLY = '好的\n' + JSON.stringify({ 梗概: ' 老李开面摊，嘴硬�
     assert.ok(book.includes(SCRIPT) && book.includes('这一段想写什么：老李嘴硬心软'));
     assert.ok(book.includes('老李：五十岁') && book.includes('面摊：路边一个小面摊'));   // 全片设定里有的给 AI 照抄
     assert.ok(book.includes('第2段 吵架：老李和老婆吵'));   // 别的段：写全片梗概用
+    assert.ok(book.includes('5. 镜头表：') && book.includes('"镜头表": [') && !book.includes('段落'));   // 11-16：段落改叫镜头表
     const r = await s.K.提炼.apply(job(), REPLY);
-    assert.match(r.结果, /人物 2 个、道具 1 样、场景 1 处、段落 2 段/);
+    assert.match(r.结果, /人物 2 个、道具 1 样、场景 1 处、镜头表 2 个镜头/);
     assert.equal(JSON.stringify(r.产出), JSON.stringify(['定稿的剧本/第1段/第1段_提炼.json']));
     const got = s.json(outPath);
     assert.equal(got.梗概, '老李开面摊，嘴硬心软。');
     assert.deepEqual(got.人物, [{ 名: '老李', 描写: '五十岁' }, { 名: '小孩', 描写: '七八岁' }]);
     assert.deepEqual(got.场景, ['面摊：路边一个小面摊']);
-    assert.deepEqual(got.段落, [{ 写什么: '老李 端碗', 作用: '先让人看见他嘴硬' }, { 写什么: '烫着了', 作用: '心软露出来' }]);
+    assert.deepEqual(got.镜头表, [{ 写什么: '老李 端碗', 作用: '先让人看见他嘴硬' }, { 写什么: '烫着了', 作用: '心软露出来' }]);
     assert.ok(got.时间 && got.渠道 === 'self');
     const old = s.hist(['定稿的剧本', '第1段']);
     assert.equal(old.length, 1); assert.match(path.basename(old[0]), /^第1段_提炼__\d{8}-\d{6}\.json$/);
   });
 
-  await check('提炼：AI 没按格式回（一段段落都没有），不写文件', async () => {
+  await check('提炼：AI 没按格式回（一个镜头都没有），不写文件', async () => {
     const s = setup(scene(), script);
-    await assert.rejects(s.K.提炼.apply(job(), '{"梗概": "有", "段落": [{"写什么": " ", "作用": ""}]}'), /段落至少一段/);
+    await assert.rejects(s.K.提炼.apply(job(), '{"梗概": "有", "镜头表": [{"写什么": " ", "作用": ""}]}'), /镜头表至少一个镜头/);
     await assert.rejects(s.K.提炼.apply(job(), '提炼不了'), /JSON/);
     assert.ok(!s.files.has(outPath));
+  });
+
+  await check('提炼：AI 照老叫法回「段落」也认，写进文件叫「镜头表」', async () => {
+    const s = setup(scene(), script);
+    await s.K.提炼.apply(job(), '{"梗概": "有", "段落": [{"写什么": "端碗", "作用": "嘴硬"}]}');
+    assert.deepEqual(s.json(outPath).镜头表, [{ 写什么: '端碗', 作用: '嘴硬' }]);
+    assert.equal(s.json(outPath).段落, undefined);
   });
 
   await check('提炼按批注改：没有批注文件不起；任务书带现在的提炼（描写从全片表里取）和批注；改完批注收进历史记录', async () => {
@@ -114,7 +122,7 @@ const REPLY = '好的\n' + JSON.stringify({ 梗概: ' 老李开面摊，嘴硬�
     assert.ok(book.includes('"描写": "五十岁"') && book.includes('"写什么": "老李端碗"') && book.includes('面摊：路边一个小面摊'));
     assert.ok(book.includes('他六十了') && book.includes(SCRIPT));
     await s.K.提炼按批注改.apply(j, REPLY);
-    assert.equal(s.json(outPath).段落.length, 2);
+    assert.equal(s.json(outPath).镜头表.length, 2);
     assert.ok(!s.files.has(notePath));
     assert.ok(s.hist(['定稿的剧本', '第1段']).some(p => /第1段_提炼_批注__\d{8}-\d{6}\.md$/.test(p)));
   });
