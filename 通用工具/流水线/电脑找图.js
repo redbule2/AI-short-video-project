@@ -159,7 +159,7 @@ async function pcFind({ s, k, row }) {
       };
       let ck = 0;
       const check = async () => { const my = ++ck, msg = kind && nameIn.value.trim() ? await why() : inMine(x.path) ? await why() : ''; if (my !== ck) return; err.textContent = msg; okBtn.disabled = !!msg; };   // 还没选当什么用、名字空着：先不说，点「复制」时再说
-      const segEl = row ? null : window.UI.chips([['all', '全片的'], ['seg', '只给这一场']], seg ? 'seg' : 'all', v => { seg = v === 'seg'; sync(); });
+      const segEl = row ? null : window.UI.chips([['all', '全片的'], ['seg', '只给这一段']], seg ? 'seg' : 'all', v => { seg = v === 'seg'; sync(); });
       const grp = (label, chipsEl) => h('div', { class: 'fld' }, h('span', null, label), chipsEl);   // 不用 field：label 包着按钮，点字会点到第一个按钮
       const segFld = segEl ? grp('放哪', segEl) : null;
       const kindFld = fixKind ? null : grp('当什么用', window.UI.chips([...KINDS, '关键帧'].map(c => [c, '当' + c]), '', v => { if (v === '关键帧') seg = true; else if (kind === '关键帧') seg = false; kind = v; sync(); }));   // 关键帧只放这一段的文件夹
@@ -198,7 +198,7 @@ async function pcFind({ s, k, row }) {
       sync();
       setTimeout(() => { nameIn.focus(); nameIn.select(); }, 40);
     };
-    const el = dlgShell('从电脑里找图 · 第' + s.段 + '场' + (row ? ' · 给「' + row.名称 + '」' : fixKind ? ' · 当' + fixKind : ''), SUB1, [body], [acts]);
+    const el = dlgShell('从电脑里找图 · 第' + s.段 + '段' + (row ? ' · 给「' + row.名称 + '」' : fixKind ? ' · 当' + fixKind : ''), SUB1, [body], [acts]);
     el.classList.add('wide', 'pc-dlg');
     body.replaceChildren(...step1);
     acts.replaceChildren(cancel);

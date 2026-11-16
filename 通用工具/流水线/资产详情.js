@@ -146,7 +146,7 @@ async function adUseCand(s, it, w) {
   await pageRepaint();
 }
 async function adNoCand(s, w) { if (await dropCand(w)) await pageRepaint(); }
-async function adUseScene(s, it, w) { useSceneImg(s, it.文字, w.img); await flush(); adRepaint(); toast('这一场改用「' + w.stem + '」这张图了'); }
+async function adUseScene(s, it, w) { useSceneImg(s, it.文字, w.img); await flush(); adRepaint(); toast('这一段改用「' + w.stem + '」这张图了'); }
 /* 照图核 GEO（11-14 他要的）：图你满意了，让 AI 先判断 GEO 底稿和图对不对得上，对不上才照图改（改之前的那一版收进历史记录）。
    确认可用时自动核过一回；这里是你想再核一遍的时候点（比如自己改过底稿）。框里改了没存的先存上，AI 照存上的那一版核 */
 async function adGeoCheck(s, w) {
@@ -205,13 +205,7 @@ async function adScan(s, w) {
 
 /* ---------- 摆出来 ---------- */
 /* 标题那一行（上一张、下一张、删除）钉在步骤条下面，往下滚也看得见（11-15 他要的）。步骤条窄了会折成两行，钉的高度跟着量；钉住时底下一道线 */
-function adPin() {
-  const st = document.getElementById('wf-steps'), head = document.getElementById('ad-head');
-  if (!head) return;
-  const pin = st ? (parseFloat(getComputedStyle(st).top) || 0) + st.offsetHeight : 0;
-  head.style.top = pin + 'px';
-  head.classList.toggle('stuck', head.getBoundingClientRect().top <= pin + 1);
-}
+const adPin = () => window.UI.pinUnder(document.getElementById('ad-head'), document.getElementById('wf-steps'));   // 量法在 公用/界面.js
 window.addEventListener('scroll', () => { if (adMode()) adPin(); }, { passive: true });
 window.addEventListener('resize', () => { if (adMode()) adPin(); });
 const AD_TRACK = ['AI 写字', '你批字', 'AI 出图', '你看图', '确认可用'];
@@ -223,14 +217,14 @@ function adTrackEls(w) {
 function adHeadEls(s, it, w) {
   const from = adFrom(), list = adOrder(s, w), i = list.findIndex(x => x.w.img === w.img), u = adUnit(w);
   const prev = i > 0 ? list[i - 1] : null, next = i >= 0 && i < list.length - 1 ? list[i + 1] : null, users = w.frame ? [] : usersOf(w.img);
-  const where = ['第' + s.段 + '场', w.frame && w.forPrompt ? vpLabel(w.forPrompt) + '的一刻' : '', users.length > 1 ? '用在 ' + users.map(x => '第' + x + '场').join('、') : ''].filter(Boolean).join(' · ');
+  const where = ['第' + s.段 + '段', w.frame && w.forPrompt ? vpLabel(w.forPrompt) + '的一刻' : '', users.length > 1 ? '用在 ' + users.map(x => '第' + x + '段').join('、') : ''].filter(Boolean).join(' · ');
   return [h('button', { class: 'btn sm ghost', type: 'button', onclick: () => go(from, { s: s.段 }) }, '← 回到' + from),
     h('div', { class: 'ad-title ' + kindCls(w.frame ? '关键帧' : w.cat) }, h('b', null, adLabel(w)), h('small', null, where)),
     h('span', { class: 'sp' }),
-    list.length > 1 && i >= 0 ? h('span', { class: 'fn-note' }, '这一场第 ' + (i + 1) + ' / ' + list.length + ' ' + u) : null,
+    list.length > 1 && i >= 0 ? h('span', { class: 'fn-note' }, '这一段第 ' + (i + 1) + ' / ' + list.length + ' ' + u) : null,
     prev ? h('button', { class: 'btn sm ghost', type: 'button', title: adLabel(prev.w), onclick: () => openWord(s, prev.w) }, '← 上一' + u) : null,
     next ? h('button', { class: 'btn sm ghost', type: 'button', title: adLabel(next.w), onclick: () => openWord(s, next.w) }, '下一' + u + ' →') : null,
-    w.frame && w.hasImg ? h('button', { class: 'btn sm', type: 'button', disabled: adBusy(s, w), title: '删掉这张关键帧：只是这一场不用，或者图也不要了（移进历史记录）', onclick: () => adDelete(s, it, w) }, icon('x'), '删除') : null];
+    w.frame && w.hasImg ? h('button', { class: 'btn sm', type: 'button', disabled: adBusy(s, w), title: '删掉这张关键帧：只是这一段不用，或者图也不要了（移进历史记录）', onclick: () => adDelete(s, it, w) }, icon('x'), '删除') : null];
 }
 function adNowEls(s, it, w, jobs) {
   const txtScene = !!(it && it.文字 && w.hasImg);
@@ -241,7 +235,7 @@ function adNowEls(s, it, w, jobs) {
     cand: w.hasImg ? '出了一张新图。和旧图比一比，在图下面挑：「用旧图」还是「用新图」。' : '出了一张新图。能用就点图下面「用新图」，不能用点「不要新图」。',
     img: '图出好了，等你看。能用就点「确认可用」；要改，点图框出来写批注，再点「照批注改图」，或者改字后点「批准出图」重出。',
     ok: '这张图确认可用了。要改：改字后点「批准出图」，新图出来和这张并排，你挑用哪张。' }[w.step];
-  if (txtScene && w.step !== 'cand') t = '图出好了：点「用上这张图」，这一场改用图（全片设定里那一句还在）。不满意就照批注改图，或者改字重出。';
+  if (txtScene && w.step !== 'cand') t = '图出好了：点「用上这张图」，这一段改用图（全片设定里那一句还在）。不满意就照批注改图，或者改字重出。';
   if (w.step === 'img' && checkBad(w.checkImg)) t += 'AI 核图说有问题，看右边它怎么说。';
   if (w.step === 'ok' && !txtScene && w.cat === '场景' && w.hasGeo) t += '图和 GEO 底稿对不上，点右边「照图核 GEO」：AI 先判断要不要改，对不上才改。';
   if (w.geoBack) t += 'AI 照图核了 GEO，说要拿回去批图：' + w.geoBack;
@@ -266,7 +260,7 @@ function adInfoEls(s, w) {
     if (!ok) el.classList.add('wd-bad');
     return el;
   };
-  return [need ? adRow('要撑住', '这一场的戏要它做到什么。AI 读定稿的剧本写的，出图、核图都照它', need) : null,
+  return [need ? adRow('要撑住', '这一段的戏要它做到什么。AI 读定稿的剧本写的，出图、核图都照它', need) : null,
     mine.length ? adRow('AI 替你定的', '剧本里没写、AI 替你拿的主意。不行就写在批注里', h('ul', null, mine.map(x => h('li', null, x)))) : null,
     refs.length ? adRow('参考图', '出图时一起交给 Codex，样子照它们', h('div', { class: 'ad-refs' }, refs.map(refEl)), refs.some(r => !BMF_RE.test(r.file) && !markOk(r.file, 0))) : null,
     other.length ? adRow('开头另外写的', '', other.join('\n')) : null];
@@ -328,7 +322,7 @@ function adImgEls(s, it, w) {
       h('figcaption', null, cap), h('div', { class: 'ad-use' }, btns));
     out.push(h('div', { class: 'ad-pair' }, old ? pick(w.img, '旧图 · 现在用着', 'old', [noBtn]) : null, pick(w.cand, old ? '新图 · 刚出的' : '新图', 'new', old ? [useBtn] : [noBtn, useBtn])));
     if (w.checkCand) out.push(note('AI 核图（新图）', w.checkCand, checkBad(w.checkCand)));
-    out.push(note(users.length > 1 ? '共用' : '挑一张', users.length > 1 ? users.map(x => '第' + x + '场').join('、') + '都在用旧图：点「用新图」，几场一起换，用到它的提示词、样片标「待核对」' : old ? '两张挑一张用，没挑中的收进历史记录' : '不要的话，新图收进历史记录', users.length > 1));
+    out.push(note(users.length > 1 ? '共用' : '挑一张', users.length > 1 ? users.map(x => '第' + x + '段').join('、') + '都在用旧图：点「用新图」，几段一起换，用到它的提示词、样片标「待核对」' : old ? '两张挑一张用，没挑中的收进历史记录' : '不要的话，新图收进历史记录', users.length > 1));
   } else if (w.hasImg) {
     const ok = imgOk(it, w), txtScene = !!(it && it.文字);
     out.push(fig(w.img, ok ? '确认过可用 · 点开看大图、写批注' : '还没确认 · 点开看大图、写批注', shellActs(s, it, w)));
@@ -340,7 +334,7 @@ function adImgEls(s, it, w) {
       h('button', { class: 'btn ghost', type: 'button', onclick: () => openImage(w.img, shellActs(s, it, w)) }, '看大图、写批注'),
       h('button', { class: 'btn' + (w.hasImgNote && !txtScene ? ' ink' : ''), type: 'button', disabled: busy, title: '先点开图、框出来写好批注，再点这里：Codex 以这张为底只改你说到的地方，改出来的先当候选', onclick: () => adEditImg(s, w) }, '照批注改图'),
       txtScene ? null : ok ? h('button', { class: 'btn ghost', type: 'button', title: '确认的时间：' + (F.doc.可用[w.img] || '') + '。点一下取消', onclick: () => adConfirm(s, it, w, false) }, icon('check'), '确认过可用')
-        : h('button', { class: 'btn' + (w.hasImgNote ? '' : ' ink'), type: 'button', disabled: busy, title: '这张图看过了、能用。确认过的图，别的场不用再确认', onclick: () => adConfirm(s, it, w, true) }, icon('check'), '确认可用'),
+        : h('button', { class: 'btn' + (w.hasImgNote ? '' : ' ink'), type: 'button', disabled: busy, title: '这张图看过了、能用。确认过的图，别的段不用再确认', onclick: () => adConfirm(s, it, w, true) }, icon('check'), '确认可用'),
       ok && !txtScene && w.cat === '场景' && w.hasGeo ? h('button', { class: 'btn', type: 'button', disabled: busy, title: '图你满意了：让 AI 先判断 GEO 底稿和图对不对得上，对不上才照图改（改之前的那一版收进历史记录）。左边框里改了没存的，先存上再核', onclick: () => adGeoCheck(s, w) }, '照图核 GEO') : null));
   } else {
     out.push(h('div', { class: 'ad-ph' }, w.drawing ? [h('i', { class: 'wt-ring' }), h('span', { class: 'wt-t' }, 'Codex 在出图，出好了在这里')] : w.hasTxt || w.step === 'word' ? '还没出图：字批好了点「批准出图」，Codex 一次出一张' : '还没出图：先有字，你批过点「批准出图」'));
@@ -378,7 +372,7 @@ function adRepaint() {
   const r = adFind(s);
   if (!r) {
     const from = adFrom();
-    root.replaceChildren(h('div', { class: 'wf-lock' }, '这一样不在第' + s.段 + '场里了：改了名、换了图，或者这一场不用它了。', h('button', { class: 'btn ink', type: 'button', onclick: () => go(from, { s: s.段 }) }, '← 回到' + from)));
+    root.replaceChildren(h('div', { class: 'wf-lock' }, '这一样不在第' + s.段 + '段里了：改了名、换了图，或者这一段不用它了。', h('button', { class: 'btn ink', type: 'button', onclick: () => go(from, { s: s.段 }) }, '← 回到' + from)));
     if (fab) fab.replaceChildren();
     AD.cur = null;
     return;

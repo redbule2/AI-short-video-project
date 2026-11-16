@@ -917,10 +917,8 @@ function lintScript(doc) {
   const out = [];
   const [H, B] = doc.sections.map(s => s.blocks);
   const get = l => H.find(b => labelOf(b.text) === l);
-  const scene = get('场景'), cast = get('人物');
-  if (!scene || !splitLabel(scene.text).value.trim()) out.push(issue('warn', '段头缺「场景：时间｜内/外｜地点」', scene ? { sec: 'head', block: scene.id } : { sec: 'head' }));
-  else if (splitLabel(scene.text).value.split('｜').length < 3) out.push(issue('info', '场景按「时间｜内/外｜地点」三项写', { sec: 'head', block: scene.id }));
-  if (!cast || !splitLabel(cast.text).value.trim()) out.push(issue('warn', '段头缺「人物」', cast ? { sec: 'head', block: cast.id } : { sec: 'head' }));
+  const scene = get('场景'), cast = get('人物');   // 段头的场景、人物可以没有（11-16 晚他定：剧本直接从正文写，场景、人物定稿以后 AI 提炼）；写了才查
+  if (scene && splitLabel(scene.text).value.trim() && splitLabel(scene.text).value.split('｜').length < 3) out.push(issue('info', '场景按「时间｜内/外｜地点」三项写', { sec: 'head', block: scene.id }));
   const dur = get('时长');
   if (dur) out.push(issue('warn', '固定格式不写时长，这一行删掉', { sec: 'head', block: dur.id }));
   if (!B.some(b => b.text.replace(/^[△▲]\s*/, '').trim())) out.push(issue('warn', '正文还是空的', { sec: 'body' }));

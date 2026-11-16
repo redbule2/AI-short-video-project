@@ -18,6 +18,7 @@
 <script src="../公用/点图.js"></script>
 <script src="../公用/找旧版.js"></script>
 <script src="流水线.js"></script>
+<script src="../公用/样片归属.js"></script>
 <script>
 /* ============================================================
    流水线 · 审片（一场的第五道工序）
@@ -50,22 +51,9 @@ function styleBox(s) {
   return el;
 }
 const selOf = s => (s.选定 && typeof s.选定 === 'object' ? s.选定 : (s.选定 = {}));
-/* 这条样片是哪一条提示词的（给的是这一条的原稿名 e.key，选定记在它名下）：选定过的照选定的；没选过，名字里带着「提示词02」「镜头a-b」「镜头a-b改1」这样的先猜它，只有一条提示词就是它 */
-function guess(s, vid, list) {
-  const hit = list.find(e => selOf(s)[e.key] === vid);
-  if (hit) return hit.key;
-  const parts = '_' + stemOf2(vid) + '_', by = list.find(e => e.vers.some(n => vpTok(n) !== '整场' && parts.includes('_' + vpTok(n) + '_')));
-  return by ? by.key : list.length === 1 ? list[0].key : '';
-}
-/* 照这一条的哪一版出的：名字里带的「镜头1-5改1」→ 出片记录 → 只有一版就是它 */
-function verOf(s, vid, e) {
-  if (!e) return '';
-  const parts = '_' + stemOf2(vid) + '_', hit = e.vers.filter(n => vpTok(n) !== '整场' && parts.includes('_' + vpTok(n) + '_'));
-  if (hit.length) return hit[hit.length - 1];
-  const t = clipsOf(s.段).time.get(vid) || 0, rec = t ? shotRecOf(s.段, e.key, t) : null;
-  if (rec && e.vers.includes(rec.提示词)) return rec.提示词;
-  return e.vers.length === 1 ? e.vers[0] : '';
-}
+/* 这条样片是哪一条提示词的（给原稿名 e.key）、照哪一版出的：公用/样片归属.js（提示词那一步筛「已出片」也照它） */
+const guess = (s, vid, list) => ClipOf.scene(s).prompt(vid, list);
+const verOf = (s, vid, e) => ClipOf.scene(s).ver(vid, e);
 /* 对照看片、写批注：审片台.html 整页盖上来（样片旁边对照提示词、白模、关键帧、资产图，批注照旧存在样片旁边）。
    它自己有「← 回审片」：先问它一声（没存的批注先存上），再收起、重读 */
 function openDesk(s, vid, list) {
@@ -104,7 +92,7 @@ async function retire(s, vid) {
 /* 回头改：回哪一道由你定 */
 function backMenu(anchor, s) {
   popover(anchor, close => [h('div', { class: 'fl-pop-h' }, '回哪一道工序改'),
-    h('div', { class: 'fl-pl' }, [['剧本', '工序一　剧本', '这一场的事、台词、动作要改'], ['分场', '工序二　提炼', '人物、场景、道具的描写，或者段落提炼得不对'], ['设定', '全片设定', '梗概、人物、场景、道具整体要改，拍摄风格不合适'], ['资产', '工序三　资产', '长相、道具的样子不对'], ['提示词', '工序四　提示词', '镜头、表演的写法要改；或者只是重出一条']]
+    h('div', { class: 'fl-pl' }, [['剧本', '工序一　剧本', '这一段的事、台词、动作要改'], ['分场', '工序二　提炼', '人物、场景、道具的描写，或者段落提炼得不对'], ['设定', '全片设定', '梗概、人物、场景、道具整体要改，拍摄风格不合适'], ['资产', '工序三　资产', '长相、道具的样子不对'], ['提示词', '工序四　提示词', '镜头、表演的写法要改；或者只是重出一条']]
       .map(([page, name, why]) => h('button', { type: 'button', class: 'fl-pi', onclick: () => { close(); go(page, page === '设定' ? null : { s: s.段 }); } }, h('span', { class: 'pn' }, h('b', null, name), h('small', null, why))))),
     h('div', { class: 'fl-pop-f' }, h('span', { class: 'fn-note' }, '改了前面的东西，后面用到它的会标成「待核对」。'))]);
 }
@@ -116,7 +104,7 @@ async function copyNotes(s, vid) {
   let md;
   try { md = C.decodeText((await FS.read(file)).buf).text.replace(/^\uFEFF/, '').trim(); } catch (e) { toast('批注读不了：' + e.message, 'err'); return; }
   const pics = await FS.isDir(shots).catch(() => false);
-  const head = '我审第' + s.段 + '场的样片「' + vid + '」写了批注，文件在 ' + absOf(file) + (pics ? '，截图在 ' + absOf(shots) : '') + '。先跟我商量怎么改，商量定了再动手；改好了我回流水线重新走。';
+  const head = '我审第' + s.段 + '段的样片「' + vid + '」写了批注，文件在 ' + absOf(file) + (pics ? '，截图在 ' + absOf(shots) : '') + '。先跟我商量怎么改，商量定了再动手；改好了我回流水线重新走。';
   await copyText(head + '\n\n' + md + '\n', '复制好了：贴给你自己的 AI，商量怎么改');
 }
 function cardOf2(s, vid, list) {
@@ -170,7 +158,7 @@ async function playAll(s, list) {
   A.addEventListener('ended', onEnd(A)); B.addEventListener('ended', onEnd(B));
   await dialog(close => {
     setTimeout(() => playAt(0), 60);
-    const el = dlgShell('连起来看 · 第' + s.段 + '场', '选定的 ' + seq.length + ' 条按第1条、第2条……的顺序接着放，不存文件。看接缝处的动作、人物、光线、声音接不接得上；接不上就回提示词改那一条、重出。',
+    const el = dlgShell('连起来看 · 第' + s.段 + '段', '选定的 ' + seq.length + ' 条按第1条、第2条……的顺序接着放，不存文件。看接缝处的动作、人物、光线、声音接不接得上；接不上就回提示词改那一条、重出。',
       [h('div', { class: 'wf-stage' }, A, B), now, h('ol', { class: 'wf-playlist' }, items)],
       [h('button', { class: 'btn ghost', onclick: () => playAt(0) }, '从头放'), h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close() }, '看完了')]);
     el.classList.add('wide');
@@ -183,7 +171,7 @@ function render() {
   const s = sceneNow(), seg = s.段;
   const ps = promptState(s);
   if (ps.st !== 'ok') {   // 提示词那一步不等资产了，这里只看提示词本身：还没有、AI 在写、待核对
-    const msg = !promptsOf(seg).length ? '这一场还没有提示词。有了提示词、出了样片，再来审。'
+    const msg = !promptsOf(seg).length ? '这一段还没有提示词。有了提示词、出了样片，再来审。'
       : ps.st === 'ai' ? 'AI 在写提示词，写好了再来审。'
         : '有提示词待核对：它们写好以后，前面（剧本、资产、拍摄风格）又动过。先到「提示词」那一步看一眼，点「沿用」或者改好，再来审。';
     return h('div', { class: 'wf-lock' }, msg, h('button', { class: 'btn ink', onclick: () => go('提示词', { s: seg }) }, '← 去提示词那一步'));
@@ -193,18 +181,18 @@ function render() {
   const all = done.length === list.length && !stales.length, next = F.doc.场[F.doc.场.indexOf(s) + 1], making = AI.jobs.filter(j => j.事 === '出片' && j.段 === seg && jobLive(j));
   const toNext = () => { const i = stepInfo(next).findIndex(x => x.st === 'you'); go(STEPS[i < 0 ? 0 : i][0], { s: next.段 }); };
   const finish = async () => {
-    if (!(await confirmDlg({ title: '第' + seg + '场定稿', body: '选定的 ' + list.length + ' 条：' + list.map(e => labelOf2(e.key) + ' → ' + stemOf2(sel[e.key])).join('；') + '。' + (list.length > 1 ? '定稿前点「连起来看」看一遍，动作、声音、剧情接得上。' : ''), ok: list.length > 1 ? '连起来看过了，定稿' : '定稿' }))) return;
-    s.成片定稿 = nowText(); touch(); rerender(); toast('第' + seg + '场定稿了');
+    if (!(await confirmDlg({ title: '第' + seg + '段定稿', body: '选定的 ' + list.length + ' 条：' + list.map(e => labelOf2(e.key) + ' → ' + stemOf2(sel[e.key])).join('；') + '。' + (list.length > 1 ? '定稿前点「连起来看」看一遍，动作、声音、剧情接得上。' : ''), ok: list.length > 1 ? '连起来看过了，定稿' : '定稿' }))) return;
+    s.成片定稿 = nowText(); touch(); rerender(); toast('第' + seg + '段定稿了');
   };
   const bar = s.成片定稿 && all
-    ? [h('span', { class: 'fs-state ok', title: '定稿的时间：' + s.成片定稿 }, icon('check'), '这一场定稿了 ' + s.成片定稿.slice(5, 16)), h('span', { class: 'fn-note' }, '没选上的样片可以移进历史记录。'), h('span', { class: 'sp' }),
-      h('button', { class: 'btn ink', onclick: next ? toNext : () => go('总览') }, next ? '下一场 →' : '回首页 →')]
+    ? [h('span', { class: 'fs-state ok', title: '定稿的时间：' + s.成片定稿 }, icon('check'), '这一段定稿了 ' + s.成片定稿.slice(5, 16)), h('span', { class: 'fn-note' }, '没选上的样片可以移进历史记录。'), h('span', { class: 'sp' }),
+      h('button', { class: 'btn ink', onclick: next ? toNext : () => go('总览') }, next ? '下一段 →' : '回首页 →')]
     : [h('span', { class: 'fn-note' + (stales.length ? ' warn' : '') }, !vids.length ? '还没有样片。回「提示词」那一步，点「批准出片」；出好了这里自动出现。'
       : stales.length ? stales.length + ' 条选定的样片待核对：它出了以后，提示词或者前面几道又动过。再看一遍，还能用就点「沿用」，不能用就回提示词重出。'
         : all ? (list.length > 1 ? '每一条都选定了。点「连起来看」把选定的几条接着放一遍，衔接没问题就定稿。' : '选定了。没问题就定稿。') : '一条一条看。满意的选定它是哪一条提示词的成品（' + done.length + '/' + list.length + '）；不满意的写批注，复制给你的 AI 商量怎么改。'), h('span', { class: 'sp' }),
     h('button', { class: 'btn sm', onclick: () => go('提示词', { s: seg }) }, '← 回提示词（再出一条）'),
     done.length > 1 ? h('button', { class: 'btn sm' + (all ? ' ink' : ''), title: '选定的几条按第1条、第2条……的顺序在网页里接着放，不存文件', onclick: () => playAll(s, list) }, icon('play'), '连起来看') : null,
-    all && vids.length ? h('button', { class: 'btn ink', onclick: finish }, '这一场定稿') : null];
+    all && vids.length ? h('button', { class: 'btn ink', onclick: finish }, '这一段定稿') : null];
   return [
     h('div', { class: 'wf-bar' }, bar), styleBox(s),
     making.length ? h('div', { class: 'wf-jobs' }, making.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题)))) : null,

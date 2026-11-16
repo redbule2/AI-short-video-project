@@ -48,7 +48,7 @@ function listSection(K) {
         K.key === '人物' ? VoiceBind.buttons(it.名, paint) : null,   // 人物的音色：试听、挑一段（音色绑定.js，11-15）
         hint ? h('button', { class: 'fl-link', type: 'button', title: '项目里有叫这个名字的图：' + hint.map(x => x.文件).join('、'), onclick: e => { e.stopPropagation(); it.资产 = hint.map(x => x.文件); touch(); repaintRefs(); } }, hint.length > 1 ? '引用这 ' + hint.length + ' 张图' : '引用「' + hint[0].名称 + '」') : null,
         aiText(K.key, it.名) ? h('span', { class: 'fr-ai', title: 'AI 把描写补细了，点开看，合适就采用' }, 'AI 补了描写') : aiWaiting(K.key, it.名) ? h('span', { class: 'fr-ai wait', title: aiWaiting(K.key, it.名) + ' 交给 AI 了，补好这里会提示' }, 'AI 在补…') : null,
-        used.length ? h('span', { class: 'fr-use', title: '这几场用了' }, used.map(x => x + ' 场').join('、')) : null,
+        used.length ? h('span', { class: 'fr-use', title: '这几段用了' }, used.map(x => x + ' 段').join('、')) : null,
         h('button', { class: 'fl-ib', type: 'button', title: '删掉这一行', onclick: e => { e.stopPropagation(); delEntry(K, it); } }, icon('x')));
       row.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target === row) entryDlg(K, it); });
       return row;
@@ -128,7 +128,7 @@ async function pickSceneImgs() {
   const d = F.doc;
   F.pool = await loadPool(F.name);
   const items = F.pool.filter(isSceneImg);
-  if (!items.length) { toast('「' + F.name + '」的 资产 / 全局资产 / 场景 里还没有图。先写场景，定下一场以后让 AI 出'); return; }
+  if (!items.length) { toast('「' + F.name + '」的 资产 / 全局资产 / 场景 里还没有图。先写场景，定下一段以后让 AI 出'); return; }
   const picked = new Set(d.场景图), count = h('span'), grid = h('div', { class: 'fl-ag' });
   const paint = () => { count.textContent = '引用（' + items.filter(x => picked.has(x.文件)).length + ' 张）'; grid.replaceChildren(...items.map(x => tileEl(x, picked.has(x.文件), '', () => { picked.has(x.文件) ? picked.delete(x.文件) : picked.add(x.文件); paint(); }))); };
   paint();
@@ -148,7 +148,7 @@ async function pickSceneImgs() {
 /* ---------- 梗概：全片讲什么 ---------- */
 function synSection() {
   const d = F.doc;
-  const syn = h('textarea', { class: 'fl-ta', id: 'fl-syn', spellcheck: 'false', placeholder: '这个片子讲什么：谁，想要什么，遇到什么，最后怎么样。前因后果写清楚，后面一场一场照它拆。' });
+  const syn = h('textarea', { class: 'fl-ta', id: 'fl-syn', spellcheck: 'false', placeholder: '这个片子讲什么：谁，想要什么，遇到什么，最后怎么样。前因后果写清楚，后面一段一段照它拆。' });
   syn.value = d.梗概;
   syn.addEventListener('input', () => { d.梗概 = syn.value; fit(syn); touch(); paintSteps(); });
   const box = h('div', null, syn);
@@ -178,7 +178,7 @@ function styleSection() {
   return h('section', { class: 'fl-sec fl-syn' },
     secHead('五', film ? '风　格｜' + film.名 : '风　格', '全片的拍摄风格，剧本定稿以后照剧本挑', h('button', { class: 'btn sm' + (film ? '' : ' ink'), type: 'button', onclick: () => styleDlg(null) }, film ? '换一个' : '挑一个')),
     when ? h('p', { class: 'fn-note', style: 'margin-bottom:10px' }, when) : null, box,
-    mine.length ? h('div', { class: 'sty-scenes' }, h('span', { class: 'fn-note' }, '另选了风格的场：'), mine.map(s => h('button', { class: 'chip', type: 'button', title: '点一下看、换', onclick: () => styleDlg(s) }, '第' + s.段 + '场：' + str(s.风格).trim()))) : null);
+    mine.length ? h('div', { class: 'sty-scenes' }, h('span', { class: 'fn-note' }, '另选了风格的段：'), mine.map(s => h('button', { class: 'chip', type: 'button', title: '点一下看、换', onclick: () => styleDlg(s) }, '第' + s.段 + '段：' + str(s.风格).trim()))) : null);
 }
 
 /* ---------- 顶上五个分页：各写到什么样 ---------- */
@@ -202,9 +202,9 @@ function render() {
     h('div', { class: 'fl-head' }, h('div', { class: 'fl-kicker' }, '全 片 设 定'), h('div', { class: 'wf-tabs', id: 'wf-tabs' }, tabsEls())),
     TAB === '梗概' ? synSection() : TAB === '场景' ? sceneSection() : TAB === '风格' ? styleSection() : listSection(KIND[TAB]),
     h('div', { class: 'wf-foot' },
-      h('span', { class: 'fn-note' }, TAB === '风格' ? '全片的，各场共用；个别场在那一场页面顶上另选。' : '全片的，写一次，各场共用。边写边自动保存。'),
+      h('span', { class: 'fn-note' }, TAB === '风格' ? '全片的，各段共用；个别段在那一段页面顶上另选。' : '全片的，写一次，各段共用。边写边自动保存。'),
       i > 0 ? h('button', { class: 'btn ghost', onclick: () => setTab(TABS[i - 1]) }, '← ' + TABS[i - 1]) : null,
-      next ? h('button', { class: 'btn ink', onclick: () => setTab(next) }, '下一步：' + next + ' →') : h('button', { class: 'btn ink', onclick: () => go('总览') }, '写好了，回首页分场 →')),
+      next ? h('button', { class: 'btn ink', onclick: () => setTab(next) }, '下一步：' + next + ' →') : h('button', { class: 'btn ink', onclick: () => go('总览') }, '写好了，回首页 →')),
   ];
 }
 

@@ -2008,7 +2008,7 @@ const sectionHead = (no, name) => h('div', { class: 'sec-h' }, no ? h('span', { 
 /* ---------- 剧本 ---------- */
 function renderScript(sheet, doc, ro) {
   const [H, B, N] = doc.sections;
-  sheet.append(h('section', { class: 'sec sec-head', 'data-sec': 'head', 'data-where': '段头' }, blockList(H.blocks, { kind: 'script', sec: 'head', ro })));
+  if (H.blocks.length) sheet.append(h('section', { class: 'sec sec-head', 'data-sec': 'head', 'data-where': '段头' }, blockList(H.blocks, { kind: 'script', sec: 'head', ro })));   // 11-16 晚起剧本可以不写段头（直接从正文写），没有就不摆空框
   sheet.append(h('section', { class: 'sec sec-body', 'data-sec': 'body', 'data-where': '正文' }, sectionHead('', '正　文'), blockList(B.blocks, { kind: 'script', sec: 'body', ro })));
   if (N.blocks.length) sheet.append(h('section', { class: 'sec sec-notes', 'data-sec': 'notes', 'data-where': '备注' }, sectionHead('', '备　注'), blockList(N.blocks, { kind: 'script', sec: 'notes', ro })));
 }

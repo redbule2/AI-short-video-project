@@ -64,13 +64,12 @@ const REPLY = '好的\n' + JSON.stringify({ 梗概: ' 老李开面摊，嘴硬�
   let tested = 0;
   const check = async (name, fn) => { await fn(); tested++; console.log('✓ ' + name); };
 
-  await check('写剧本：要先写这一场想写什么；没选出场的不列「出场的」，也不带段落', async () => {
-    await assert.rejects(setup(scene({ 表达: '  ' })).K.扩写剧本.book(job()), /还没写想写什么/);
-    const book = await setup(scene({ 段落: [{ 写什么: '旧段落甲', 作用: '旧作用' }] })).K.扩写剧本.book(job());
-    assert.ok(book.includes('这一场想写什么：老李嘴硬心软'));
-    assert.doesNotMatch(book, /剧本段落|旧段落甲|出场的人物：/);
-    const picked = await setup(scene({ 人物: ['老李'] })).K.扩写剧本.book(job());
-    assert.ok(picked.includes('出场的人物：老李'));   // 老项目选过的照旧列
+  await check('AI 不写剧本（11-16 晚他定）：没有「扩写剧本」这件事；没写想写什么（新的一律没有），提炼任务书里不列那一行', async () => {
+    const s = setup(scene({ 表达: '' }), script);
+    assert.equal(s.K.扩写剧本, undefined);
+    const book = await s.K.提炼.book(job());
+    assert.ok(book.includes(SCRIPT));
+    assert.doesNotMatch(book, /这一段想写什么|没写想写什么/);
   });
 
   await check('提炼：剧本没定稿、定稿后又改过剧本、没有剧本，都不提炼', async () => {
@@ -79,12 +78,12 @@ const REPLY = '好的\n' + JSON.stringify({ 梗概: ' 老李开面摊，嘴硬�
     await assert.rejects(setup(scene()).K.提炼.book(job()), /还没有剧本/);
   });
 
-  await check('提炼：任务书带定稿的剧本、现在的全片设定、别的场；回的去掉空的和重名的，写进 第N段_提炼.json，旧的一份收进历史记录', async () => {
+  await check('提炼：任务书带定稿的剧本、现在的全片设定、别的段；回的去掉空的和重名的，写进 第N段_提炼.json，旧的一份收进历史记录', async () => {
     const s = setup(scene(), { ...script, [outPath]: { text: '{"段落": [{"写什么": "旧", "作用": "旧"}]}' } });
     const book = await s.K.提炼.book(job());
-    assert.ok(book.includes(SCRIPT) && book.includes('这一场想写什么：老李嘴硬心软'));
+    assert.ok(book.includes(SCRIPT) && book.includes('这一段想写什么：老李嘴硬心软'));
     assert.ok(book.includes('老李：五十岁') && book.includes('面摊：路边一个小面摊'));   // 全片设定里有的给 AI 照抄
-    assert.ok(book.includes('第2段 吵架：老李和老婆吵'));   // 别的场：写全片梗概用
+    assert.ok(book.includes('第2段 吵架：老李和老婆吵'));   // 别的段：写全片梗概用
     const r = await s.K.提炼.apply(job(), REPLY);
     assert.match(r.结果, /人物 2 个、道具 1 样、场景 1 处、段落 2 段/);
     assert.equal(JSON.stringify(r.产出), JSON.stringify(['定稿的剧本/第1段/第1段_提炼.json']));
@@ -120,7 +119,7 @@ const REPLY = '好的\n' + JSON.stringify({ 梗概: ' 老李开面摊，嘴硬�
     assert.ok(s.hist(['定稿的剧本', '第1段']).some(p => /第1段_提炼_批注__\d{8}-\d{6}\.md$/.test(p)));
   });
 
-  await check('提炼按批注改：这一场还没提炼过就不改', async () => {
+  await check('提炼按批注改：这一段还没提炼过就不改', async () => {
     const s = setup(scene({ 段落: [] }), { ...script, [notePath]: { text: '批注' } });
     const j = job(); await s.K.提炼按批注改.prep(j);
     await assert.rejects(s.K.提炼按批注改.book(j), /还没有提炼/);

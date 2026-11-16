@@ -289,6 +289,14 @@ function popover(anchor, build) {
   window.addEventListener('scroll', p.scroll, true);
   POP = p;
 }
+/* 钉在另一条下面：el 是 position: sticky 的一条，钉在 above（也钉着的，比如步骤条；窄了会折行，高度不定）下面，照它的底边量；钉住时加 .stuck（底下一道线）。
+   滚动、改窗口大小、重画以后各量一回（资产详情.js 的标题行、提示词那一步的筛选都用它） */
+function pinUnder(el, above) {
+  if (!el) return;
+  const pin = above ? (parseFloat(getComputedStyle(above).top) || 0) + above.offsetHeight : 0;
+  el.style.top = pin + 'px';
+  el.classList.toggle('stuck', el.getBoundingClientRect().top <= pin + 1);
+}
 
-window.UI = { h, add, icon, ICON, toast, dialog, dlgShell, confirmDlg, choiceDlg, chips, field, inputDlg, copyText, aiPicker, shrink, thumbOf, thumbImg, thumbSize, dropThumbs, whenSeen, hoverable, hideHov, popover, closePop, get popOpen() { return !!POP; } };
+window.UI = { h, add, icon, ICON, toast, dialog, dlgShell, confirmDlg, choiceDlg, chips, field, inputDlg, copyText, aiPicker, shrink, thumbOf, thumbImg, thumbSize, dropThumbs, whenSeen, hoverable, hideHov, popover, closePop, pinUnder, get popOpen() { return !!POP; } };
 })();

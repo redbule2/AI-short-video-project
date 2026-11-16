@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================
-   AI 任务：页面上点一下（扩写剧本、补细描写、按批注改、出图、批注提示词……），这里开一个任务，
+   AI 任务：页面上点一下（按批注改、提炼、出图、批注提示词……），这里开一个任务，
    去调本机的 AI，做完按固定格式落盘。页面隔两秒来问一次进度，所以能显示「在做什么、做了多久」。
 
    三条通道，都只让 AI 回文字，落盘由这里做（剧本、镜头表走 通用工具/剧本读写.js，旧版自动进历史记录）：
@@ -295,12 +295,12 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   }
   const settingText = flow => ['梗概：' + (str(flow.梗概).trim() || '（还没写）'), '', '人物（叫法：描写）：', rowsText(flow.人物), '', '场景：' + (str(flow.场景).trim() || '（还没写）'), '', '道具（名字：描写）：', rowsText(flow.道具)].join('\n');
   const segRefs = s => ['人物', '道具'].flatMap(k => (Array.isArray(s[k + '图']) ? s[k + '图'] : []).map(f => ({ k, f: String(f).replace(/\\/g, '/'), n: stemOf(f) })));   // 这一段文件夹里的图，这一场当人物、道具用的（流水线 11-13 起有；不挂表里哪一行）
-  function sceneText(flow, s, noParas) {   // noParas：不带段落（写剧本时用：段落 11-16 起是剧本定稿以后才分的）
-    const ps = noParas ? [] : parasOf(s), seg = segRefs(s);
-    return [...(noParas && !(s.人物 || []).length && !(s.道具 || []).length ? [] : ['出场的人物：' + ((s.人物 || []).join('、') || '（没选）'), '出场的道具：' + ((s.道具 || []).join('、') || '（没选）')]),   // 写剧本时还没提炼出场的（11-16 起出场的是剧本定稿以后提炼的），空着就不列
-      ...(seg.length ? ['这一场另挂的参考图（这一段文件夹里的，只这一场用）：' + seg.map(x => x.k + '「' + x.n + '」').join('、')] : []),
-      '这一场' + (noParas ? '想写什么' : '主要表达') + '：' + (str(s.表达).trim() || '（没写）'), ...(noParas ? [] : ['', '剧本段落（一共 ' + ps.length + ' 段，照这个顺序）：',
-      ...ps.map((x, i) => '段落' + (i + 1) + '　写什么：' + (x.写什么 || '（空）') + '　起什么作用：' + (x.作用 || '（没写）'))])].join('\n');
+  function sceneText(flow, s) {
+    const ps = parasOf(s), seg = segRefs(s), say = str(s.表达).trim();   // 表达：老数据里的「想写什么」（11-16 晚删了这一格），有才列
+    return ['出场的人物：' + ((s.人物 || []).join('、') || '（没选）'), '出场的道具：' + ((s.道具 || []).join('、') || '（没选）'),
+      ...(seg.length ? ['这一段另挂的参考图（这一段文件夹里的，只这一段用）：' + seg.map(x => x.k + '「' + x.n + '」').join('、')] : []),
+      ...(say ? ['这一段主要表达：' + say] : []), '', '剧本段落（一共 ' + ps.length + ' 段，照这个顺序）：',
+      ...ps.map((x, i) => '段落' + (i + 1) + '　写什么：' + (x.写什么 || '（空）') + '　起什么作用：' + (x.作用 || '（没写）'))].join('\n');
   }
   function finalOk(s, scriptMtime) {   // 剧本定稿了没有：有这个时间，也不早于剧本文件最后改动的时间（11-16 起剧本在段落前面，不再和段落定下来的时间比）
     const fin = timeOf(s.剧本定稿);
@@ -311,22 +311,22 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const TAIL = '\n\n只回复要的内容本身，不要解释，不要寒暄，不要用代码块围起来。';
   /* 提炼、提炼按批注改共用（11-16 他定：先写剧本，剧本定稿以后 AI 一次提炼出梗概、人物、场景、道具和段落）。
      AI 回的写进 定稿的剧本/第N段/第N段_提炼.json（原来那一份先收进历史记录）；页面看到新的一版，并进全片设定和这一场，人再改、写批注 */
-  const DISTILL_RULES = ['1. 梗概：全片讲什么，三五句话。现在的梗概写过的，照这一场的剧本补上，改动尽量小，别的场的内容留着；还没写的，照这一场写。',
-    '2. 人物：这一场剧本里出场的人（有台词、有动作的），一人一项。全片人物表里有的，名字和描写都照抄表里的，一个字不改；表里没有的新写：名字用剧本里的叫法，描写只写看得见的（年纪、长相、身材、穿着、一两处特征），两三句话，不写性格和心理。群众（路人若干这一类）不列。',
-    '3. 道具：这一场剧情用到、要出图的东西（人拿着用的、剧情围着它转的；特效也算），一样一项。表里有的照抄名字和描写；新的写样子、结构、材质、颜色、新旧，两三句话。背景里随手的杂物不列。',
-    '4. 场景：这一场在哪儿，一处地方一行，写成「地方名：一句话写在哪、什么样」。全片场景里有的那一行一个字不改照抄；没有的新写。',
+  const DISTILL_RULES = ['1. 梗概：全片讲什么，三五句话。现在的梗概写过的，照这一段的剧本补上，改动尽量小，别的段的内容留着；还没写的，照这一段写。',
+    '2. 人物：这一段剧本里出场的人（有台词、有动作的），一人一项。全片人物表里有的，名字和描写都照抄表里的，一个字不改；表里没有的新写：名字用剧本里的叫法，描写只写看得见的（年纪、长相、身材、穿着、一两处特征），两三句话，不写性格和心理。群众（路人若干这一类）不列。',
+    '3. 道具：这一段剧情用到、要出图的东西（人拿着用的、剧情围着它转的；特效也算），一样一项。表里有的照抄名字和描写；新的写样子、结构、材质、颜色、新旧，两三句话。背景里随手的杂物不列。',
+    '4. 场景：这一段在哪儿，一处地方一行，写成「地方名：一句话写在哪、什么样」。全片场景里有的那一行一个字不改照抄；没有的新写。',
     '5. 段落：照剧本正文的先后分，每一段是连着的一段戏、讲一件事（一个小目的、一个转折）。段数照戏来，别硬凑，也别切得太碎。几段连起来要盖住整个剧本：不漏、不重。每段写两样：「写什么」一句话，这一段发生了什么，二十个字以内；「作用」一两句，为什么要有这一段，它让观众看到什么、明白什么、感觉到什么。',
     '6. 都照剧本来：不改剧本内容，不加剧本里没有的；不写镜头、机位、运镜、时长。'];
   const DISTILL_JSON = '{"梗概": "……", "人物": [{"名": "……", "描写": "……"}], "道具": [{"名": "……", "描写": "……"}], "场景": ["地方名：……"], "段落": [{"写什么": "……", "作用": "……"}, {"写什么": "……", "作用": "……"}]}';
   const distillRel = seg => ['定稿的剧本', segDir(seg), segDir(seg) + '_提炼.json'];
   async function distillBase(j) {
     const flow = await readFlow(j.项目), s = sceneOf(flow, j.段), sp = scriptPath(j.项目, j.段);
-    if (!s) throw fail('流水线里没有第' + j.段 + '场');
-    if (!(await exists(sp))) throw fail('这一场还没有剧本');
+    if (!s) throw fail('流水线里没有第' + j.段 + '段');
+    if (!(await exists(sp))) throw fail('这一段还没有剧本');
     if (!finalOk(s, Math.floor((await fsp.stat(sp)).mtimeMs))) throw fail('剧本定稿以后才能提炼');
     return { flow, s, script: await docText(sp) };
   }
-  const restScenes = (flow, s) => (Array.isArray(flow.场) ? flow.场 : []).filter(x => x && x !== s && x.段).map(x => '第' + x.段 + '段 ' + (str(x.名).trim() || '（没起名）') + '：' + (str(x.表达).trim() || '（没写想写什么）')).join('\n') || '（没有别的场）';
+  const restScenes = (flow, s) => (Array.isArray(flow.场) ? flow.场 : []).filter(x => x && x !== s && x.段).map(x => '第' + x.段 + '段 ' + (str(x.名).trim() || '（没起名）') + (str(x.表达).trim() ? '：' + str(x.表达).trim() : '')).join('\n') || '（没有别的段）';   // 表达：老数据里的「想写什么」，有才带
   const rowsOf = list => { const seen = new Set(); return (Array.isArray(list) ? list : []).filter(x => x && typeof x === 'object').map(x => ({ 名: oneLine(x.名), 描写: str(x.描写).trim() })).filter(x => x.名 && !seen.has(x.名) && seen.add(x.名)); };
   async function putDistill(j, text, done) {
     const got = jsonIn(text);
@@ -335,31 +335,10 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     const out = { 梗概: str(got.梗概).trim(), 人物: rowsOf(got.人物), 道具: rowsOf(got.道具), 场景: [...new Set((Array.isArray(got.场景) ? got.场景 : []).map(oneLine).filter(Boolean))], 段落: paras };
     const rel = distillRel(j.段);
     await archive(j.项目, rel);
-    await writeFile(pj(j.项目, ...rel), JSON.stringify({ 说明: 'AI 照定稿的剧本提炼的（页面只读：流水线看到新的一版，就把梗概、人物、道具、场景并进全片设定，这一场的出场和段落照它换，人再改）。', 时间: nowText(), 渠道: j.渠道, ...out }, null, 2) + '\n');
-    return { 结果: done + '：人物 ' + out.人物.length + ' 个、道具 ' + out.道具.length + ' 样、场景 ' + out.场景.length + ' 处、段落 ' + paras.length + ' 段，到这一场的「提炼」那一步看', 产出: [rel.join('/')] };
+    await writeFile(pj(j.项目, ...rel), JSON.stringify({ 说明: 'AI 照定稿的剧本提炼的（页面只读：流水线看到新的一版，就把梗概、人物、道具、场景并进全片设定，这一段的出场和段落照它换，人再改）。', 时间: nowText(), 渠道: j.渠道, ...out }, null, 2) + '\n');
+    return { 结果: done + '：人物 ' + out.人物.length + ' 个、道具 ' + out.道具.length + ' 样、场景 ' + out.场景.length + ' 处、段落 ' + paras.length + ' 段，到这一段的「提炼」那一步看', 产出: [rel.join('/')] };
   }
   const KINDS = {
-    扩写剧本: {
-      title: j => '扩写剧本 · 第' + j.段 + '场', need: ['段'],
-      async book(j) {
-        const flow = await readFlow(j.项目), s = sceneOf(flow, j.段);
-        if (!s) throw fail('流水线里没有第' + j.段 + '场');
-        if (!str(s.表达).trim()) throw fail('这一场还没写想写什么');
-        const all = flow.场.filter(x => x && x.段), i = all.indexOf(s), near = [all[i - 1], all[i + 1]];
-        const old = (await exists(scriptPath(j.项目, j.段))) ? await docText(scriptPath(j.项目, j.段)) : '';
-        return ['# 任务：把一场戏写成剧本', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面有这一场想写什么，和已经有的全片设定（前面几场定稿以后提炼的，可能还空着）。请把这一场写成剧本：写出看得见的动作和台词。',
-          '', '## 要求', '1. 只写剧本。不写镜头表，不写机位、运镜、时长。', '2. 照「这一场想写什么」写出这一场的戏：前因后果连得上，看完观众能明白、感觉到它写的那些；人写到的事都要有，别加和它无关的事。',
-          '3. 全片人物表里有的人，用表里的叫法；没有的照剧情起名。群众写成「路人若干」这一类。', '4. 严格照下面的「固定格式」写：第一行是标题「第' + j.段 + '段｜' + (str(s.名).trim() || '段名') + '」，接着场景、人物、梗概三行，然后单独一行「正文」，正文每一行只能是 △ 动作、角色：台词、字幕：、音效： 四种之一，最后单独一行「备注」，备注下面写一行：' + mmdd() + ' 照流水线第' + j.段 + '场扩写。',
-          '5. 照「写戏规矩」写：人物的反应要合常理，不过度演绎。', '', '## 固定格式和写戏规矩', await skill('script-shotlist-format', '## 二、剧本骨架', '## 四、镜头表骨架'),
-          '', '## 全片的设定', settingText(flow), '', '## 这一场：第' + j.段 + '段｜' + (str(s.名).trim() || '（没起名）'), sceneText(flow, s, true),
-          '', '## 前后两场（只为了衔接，不要写进这一场）', near.map((x, k) => x ? (k ? '下一场' : '上一场') + '：第' + x.段 + '段 ' + str(x.名).trim() + '。' + str(x.表达).trim() : (k ? '下一场：没有' : '上一场：没有')).join('\n'),
-          old ? '\n## 这一场现在的剧本（重新写，可以参考，不必照搬）\n' + old : '', TAIL + '从「第' + j.段 + '段｜」那一行开始。'].join('\n');
-      },
-      async apply(j, text) {
-        await writeDoc(j, '剧本', scriptPath(j.项目, j.段), body(text, new RegExp('^第\\s*' + j.段.replace(/-/g, '\\s*[-－—–]\\s*') + '\\s*段')));
-        return { 结果: '剧本写好了', 产出: ['定稿的剧本/' + segDir(j.段) + '/' + segDir(j.段) + '_剧本.docx'] };
-      },
-    },
     补细: {
       title: j => '补细描写 · ' + [...(j.人物 || []), ...(j.道具 || [])].join('、'), key: j => 'all',
       async book(j) {
@@ -453,34 +432,34 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     },
     /* 提炼（11-16 他定：先写剧本，剧本定稿以后 AI 一次提炼）：梗概、这一场的人物道具场景、段落 */
     提炼: {
-      title: j => 'AI 提炼 · 第' + j.段 + '场', need: ['段'],
+      title: j => 'AI 提炼 · 第' + j.段 + '段', need: ['段'],
       async book(j) {
         const { flow, s, script } = await distillBase(j);
-        return ['# 任务：照定稿的剧本提炼梗概、人物、道具、场景和段落', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是这一场定稿的剧本，和现在已有的全片设定（前面几场定稿以后提炼的，可能还空着）。请照剧本提炼下面五样，后面照它出人物、道具、场景图，写视频提示词时照段落一段一段拍。',
+        return ['# 任务：照定稿的剧本提炼梗概、人物、道具、场景和段落', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是这一段定稿的剧本，和现在已有的全片设定（前面几段定稿以后提炼的，可能还空着）。请照剧本提炼下面五样，后面照它出人物、道具、场景图，写视频提示词时照段落一段一段拍。',
           '', '## 要求', ...DISTILL_RULES, '', '## 回复一段 JSON，像这样', DISTILL_JSON,
-          '', '## 这一场：第' + j.段 + '段｜' + (str(s.名).trim() || '（没起名）'), '这一场想写什么：' + (str(s.表达).trim() || '（没写）'),
-          '', '## 定稿的剧本', script, '', '## 现在的全片设定', settingText(flow), '', '## 别的场（只为了写全片梗概）', restScenes(flow, s), TAIL].join('\n');
+          '', '## 这一段：第' + j.段 + '段｜' + (str(s.名).trim() || '（没起名）'), ...(str(s.表达).trim() ? ['这一段想写什么：' + str(s.表达).trim()] : []),
+          '', '## 定稿的剧本', script, '', '## 现在的全片设定', settingText(flow), '', '## 别的段（只为了写全片梗概）', restScenes(flow, s), TAIL].join('\n');
       },
       async apply(j, text) { return putDistill(j, text, '提炼好了'); },
     },
     /* 提炼按批注改：人在提炼那一步写的批注（页面存成 第N段_提炼_批注.md），AI 照着改，改完批注收进历史记录 */
     提炼按批注改: {
-      title: j => '提炼按批注改 · 第' + j.段 + '场', need: ['段'],
+      title: j => '提炼按批注改 · 第' + j.段 + '段', need: ['段'],
       async prep(j) {
         j.rel = ['定稿的剧本', segDir(j.段), segDir(j.段) + '_提炼_批注.md'];
         if (!(await exists(pj(j.项目, ...j.rel)))) throw fail('批注文件不在了：' + j.rel.join('/'));
       },
       async book(j) {
         const { flow, s, script } = await distillBase(j), ps = parasOf(s);
-        if (!ps.length) throw fail('这一场还没有提炼');
+        if (!ps.length) throw fail('这一段还没有提炼');
         const note = unbom(await fsp.readFile(pj(j.项目, ...j.rel), 'utf8'));
         const now = { 梗概: str(flow.梗概).trim(), ...Object.fromEntries(['人物', '道具'].map(k => [k, (s[k] || []).map(n => { const e = (flow[k] || []).find(x => x && x.名 === n); return { 名: n, 描写: e ? str(e.描写).trim() : '' }; })])),
           场景: (s.场景文字 || []).map(oneLine).filter(Boolean), 段落: ps };
-        return ['# 任务：按批注改一场戏的提炼', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是照这一场定稿的剧本提炼出来的梗概、人物、道具、场景和段落（人可能改过），和人写的批注。请照批注改。',
+        return ['# 任务：按批注改一段戏的提炼', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是照这一段定稿的剧本提炼出来的梗概、人物、道具、场景和段落（人可能改过），和人写的批注。请照批注改。',
           '', '## 要求', '1. 只改批注说到的地方，别的一个字都不动（包括标点）。', '2. 批注要加一项、删一项、拆开、并起来的，照做；段落的先后照剧本正文。',
           '3. 批注是提要求的，照要求改这一处，改动尽量小；批注把原文改写好了的，照抄批注，不要再润色。', '4. 新加的照这几条写：' + DISTILL_RULES.slice(1, 5).map(x => x.replace(/^\d\. /, '')).join(' '),
           '5. 回复改好以后的全部内容（没改的照抄），格式照下面。', '', '## 回复一段 JSON，像这样', DISTILL_JSON,
-          '', '## 现在的提炼', JSON.stringify(now, null, 2), '', '## 批注', note, '', '## 这一场：第' + j.段 + '段｜' + (str(s.名).trim() || '（没起名）'),
+          '', '## 现在的提炼', JSON.stringify(now, null, 2), '', '## 批注', note, '', '## 这一段：第' + j.段 + '段｜' + (str(s.名).trim() || '（没起名）'),
           '', '## 定稿的剧本', script, '', '## 全片的设定（只为了认人物、道具）', settingText(flow), TAIL].join('\n');
       },
       async apply(j, text) {
@@ -631,9 +610,9 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       if (!x || x === s || !x.定稿) continue;
       const uses = items.filter(it => it.类别 === '人物' || it.类别 === '道具' ? (x[it.类别] || []).includes(it.名称)
         : it.类别 === '场景' ? (x.场景图 || []).some(g => String(g).replace(/\\/g, '/') === it.图) || (x.场景文字 || []).some(t => sceneStem(t) === it.名称) : false);
-      if (uses.length) lines.push('第' + x.段 + '场（' + (x.剧本定稿 ? '剧本定稿了' : '剧本还没定稿，只预留') + '）用到：' + [...new Set(uses.map(it => it.名称))].join('、') + '。这一场主要表达：' + (oneLine(x.表达) || '（没写）').slice(0, 200));
+      if (uses.length) lines.push('第' + x.段 + '段（' + (x.剧本定稿 ? '剧本定稿了' : '剧本还没定稿，只预留') + '）用到：' + [...new Set(uses.map(it => it.名称))].join('、') + '。这一段主要表达：' + (oneLine(x.表达) || '（没写）').slice(0, 200));
     }
-    return lines.join('\n') || '（没有别的场用到这几样）';
+    return lines.join('\n') || '（没有别的段用到这几样）';
   }
   /* 写字的回复：一样一节，【类别｜名称】或【类别｜名称｜状态】开头，里面「要撑住：」「核图：」「GEO底稿：」「出图提示词：」 */
   function wordSecs(text) {
@@ -724,7 +703,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       },
     },
     写字: {
-      title: j => '写字 · ' + (j.只名 || '第' + j.段 + '场'), need: ['段'], key: j => j.段 + '/' + (j.只名 || '*'),
+      title: j => '写字 · ' + (j.只名 || '第' + j.段 + '段'), need: ['段'], key: j => j.段 + '/' + (j.只名 || '*'),
       async prep(j) {
         const p = j.参数 && typeof j.参数 === 'object' ? j.参数 : {}, raw = Array.isArray(p.只) ? p.只 : [];
         j.只 = raw.slice(0, 12).map(x => ({ 类别: str(x && x.类别), 名称: str(x && x.名称).trim(), 状态名: str(x && x.状态名).trim(), 图: str(x && x.图), 文字: str(x && x.文字).trim().slice(0, 600),
@@ -736,7 +715,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       },
       async book(j) {
         const flow = await readFlow(j.项目), s = await needFinal(j, flow), items = await wordItems(j, flow, s);
-        if (!items.length) throw fail('这一场没有要写字的（这一段文件夹里的图不走这一步）');
+        if (!items.length) throw fail('这一段没有要写字的（这一段文件夹里的图不走这一步）');
         j.items = items;
         j.images = [...items.filter(x => x.有图).map(x => pj(j.项目, ...x.图.split('/'))), ...items.flatMap(x => x.参考.map(g => pj(j.项目, ...g.split('/'))))];
         const RULE = { 人物: '人物：定妆照，画面里只有这一个人，正面全身站立，头到脚完整入画，竖幅 2:3，纯中灰色摄影棚背景；分「长相」「姿势」「穿着」「质感」几小段写；长相普通，不是明星脸，不是任何真人的肖像。',
@@ -753,9 +732,9 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           const p = pj(j.项目, '提示词', segDir(j.段), n);
           if (await exists(p)) vps.push('### ' + n + '\n' + unbom(await fsp.readFile(p, 'utf8')).trim().slice(0, 8000));
         }
-        return ['# 任务：写字（资产图的出图提示词），核一遍已经有的图', '', '今天 ' + today() + '。这是一个 AI 短视频项目，流程是「字先定，图后出」：这一场的剧本定稿了，你先给要用的东西写字，人看过、批过，再照字出图。',
+        return ['# 任务：写字（资产图的出图提示词），核一遍已经有的图', '', '今天 ' + today() + '。这是一个 AI 短视频项目，流程是「字先定，图后出」：这一段的剧本定稿了，你先给要用的东西写字，人看过、批过，再照字出图。',
           '', '## 每一样要做的',
-          '1. 要撑住：这一场的戏要它做到什么（谁要看得见谁、人往哪走、东西怎么用、在哪儿、什么时候），一两句，只写剧本里有的。「别的场」里剧本定稿了的也用它，一起照顾到；没定稿的不管。',
+          '1. 要撑住：这一段的戏要它做到什么（谁要看得见谁、人往哪走、东西怎么用、在哪儿、什么时候），一两句，只写剧本里有的。「别的段」里剧本定稿了的也用它，一起照顾到；没定稿的不管。',
           '2. 有图的：图已经让你看过了，核它撑不撑得住：写「核图：撑得住」，或者「核图：撑不住：缺什么、哪里不对」，一句话。人确认过的图，没有大问题就算撑得住。',
           '3. 标了「要写字」的：写出图提示词，画面照下面「出图规矩」。原来有字的，照「要求」改，没说到的地方别动。剧本没写到的样子、布局，你出主意（场景在底稿里标【待拍板】），在「替人定的」里一处一行列出来，人会一条一条看。',
           '4. 只写画面里有的东西，不写「没有什么」。真人写实的电影剧照质感，不要 AI 明信片感；先想清楚合不合理：东西摆在哪、光从哪来。年代、地方、颜色基调和全片对得上。',
@@ -764,9 +743,9 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           '没有图的不写「核图」；不用写字的不写「替人定的」「GEO底稿」「出图提示词」；道具有状态的，标记写成【道具｜名字｜状态】。不要开场白和总结。',
           '', '## 要写的这几样', ...items.map(line),
           '', '## 全片的设定', settingText(flow), await lookPart(j.项目, flow, null, '图', '全片的光影总基调'),
-          '', '## 这一场：第' + j.段 + '段｜' + (str(s.名).trim() || '（没起名）'), sceneText(flow, s),
-          '', '## 这一场定稿的剧本', await docText(scriptPath(j.项目, j.段)),
-          '', '## 别的场', otherScenes(flow, s, items),
+          '', '## 这一段：第' + j.段 + '段｜' + (str(s.名).trim() || '（没起名）'), sceneText(flow, s),
+          '', '## 这一段定稿的剧本', await docText(scriptPath(j.项目, j.段)),
+          '', '## 别的段', otherScenes(flow, s, items),
           ...(vps.length ? ['', '## 关键帧对着的视频提示词（照它的分镜定是哪一刻、画面里有什么）', ...vps] : []),
           ...(olds.length ? ['', '## 原来的字（要改的那几样）', ...olds] : []),
           ...(items.some(x => x.写 && x.类别 === '场景') ? ['', '## scene-geo 技能（场景照它写 GEO 底稿）', await skill('scene-geo')] : []), TAIL].join('\n');
@@ -784,7 +763,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
             if (word.length < 40) miss.push(x.名称 + '（字太短）');
             else {
               const head = [...x.参考.map((g, i) => '图' + (i + 1) + '：' + pj(j.项目, ...g.split('/')) + '（' + stemOf(g) + '）'),
-                '用途：' + (x.类别 === '关键帧' ? '第' + j.段 + '场' + (x.提示词 ? '「' + x.提示词 + '」' : '') + '的关键帧' :x.类别 + '「' + x.名称 + '」' + (x.状态名 ? '（' + x.状态名 + '）' : '') + '的定妆图，各场照它的样子'), ...(撑 ? ['要撑住：' + 撑] : []), '提示词'];
+                '用途：' + (x.类别 === '关键帧' ? '第' + j.段 + '段' + (x.提示词 ? '「' + x.提示词 + '」' : '') + '的关键帧' :x.类别 + '「' + x.名称 + '」' + (x.状态名 ? '（' + x.状态名 + '）' : '') + '的定妆图，各段照它的样子'), ...(撑 ? ['要撑住：' + 撑] : []), '提示词'];
               await archive(j.项目, x.f.txt, stamp);
               await writeFile(pj(j.项目, ...x.f.txt), head.join('\n') + '\n' + word + '\n');
               产出.push(x.f.txt.join('/'));
@@ -862,8 +841,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           '3. 有对不上的才改：照 scene-geo 的办法，只改对不上的那几行，改成图上的样子，别的一个字不动（记号、标签照抄）；图上没画出来、底稿里有的，标【待拍板】，别删。',
           '4. 看下面用到这张图的戏，判断这些对不上的地方会不会影响走位、谁看得见谁、剧情。会影响的写「要：……」，不影响写「不用」。',
           '5. 回复只有三块，按这个顺序：', '【不一样的地方】', '（一处一行，大白话；都对得上就只写「对得上」）', '【要不要拿回去批图】', '（「不用」，或者「要：……」）', '【GEO底稿】', '（有对不上的：改好的整份底稿；都对得上：只写「不用改」）',
-          '', '## 原来的 GEO 底稿', j.旧GEO, '', '## 用到这张图的场', users.map(x => '第' + x.段 + '场：' + (oneLine(x.表达) || '（没写表达）')).join('\n') || '（只有这一场）',
-          ...(script ? ['', '## 第' + j.段 + '场定稿的剧本', script] : []), '', '## scene-geo 技能', await skill('scene-geo'), TAIL].join('\n');
+          '', '## 原来的 GEO 底稿', j.旧GEO, '', '## 用到这张图的段', users.map(x => '第' + x.段 + '段：' + (oneLine(x.表达) || '（没写表达）')).join('\n') || '（只有这一段）',
+          ...(script ? ['', '## 第' + j.段 + '段定稿的剧本', script] : []), '', '## scene-geo 技能', await skill('scene-geo'), TAIL].join('\n');
       },
       async apply(j, text) {   // 11-14 他要的：先判断要不要改，要改才改。AI 说对得上，底稿一个字不动（以前它回的底稿只要和原来不一样就盖上去）
         const t = text.replace(/\r\n/g, '\n'), tags = ['【不一样的地方】', '【要不要拿回去批图】', '【GEO底稿】'], pos = tags.map(x => t.indexOf(x));
@@ -879,7 +858,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       },
     },
     影响清单: {
-      title: j => '改了剧本，看影响到哪些 · 第' + j.段 + '场', need: ['段'],
+      title: j => '改了剧本，看影响到哪些 · 第' + j.段 + '段', need: ['段'],
       async book(j) {
         const flow = await readFlow(j.项目), s = await needFinal(j, flow), p = j.参数 && typeof j.参数 === 'object' ? j.参数 : {}, since = timeOf(p.上回);
         const hdir = pj(j.项目, '历史记录', '定稿的剧本', segDir(j.段)), re = new RegExp('^' + segDir(j.段) + '_剧本__(\\d{4})(\\d{2})(\\d{2})-(\\d{2})(\\d{2})(\\d{2})(_\\d+)?\\.docx$');
@@ -896,10 +875,10 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         j.提示词 = names;
         const texts = [];
         for (const n of names) texts.push('### ' + n + '\n' + unbom(await fsp.readFile(path.join(pdir, n), 'utf8')).trim().slice(0, 3000));
-        return ['# 任务：剧本改了，看影响到哪些', '', '今天 ' + today() + '。这是一个 AI 短视频项目。这一场的剧本改过、又定稿了。下面是改之前和改之后的剧本，还有这一场的资产和已经写好的视频提示词。请列出哪些要再看、为什么；没受影响的不列。',
+        return ['# 任务：剧本改了，看影响到哪些', '', '今天 ' + today() + '。这是一个 AI 短视频项目。这一段的剧本改过、又定稿了。下面是改之前和改之后的剧本，还有这一段的资产和已经写好的视频提示词。请列出哪些要再看、为什么；没受影响的不列。',
           '', '## 要求', '1. 资产：哪样要改（写清哪里对不上新剧本）、要加（新剧本多出来的人物、道具、场景）、不用了（新剧本里没有了）。', '2. 提示词：哪几条写的戏和新剧本对不上，说清是哪几镜、为什么。', '3. 拿不准的也列上，为什么里写「拿不准」。只看改了的地方，别把没改的戏也列进来。',
           '4. 回复一段 JSON，像这样：', '{"总": "一两句话说这次改了什么", "资产": [{"类别": "人物", "名称": "童爸爸", "影响": "要改", "为什么": "……"}], "提示词": [{"文件": "视频提示词.txt", "为什么": "……"}]}', '「影响」只写 要改、要加、不用了 三种之一；提示词「文件」照下面的名字抄。',
-          '', '## 改之前的剧本（' + pick.n + '）', before, '', '## 改之后的剧本', after, '', '## 这一场的资产', items.join('\n') || '（没选）', '', '## 这一场的提示词', texts.join('\n\n') || '（还没写）', TAIL].join('\n');
+          '', '## 改之前的剧本（' + pick.n + '）', before, '', '## 改之后的剧本', after, '', '## 这一段的资产', items.join('\n') || '（没选）', '', '## 这一段的提示词', texts.join('\n\n') || '（还没写）', TAIL].join('\n');
       },
       async apply(j, text) {
         const got = jsonIn(text);
@@ -913,15 +892,15 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
 
     /* ---------- 工序四：提示词 ---------- */
     写提示词: {
-      title: j => '写提示词 · 第' + j.段 + '场 ' + vpLabel(j), need: ['段'], key: j => j.段 + '/' + j.名, file: j => j.段 + '/' + j.名,
+      title: j => '写提示词 · 第' + j.段 + '段 ' + vpLabel(j), need: ['段'], key: j => j.段 + '/' + j.名, file: j => j.段 + '/' + j.名,
       /* 这一条写哪段戏（11-15 他定）：人没写就写这一场整段，别的条不附；人写了哪段（老请求带着段落范围的也一样）就只写那段，别的条附在后面好接上。
          me：第几条；others：这一场别的条 [{ f, no, text }]。给 { text：任务书里说范围的那几句, others：要附上的别的条 } */
       scope(me, others, what, pa) {
         const no = me ? '第 ' + me + ' 条' : '其中一条';
-        if (!pa && !what) return { text: '这一份是' + no + '，写这一场整段戏，从开头写到结尾。一条视频一般 15 秒、最长 30 秒。', others: [] };
+        if (!pa && !what) return { text: '这一份是' + no + '，写这一段的整段戏，从开头写到结尾。一条视频一般 15 秒、最长 30 秒。', others: [] };
         const where = pa ? '这一条只写段落 ' + pa[0] + (pa[1] > pa[0] ? ' 到段落 ' + pa[1] : '') + ' 的戏，别的段落留给别的条，不要写进来。'
           : '这一条写这段戏：' + what + '。别的戏留给别的条，不要写进来。';
-        return { text: '这一场的戏分几条写由人定，这一份是' + no + (others.length ? '，这一场另外还有 ' + others.length + ' 条（附在后面，接头处要接得上）' : '') + '。' + where + '一条视频一般 15 秒、最长 30 秒，装不下的戏留给下一条。', others };
+        return { text: '这一段的戏分几条写由人定，这一份是' + no + (others.length ? '，这一段另外还有 ' + others.length + ' 条（附在后面，接头处要接得上）' : '') + '。' + where + '一条视频一般 15 秒、最长 30 秒，装不下的戏留给下一条。', others };
       },
       async prep(j) {
         if (!nameOk(str(j.名)) || !RE_VP.test(j.名) || vpVer(j.名)) throw fail('提示词的文件名要是「视频提示词.txt」「视频提示词_02.txt」这样的');
@@ -944,7 +923,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       },
       async book(j) {
         const flow = await readFlow(j.项目), s = sceneOf(flow, j.段), sp = scriptPath(j.项目, j.段);
-        if (!s) throw fail('流水线里没有第' + j.段 + '场');
+        if (!s) throw fail('流水线里没有第' + j.段 + '段');
         if (!(await exists(sp))) throw fail('要先有定稿的剧本，才能写提示词');
         const ps = parasOf(s), pa = Array.isArray(j.段落) && j.段落.length === 2 ? j.段落 : null;
         if (pa && !(pa[0] >= 1 && pa[1] >= pa[0] && pa[1] <= ps.length)) throw fail('段落的范围不对');
@@ -971,15 +950,15 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         others.sort(byNo);
         const sc = KINDS.写提示词.scope(vpNo(str(j.名)), others, str(j.写什么).trim(), pa);
         const range = sc.text + (j.白模 ? '这一条挂白模视频 @视频1：它和别的素材一样，管哪几秒、参考它什么照下面「这一条挂的白模视频」写，可以只管其中几秒。' : '') + (frames.length ? '这一条挂 ' + frames.length + ' 张关键帧（见下面「这一条挂的关键帧」），对应镜头的开场照关键帧。' : '');
-        const otherText = sc.others.length ? ['', '## 这一场的其他几条提示词（只看，别改；接头处的人物位置、动作、光线要接得上）', ...sc.others.map(o => '### ' + o.f + (o.no ? '（第 ' + o.no + ' 条）' : '') + '\n' + (o.text || '（还是空的）'))].join('\n') : '';
-        return ['# 任务：给一场戏写 Seedance 视频提示词', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面有定稿的剧本、人写的剧本段落、全片设定、这一场能用的资产图。请照 sd25-pe 的格式写视频提示词。' + range,
+        const otherText = sc.others.length ? ['', '## 这一段的其他几条提示词（只看，别改；接头处的人物位置、动作、光线要接得上）', ...sc.others.map(o => '### ' + o.f + (o.no ? '（第 ' + o.no + ' 条）' : '') + '\n' + (o.text || '（还是空的）'))].join('\n') : '';
+        return ['# 任务：给一段戏写 Seedance 视频提示词', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面有定稿的剧本、人写的剧本段落、全片设定、这一段能用的资产图。请照 sd25-pe 的格式写视频提示词。' + range,
           '', '## 要求', '1. 格式照下面「提示词格式」：这一条挂的素材五份以内用写法一，多于五份用写法二。镜头由剧情需要来设计，不按剧本段落机械地一段一镜，写在【事件脚本】里，一镜一行，一镜只讲一两件事；戏照「写戏规矩」写。', '2. 素材职责里用 @图片1、@图片2……引用资产图，只能用下面「能用的资产图」里的，镜头里看得见的人物、道具、场景都要挂。',
           '3. 不写总时长（在生成参数里设）；要说清某一段在第几秒（比如白模只管的那几秒），写整秒「第2-4秒」。不写画面里没有的东西。' + (Secs ? Secs.ASK : ''), '4. ' + gp.rule, '5. 回复' + ['两', '三', '四'][(gp.make ? 1 : 0) + (Secs ? 1 : 0)] + '块' + (gp.make ? '（最前面是【GEO底稿】）' : '') + '，照这个样子：', ...(gp.make ? ['【GEO底稿】', '（照 scene-geo 第五节模板写的底稿）'] : []), '【提示词】', '（整份提示词，从「【生成目标】」开始）', '【素材登记】', '[{"ref": "@图片1", "name": "叫法", "path": "资产/……png"}]', ...(Secs ? Secs.ASK_EG : []),
           ...(j.白模 ? ['6. 白模视频 @视频1 要挂：素材职责里照下面「这一条挂的白模视频」那一段写，【素材登记】里也登记它（{"ref": "@视频1", "name": "白模", "path": "' + j.白模 + '"}）。'] : []),
           ...(frames.length ? [(j.白模 ? '7' : '6') + '. 关键帧要挂：照下面「这一条挂的关键帧」那一段写，【素材登记】里也登记它们（name 写「关键帧」）。'] : []),
           ...(vo.length ? [(6 + (j.白模 ? 1 : 0) + (frames.length ? 1 : 0)) + '. ' + voiceRule(vo)] : []),
           '', await shotsPart(), '', '## 能用的资产图', assets.join('\n') || '（没有）', bm, fp, '', '## 全片的设定', settingText(flow), look, gp.text,
-          '', '## 这一场：第' + j.段 + '段｜' + str(s.名).trim(), sceneText(flow, s),
+          '', '## 这一段：第' + j.段 + '段｜' + str(s.名).trim(), sceneText(flow, s),
           '', '## 定稿的剧本', await docText(sp), otherText, lessons ? '\n## 这个项目的历史教训（写的时候记着）' + lessons : '', '', PE_FORMAT, '', PE_DRAMA, '', '## 技能：sd25-pe', await skill('sd25-pe'), '', '## 技能：scene-geo', await skill('scene-geo'), TAIL].join('\n');
       },
       async apply(j, text) {
@@ -1016,7 +995,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     },
     /* 生成出片任务书：不用 AI，照固定的样子把这一条要用的东西排好（提示词、挂哪几张图、画布、参数、存到哪） */
     出片任务书: {
-      title: j => '生成出片任务书 · 第' + j.段 + '场 ' + vpLabel(j), need: ['段'], key: j => j.段 + '/' + j.名, local: true,
+      title: j => '生成出片任务书 · 第' + j.段 + '段 ' + vpLabel(j), need: ['段'], key: j => j.段 + '/' + j.名, local: true,
       async run(j) {
         const rel = ['提示词', segDir(j.段), str(j.名)], p = pj(j.项目, ...rel);
         if (!nameOk(str(j.名)) || !(RE_VP.test(j.名) || vpPatchOf(j.名)) || !(await exists(p))) throw fail('没有这份提示词');
@@ -1108,7 +1087,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     },
     /* 出片：把任务书交给 Codex 真去做（要花积分；只在用户点了「批准出片」时才开） */
     出片: {
-      title: j => '出片 · 第' + j.段 + '场 ' + vpLabelOf(vpOfTask(j.名)), need: ['段'], key: j => j.段 + '/' + j.名, codex: true,
+      title: j => '出片 · 第' + j.段 + '段 ' + vpLabelOf(vpOfTask(j.名)), need: ['段'], key: j => j.段 + '/' + j.名, codex: true,
       async run(j) {
         const p = pj(j.项目, '提示词', segDir(j.段), str(j.名));
         if (!nameOk(str(j.名)) || !RE_TASK.test(j.名) || !(await exists(p))) throw fail('没有这份出片任务书');
@@ -1127,10 +1106,10 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     },
     /* ---------- 拍摄风格：剧本定稿以后，AI 读梗概和剧本，从风格库里挑一种推荐（11-14 加）。挑哪个还是人定；推荐写进 定稿的剧本/流水线_AI扩写.json 的「风格」 ---------- */
     推荐风格: {
-      title: j => '推荐拍摄风格' + (j.段 ? ' · 第' + j.段 + '场' : ''), key: j => j.段 || 'all',
+      title: j => '推荐拍摄风格' + (j.段 ? ' · 第' + j.段 + '段' : ''), key: j => j.段 || 'all',
       async book(j) {
         if (!Style) throw fail('读不了 公用/风格库.js');
-        if (j.段 && !segOk(j.段)) throw fail('要说清是第几场');
+        if (j.段 && !segOk(j.段)) throw fail('要说清是第几段');
         const flow = await readFlow(j.项目), lib = await styleLib().catch(e => { throw fail('风格库读不了：' + e.message); });
         if (!lib.list.length) throw fail('风格库里还没有风格');
         const tone = await toneOf(j.项目), film = flow.风格 && typeof flow.风格 === 'object' ? str(flow.风格.名).trim() : '';
@@ -1141,7 +1120,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           if (await exists(sp)) scripts += '\n### 第' + s.段 + '段' + (finalOk(s, Math.floor((await fsp.stat(sp)).mtimeMs)) ? '（定稿了）' : '（还没定稿）') + '\n' + (await docText(sp)).slice(0, 8000);
         }
         const card = c => ['### ' + c.名 + (c.已定 ? '' : '（备选：还没出样片验过）'), ...['一句话', 'AI圈怎么用', '一眼认出', '别和它混', '容易跑偏'].filter(k => c[k]).map(k => k + '：' + c[k])].join('\n');
-        return ['# 任务：照剧本给这部片子挑一种拍摄风格', '', '今天 ' + today() + '。这是一个 AI 短视频项目（用 Seedance 出片）。剧本定稿了，要定' + (j.段 ? '第' + j.段 + '场另用' : '全片') + '的拍摄风格。请读梗概和剧本，从下面的风格库里挑一种最合适的推荐；挑哪个由人定。',
+        return ['# 任务：照剧本给这部片子挑一种拍摄风格', '', '今天 ' + today() + '。这是一个 AI 短视频项目（用 Seedance 出片）。剧本定稿了，要定' + (j.段 ? '第' + j.段 + '段另用' : '全片') + '的拍摄风格。请读梗概和剧本，从下面的风格库里挑一种最合适的推荐；挑哪个由人定。',
           '', '## 要求', '1. 只能从这几种里挑，名字照抄：' + j.风格名.join('、') + '。',
           '2. 看合不合这部戏：年代、地方、人物身份、故事的味道（喜剧、温情、动作、悬疑……），这种风格的招牌用进来会不会别扭。出过样片验过的优先；备选的也能推荐，理由里说一句还没出样片。',
           tone ? '3. 「' + Style.OWN + '」是这个项目自己定的光影总基调（附在最后），合适也可以推荐它。' : '3. 不推荐风格库以外的。',
@@ -1177,7 +1156,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     '7. 不写总时长、画幅分辨率（在生成参数里设），不写画面里没有的东西。要说清某一段在第几秒（比如白模只管的那几秒），写整秒「第2-4秒」。',
     '8. 稿子已经是旧格式（「本段事件：」开头的，或七分区的）：照它原来的格式改，不改成新格式。',
     '9. 白模视频和别的素材一样（2026-11-15 起）：素材里一句写清它用在第几秒到第几秒（整条都用就写整条）、只采用它的什么，可以只管其中几秒，别的秒数不参考它；关键帧照关键帧的写法，不因为挂了白模换写法。稿子已经一镜一镜写参考哪张的（「@图片…是各镜头的关键帧」），照它原来的写法改。',
-    '10. 【基础设定】放在事件脚本前面（2026-11-14 用户定）：一样一行「影像风格：……」「摄影：……」「光色基调：……」，风格名打头，质感、拍法、光色写成看得见的样子；光色基调句末写这一场的时间和主光。老稿已经写成「最终画面采用……」那一行的，没让改风格就不挪。'].join('\n');
+    '10. 【基础设定】放在事件脚本前面（2026-11-14 用户定）：一样一行「影像风格：……」「摄影：……」「光色基调：……」，风格名打头，质感、拍法、光色写成看得见的样子；光色基调句末写这一段的时间和主光。老稿已经写成「最终画面采用……」那一行的，没让改风格就不挪。'].join('\n');
   const PE_DRAMA = ['## 写戏规矩',
     '1. 目标导向：要什么、怕什么？真人会怎么做？', '2. 反应要由刚发生的事引起。', '3. 听的人给一拍反应，不无故不动。', '4. 反应写成看得见的动作。',
     '5. 不过度演绎：被逼到了才爆发。', '6. 最重的那句，写被什么点着。', '7. 再写身体怎么使劲、话怎么往上冲。', '8. 夸张放在事上，人按常理反应。',
@@ -1268,10 +1247,10 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     const make = !geo.length && imgs.length > 0;   // 没有底稿、有场景图：让 AI 看图先建一份
     return {
       make, images: make ? imgs : [],
-      rule: geo.length ? '场景一律照 scene-geo：下面给了这一场的 GEO 底稿（照生成好的场景图核过、人审过的），场景空间、轴线、站位、物件、光，都照底稿翻成场景段（scene-geo 第六节的办法），写进【主体与关系】（写法二写进【场景】）。底稿里的事实不许改、不许另编；底稿没写的地方不要自己添；底稿标了「逐镜状态」「待定」的照它的说明办。素材职责里场景图那一句照 scene-geo 第七节写（这张图是从哪往哪看的、只采用什么、不采用什么）。'
-        : make ? '场景一律照 scene-geo：这一场还没有 GEO 底稿。你已经看过这一场的场景图了，先照 scene-geo 第五节的模板给它建一份 GEO 底稿（空间里有什么、各在哪、从哪往哪看；只写图上看得到的和剧本点了名的，图和剧本对不上的地方单列出来），放在回复最前面的【GEO底稿】一块里，给人审，不进提示词；再照这份底稿把场景空间、轴线、站位、物件、光翻成场景段（第六节），写进【主体与关系】（写法二写进【场景】）。素材职责里场景图那一句照第七节写。'
-          : '场景照 scene-geo 的办法想清楚再写：这一场没有场景图也没有 GEO 底稿，只照全片的场景描写和剧本写，不要编图上才有的细节。',
-      text: geo.length ? geo.map(x => '\n## GEO 底稿（' + x.rel + '；人审用的底稿，照它翻，不要把底稿原文搬进提示词）\n' + x.text).join('\n') : make ? '\n## 这一场的场景图（已经让你看过）\n' + imgs.join('\n') : '',
+      rule: geo.length ? '场景一律照 scene-geo：下面给了这一段的 GEO 底稿（照生成好的场景图核过、人审过的），场景空间、轴线、站位、物件、光，都照底稿翻成场景段（scene-geo 第六节的办法），写进【主体与关系】（写法二写进【场景】）。底稿里的事实不许改、不许另编；底稿没写的地方不要自己添；底稿标了「逐镜状态」「待定」的照它的说明办。素材职责里场景图那一句照 scene-geo 第七节写（这张图是从哪往哪看的、只采用什么、不采用什么）。'
+        : make ? '场景一律照 scene-geo：这一段还没有 GEO 底稿。你已经看过这一段的场景图了，先照 scene-geo 第五节的模板给它建一份 GEO 底稿（空间里有什么、各在哪、从哪往哪看；只写图上看得到的和剧本点了名的，图和剧本对不上的地方单列出来），放在回复最前面的【GEO底稿】一块里，给人审，不进提示词；再照这份底稿把场景空间、轴线、站位、物件、光翻成场景段（第六节），写进【主体与关系】（写法二写进【场景】）。素材职责里场景图那一句照第七节写。'
+          : '场景照 scene-geo 的办法想清楚再写：这一段没有场景图也没有 GEO 底稿，只照全片的场景描写和剧本写，不要编图上才有的细节。',
+      text: geo.length ? geo.map(x => '\n## GEO 底稿（' + x.rel + '；人审用的底稿，照它翻，不要把底稿原文搬进提示词）\n' + x.text).join('\n') : make ? '\n## 这一段的场景图（已经让你看过）\n' + imgs.join('\n') : '',
     };
   }
   async function saveGeo(j, text) {   // AI 新建的底稿：存到这一段的文件夹里给人审；那里已经有就不动
@@ -1385,7 +1364,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   Object.assign(KINDS, {
     /* AI 批注：只批不改。写成写稿页认的格式（总评一行，一条一节），最多 8 条 */
     批注提示词: {
-      title: j => 'AI 批注 · 第' + j.段 + '场 ' + vpLabel(j), need: ['段'], key: j => j.段 + '/' + j.名, file: j => j.段 + '/' + j.名,
+      title: j => 'AI 批注 · 第' + j.段 + '段 ' + vpLabel(j), need: ['段'], key: j => j.段 + '/' + j.名, file: j => j.段 + '/' + j.名,
       prep: vpNeed,
       async book(j) {
         const flow = await readFlow(j.项目).catch(() => null), s = flow && sceneOf(flow, j.段), sp = scriptPath(j.项目, j.段), hp = shotsPath(j.项目, j.段);
@@ -1394,7 +1373,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         const perShot = !!BmKey && BmKey.isBmk(raw);   // 一镜一镜写参考哪张的老稿：关键帧照它的写法批（11-15）
         const bm = await bmPart(j, vids) + framePart(frames, '图已经让你看过。', raw);
         j.images = frameImgs(j, frames);
-        return ['# 任务：给一份视频提示词写批注（只批不改）', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是一场戏的 Seedance 视频提示词（' + (pe ? '生成目标和事件脚本' : '本段事件和分镜') + '多半是人自己写的），和这一场的剧本（老项目有镜头表的也带上）。请你当一个懂 Seedance 的编辑，给它写批注。',
+        return ['# 任务：给一份视频提示词写批注（只批不改）', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是一段戏的 Seedance 视频提示词（' + (pe ? '生成目标和事件脚本' : '本段事件和分镜') + '多半是人自己写的），和这一段的剧本（老项目有镜头表的也带上）。请你当一个懂 Seedance 的编辑，给它写批注。',
           '', '## 怎么批', '1. 最多 8 条，要紧的排在前面。只批不改：稿子一个字都不动，你只写批注。写得好的地方不用夸，没问题就少写。',
           '2. 看这几样：和剧本对不对得上（漏戏、加戏、顺序）；人物想干什么、为什么这么反应写清楚没有（前因后果连不连得上）；一镜是不是只讲一两件事；有没有写一直不变的表情姿势、画面里没有的东西、总时长（说清某一段在第几秒的整秒不算）。' + (side.写法 === '自由' ? '用户只把分镜写成自由文本，不因分镜未逐镜分栏、缺少编号或作用字段批评格式。素材等公共区仍然共用，照实际内容核对。' : '镜头数量、顺序、标题和作用由用户决定，不要求镜头与剧本段落一一对应。') + '人物的戏照「写戏规矩」看。',
           ...(vids.length ? ['   这一条挂了白模（见下面「这一条挂的白模视频」）：白模和别的素材一样，可以只管其中几秒。看素材里有没有照 sd25-pe 写白模那几句（用在哪几秒、只采用什么、不采用白模外观材质场景、几何体各对应谁），还留着〔〕没填的要提醒；没写清它管哪几秒的，提醒补上。'] : []),
@@ -1409,7 +1388,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
             '5. 回复照这个样子，别的都不要：', '总评：一句话', '## 1', '- 位置：镜头 01（或者 本段事件、素材、基础设定、本段、保持一致、整体）']), '- 级别：要改（或者 提醒）', '- 类别：对剧本（或者 写法、格式、资产、合理性）', '- 原文：稿子里的原话', '- 批注：一句', '- 原因：一句', '- 改成：整句替换的话', '## 2', '……',
           ...(pe ? ['', await shotsPart()] : []),
           '', '## 提示词（文件：' + j.名 + '）', raw, bm, await lookPart(j.项目, flow, s, '批', '全片的光影总基调（【基础设定】的影像风格、光色基调照它写）'),
-          s ? '\n## 这一场的段落\n' + sceneText(flow, s) : '', (await exists(sp)) ? '\n## 剧本\n' + await docText(sp) : '', (await exists(hp)) ? '\n## 镜头表\n' + await docText(hp) : '', lessons ? '\n## 这个项目的历史教训（批的时候记着）' + lessons : '',
+          s ? '\n## 这一段的段落\n' + sceneText(flow, s) : '', (await exists(sp)) ? '\n## 剧本\n' + await docText(sp) : '', (await exists(hp)) ? '\n## 镜头表\n' + await docText(hp) : '', lessons ? '\n## 这个项目的历史教训（批的时候记着）' + lessons : '',
           '', ...(pe ? [PE_FORMAT, ''] : []), PE_DRAMA, '', '## 技能：sd25-pe', await skill('sd25-pe'), TAIL].join('\n');
       },
       async apply(j, text) {
@@ -1465,7 +1444,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           '', await shotsPart(),
           '', '## 原文（文件：' + j.名 + '）', vpText, await bmPart(j, vids),
           framePart(frames, '关键帧那几句的编号和先后、每一镜开头的秒数和参考哪张，批注没说到的不动。', vpText), await lookPart(j.项目, null, sceneOf((await readFlow(j.项目).catch(() => null)) || {}, j.段), '改', '全片的光影总基调（批注说到画面味道时照它改）'), '', '## 批注', unbom(await fsp.readFile(pj(j.项目, ...j.rel), 'utf8')),
-          (await exists(sp)) ? '\n## 这一场的剧本（对照用）\n' + await docText(sp) : '', '', PE_FORMAT, '', PE_DRAMA, '', '## 技能：sd25-pe', await skill('sd25-pe'), TAIL].join('\n');
+          (await exists(sp)) ? '\n## 这一段的剧本（对照用）\n' + await docText(sp) : '', '', PE_FORMAT, '', PE_DRAMA, '', '## 技能：sd25-pe', await skill('sd25-pe'), TAIL].join('\n');
       },
       async apply(j, text) {
         const ops = opsOf(text);
@@ -1578,7 +1557,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     if (md) j.模型 = md;
     j.请求 = Object.fromEntries(Object.entries(b).filter(([k]) => k !== '项目' && k !== '渠道'));   // 记下当初的请求：交给 AI 等回复的，服务重开以后照它接着等
     if (resume) Object.assign(j, { id: resume.id, dir: resume.dir, 建: resume.建 || j.建, 开始0: resume.开始 || 0, 开0: resume.开 || 0, 续: true });
-    if ((K.need || []).includes('段') && !segOk(j.段)) throw fail('要说清是第几场');
+    if ((K.need || []).includes('段') && !segOk(j.段)) throw fail('要说清是第几段');
     for (const k of ['人物', '道具']) if (Array.isArray(b[k])) j[k] = b[k].map(str).filter(Boolean);
     if (b.批注) j.批注 = str(b.批注);
     for (const k of ['类别', '名', '状态名', '要求', '视频', '批准', '重写', '白模', '跳过核验']) if (b[k] != null) j[k] = str(b[k]);

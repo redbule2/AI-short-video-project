@@ -111,3 +111,19 @@ test('补片出到哪：那一版出的样片里第几条最大的，旁边的 �
   assert.equal(Core.patchOut('第1-2段', '视频提示词_改2_补1.txt', names), null);   // 别的段的不算
   assert.equal(Core.patchOut('第1-1段', '视频提示词_改2.txt', names), null);   // 不是补片稿
 });
+
+test('剧本可以没有段头（11-16 晚：直接从正文写）：没写场景、人物不算毛病；写回去再读出来，正文、备注照旧', async () => {
+  const doc = Core.newScriptDoc('1-1', '吃白食');
+  doc.sections[1].blocks = [{ id: 'b0', text: '△ 老李端上一碗面。' }, { id: 'b1', text: '老李（小声）：吃吧。' }];
+  doc.sections[2].blocks = [{ id: 'n0', text: '11-16 自己写' }];
+  assert.deepEqual(Core.lintScript(doc).filter(x => x.level === 'warn').map(x => x.msg), []);
+  const back = Core.parseScripts(Core.scriptToParas(doc).map(p => ({ text: p.r.map(r => r[0]).join(''), style: p.s })), '1-1').segs[0];
+  assert.equal(back.name, '吃白食');
+  assert.deepEqual(back.sections[0].blocks.map(b => b.text), []);
+  assert.deepEqual(back.sections[1].blocks.map(b => b.text), ['△ 老李端上一碗面。', '老李（小声）：吃吧。']);
+  assert.deepEqual(back.sections[2].blocks.map(b => b.text), ['11-16 自己写']);
+  const head = Core.newScriptDoc('1-1', '');
+  head.sections[0].blocks = [{ id: 'h0', text: '场景：夜' }];
+  head.sections[1].blocks = [{ id: 'b0', text: '△ 门开了。' }];
+  assert.deepEqual(Core.lintScript(head).map(x => x.msg), ['场景按「时间｜内/外｜地点」三项写']);   // 写了场景还照旧查
+});

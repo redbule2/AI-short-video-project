@@ -176,21 +176,6 @@ body.wf-covered .wf-fab { display: none; }
 .fl-aibox-h .sp { flex: 1; }
 .fl-aibox-h .btn, .fl-aibox-h .fl-link { letter-spacing: .04em; font-family: var(--sans); }
 .fl-aibox p { font: 15.5px/1.9 var(--serif); color: var(--ink); white-space: pre-wrap; word-break: break-word; }
-/* 批量让 AI 扩写：一组一组勾 */
-.fl-bat { display: flex; flex-direction: column; gap: 16px; max-height: 60vh; overflow: auto; padding: 2px 4px 4px 2px; }
-.fl-bg-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; font: 15px var(--kai); color: var(--dai); letter-spacing: .2em; }
-.fl-bg-h em { font: normal 12.5px var(--sans); letter-spacing: .02em; color: var(--ink-3); }
-.fl-bg-h .sp { flex: 1; }
-.fl-bg-h .fl-link { letter-spacing: 0; font-family: var(--sans); }
-.fl-bcs { display: flex; flex-wrap: wrap; gap: 8px; }
-.fl-bc { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--sheet); cursor: pointer; font: 14px/1.4 var(--sans); color: var(--ink-2); text-align: left; transition: border-color .15s, background .15s; }
-.fl-bc i { width: 18px; height: 18px; flex: none; display: grid; place-items: center; border: 1px solid var(--line-2); border-radius: 5px; color: transparent; }
-.fl-bc i .ic { width: 12px; height: 12px; stroke-width: 2.2; }
-.fl-bc small { font-size: 11.5px; color: var(--ink-4); }
-.fl-bc:hover:not(:disabled) { border-color: var(--ink-4); }
-.fl-bc.on { border-color: var(--dai); background: var(--dai-soft); color: var(--ink); }
-.fl-bc.on i { background: var(--dai); border-color: var(--dai); color: #f3f7f6; }
-.fl-bc:disabled { opacity: .5; cursor: default; }
 /* 弹窗里：叫法那一格、不引用的那一格 */
 .fl-in { font: 600 17px/1.5 var(--serif); letter-spacing: .04em; }
 .dlg .fl-ta { min-height: 112px; }
@@ -399,6 +384,9 @@ body.wf-covered { overflow: hidden; }
 
 /* 工序四、五：一条提示词、一条样片各是一格 */
 .wf-items { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+/* 提示词那一步的筛选（全部 / 已出片 / 没出片）：钉在步骤条下面（top 由 公用/界面.js 的 pinUnder 量了再填） */
+.wf-filter { position: sticky; top: 117px; z-index: 18; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px -14px -8px; padding: 8px 14px; background: var(--paper); }
+.wf-none { margin-top: 16px; }
 .wf-item { padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); }
 .wf-item.picked { border-color: var(--dai-line); background: #fbfdfc; }
 .wf-item-h { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -574,8 +562,8 @@ button.as-warn:hover { border-color: var(--zhu); }
 .fl-asset.wd-impact { box-shadow: 0 0 0 2px var(--zhu-line); }
 /* 一样东西自己的那一页（11-14，资产.html?a=…，资产详情.js）：顶上走到哪一步、眼下该做的；左边字、右边图；底下 AI 做过的事 */
 .ad { display: flex; flex-direction: column; gap: 16px; }
-.ad-head { position: sticky; top: 117px; z-index: 18; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: -8px -14px 0; padding: 8px 14px; background: var(--paper); }   /* 钉在步骤条下面（top 由 资产详情.js 的 adPin 量了再填） */
-.ad-head.stuck { box-shadow: 0 1px 0 var(--line), 0 12px 18px -16px rgba(40, 28, 16, .4); }
+.ad-head { position: sticky; top: 117px; z-index: 18; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: -8px -14px 0; padding: 8px 14px; background: var(--paper); }   /* 钉在步骤条下面（top 由 公用/界面.js 的 pinUnder 量了再填） */
+.ad-head.stuck, .wf-filter.stuck { box-shadow: 0 1px 0 var(--line), 0 12px 18px -16px rgba(40, 28, 16, .4); }
 .ad-head .sp { flex: 1; }
 .ad-title { display: flex; flex-direction: column; gap: 2px; padding-left: 12px; border-left: 4px solid var(--k, var(--ink-4)); }
 .ad-title b { font: 600 22px/1.35 var(--serif); letter-spacing: .06em; color: var(--k, var(--ink)); }

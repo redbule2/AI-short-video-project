@@ -96,7 +96,7 @@ const sideData = () => ({ 写法: '分镜', 分镜稿: structured, 自由稿: '�
   await check('写提示词：没写哪段戏就写整段、别的条不附；写了哪段才只写那段、附上别的条', () => {
     const sc = setup(structured, sideData()).K.写提示词.scope, two = [{ f: '视频提示词.txt', no: 1, text: '第一条' }];
     const whole = sc(2, two, '', null);
-    assert.match(whole.text, /这一份是第 2 条，写这一场整段戏，从开头写到结尾。/); assert.equal(whole.others.length, 0);
+    assert.match(whole.text, /这一份是第 2 条，写这一段的整段戏，从开头写到结尾。/); assert.equal(whole.others.length, 0);
     assert.doesNotMatch(whole.text, /接着|留给下一条|留给别的条/);
     const part = sc(2, two, '小磊进门到坐下', null);
     assert.match(part.text, /这一条写这段戏：小磊进门到坐下。/); assert.match(part.text, /另外还有 1 条/); assert.equal(part.others, two);

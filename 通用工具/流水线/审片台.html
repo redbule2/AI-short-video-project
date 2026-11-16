@@ -681,7 +681,7 @@ function paintCmpBar() {
     h('div', { class: 'seg-btns' },
       b('bm', '白模', bm.length, '这条提示词没挂白模', bm.length > 1 ? e => pickVideo(e.currentTarget, bm) : null),
       b('kf', '关键帧', kf, '这条提示词没挂关键帧（或者没写哪一镜参考哪一张）'),
-      b('clip', '另一条样片', clips.length, '这一场没有别的样片', e => pickClip(e.currentTarget)),
+      b('clip', '另一条样片', clips.length, '这一段没有别的样片', e => pickClip(e.currentTarget)),
       CMP.src === 'img' ? b('img', '一张图', true, '', () => {}) : null,
       b('', '不对照', true)),
     CMP.src ? h('div', { class: 'seg-btns' }, mb('side', '并排', '两格挨着放'), mb('over', '叠起来', '对照的那一层半透明地盖在样片上：看机位、构图对不对得上')) : null,
@@ -1054,7 +1054,7 @@ function paintRail() {
   if (fk) { const g = RAIL.body.querySelector('[data-fk="' + fk + '"]') || (fk === 'gen' ? RAIL.body.querySelector('.gen') : null); if (g) { g.focus(); try { g.setSelectionRange(s0, e0); } catch (e) { /* 不要紧 */ } } }
   paintTabs();
 }
-const noPrompt = () => h('p', { class: 'hint' }, D.prompts.length ? '没对上这条样片出自哪一条提示词。在上面「出自」那里选一条。' : '这一场还没有提示词。');
+const noPrompt = () => h('p', { class: 'hint' }, D.prompts.length ? '没对上这条样片出自哪一条提示词。在上面「出自」那里选一条。' : '这一段还没有提示词。');
 const navBtn = (d, i) => h('button', { class: 'nav', type: 'button', disabled: i + d < 0 || i + d >= D.shots.length, title: d < 0 ? '上一镜（↑）' : '下一镜（↓）', onclick: () => gotoShot(i + d) }, d < 0 ? '‹' : '›');
 function figureOf(r, acts, more) {   // more：图下面另外摆的（关键帧：弃用的理由、那一排按钮）
   const img = thumbImg(pjAt(r.at || r.rel), 720), gone = isKf(r) && goneOf(r);
@@ -1312,7 +1312,7 @@ async function setPrompt(name) {
 function paintSel() {   // 「出自」那一格：这一场的提示词（改过几版的，每一版一项）
   const sel = TOP.sel;
   if (!sel) return;
-  fill(sel, h('option', { value: '' }, D.promptKeep ? '（原来记的：' + baseName(D.promptKeep) + '）' : D.prompts.length ? '没对上' : '这一场还没有提示词'),
+  fill(sel, h('option', { value: '' }, D.promptKeep ? '（原来记的：' + baseName(D.promptKeep) + '）' : D.prompts.length ? '没对上' : '这一段还没有提示词'),
     D.prompts.map(p => h('option', { value: p.name }, p.label)));
   sel.value = D.prompt;
 }
@@ -1322,7 +1322,7 @@ function renderTop() {
   TOP.status = h('div', { class: 'dk-st' });
   return h('header', { class: 'dk-top' },
     h('button', { class: 'btn sm ink', type: 'button', title: '回到审片那一页（批注都存着）', onclick: goBack }, '← 回审片'),
-    h('div', { class: 'dk-title' }, h('b', null, '第' + SEG + '场'), h('span', { title: VID }, clipLabel(VID))),
+    h('div', { class: 'dk-title' }, h('b', null, '第' + SEG + '段'), h('span', { title: VID }, clipLabel(VID))),
     h('span', { class: 'sp' }),
     h('label', { class: 'dk-pr' }, '出自', sel),
     TOP.status);
@@ -1397,8 +1397,8 @@ setInterval(async () => {
 (async function boot() {
   const app = document.getElementById('app');
   if (!(await LINK.up())) { app.replaceChildren(fatal('这一页要经本机服务打开：在 Claude 里说「打开项目管理」。')); return; }
-  if (!PJ || !SEG || !VIDEO_RE.test(VID)) { app.replaceChildren(fatal('网址里少了项目、第几场或者样片的名字。')); return; }
-  document.title = '对照审片 · 第' + SEG + '场 · ' + clipLabel(VID);
+  if (!PJ || !SEG || !VIDEO_RE.test(VID)) { app.replaceChildren(fatal('网址里少了项目、第几段或者样片的名字。')); return; }
+  document.title = '对照审片 · 第' + SEG + '段 · ' + clipLabel(VID);
   let file;
   try { file = await FS.file(pjAt(VID_REL)); } catch (e) { app.replaceChildren(fatal('打不开这条样片（' + VID_REL + '）：' + e.message)); return; }
   const info = await videoInfo(file);
