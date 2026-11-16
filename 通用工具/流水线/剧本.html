@@ -28,7 +28,7 @@
 .sw-from { margin: 12px 0 0; font-size: 12.5px; color: var(--ink-3); }
 .sw-exp { margin: 0 0 18px; font: 15px/1.8 var(--serif); white-space: pre-wrap; word-break: break-word; }
 #sw-state.warn { color: var(--zhu); }
-/* 左边「这一场」：名字、出场的、主要表达什么 */
+/* 左边「这一场」：名字、想写什么 */
 .sbx .fs-lab { margin-top: 16px; }
 .sbx .fs-lab:first-child { margin-top: 0; }
 .sbx-name { display: block; width: 100%; margin: 0 0 2px; font-size: 16px; }
@@ -48,10 +48,10 @@
 <script src="流水线.js"></script>
 <script>
 /* ============================================================
-   流水线 · 剧本（一场的第一步：工序二的前一半。2026-11-16 他定：剧本在段落前面）
-   左边写这一场：名字、出场的人物场景道具、这一场主要表达什么。右边写剧本：自己写（点「我自己写」），或者让 AI 照左边和全片设定写；
+   流水线 · 剧本（一场的第一步，工序一。2026-11-16 他定：第一步直接写剧本，梗概、人物、场景、道具剧本定稿以后再提炼）
+   左边写这一场：名字、想写什么。右边写剧本：自己写（点「我自己写」），或者让 AI 照左边写（全片设定里已经有的人物、场景也给它看）；
    就在这一页看、点一段写批注、交给 AI 改，也能点「自己改」直接改；看完没问题点「剧本定稿」。
-   定稿了，下一步 AI 照剧本分段落（段落那一页），也能去出资产图。剧本再改，要再定一次。
+   定稿了，下一步 AI 照剧本提炼梗概、出场的人物场景道具和段落（提炼那一页），提炼定了才出资产图。剧本再改，要再定一次。
    镜头表这一步 2026-11-12 取消了（他定的）：剧本定稿、资产确认以后直接写提示词，镜头在提示词的「分镜」里设计。
    看剧本、写批注用的是「项目管理」里剧本那一样，嵌在这一页下面。
    共用的东西（读写流水线.json、顶栏、步骤条、剧本现在什么样）在 流水线.js。
@@ -69,13 +69,13 @@ async function finalScript(s) {
   s.剧本定稿 = now; delete s.上回定稿; touch();
   await flush();
   swapCard(s);
-  if (prev) { s.影响上回 = prev; touch(); await flush(); swapCard(s); toast('第' + s.段 + '场重新定稿了：段落、资产、提示词标成待核对。想让 AI 列出具体哪几样资产、提示词，点剧本上方的「让 AI 列影响」'); }   // 11-15 起不自动开（只复制、不自动开）
-  else toast('第' + s.段 + '场剧本定稿了。下一步：让 AI 照剧本分段落；资产图也可以出了');
+  if (prev) { s.影响上回 = prev; touch(); await flush(); swapCard(s); toast('第' + s.段 + '场重新定稿了：提炼、资产、提示词标成待核对。想让 AI 列出具体哪几样资产、提示词，点剧本上方的「让 AI 列影响」'); }   // 11-15 起不自动开（只复制、不自动开）
+  else toast('第' + s.段 + '场剧本定稿了。下一步：让 AI 照剧本提炼梗概、人物、场景、道具和段落');
   if (!filmStyle()) styleDlg(null, { first: true });   // 片子还没定拍摄风格：照剧本挑一个（关上也行，以后在全片设定、这一场顶上都能定）
 }
-/* 让 AI 写剧本：照左边这一场要表达的、出场的，和全片设定。原来的剧本由 AI 在写新的之前收进历史记录 */
+/* 让 AI 写剧本：照左边这一场想写什么（全片设定里已经有的也给它看）。原来的剧本由 AI 在写新的之前收进历史记录 */
 async function expand(s) {
-  if (!s.表达.trim()) { toast('先在左边写这一场主要表达什么，AI 照它写剧本', 'err'); const t = document.querySelector('[data-f="表达"]'); if (t) t.focus(); return; }
+  if (!s.表达.trim()) { toast('先在左边写这一场想写什么，AI 照它写剧本', 'err'); const t = document.querySelector('[data-f="表达"]'); if (t) t.focus(); return; }
   await flush();
   if (F.err) return;
   if (!s.头回定稿 && s.剧本定稿) s.头回定稿 = s.剧本定稿;   // 以前定过稿的：头一回定稿的时间先记下，AI 重写完再定稿就算「重新定稿」
@@ -323,12 +323,12 @@ function barEls(s) {
   const go1 = (label, cls) => h('button', { class: 'btn sm ' + (cls || ''), onclick: () => expand(s) }, label);
   const fin = (label, cls) => h('button', { class: 'btn sm ' + (cls || ''), title: '剧本看过了，就照这一版。定稿以后才出这一场的资产图', onclick: () => finalScript(s) }, label);
   const mine = (label, cls) => h('button', { class: 'btn sm ' + (cls || ''), type: 'button', title: '在下面直接写，边写边存', onclick: () => edOpen(s) }, icon('pen'), label);
-  if (st === 'none') out.push(barNote(d.combined ? '汇总稿里有这一段，还没有单独的剧本。自己写，或者让 AI 写。' : '还没有剧本。自己写，或者让 AI 照左边这一场要表达的、出场的，和全片设定写成剧本。'), sp(), mine('我自己写'), go1('让 AI 写成剧本', 'ink'));
+  if (st === 'none') out.push(barNote(d.combined ? '汇总稿里有这一段，还没有单独的剧本。自己写，或者让 AI 写。' : '还没有剧本。自己写，或者在左边写一句这一场想写什么，让 AI 写成剧本。'), sp(), mine('我自己写'), go1('让 AI 写成剧本', 'ink'));
   else if (st === 'wait') out.push(...(job ? [jobLine(job), barNote('写好这里自动出现。')] : [barNote('交给 AI 了（' + s.扩写.slice(5, 16) + '），写好这里自动出现。'), h('button', { class: 'fl-link', type: 'button', onclick: () => expand(s) }, '再交一次')]));
   else if (st === 'final') out.push(h('span', { class: 'fs-state ok', title: '剧本定稿的时间：' + s.剧本定稿 }, icon('check'), '剧本定稿了 ' + s.剧本定稿.slice(5, 16)), impactNote(s) || barNote('剧本再改，要重新定稿。'),
     h('button', { class: 'fl-link', type: 'button', title: '在下面直接改。改了要重新定稿', onclick: () => edOpen(s) }, '自己改'), sp(),
-    h('button', { class: 'btn ink', title: 'AI 照定稿的剧本分段落，你再改或者批注', onclick: () => go('分场', { s: s.段 }) }, '下一步：段落 →'));
-  else out.push(barNote(again ? '定稿以后又改过。看完没问题，再定一次。' : '在下面看剧本、写批注交给 AI 改，或者点「自己改」。没问题了就定稿；定稿以后 AI 分段落、才出资产图。', again), sp(), mine('自己改'), fin('剧本定稿', 'ink'));
+    h('button', { class: 'btn ink', title: 'AI 照定稿的剧本提炼梗概、人物、场景、道具和段落，你再改或者批注', onclick: () => go('分场', { s: s.段 }) }, '下一步：提炼 →'));
+  else out.push(barNote(again ? '定稿以后又改过。看完没问题，再定一次。' : '在下面看剧本、写批注交给 AI 改，或者点「自己改」。没问题了就定稿；定稿以后 AI 提炼人物、场景、道具和段落。', again), sp(), mine('自己改'), fin('剧本定稿', 'ink'));
   return out;
 }
 /* 重新定稿以后的影响清单：AI 在列、列好了（资产几样、提示词几条要再看）、没列成 */
@@ -343,37 +343,27 @@ function impactNote(s) {
   if (failed) return failed;
   const prev = s.影响上回;   // 重新定稿时记下的上回定稿时间：AI 拿它找改之前那一版
   if (!AI.ok || !prev || timeOf(prev) + 999 >= timeOf(s.剧本定稿) || !s.剧本定稿) return null;
-  return barNote(h('span', null, '剧本重新定稿了，段落、资产、提示词都标成待核对。', h('button', { class: 'btn sm ghost', type: 'button', title: '可选：让 AI 对一遍新旧剧本，列出哪几样资产、提示词真要再看，没列上的照旧', onclick: async () => { await startJob({ 事: '影响清单', 段: s.段, 参数: { 上回: prev } }); swapCard(s); } }, '让 AI 列影响')));
+  return barNote(h('span', null, '剧本重新定稿了，提炼、资产、提示词都标成待核对。', h('button', { class: 'btn sm ghost', type: 'button', title: '可选：让 AI 对一遍新旧剧本，列出哪几样资产、提示词真要再看，没列上的照旧', onclick: async () => { await startJob({ 事: '影响清单', 段: s.段, 参数: { 上回: prev } }); swapCard(s); } }, '让 AI 列影响')));
 }
-/* ---------- 左边：这一场（2026-11-16 从段落那一页挪来，剧本在段落前面）：名字、出场的、主要表达什么。剧本照它写，边写边存 ----------
-   摆一次；以后重摆只换出场的小牌子和下面那行「还差」，正在写的字、光标都不动 */
+/* ---------- 左边：这一场：名字、想写什么。让 AI 写剧本时照它写，边写边存 ----------
+   出场的人物、场景、道具 11-16 起不在这里选：剧本定稿以后在「提炼」那一步由 AI 提炼。摆一次；以后重摆只换下面那行「还差」，正在写的字、光标都不动 */
 let SIDE = null;   // { seg, el, paint }
 function sideBox(s) {
   if (SIDE && SIDE.seg === s.段) { if (!window.UI.popOpen) SIDE.paint(); return SIDE.el; }
   const name = h('input', { class: 'fs-name sbx-name', value: s.名, placeholder: '给这一场起个名', maxlength: '24', spellcheck: 'false' });
   name.addEventListener('input', () => { s.名 = name.value; touch(); later(); });
-  const say = h('textarea', { class: 'fl-ta', spellcheck: 'false', 'data-f': '表达', placeholder: '看完这一场，观众要明白什么、感觉到什么。AI 照它写剧本' });
+  const say = h('textarea', { class: 'fl-ta', spellcheck: 'false', 'data-f': '表达', placeholder: '这一场谁在哪儿、发生什么；看完观众要明白什么、感觉到什么。AI 照它写剧本，自己写剧本可以不填' });
   say.value = s.表达;
   say.addEventListener('input', () => { s.表达 = say.value; fit(say); touch(); later(); });
-  const at0 = F.doc.场.indexOf(s), prev = at0 > 0 ? F.doc.场[at0 - 1] : null;
-  const picks = h('div', { class: 'fs-sel' }), miss = h('p', { class: 'fn-note sbx-miss' });
-  /* 出场的：选上的人物、场景、道具；字里提到了还没选的，虚线框摆在后面，点一下选上 */
+  const miss = h('p', { class: 'fn-note sbx-miss' });
   const paint = () => {
-    picks.replaceChildren(...[
-      ...castRefs(s, (k, id) => { s[k] = s[k].filter(x => x !== id); touch(); paint(); }),
-      ...mentioned(s).map(x => h('button', { class: 'fl-ref sug ' + kindCls(x.key), type: 'button', title: x.only ? (x.key === '场景文字' ? '全片设定里只写了这一处场景，点一下这一场也用它（不用图）' : '全片只引用了这一张场景图，点一下这一场也用它') : '这一场的字里提到了，点一下选上', onclick: () => { s[x.key].push(x.id); touch(); paint(); } },
-        x.file && !F.gone.has(x.file) ? thumbImg(x.file) : h('i', { class: 'ph' }, kindOf(x.key)[0]), h('span', null, x.name), h('small', null, kindOf(x.key) + ' · ' + (x.only ? '用它？' : '提到了')))),
-      h('button', { class: 'btn sm', type: 'button', onclick: e => openPickPop(e.currentTarget, s, paint) }, icon('plus'), '选人物、场景、道具'),
-      prev && !pickCount(s) && pickCount(prev) ? h('button', { class: 'fl-link', type: 'button', title: '照第' + prev.段 + '场选的来', onclick: () => { s.人物 = [...prev.人物]; s.道具 = [...prev.道具]; s.场景图 = prev.场景图.filter(f => !segImg(prev, f)); s.场景文字 = uniq(prev.场景文字); touch(); paint(); } }, '和上一场一样') : null,
-    ].filter(Boolean));
     const m = castMissing(s);
-    miss.textContent = m.length ? '还差：' + m.join('；') + '。' : '';
+    miss.textContent = m.length && scriptState(s).st === 'none' ? '让 AI 写还差：' + m.join('；') + '。' : '';
   };
   const later = debounce(() => { if (el.isConnected && !window.UI.popOpen) paint(); }, 400);
   const el = h('div', { class: 'sbx' },
-    h('div', { class: 'fs-lab' }, '这一场', h('em', null, '剧本照它写')), name,
-    h('div', { class: 'fs-lab' }, '出场的', h('em', null, '写过的就能选，不用先有图')), picks,
-    h('div', { class: 'fs-lab' }, '主要表达什么'), say, miss,
+    h('div', { class: 'fs-lab' }, '这一场', h('em', null, '起个名')), name,
+    h('div', { class: 'fs-lab' }, '想写什么', h('em', null, '让 AI 写剧本时照它写')), say, miss,
     h('div', { class: 'sbx-f' }, h('button', { class: 'btn ghost sm', type: 'button', onclick: () => deleteScene(s) }, '删掉这一场')));
   SIDE = { seg: s.段, el, paint };
   paint();
@@ -381,7 +371,7 @@ function sideBox(s) {
 }
 async function deleteScene(s) {
   const has = s.表达.trim() || s.段落.some(x => x.写什么.trim() || x.作用.trim()) || promptsOf(s.段).length || docsOf(s.段).script;   // 写了剧本、提示词也问一声
-  if (has && !(await confirmDlg({ title: '删掉第' + s.段 + '场', body: '这一场写的表达、段落从流水线里删掉。' + segName(s.段) + ' 文件夹里已经有的剧本、资产、提示词不动。', ok: '删掉', danger: true }))) return;
+  if (has && !(await confirmDlg({ title: '删掉第' + s.段 + '场', body: '这一场写的想写什么、提炼的出场和段落从流水线里删掉。' + segName(s.段) + ' 文件夹里已经有的剧本、资产、提示词不动。', ok: '删掉', danger: true }))) return;
   const i = F.doc.场.indexOf(s);
   if (i >= 0) F.doc.场.splice(i, 1);
   touch(); go('总览');   // 正在自己写的剧本，换页前先存上（leave）

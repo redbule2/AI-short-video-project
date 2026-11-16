@@ -18,7 +18,8 @@
 <script>
 /* ============================================================
    流水线 · 总览（首页）
-   一眼看清走到哪了：全片设定四样写到什么样；各场的 剧本 → 段落 → 资产 → 提示词 → 审片 各到哪一步，点哪一格进哪一步（11-16 起剧本在段落前面）。
+   一眼看清走到哪了：各场的 剧本 → 提炼 → 资产 → 提示词 → 审片 各到哪一步，点哪一格进哪一步；全片设定（梗概、人物、场景、道具）提炼到什么样。
+   （11-16 他定：第一步直接写剧本，梗概、人物、场景、道具剧本定稿以后由 AI 提炼，所以「分场」摆在「全片设定」上面）
    （原来顶上有一块「接着做」，11-14 他说不需要：从分场那一行直接进，已删）
    添加分场、把以前 AI 写的段搬进来、一次让 AI 写几场剧本，也在这一页。
    共用的东西（读写流水线.json、顶栏、各场的状态）在 流水线.js。
@@ -45,16 +46,12 @@ async function addSceneDlg() {
       [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'), h('button', { class: 'btn ink', onclick: ok }, '加上')]);
   });
   if (!r) return;
-  if (!F.doc.梗概.trim()) {   // 第一步是梗概：没写先提醒一句，硬要加也行
-    const c = await choiceDlg({ title: '梗概还没写', body: '先写梗概，后面每一场才有依据。', buttons: [{ label: '先添加分场', value: 'go', cls: 'ghost' }, { label: '回去写梗概', value: 'back', cls: 'ink', focus: true }] });
-    if (c !== 'go') { setFold('梗概', false); go('设定', null, '梗概'); return; }
-  }
-  putScene({ 段: r.seg, 名: r.name, 人物: [], 道具: [], 场景图: [], 表达: '', 段落: [], 定稿: '', 扩写: '', 剧本定稿: '' });   // 段落等剧本定稿以后 AI 分
+  putScene({ 段: r.seg, 名: r.name, 人物: [], 道具: [], 场景图: [], 表达: '', 段落: [], 定稿: '', 扩写: '', 剧本定稿: '' });   // 梗概、出场的、段落等剧本定稿以后 AI 提炼
 }
 function putScene(s) {
   F.doc.场.push({ 场景文字: [], 人物图: [], 道具图: [], ...s });   // 这一段的图当人物、道具用的（流水线.js 的 SEG_FIELD），先空着
   F.doc.场.sort((a, b) => C.segCompare(a.段, b.段));
-  touch(); go('剧本', { s: s.段 });   // 加好了：直接去写这一场（先写表达、剧本）
+  touch(); go('剧本', { s: s.段 });   // 加好了：直接去写这一场的剧本
 }
 
 /* ---------- 以前写的段：剧本、镜头表是 AI 写、人批注的 ---------- */
@@ -96,12 +93,12 @@ async function batchDlg() {
     count.textContent = picked.size ? '交给 AI 写剧本（' + picked.size + ' 场）' : '先勾上要写的场';
     okBtn.disabled = !picked.size;
     const kids = d.场.map(s => {
-      const st = scriptState(s).st, note = !ready(s) ? '还没写表达' : st === 'wait' ? 'AI 在写' : st === 'final' ? '剧本定稿了，再写要重新定稿' : st === 'ok' ? '有剧本了，再写会换掉' : '还没有剧本';
-      return h('button', { type: 'button', class: 'fl-bc' + (picked.has(s.段) ? ' on' : ''), disabled: !ready(s), title: ready(s) ? note : '这一场还没写主要表达什么：到这一场的「剧本」那一步，在左边写',
+      const st = scriptState(s).st, note = !ready(s) ? '还没写想写什么' : st === 'wait' ? 'AI 在写' : st === 'final' ? '剧本定稿了，再写要重新定稿' : st === 'ok' ? '有剧本了，再写会换掉' : '还没有剧本';
+      return h('button', { type: 'button', class: 'fl-bc' + (picked.has(s.段) ? ' on' : ''), disabled: !ready(s), title: ready(s) ? note : '这一场还没写想写什么：到这一场的「剧本」那一步，在左边写',
         onclick: () => { picked.has(s.段) ? picked.delete(s.段) : picked.add(s.段); paint(); } }, h('i', null, icon('check')), h('span', null, '第' + s.段 + '场' + (s.名.trim() ? ' ' + s.名.trim() : '')), h('small', null, note));
     });
     body.replaceChildren(h('div', { class: 'fl-bg' },
-      h('div', { class: 'fl-bg-h' }, '各场', h('em', null, '照这一场要表达的写成剧本；写了表达的才能写'), h('span', { class: 'sp' }),
+      h('div', { class: 'fl-bg-h' }, '各场', h('em', null, '照这一场想写什么写成剧本；写了的才能交给 AI'), h('span', { class: 'sp' }),
         ids.length > 1 ? h('button', { class: 'fl-link', type: 'button', onclick: () => { ids.every(x => picked.has(x)) ? ids.forEach(x => picked.delete(x)) : ids.forEach(x => picked.add(x)); paint(); } }, ids.every(x => picked.has(x)) ? '都不选' : '全选') : null),
       kids.length ? h('div', { class: 'fl-bcs' }, kids) : h('p', { class: 'fn-note' }, '还没有。')));
   };
@@ -117,15 +114,15 @@ async function batchDlg() {
   await batchSend({ 人物: [], 道具: [], 场景: false, 场: d.场.map(s => s.段).filter(x => picked.has(x)) });
 }
 
-/* ---------- 全片设定五格：各写到什么样，点一格去写（风格 11-14 加：剧本定稿以后照剧本挑） ---------- */
+/* ---------- 全片设定五格：各写到什么样，点一格去看、去改（梗概、人物、场景、道具 11-16 起是剧本定稿以后 AI 提炼的；风格 11-14 加：剧本定稿以后照剧本挑） ---------- */
 function setupTiles() {
   const d = F.doc, ai = k => k === '场景' ? !!aiText('场景') : KIND[k] ? d[k].some(e => aiText(k, e.名)) : false;
   const tile = (k, note, todo) => h('button', { class: 'wf-tile' + (KINDS.includes(k) ? ' ' + kindCls(k) : '') + (todo ? ' todo' : ''), type: 'button', onclick: () => go('设定', null, k) },
     h('b', null, k), h('span', null, note), ai(k) ? h('em', null, 'AI 补了描写，去看看') : null);
   return h('div', { class: 'wf-tiles' },
-    tile('梗概', d.梗概.trim() ? oneLine(d.梗概) : '还没写', !d.梗概.trim()),
-    tile('人物', d.人物.length ? d.人物.map(e => e.名).join('、') : '还没有', !d.人物.length),
-    tile('场景', d.场景.trim() ? oneLine(d.场景) : '还没写', !d.场景.trim()),
+    tile('梗概', d.梗概.trim() ? oneLine(d.梗概) : '还没有，剧本定稿以后提炼', false),
+    tile('人物', d.人物.length ? d.人物.map(e => e.名).join('、') : '还没有，剧本定稿以后提炼', false),
+    tile('场景', d.场景.trim() ? oneLine(d.场景) : '还没有，剧本定稿以后提炼', false),
     tile('道具', d.道具.length ? d.道具.map(e => e.名).join('、') : '还没有', false),
     tile('风格', filmStyle() ? filmStyle().名 + (d.场.some(s => str(s.风格).trim()) ? '（有几场另选）' : '') : '还没定，剧本定稿以后挑', !filmStyle() && d.场.some(s => scriptState(s).st === 'final')));
 }
@@ -227,11 +224,11 @@ function render() {
   return [
     h('div', { class: 'fl-head' }, h('div', { class: 'fl-kicker' }, '流 水 线'),
       h('div', { class: 'fl-trow' }, h('div', { class: 'fl-title' }, F.name), h('button', { class: 'btn sm', title: '每个项目有自己的流水线。写之前先看一眼是不是这个项目', onclick: pickProject }, icon('folder'), '换项目'))),
-    h('section', { class: 'fl-sec' }, secHead('', '全片设定', '写一次，各场共用'), setupTiles()),
-    h('section', { class: 'fl-sec' }, secHead('', '分　场', d.场.length ? '一场一条线：剧本 → 段落 → 资产 → 提示词 → 审片。点哪一格进哪一步' : ''),
-      d.场.length ? scenesTable() : h('div', { class: 'fl-empty' }, h('p', null, '还没有场。'), h('p', { class: 'faint small' }, '照梗概一场一场加：选这一场出场的人物、道具，写这一场主要表达什么，再写剧本（自己写或让 AI 写）；剧本定稿以后 AI 分段落。')),
+    h('section', { class: 'fl-sec' }, secHead('', '分　场', d.场.length ? '一场一条线：剧本 → 提炼 → 资产 → 提示词 → 审片。点哪一格进哪一步' : ''),
+      d.场.length ? scenesTable() : h('div', { class: 'fl-empty' }, h('p', null, '还没有场。'), h('p', { class: 'faint small' }, '一场一场加，直接写剧本：自己写，或者写一句这一场想写什么让 AI 写。剧本定稿以后，AI 提炼梗概、出场的人物场景道具和段落。')),
       h('div', { class: 'wf-acts' }, h('button', { class: 'btn sm ink', onclick: addSceneDlg }, icon('plus'), '添加分场'),
         h('button', { class: 'btn sm', title: '勾上要写的场，一次交给 AI 写成剧本', onclick: () => batchDlg() }, '让 AI 写剧本…'))),
+    h('section', { class: 'fl-sec' }, secHead('', '全片设定', '各场剧本定稿以后 AI 提炼的，各场共用；也能自己改'), setupTiles()),
     legacyBlock(),
     AI.ok ? h('section', { class: 'fl-sec' }, secHead('', '即梦授权', '出片要用即梦账号：看登没登录、是哪个号'), h('div', { id: 'wf-jm' }, jmBody())) : null,
   ];

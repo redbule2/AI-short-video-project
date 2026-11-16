@@ -152,7 +152,7 @@ function synSection() {
   syn.value = d.梗概;
   syn.addEventListener('input', () => { d.梗概 = syn.value; fit(syn); touch(); paintSteps(); });
   const box = h('div', null, syn);
-  return h('section', { class: 'fl-sec fl-syn' }, secHead('一', '梗　概', '全片的，你写', folder('梗概', box, () => d.梗概, () => syn.focus())), box);
+  return h('section', { class: 'fl-sec fl-syn' }, secHead('一', '梗　概', '全片的，剧本定稿以后 AI 提炼，你也能改', folder('梗概', box, () => d.梗概, () => syn.focus())), box);
 }
 
 /* ---------- 风格：全片的拍摄风格。剧本定稿以后照剧本挑（第一场定稿时会弹出来）；个别场在那一场页面顶上另选 ---------- */
@@ -189,7 +189,7 @@ function tabNote(k) {
   if (k === '风格') return filmStyle() ? filmStyle().名 : '还没定';
   return d[k].length ? d[k].length + ' ' + KIND[k].unit : '还没有';
 }
-const tabTodo = k => k === '梗概' ? !F.doc.梗概.trim() : k === '场景' ? !F.doc.场景.trim() : k === '风格' ? !filmStyle() && F.doc.场.some(s => scriptState(s).st === 'final') : !F.doc[k].length;   // 风格：有一场剧本定稿了还没定才催
+const tabTodo = k => k === '梗概' || k === '场景' || k === '人物' || k === '道具' ? false : k === '风格' ? !filmStyle() && F.doc.场.some(s => scriptState(s).st === 'final') : !F.doc[k].length;   // 风格：有一场剧本定稿了还没定才催
 const tabsEls = () => TABS.map(k => h('button', { class: 'wf-tab' + (KINDS.includes(k) ? ' ' + kindCls(k) : '') + (k === TAB ? ' on' : '') + (tabTodo(k) ? ' todo' : ''), type: 'button', onclick: () => setTab(k) }, k, h('small', null, tabNote(k))));
 function setTab(k) {
   TAB = k;

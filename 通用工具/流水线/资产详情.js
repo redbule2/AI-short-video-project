@@ -374,7 +374,7 @@ function adFabEls(s, it, w) {
 /* 只换会变的几块：字的框子不重做（正在写的字、光标都留着），图和记录变了才重做 */
 function adRepaint() {
   const s = sceneNow(), root = document.getElementById('ad'), fab = document.getElementById('ad-fab');
-  if (!s || !root || scriptState(s).st !== 'final') return false;
+  if (!s || !root || assetState(s).st === 'lock') return false;
   const r = adFind(s);
   if (!r) {
     const from = adFrom();
@@ -409,9 +409,8 @@ function adRepaint() {
 }
 function adRender() {
   const s = sceneNow(), from = adFrom();
-  if (scriptState(s).st !== 'final') return h('div', { class: 'wf-lock' },
-    '剧本定稿以后才能出资产图。先到「剧本」那一步，看完点「剧本定稿」。',
-    h('button', { class: 'btn ink', onclick: () => go('剧本', { s: s.段 }) }, '← 去看剧本'));
+  const lk = assetState(s);
+  if (lk.st === 'lock') return assetLock(s, lk);
   AD.imgSig = ''; AD.logSig = '';   // 整页重画了：图和记录也要重摆
   setTimeout(adRepaint, 0);
   return [h('div', { class: 'ad', id: 'ad' },
