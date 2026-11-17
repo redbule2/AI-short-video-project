@@ -76,6 +76,30 @@ test('AI 改过的原来是什么：只说改了的那几样', () => {
   assert.equal(W.was({ 写什么: 'a', 作用: 'b' }, { 写什么: 'c', 作用: 'd' }), '写什么：a　作用：b');
 });
 
+test('连着哪几镜：为是这一镜指过去，接是那一镜指过来；同一对同方向只画一个箭头', () => {
+  const rows = [{ 作用: '铺垫｜炮兵已在掏箱底，为镜4弹尽' }, { 作用: '铺垫｜为镜头05沉寂' }, { 作用: '' }, { 作用: '转折｜炮弹打光，接镜1' }, { 作用: '反应｜接镜4，为镜10' }];
+  assert.deepEqual(W.links(rows, ['1', '2', '3', '4', '5']), [
+    { from: '1', to: '4', say: '镜1 为镜4；镜4 接镜1' },
+    { from: '2', to: '5', say: '镜2 为镜5' },
+    { from: '4', to: '5', say: '镜5 接镜4' },
+  ]);
+  assert.deepEqual(W.links([{ 作用: '接镜3b' }, { 作用: '' }], ['3', '3b']), [{ from: '3b', to: '3', say: '镜3 接镜3b' }]);
+});
+
+test('镜头表怎么排：宽的一镜一行，窄的两行格子，字都不截；高放不下才挤', () => {
+  const need = { t: 610, c: 420 };
+  const a = W.grid(19, 1452, 560, need);   // 宽屏 3-4：一镜一行、两栏
+  assert.deepEqual([a.m, a.c, a.rows], ['t', 2, 10]);
+  const b = W.grid(7, 1452, 560, { t: 760, c: 470 });   // 宽屏 3-5：镜头少、字长，一栏就够
+  assert.deepEqual([b.m, b.c], ['t', 1]);
+  const c = W.grid(19, 1030, 575, need);   // 窄窗口：一行装不下字，换两行的格子
+  assert.deepEqual([c.m, c.c, c.hh], ['c', 2, 50]);
+  const e = W.grid(19, 1034, 510, { t: 577, c: 416 });   // 再矮一点：两行格子两栏差一点高，宁可页面滚一点也不截字
+  assert.deepEqual([e.m, e.c, e.hh], ['c', 2, 50]);
+  const d = W.grid(40, 900, 300, { t: 2000, c: 2000 });   // 宽高怎么都放不下：最挤的那种
+  assert.equal(d.m, 't'); assert.equal(d.hh, 32);
+});
+
 test('画作用：有标签出色块，没标签只出那句', () => {
   const h = (tag, a, ...kids) => ({ tag, a, kids });
   const [chip, rest] = W.bits('高潮｜接镜3，全段最爽', h);

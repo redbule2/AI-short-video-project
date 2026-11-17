@@ -38,22 +38,23 @@
 .pz-ops { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 2px; }
 .pz-ops .sp { flex: 1; }
 .fl-link.danger { color: var(--zhu); text-decoration-color: var(--zhu-line); }
-/* 镜头表：一镜一格，一屏摆下（几栏、每格两行还是一行由 shotGrid 量了定）；点一格，改的那一块浮在上面 */
+/* 镜头表：一镜一格，一屏摆下（11-16 他定：宽的一镜一行像表格，窄的两行的格子；几栏、哪种由 shotGrid 量了定，公用/镜头作用.js 的 grid）；点一格，改的那一块浮在上面 */
 .pz-tbw { position: relative; }
-.pz-tb { display: grid; grid-auto-columns: minmax(0, 1fr); gap: 6px 12px; }   /* 没量之前一栏往下排；量完 shotGrid 改成竖着排几栏 */
-.pz-r { position: relative; display: grid; grid-template-columns: 16px 32px minmax(0, 1fr) auto 26px; gap: 2px; align-items: center; min-width: 0; padding: 0 2px 0 0; border: 1px solid var(--line); border-radius: 7px; background: var(--sheet); cursor: pointer; outline: 0; transition: border-color .12s; }
+.pz-tb { display: grid; grid-auto-columns: minmax(0, 1fr); gap: 6px 12px; }   /* 没量之前一栏往下排；量完 shotGrid 改成竖着排几栏、定行距栏距 */
+.pz-r { position: relative; display: grid; grid-template-columns: 16px 38px minmax(0, 1fr) auto 26px; gap: 2px; align-items: center; min-width: 0; padding: 0 2px 0 0; border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); cursor: pointer; outline: 0; transition: border-color .12s; }
 .pz-r:hover { border-color: var(--ink-4); }
 .pz-r:focus-visible { border-color: var(--dai-line); box-shadow: 0 0 0 3px var(--dai-soft); }
 .pz-g { color: var(--ink-4); letter-spacing: -2px; text-align: center; cursor: grab; touch-action: none; user-select: none; opacity: .5; }
 .pz-r:hover .pz-g { opacity: 1; }
-.pz-no { font: 14.5px/1.4 var(--kai); color: var(--dai); white-space: nowrap; }
+.pz-no { font: 15.5px/1.4 var(--kai); color: var(--dai); white-space: nowrap; }
 .pz-tx { display: flex; flex-direction: column; min-width: 0; }
 .pz-tx > b, .pz-tx > small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pz-tx > b { font: 600 14.5px/1.5 var(--serif); letter-spacing: .02em; color: var(--ink); }
-.pz-tx > small { font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
-.pz-tb.d1 .pz-tx { flex-direction: row; align-items: baseline; gap: 10px; }
-.pz-tb.d1 .pz-tx > b { flex: 0 1 auto; max-width: 72%; }
-.pz-tb.d1 .pz-tx > small { flex: 1 1 0; min-width: 3em; }
+.pz-tx > b { font: 600 15.5px/1.5 var(--serif); letter-spacing: .02em; color: var(--ink); }
+.pz-tx > small { font-size: 13.5px; line-height: 1.5; color: var(--ink-3); }
+.pz-tb.t .pz-r { grid-template-columns: 16px 38px minmax(0, max-content) auto minmax(26px, 1fr); }   /* 一镜一行：写什么、作用、秒数挨着排成三列，上下对齐；「…」靠右 */
+.pz-tb.t.ro .pz-r { grid-template-columns: 36px minmax(0, max-content) auto 1fr; }
+.pz-tb.t .pz-tx { display: grid; grid-template-columns: minmax(0, var(--pzw, 14em)) minmax(0, var(--pzy, 20em)); column-gap: 18px; align-items: baseline; }   /* 两列的宽照这一段最长的那句 */
+.pz-tb.t .pz-more { justify-self: end; }
 .pz-r .pz-more { width: 24px; height: 24px; opacity: .35; }
 .pz-r:hover .pz-more { opacity: 1; }
 .pz-r.note::after, .pz-c.note::after { content: ''; position: absolute; right: -1px; top: -1px; border: 6px solid transparent; border-top-color: var(--zhu); border-right-color: var(--zhu); border-top-right-radius: 7px; }
@@ -62,23 +63,27 @@
 .pz-tb.dragging, .pz-tb.dragging * { cursor: grabbing !important; user-select: none; }
 .pz-r.drag { z-index: 2; border-color: var(--dai); background: #fff; box-shadow: 0 10px 24px -10px rgba(40, 28, 16, .45); }
 .pz-tb.ro .pz-r { grid-template-columns: 36px minmax(0, 1fr) auto; padding-left: 8px; }
-/* 每镜的秒数、鼠标停在一镜上它连着的那几镜（作用里写的镜N、写到它的）亮起来（11-16，公用/镜头作用.js） */
-.pz-sec { padding: 0 4px 0 6px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+/* 每镜的秒数；鼠标停着（或点开）的那一镜是选中的，只它一个；作用里接镜N、为镜N 连着的那几镜虚线框，色带上画箭头（11-16 他说点镜1 像同时选中了 1 和 4，不能有歧义） */
+.pz-sec { padding: 0 4px 0 8px; font-size: 13px; color: var(--ink-3); white-space: nowrap; }
 .pz-sec.miss { color: var(--ink-4); }
 .pz-sec.mine { color: var(--dai); }
-.pz-r.hot { border-color: var(--ink-4); background: #fff8e4; }
-.pz-r.lnk { border-color: var(--dai-line); background: #f0f6f5; }
-.pz-r.lnk .pz-no, .pz-r.hot .pz-no { color: var(--zhu); }
+.pz-r.hot { border-color: var(--ink-3); background: #fff8e4; }
+.pz-r.hot .pz-no { color: var(--zhu); }
+.pz-r.lnk { border-style: dashed; border-color: var(--dai); }
 /* 镜头表顶上的色带：一块一镜，宽窄照秒数、颜色照标签；每 15 秒一道红虚线（一条视频一般 15 秒） */
 .sw-sum { margin: 0 0 4px; font-size: 12.5px; color: var(--ink-3); }
+.sw-say { float: right; max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-4); }
+.sw-say.on { color: var(--zhu); }
 .sw-sum b { font-weight: 600; color: var(--ink-2); }
-.sw-bar { position: relative; display: flex; height: 24px; margin: 0 0 18px; }
-.sw-b { display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 0; overflow: hidden; border-right: 2px solid var(--paper); background: var(--paper-2); color: var(--ink-3); font-size: 11.5px; white-space: nowrap; cursor: pointer; }
+.sw-bar { position: relative; display: flex; height: 28px; margin: 20px 0 18px; }   /* 上面空出一条画箭头 */
+.sw-b { display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 0; overflow: hidden; border-right: 2px solid var(--paper); background: var(--paper-2); color: var(--ink-3); font-size: 12px; white-space: nowrap; cursor: pointer; }
 .sw-b:first-child { border-radius: 5px 0 0 5px; }
 .sw-b:last-of-type { border-right: 0; border-radius: 0 5px 5px 0; }
 .sw-b em { font-style: normal; opacity: .75; }
-.sw-b.hot { box-shadow: inset 0 0 0 2px var(--ink-3); }
-.sw-b.lnk { box-shadow: inset 0 0 0 2px var(--dai); }
+.sw-b.hot { box-shadow: inset 0 0 0 2px var(--ink); font-weight: 600; color: var(--ink); }
+.sw-arcs { position: absolute; left: 0; top: -20px; width: 100%; height: 20px; overflow: visible; pointer-events: none; }
+.sw-arcs path { fill: none; stroke: var(--zhu); stroke-width: 1.5; }
+.sw-arcs marker path { fill: var(--zhu); stroke: none; }
 .sw-m { position: absolute; top: -3px; bottom: -3px; border-left: 2px dashed var(--zhu); pointer-events: none; }
 .sw-m span { position: absolute; top: 100%; left: -2px; padding-top: 1px; font-size: 11px; line-height: 1.4; color: var(--zhu); white-space: nowrap; }
 /* 改的那一块：作用前面的六个标签点一下换上；作用数着字；秒数 */
@@ -147,6 +152,7 @@
 .pz-syn { padding: 12px 16px; border: 1px solid var(--line); border-radius: 9px; background: var(--sheet); font: 16px/1.95 var(--serif); white-space: pre-wrap; word-break: break-word; }
 .pz-syned.chg { padding-left: 12px; box-shadow: inset 3px 0 0 var(--zhu-line); }
 .pz-syned .fq-in.why { min-height: 130px; }
+.pz-syn, .pz-syned { max-width: 880px; }   /* 页面放宽了，梗概一行别太长 */
 @media (max-width: 1240px) { .pz-head { margin: -16px -16px 12px; padding: 10px 16px 0; } }
 </style>
 </head>
@@ -280,7 +286,7 @@ function shotGrid(s, foot, ro) {
   const band = h('div', { class: 'sw-band' });   // 顶上的色带和合计
   wrap.append(band, box);
   const noOf = sh => shotNos(s)[s.段落.indexOf(sh)];
-  const changed = () => { paintBand(); if (foot) foot(); layout(); if (ed) place(); };
+  const changed = () => { if (foot) foot(); layout(); if (ed) place(); };   // layout 末了重画色带
   const secTip = sh => Why.secOf(sh) ? '约 ' + Why.secOf(sh) + ' 秒' + (sh.秒数人定 ? '（你定的，AI 照批注改时不动）' : '（AI 估的）') : '还没估秒数';
 
   /* 一格：号、写什么、作用（标签是色块）、秒数；批注是右上角红角，AI 改过的是左边一道红；全文在悬停提示里 */
@@ -313,42 +319,77 @@ function shotGrid(s, foot, ro) {
   function paintBand() {
     const rows = s.段落, st = Why.strip(rows), sum = Why.sum(rows), nos = shotNos(s);
     if (!rows.length) { band.replaceChildren(); return; }
-    const parts = Math.ceil(st.total / Why.ONE), roomy = rows.length <= 8;
+    const parts = Math.ceil(st.total / Why.ONE), BW = band.clientWidth, roomy = b => BW ? BW * b.w >= 76 : rows.length <= 8;   // 块够宽才写标签、秒数
     band.replaceChildren(
       h('p', { class: 'sw-sum' }, h('b', null, rows.length + ' 镜'), '　', sum.total ? h('b', null, sum.say) : '还没估秒数',
-        parts > 1 ? '　一条视频一般 ' + Why.ONE + ' 秒，这一段大概要分 ' + parts + ' 条' : '', sum.total ? '　红线是每 ' + Why.ONE + ' 秒' : ''),
+        parts > 1 ? '　一条视频一般 ' + Why.ONE + ' 秒，这一段大概要分 ' + parts + ' 条' : '', sum.total ? '　红线是每 ' + Why.ONE + ' 秒' : '', h('span', { class: 'sw-say' })),
       h('div', { class: 'sw-bar' }, ...st.blocks.map(b => {
         const sh = rows[b.i], tag = b.tag;
-        return h('div', { class: 'sw-b' + (tag ? ' ' + Why.TAGS[tag] : ''), 'data-i': String(b.i), style: 'flex:' + b.w.toFixed(4) + ' 1 0',
+        return h('div', { class: 'sw-b' + (tag ? ' ' + Why.TAGS[tag] : ''), 'data-i': String(b.i), 'data-no': nos[b.i], style: 'flex:' + b.w.toFixed(4) + ' 1 0',
           title: '镜头' + nos[b.i] + '　' + (sh.写什么.trim() || '还空着') + '\n' + (sh.作用.trim() || '没写作用') + '\n' + secTip(sh),
           onclick: () => open(sh), onmouseenter: () => light(sh), onmouseleave: () => light(null) },
-          nos[b.i] + (roomy && tag ? ' ' + tag : ''), roomy && b.sec ? h('em', null, b.sec + '秒') : null);   // 镜头多了块窄：只写号，别的看颜色和悬停提示
+          '镜' + nos[b.i] + (roomy(b) && tag ? ' ' + tag : ''), roomy(b) && b.sec ? h('em', null, b.sec + '秒') : null);   // 写「镜1」别只写 1（11-16 他说光数字看不明白）；块窄：只写镜号，别的看颜色和悬停提示
       }), ...st.marks.map((m, k) => h('i', { class: 'sw-m', style: 'left:' + (m * 100).toFixed(2) + '%' }, h('span', null, (k + 1) * Why.ONE + ' 秒')))));
     light(lit);
   }
-  /* 鼠标停在一镜上：它自己、它作用里写到的那几镜、作用里写到它的那几镜，格子和色带上都亮起来 */
+  /* 选中的一镜：鼠标停着的，没停就是点开的那一镜，只它一个。作用里接镜N、为镜N 连着的：格子虚线框，色带上画箭头（为：这一镜 → 镜N；接：镜N → 这一镜），上面一行写原话 */
   function light(sh) {
-    lit = sh && s.段落.includes(sh) ? sh : null;
-    const nos = shotNos(s), me = lit ? nos[s.段落.indexOf(lit)] : '', mine = lit ? Why.refs(lit.作用, nos) : [];
-    const tie = (x, n) => !!lit && x !== lit && (mine.includes(n) || Why.refs(x.作用, nos).includes(me));
+    const pick = x => x && s.段落.includes(x) ? x : null;
+    lit = pick(sh) || pick(ed && ed.sh);
+    const nos = shotNos(s), me = lit ? nos[s.段落.indexOf(lit)] : '', ties = lit ? Why.links(s.段落, nos).filter(l => l.from === me || l.to === me) : [];
+    const near = new Set(ties.map(l => l.from === me ? l.to : l.from));
     s.段落.forEach((x, i) => {
-      const c = cells.get(x), b = band.querySelector('.sw-b[data-i="' + i + '"]'), on = !!lit && x === lit, ln = tie(x, nos[i]);
-      for (const el of [c, b]) if (el) { el.classList.toggle('hot', on); el.classList.toggle('lnk', ln); }
+      const c = cells.get(x), b = band.querySelector('.sw-b[data-i="' + i + '"]'), on = !!lit && x === lit;
+      if (c) { c.classList.toggle('hot', on); c.classList.toggle('lnk', near.has(nos[i])); }
+      if (b) b.classList.toggle('hot', on);
     });
+    const say = band.querySelector('.sw-say');
+    if (say) {
+      say.textContent = !lit ? '鼠标放在一镜上：箭头指着跟它连着的镜头' : ties.length ? ties.map(l => l.say).join('；') : '镜' + me + ' 没写跟哪一镜连着';
+      say.classList.toggle('on', ties.length > 0);
+    }
+    arcs(ties);
+  }
+  /* 色带上方的箭头：从一块的正中弯到另一块的正中，箭头朝 to */
+  function arcs(ties) {
+    const bar = band.querySelector('.sw-bar');
+    if (!bar) return;
+    const old = bar.querySelector('.sw-arcs');
+    if (old) old.remove();
+    const mid = no => { const b = bar.querySelector('.sw-b[data-no="' + no + '"]'); return b ? b.offsetLeft + b.offsetWidth / 2 : null; };
+    const ds = bar.isConnected ? ties.map(l => [mid(l.from), mid(l.to)]).filter(([a, b]) => a != null && b != null) : [];
+    if (!ds.length) return;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'sw-arcs');
+    svg.innerHTML = '<defs><marker id="sw-ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z"/></marker></defs>'
+      + ds.map(([a, b]) => { const up = Math.min(17, 7 + Math.abs(b - a) / 30); return '<path marker-end="url(#sw-ah)" d="M' + a.toFixed(1) + ' 20 Q' + ((a + b) / 2).toFixed(1) + ' ' + (20 - 2 * up).toFixed(1) + ' ' + b.toFixed(1) + ' 20"/>'; }).join('');
+    bar.prepend(svg);
   }
 
-  /* 量这一页还剩多高，挑一种摆得下的：先两行一栏、两行几栏，再一行一栏、一行几栏；都摆不下就用最挤的那种（页面才滚） */
+  /* 量这一段最长的写什么、作用要多宽，这一页还剩多高，照 Why.grid 挑：宽的一镜一行（写什么、作用两列对齐），窄的两行的格子；字不截、一屏放下 */
+  const textW = el => { if (!el) return 0; const rg = document.createRange(); rg.selectNodeContents(el); return rg.getBoundingClientRect().width; };
+  function needOf() {
+    let b = 0, w = 0, fix = 0;
+    for (const c of cells.values()) {
+      const tx = c.querySelector('.pz-tx');
+      if (!tx) continue;
+      b = Math.max(b, textW(tx.children[0])); w = Math.max(w, textW(tx.children[1]));
+      fix = Math.max(fix, c.offsetWidth - tx.offsetWidth);
+    }
+    return { b, w, t: fix + b + 18 + w + 6, c: fix + Math.max(b, w) + 6 };   // 18：一行里写什么和作用中间空的
+  }
   function layout() {
     if (!box.isConnected) return;
     const n = box.children.length, W = box.clientWidth, r = box.getBoundingClientRect(), root = document.getElementById('wf');
     const avail = innerHeight - (r.top + window.scrollY) - (root.getBoundingClientRect().bottom - r.bottom) - 2;
-    const GAP = 6, opts = [];
-    for (const [d, hh, minW] of [[2, 50, 300], [1, 34, 260]]) for (let c = 1, max = Math.max(1, Math.floor((W + 12) / (minW + 12))); c <= max; c++) opts.push({ d, hh, c });
-    const rows = o => Math.ceil(n / o.c), tall = o => rows(o) * o.hh + (rows(o) - 1) * GAP;
-    const o = opts.find(x => tall(x) <= avail) || opts[opts.length - 1];
-    box.classList.toggle('d1', o.d === 1);
-    box.style.gridTemplateRows = 'repeat(' + rows(o) + ', ' + o.hh + 'px)';
+    const need = needOf(), o = Why.grid(n, W, avail, need);
+    box.classList.toggle('t', o.m === 't');
+    box.style.setProperty('--pzw', Math.ceil(need.b) + 'px');
+    box.style.setProperty('--pzy', Math.ceil(need.w) + 'px');
+    box.style.gap = o.gap[0] + 'px ' + o.gap[1] + 'px';
+    box.style.gridTemplateRows = 'repeat(' + o.rows + ', ' + o.hh + 'px)';
     box.style.gridAutoFlow = 'column';
+    paintBand();   // 色带上块里写几个字照它多宽
   }
   FIT.fn = layout;
 
@@ -363,6 +404,7 @@ function shotGrid(s, foot, ro) {
     c.classList.add('on');
     ed = { sh, el: ro ? viewOf(sh) : editorOf(sh) };
     wrap.append(ed.el);
+    light(null);
     fitAll(); place();
     if (!ro) focusIn(key);
     document.addEventListener('pointerdown', outside, true);
@@ -372,6 +414,7 @@ function shotGrid(s, foot, ro) {
     const { sh, el } = ed;
     ed = null; OPEN.shot = null;
     el.remove();
+    light(null);
     document.removeEventListener('pointerdown', outside, true);
     const c = cells.get(sh);
     if (c) { c.classList.remove('on'); if (!quiet) c.focus({ preventScroll: true }); }
@@ -686,7 +729,7 @@ function shortNos(t) {
 }
 
 start({
-  name: '分场', title: '提炼', scene: true,
+  name: '分场', title: '提炼', scene: true, wide: true,   // 11-16 他嫌两边留白多、中间挤：和剧本、资产页一样宽
   render() {
     const s = sceneNow(), p = paraState(s);
     if (p.st === 'lock') return lockView(s);

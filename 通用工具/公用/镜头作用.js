@@ -87,10 +87,42 @@
     const t = (v, k) => str(v && v[k]).trim();
     return [t(o, '写什么') !== t(x, '写什么') ? '写什么：' + (t(o, '写什么') || '（空）') : '', t(o, '作用') !== t(x, '作用') ? '作用：' + (t(o, '作用') || '（原来没写）') : ''].filter(Boolean).join('　');
   }
+  /* 作用里写的「接镜N」「为镜N」连着哪几镜，箭头朝哪：为是这一镜 → 镜N，接是镜N → 这一镜。
+     给 [{ from, to, say }]，say 照原话「镜1 为镜4」；同一对、同一个方向的箭头只给一个，原话都留着 */
+  function links(rows, nos) {
+    const out = [];
+    (rows || []).forEach((x, i) => {
+      const me = str(nos[i]), re = /(接|为)镜(?:头)?\s*0*([0-9]+[a-z]?)/gi;
+      let m;
+      while ((m = re.exec(str(x && x.作用)))) {
+        const n = m[2].toLowerCase();
+        if (n === me || !nos.map(String).includes(n)) continue;
+        const [from, to] = m[1] === '为' ? [me, n] : [n, me], say = '镜' + me + ' ' + m[1] + '镜' + n, same = out.find(y => y.from === from && y.to === to);
+        if (same) { if (!same.say.includes(say)) same.say += '；' + say; } else out.push({ from, to, say });
+      }
+    });
+    return out;
+  }
+  /* 镜头表怎么排（11-16 他定：宽用一镜一行的表，窄用两行的格子）。n：格子数（连「加一镜」）；W、avail：能用的宽、高；
+     need：{ t: 一镜一行一格要多宽, c: 两行的格子一格要多宽 }（字不截掉）。照 GRID 的先后、栏数从少到多，挑第一个宽、高都放得下的；
+     没有：字不截优先，挑最矮的（页面滚一点）；怎么都要截字：高放得下、最不缺宽的；都不行：最挤的那种 */
+  const GRID = Object.freeze([{ m: 't', hh: 40, gap: [6, 22] }, { m: 'c', hh: 58, gap: [8, 16] }, { m: 'c', hh: 50, gap: [6, 14] }, { m: 't', hh: 32, gap: [4, 18] }]);
+  function grid(n, W, avail, need) {
+    let whole = null, best = null, last = null;
+    for (const g of GRID) for (let c = 1, max = Math.max(1, Math.floor((W + g.gap[1]) / (240 + g.gap[1]))); c <= Math.min(max, Math.max(1, n)); c++) {
+      const rows = Math.ceil(n / c), tall = rows * g.hh + (rows - 1) * g.gap[0], o = { m: g.m, hh: g.hh, gap: g.gap, c, rows, cw: (W - (c - 1) * g.gap[1]) / c, tall };
+      const wide = o.cw >= need[g.m];
+      last = o;
+      if (tall <= avail && wide) return o;
+      if (wide && (!whole || tall < whole.tall)) whole = o;
+      if (tall <= avail && (!best || o.cw - need[o.m] > best.cw - need[best.m])) best = o;
+    }
+    return whole || best || last;
+  }
   /* 页面上画作用：色块＋后面那句。h：界面.js 的 h；cls：后面那句的样式 */
   function bits(why, h, cls) {
     const { tag, rest } = split(why);
     return [tag ? h('span', { class: 'sw-t ' + TAGS[tag], title: tag + '：' + SAY[tag] }, tag) : null, h('span', { class: cls || 'sw-r' }, rest)].filter(Boolean);
   }
-  return Object.freeze({ MAX, ONE, LONGEST, TAGS, NAMES, SAY, ruleWhy, RULE_SEC, split, len, refs, renum, secOf, sum, pickSay, strip, keepSecs, merge, was, bits });
+  return Object.freeze({ MAX, ONE, LONGEST, TAGS, NAMES, SAY, ruleWhy, RULE_SEC, split, len, refs, renum, secOf, sum, pickSay, strip, keepSecs, merge, was, links, GRID, grid, bits });
 });
