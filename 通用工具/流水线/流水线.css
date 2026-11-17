@@ -54,15 +54,7 @@
 .fl-link:hover { color: var(--ink); }
 .fs-lab { display: flex; align-items: baseline; gap: 10px; margin: 18px 0 8px; font: 15px var(--kai); color: var(--ink-2); letter-spacing: .26em; }
 .fs-lab em { font: normal 12px var(--sans); letter-spacing: .02em; color: var(--ink-4); }
-/* 剧本段落：一段一块。写什么一整行，起什么作用是一个大格子，和记事本一样写 */
-.fq-list { display: flex; flex-direction: column; gap: 12px; }
-.fq { padding: 10px 18px 16px; border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(to bottom, rgba(244, 239, 230, .6), rgba(255, 253, 249, 0) 76px); transition: border-color .15s; }
-.fq:focus-within { border-color: var(--dai-line); }
-.fq-h { display: flex; align-items: center; gap: 12px; }
-.fq-no { font: 17px var(--kai); color: var(--dai); letter-spacing: .08em; white-space: nowrap; }
-.fq-h .ln { flex: 1; height: 1px; background: linear-gradient(to right, var(--line-2), transparent); }
-.fq-f { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; align-items: start; margin-top: 10px; cursor: text; }
-.fq-f > span { padding-top: 12px; font: 14px var(--kai); color: var(--ink-2); letter-spacing: .12em; white-space: nowrap; }
+/* 提炼页改字的格子（写什么一行，作用、描写几行） */
 .fq-in {
   display: block; width: 100%; padding: 9px 16px; resize: none; overflow: hidden; field-sizing: content;
   border: 1px solid var(--line); border-radius: 7px; outline: 0; background: #fffefa;
@@ -72,10 +64,6 @@
 .fq-in.why { min-height: 114px; }
 .fq-in:focus { border-color: var(--dai-line); box-shadow: 0 0 0 4px var(--dai-soft); }
 .fq-in::placeholder { color: var(--ink-4); font-family: var(--kai); font-weight: 400; letter-spacing: 0; }
-.fq-over { padding: 3px 0 0 4px; font-size: 12px; color: var(--zhu); }
-.fq-over:empty { display: none; }
-.fq-acts { display: flex; align-items: center; gap: 2px; opacity: .5; transition: opacity .15s; }
-.fq:hover .fq-acts, .fq:focus-within .fq-acts { opacity: 1; }
 .fl-ib { width: 28px; height: 28px; flex: none; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: none; color: var(--ink-3); cursor: pointer; }
 .fl-ib:hover:not(:disabled) { background: var(--paper-2); color: var(--ink); }
 .fl-ib:disabled { opacity: .3; cursor: default; }
@@ -95,10 +83,6 @@
 .wf-fab-note.todo { border-color: var(--zhu-line); color: var(--zhu); }
 .wf-fab-note:empty { display: none; }
 body.wf-covered .wf-fab { display: none; }
-/* 定下来以后 */
-.fs-info { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 2px 12px; margin: 0 0 10px; }
-.fs-info dt { padding-top: 7px; font: 13.5px var(--kai); color: var(--ink-3); letter-spacing: .26em; white-space: nowrap; }
-.fs-info dd { margin: 0; font: 16px/1.95 var(--serif); white-space: pre-wrap; word-break: break-word; }
 .fs-list { margin: 0; padding: 0; list-style: none; }
 .fs-list li { display: grid; grid-template-columns: 58px minmax(0, 4fr) minmax(0, 8fr); gap: 12px; padding: 7px 0; border-top: 1px dashed var(--line); font-size: 15px; line-height: 1.8; word-break: break-word; }
 .fs-list .n { font: 15px/1.8 var(--kai); color: var(--dai); white-space: nowrap; }
@@ -182,8 +166,7 @@ body.wf-covered .wf-fab { display: none; }
 .fl-at small { font-size: 11px; color: var(--zhu); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fl-at.blank { justify-content: flex-start; }
 .fl-at-no { display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3; border: 1px dashed var(--line-2); border-radius: 6px; font: 14px var(--kai); color: var(--ink-3); }
-/* 这一场出场的：选上的人物、道具、场景图 */
-.fs-sel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+/* 这一场出场的小牌子：选上的人物、道具、场景图 */
 .fl-ref { position: relative; display: inline-flex; align-items: center; gap: 7px; padding: 3px 12px 3px 3px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--sheet); font: 14px/1.4 var(--sans); color: var(--ink); white-space: nowrap; }
 .fl-ref img, .fl-ref .ph { width: 30px; height: 30px; flex: none; border-radius: 50%; object-fit: cover; object-position: top; background: var(--paper-2); }
 .fl-ref .ph { display: grid; place-items: center; font: normal 13px var(--kai); color: var(--ink-3); }
@@ -195,7 +178,6 @@ body.wf-covered .wf-fab { display: none; }
 .fl-ref-x { width: 18px; height: 18px; flex: none; display: grid; place-items: center; margin: 0 -6px 0 -2px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink-4); cursor: pointer; }
 .fl-ref-x:hover { background: var(--paper-2); color: var(--zhu); }
 .fl-ref-x .ic { width: 10px; height: 10px; stroke-width: 2; }
-.fs-info dd.fs-sel { padding: 4px 0; }
 /* 挨着按钮弹出来的小窗 */
 .fl-pop { position: fixed; z-index: 48; width: 340px; max-width: calc(100vw - 16px); max-height: min(520px, calc(100vh - 16px)); display: flex; flex-direction: column; border-radius: 11px; background: var(--sheet); box-shadow: 0 0 0 1px rgba(214, 202, 182, .95), 0 22px 54px -16px rgba(40, 28, 16, .5); animation: fade .12s ease both; }
 .fl-pop-h { flex: none; padding: 12px 16px 8px; font: 15px var(--kai); color: var(--dai); letter-spacing: .14em; }
@@ -262,9 +244,6 @@ body.wf-covered .wf-fab { display: none; }
 .fl-wbox .fl-bad { margin: 40px auto; max-width: 520px; }
 @media (max-width: 1240px) {
   .fl-scene { padding: 16px 16px 14px; }
-  .fq { padding: 10px 12px 14px; }
-  .fq-f { grid-template-columns: 72px minmax(0, 1fr); gap: 8px; }
-  .fq-f > span { letter-spacing: .04em; }
 }
 
 /* ============================================================
@@ -672,3 +651,24 @@ button.as-warn:hover { border-color: var(--zhu); }
 .pc-ext { color: var(--ink-3); font-size: 13.5px; }
 .pc-dest { font-size: 13px; line-height: 1.7; color: var(--ink-2); word-break: break-all; }
 .pc-dest b { color: var(--dai); font-weight: 600; }
+
+/* 勾镜头表里的镜头（写提示词勾这一条拍哪几镜、关键帧绑到哪一镜）：提示词、资产两页共用 */
+.prompt-shots { display: grid; gap: 7px; max-height: 34vh; overflow: auto; }
+.prompt-shot { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; cursor: pointer; }
+.prompt-shot:has(input:checked) { border-color: var(--qing); background: var(--qing-soft); }
+.prompt-shot input { margin-top: 5px; accent-color: var(--qing); }
+.prompt-shot span { display: grid; gap: 3px; min-width: 0; }
+.prompt-shot small { color: var(--ink-3); line-height: 1.6; }
+.prompt-scope { margin-top: 10px; color: var(--ink-2); font-size: 13px; line-height: 1.7; }
+.prompt-scope summary { cursor: pointer; }
+.prompt-scope ol { margin: 6px 0; padding-left: 24px; }
+/* 资产页关键帧那一块：按镜头表一镜一行（2026-11-16 关键帧绑定） */
+.kb-row { margin-top: 14px; }
+.kb-row .wf-grid { margin-top: 8px; }
+.kb-h { display: flex; gap: 10px; align-items: baseline; font-size: 13px; color: var(--ink-2); }
+.kb-h b { color: var(--ink); white-space: nowrap; }
+.kb-h .fl-link { margin-left: auto; }
+.kb-loose .kb-h b { color: var(--zhu, #a83a2c); }
+.kb-chip { flex-wrap: wrap; row-gap: 6px; }
+.kb-acts { flex-basis: 100%; display: flex; gap: 6px; justify-content: flex-end; }
+.fl-at.kb-t small { color: var(--ink-3); }

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>关键帧绑定流程图</title>
+<style>
+:root { --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --line: #d6cab6; --zhu: #a83a2c; --dai: #3e5c5e; --huang: #fff4c9; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.85 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif; }
+main { max-width: 780px; margin: 0 auto; padding: 32px 22px 120px; }
+h1 { margin: 0 0 4px; font: 600 26px/1.4 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .08em; }
+.sub { margin: 0 0 20px; font-size: 14.5px; color: var(--ink-2); }
+h2 { margin: 34px 0 10px; font: 600 19px/1.5 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .1em; }
+.fig { padding: 10px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); }
+.key { margin: 8px 4px 0; font-size: 13px; color: var(--ink-3); }
+.key i { display: inline-block; width: 14px; height: 10px; margin: 0 4px 0 12px; border: 1px solid; border-radius: 3px; vertical-align: -1px; }
+svg { display: block; width: 100%; height: auto; }
+svg text { font-family: 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif; }
+.th { font-size: 14px; font-weight: 600; fill: var(--ink); }
+.ts { font-size: 12px; fill: var(--ink-2); }
+.tl { font-size: 12.5px; font-weight: 600; fill: var(--ink-2); }
+.tn { font-size: 11px; fill: var(--zhu); }
+.box { fill: #fbf8f1; stroke: var(--line); }
+.arr { stroke: var(--ink-3); stroke-width: 1.5; fill: none; }
+.ok rect { fill: #e3efec; stroke: var(--dai); } .ok .th { fill: #24403f; } .ok .ts { fill: var(--dai); }
+.me rect { fill: #fdf3e3; stroke: #b9822f; } .me .th { fill: #6b4a12; } .me .ts { fill: #8a6420; }
+.nw rect { fill: #eef3fb; stroke: #5b7aa6; } .nw .th { fill: #2c4466; } .nw .ts { fill: #45628c; }
+.back { stroke: var(--zhu); stroke-width: 1.2; fill: none; stroke-dasharray: 5 4; }
+.card { margin: 12px 0; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+.card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 600; }
+.card h3 .no { display: inline-block; min-width: 1.7em; color: var(--dai); }
+.card p { margin: 3px 0; color: var(--ink-2); }
+.opts { margin: 8px 0 2px; }
+.opts label { display: block; margin: 5px 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opts label:hover { background: #faf5ea; }
+.opts input { margin-right: 8px; }
+.opts .rec { color: var(--dai); font-size: 13px; margin-left: 4px; }
+textarea { display: block; width: 100%; margin-top: 8px; min-height: 2.6em; padding: 7px 10px; border: 1px dashed #c8b99f; border-radius: 8px; background: #fffef9; font: 15px/1.7 'Noto Sans SC', 'Microsoft YaHei', sans-serif; color: var(--ink); resize: vertical; }
+textarea:focus { outline: none; border-style: solid; border-color: var(--dai); background: #fff; }
+textarea.has { border-style: solid; border-color: #b9822f; background: var(--huang); }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; background: rgba(255,253,249,.96); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; justify-content: center; font-size: 14px; }
+.bar button { padding: 6px 14px; border: 1px solid var(--dai); border-radius: 8px; background: #fff; color: var(--dai); font: inherit; cursor: pointer; }
+.bar button:hover { background: #eef5f3; }
+#st { color: var(--ink-2); }
+.foot { margin-top: 26px; font-size: 13px; color: var(--ink-3); }
+.cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cmp > div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); font-size: 13.5px; line-height: 1.75; }
+.cmp b { display: block; margin-bottom: 4px; font-size: 14.5px; }
+.cmp .old b { color: var(--zhu); } .cmp .new b { color: var(--dai); }
+.cmp code { display: block; padding: 4px 8px; margin: 4px 0; border-radius: 6px; background: #f6f1e7; font: 12.5px/1.65 Consolas, 'Microsoft YaHei', monospace; white-space: pre-wrap; word-break: break-all; }
+.cmp .new code { background: #eaf2ef; }
+.cmp .why { color: var(--ink-3); font-size: 13px; }
+@media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>关键帧绑定 · 流程图</h1>
+<p class="sub" id="sub"></p>
+
+<div class="fig">
+<svg viewBox="0 0 740 900" role="img" aria-label="关键帧绑定流程图">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+
+<g class="nw">
+<rect x="150" y="16" width="400" height="56" rx="8"/>
+<text class="th" x="350" y="34" text-anchor="middle" dominant-baseline="central">工序二　提炼出镜头表</text>
+<text class="ts" x="350" y="54" text-anchor="middle" dominant-baseline="central">每一镜一个固定的号：删一镜，后面的号不挪</text>
+</g>
+<line class="arr" x1="350" y1="72" x2="350" y2="104" marker-end="url(#arrow)"/>
+
+<rect x="6" y="118" width="664" height="270" rx="12" fill="none" stroke="#887e74" stroke-dasharray="5 5"/>
+<rect x="190" y="106" width="320" height="24" rx="12" fill="#fffdf9" stroke="#887e74"/>
+<text class="tl" x="350" y="118" text-anchor="middle" dominant-baseline="central">关键帧绑到镜头表的「一镜一刻」上</text>
+
+<g class="nw">
+<rect x="30" y="142" width="300" height="56" rx="8"/>
+<text class="th" x="180" y="160" text-anchor="middle" dominant-baseline="central">新出的：点「出关键帧…」</text>
+<text class="ts" x="180" y="180" text-anchor="middle" dominant-baseline="central">选镜头表第几镜，开头、中间还是结尾</text>
+</g>
+<g class="me">
+<rect x="350" y="142" width="300" height="56" rx="8"/>
+<text class="th" x="500" y="160" text-anchor="middle" dominant-baseline="central">已有的图：页面照名字先猜</text>
+<text class="ts" x="500" y="180" text-anchor="middle" dominant-baseline="central">你点一下认，猜错了就改</text>
+</g>
+<path class="arr" d="M180 198 L180 212 L320 212 L320 228" marker-end="url(#arrow)"/>
+<path class="arr" d="M500 198 L500 212 L380 212 L380 228" marker-end="url(#arrow)"/>
+
+<g class="nw">
+<rect x="150" y="230" width="400" height="70" rx="8"/>
+<text class="th" x="350" y="249" text-anchor="middle" dominant-baseline="central">绑定：镜头11 · 开头（首帧）</text>
+<text class="ts" x="350" y="270" text-anchor="middle" dominant-baseline="central">一张图只绑一镜一刻，记在 流水线.json</text>
+<text class="ts" x="350" y="287" text-anchor="middle" dominant-baseline="central">同一镜同一刻有几张：一张「现用」，别的「备选」</text>
+</g>
+<line class="arr" x1="350" y1="300" x2="350" y2="318" marker-end="url(#arrow)"/>
+
+<g class="ok">
+<rect x="150" y="320" width="400" height="52" rx="8"/>
+<text class="th" x="350" y="338" text-anchor="middle" dominant-baseline="central">你确认可用（现在就有）</text>
+<text class="ts" x="350" y="357" text-anchor="middle" dominant-baseline="central">绑了、确认了的，写提示词时才带上</text>
+</g>
+<line class="arr" x1="350" y1="372" x2="350" y2="414" marker-end="url(#arrow)"/>
+
+<rect x="6" y="428" width="664" height="372" rx="12" fill="none" stroke="#887e74" stroke-dasharray="5 5"/>
+<rect x="250" y="416" width="200" height="24" rx="12" fill="#fffdf9" stroke="#887e74"/>
+<text class="tl" x="350" y="428" text-anchor="middle" dominant-baseline="central">工序四　写提示词</text>
+
+<g class="me">
+<rect x="150" y="452" width="400" height="52" rx="8"/>
+<text class="th" x="350" y="470" text-anchor="middle" dominant-baseline="central">你选：这一条写镜头表第几到第几镜</text>
+<text class="ts" x="350" y="489" text-anchor="middle" dominant-baseline="central">不选也行：照旧自己勾关键帧</text>
+</g>
+<line class="arr" x1="350" y1="504" x2="350" y2="520" marker-end="url(#arrow)"/>
+
+<g class="nw">
+<rect x="150" y="522" width="400" height="52" rx="8"/>
+<text class="th" x="350" y="540" text-anchor="middle" dominant-baseline="central">页面带上这几镜「现用」的关键帧</text>
+<text class="ts" x="350" y="559" text-anchor="middle" dominant-baseline="central">你可以去掉一张，或换成备选（只这一条换）</text>
+</g>
+<line class="arr" x1="350" y1="574" x2="350" y2="590" marker-end="url(#arrow)"/>
+
+<g class="nw">
+<rect x="150" y="592" width="400" height="52" rx="8"/>
+<text class="th" x="350" y="610" text-anchor="middle" dominant-baseline="central">交给 AI 的话：每一张写清哪一镜、哪一刻</text>
+<text class="ts" x="350" y="629" text-anchor="middle" dominant-baseline="central">例：@图片6＝镜头11「外星战士喊冲锋」开头</text>
+</g>
+<line class="arr" x1="350" y1="644" x2="350" y2="660" marker-end="url(#arrow)"/>
+
+<rect class="box" x="150" y="662" width="400" height="52" rx="8"/>
+<text class="th" x="350" y="680" text-anchor="middle" dominant-baseline="central">AI 照 sd25-pe 写关键帧句（写法不变）</text>
+<text class="ts" x="350" y="699" text-anchor="middle" dominant-baseline="central">事件脚本里演到镜头11 的那一行，从这张开始</text>
+<line class="arr" x1="350" y1="714" x2="350" y2="730" marker-end="url(#arrow)"/>
+
+<g class="nw">
+<rect x="150" y="732" width="400" height="52" rx="8"/>
+<text class="th" x="350" y="750" text-anchor="middle" dominant-baseline="central">素材登记也记下哪一镜、哪一刻</text>
+<text class="ts" x="350" y="769" text-anchor="middle" dominant-baseline="central">参考素材映射.json：关键帧｜镜头11｜开头</text>
+</g>
+<line class="arr" x1="350" y1="784" x2="350" y2="828" marker-end="url(#arrow)"/>
+
+<g class="nw">
+<rect x="150" y="830" width="400" height="56" rx="8"/>
+<text class="th" x="350" y="848" text-anchor="middle" dominant-baseline="central">批准出片前，页面对一遍</text>
+<text class="ts" x="350" y="868" text-anchor="middle" dominant-baseline="central">每张有没有句子、它那一镜在不在；对不上标红</text>
+</g>
+
+<path class="back" d="M550 44 L700 44 L700 265 L554 265" marker-end="url(#arrow)"/>
+<text class="tn" x="626" y="64" text-anchor="middle" dominant-baseline="central">镜头表改了一镜：</text>
+<text class="tn" x="626" y="80" text-anchor="middle" dominant-baseline="central">绑在上面的关键帧</text>
+<text class="tn" x="626" y="96" text-anchor="middle" dominant-baseline="central">标「看一眼」</text>
+</svg>
+<p class="key"><i style="background:#eef3fb;border-color:#5b7aa6"></i>新加的　<i style="background:#fdf3e3;border-color:#b9822f"></i>你来做　<i style="background:#e3efec;border-color:#3e5c5e"></i>现在就有、不变　<i style="background:#fbf8f1;border-color:#d6cab6"></i>AI 做</p>
+</div>
+
+<template id="fig-ai">
+<div class="cmp">
+<div class="old"><b>现在 AI 拿到的</b>
+<code>镜头表：……镜头10 写什么：外星战士喊冲锋……</code>
+<code>关键帧（这一条要挂，第 1 张）：资产/第3-4段/镜头11_首帧.png
+关键帧（这一条要挂，第 2 张）：资产/第3-4段/镜头12_首帧.png</code>
+<span class="why">表里叫镜头10，图叫镜头11。只知道第几张，不知道放哪一镜。</span></div>
+<div class="new"><b>以后 AI 拿到的</b>
+<code>镜头表：……镜头11 写什么：外星战士喊冲锋……</code>
+<code>@图片6：镜头11「外星战士喊冲锋」开头那一刻（资产/第3-4段/镜头11_首帧.png）
+@图片7：镜头12「敌军扑向沙袋墙」开头那一刻（资产/第3-4段/镜头12_首帧.png）</code>
+<span class="why">号是同一套。每张放哪一镜、哪一刻，写死了。</span></div>
+</div>
+</template>
+
+<div id="sections"></div>
+<h2>别的意见</h2>
+<div class="card"><textarea data-k="其他" placeholder="上面没说到的，写在这里（可以不写）"></textarea></div>
+<p class="foot" id="foot"></p>
+</main>
+<div class="bar"><span id="st">在每一块下面的虚线框里写批注，自动存。</span><button id="copy">复制批注</button></div>
+<script>
+/* ===== 内容（改内容只改这一块；怎么摆、怎么存批注在 公用/说明页.js） ===== */
+const ROUND = 1;
+const SUB = '关键帧现在靠图名猜是哪一镜，写提示词时 AI 只知道「第几张」。这一版把每张关键帧绑在镜头表的「一镜一刻」上，AI 照绑定写。你确认了，已经照这个改了。';
+const FOOT = '2026-11-16 Claude 照流水线现在的代码（资产页、提示词页、本机服务写提示词那一段）和 3-4 的实际文件拟的。11-16 照这份改好了（甲、乙、丙都选的 A）。';
+const SECTIONS = [
+  { h: '现在乱在哪', cards: [
+    { id: 'p1', no: '一', t: '「镜头几」有两套号', p: [
+      '3-4 删了镜头10，图名照旧叫 镜头11～19。交给 AI 的镜头表却是从 1 往下数的：表里的「镜头10」是外星战士喊冲锋，图却叫 镜头11_首帧。' ] },
+    { id: 'p2', no: '二', t: 'AI 只知道「第几张」', p: [
+      '写提示词时，AI 拿到「关键帧第 1 张、第 2 张」和图，不知道每张对着哪一镜、是开头还是结尾，只能看图猜。3-4 第13条镜头9 用了镜头8 那张，就是这样来的。' ] },
+    { id: 'p3', no: '三', t: '同一镜几张，不知道用哪张', p: [
+      '3-4 镜头1 有 首帧、1b、两张脸；镜头2、3、5 还各有雾版。全是「可用」，哪张是现在用的，只有人记得。' ] },
+  ] },
+  { h: 'AI 拿到的话，前后对比', fig: 'fig-ai' },
+  { h: '每一步怎么做', cards: [
+    { id: 's1', no: '①', t: '镜头表定号', p: [
+      '提炼出的镜头表，每一镜一个固定的号。删一镜，后面的号不挪；中间加一镜，号写成 3b。',
+      '图名、提示词、交给 AI 的话，都用这个号。' ] },
+    { id: 's2', no: '②', t: '关键帧绑到「一镜一刻」', p: [
+      '每张关键帧绑在「镜头几 · 开头、中间或结尾」上。资产页的关键帧那一块，按镜头一镜一行摆；还没绑的放最下面。',
+      '新出的：「出关键帧…」里从镜头表选那一镜，出好就绑上，名字自动起成 镜头11_首帧。',
+      '已有的：页面照名字先猜（镜头11_首帧 就猜镜头11 开头），你点一下认。猜不出的你来指，不是关键帧的（比如脸部参考）点「不是关键帧」。' ] },
+    { id: 's3', no: '③', t: '现用和备选', p: [
+      '同一镜同一刻有几张：一张「现用」，别的「备选」。写提示词默认带现用的。',
+      '某一条换用备选（比如改6 用雾版），只记在那一条上，别的条不受影响。' ] },
+    { id: 's4', no: '④', t: '写提示词', p: [
+      '选这一条写镜头表第几到第几镜，页面带上这几镜现用的、确认过的关键帧，你可以去掉或换。',
+      '交给 AI 的话里，每张写清哪一镜、哪一刻、那一镜写什么。AI 照 sd25-pe 写关键帧句，事件脚本里演到那一镜，从这张开始。',
+      '素材登记的名字写成「关键帧｜镜头11｜开头」，以后谁打开都看得懂。' ] },
+    { id: 's5', no: '⑤', t: '出片前对一遍', p: [
+      '批准出片时，页面看每张关键帧：素材里有没有它的句子，事件脚本里有没有它那一镜。对不上就标红，写清哪一张、哪一镜。' ] },
+    { id: 's6', no: '⑥', t: '改了以后', p: [
+      '镜头表改了一镜的字：绑在它上面的关键帧标「这一镜改了，看一眼」。',
+      '删了一镜：它的关键帧变成「没绑」，挂着它的提示词批准出片时标红提醒。',
+      '关键帧重出了：挂它的提示词标待核对（现在就有）。' ] },
+  ] },
+  { h: '要你定的', cards: [
+    { id: 'd1', no: '甲', t: '镜头表的号', p: [
+      'A 就是 3-4 现在的样子（删了镜头10，后面照旧叫 11～19），老图不用改名。B 号好看，但删一镜就要改一串图名。' ],
+      opts: [ { v: 'A', t: '固定号：删了不挪，中间加的叫 3b', rec: true }, { v: 'B', t: '一直按 1、2、3 排：删了往前挪，页面把绑定和图名跟着改' } ] },
+    { id: 'd2', no: '乙', t: '写提示词时怎么带关键帧', p: [
+      '现在是一张张勾。A 少点几下，也不会漏挂。' ],
+      opts: [ { v: 'A', t: '选第几到第几镜，自动带上这几镜现用的，可以去掉', rec: true }, { v: 'B', t: '照旧一张张勾，只是每张多写清哪一镜、哪一刻' } ] },
+    { id: 'd3', no: '丙', t: '出片前对不上怎么办', p: [
+      '你说过别做管人的组件，所以推荐只提醒。' ],
+      opts: [ { v: 'A', t: '标红提醒，照样能批准出片', rec: true }, { v: 'B', t: '对上了才让批准出片' } ] },
+  ] },
+  { h: '跟着要改的', cards: [
+    { id: 'c1', no: '1', t: '流水线页面', p: [
+      '提炼页：镜头表显示固定号。资产页：关键帧按镜头一镜一行摆，能认、能改绑、能设现用。',
+      '提示词页：「出关键帧…」从镜头表选镜；写提示词能选第几到第几镜；批准出片前对一遍。' ] },
+    { id: 'c2', no: '2', t: '本机服务（要重开 8766，到时候先问你）', p: [
+      '交给 AI 的几段话：写提示词、批提示词、按批注改、出关键帧写字，镜头表用固定号，关键帧写清哪一镜哪一刻。sd25-pe 的写法不改。' ] },
+    { id: 'c3', no: '3', t: '存在哪', p: [
+      '流水线.json：镜头表每一镜多一个「号」；每一段多一个「关键帧绑定」（图 → 镜头几、哪一刻、现用还是备选）。人在页面上点，AI 只读。' ] },
+    { id: 'c4', no: '4', t: '3-4 的老图', p: [
+      '镜头表 18 镜照「号不挪」排成 1～9、11～19。名字对得上的 18 张首帧自动绑开头，雾版自动算备选。',
+      '镜头1b、两张脸你来指。' ] },
+  ] },
+];
+window.DOC = { 名: '关键帧绑定_流程图', 题: '关键帧绑定流程图', 存: 'antou:kf-bind', 轮: ROUND, 副题: SUB, 脚注: FOOT, 先选: { d1: 'A', d2: 'A', d3: 'A' }, 段: SECTIONS };
+</script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="../公用/说明页.js"></script>
+</body>
+</html>

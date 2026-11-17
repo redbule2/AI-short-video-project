@@ -86,13 +86,7 @@ test('视频提示词照镜头号起名（11-16）：1-5.txt、3.txt、1-3、5.t
   assert.deepEqual(t('1-3、5.txt'), [true, 0, 0, '镜头1-3、5', '1-3、5']);
   for (const bad of ['1-5_写稿.json', '1-5_批注.md', '1-5_出片任务.txt', '1-5_补1.txt', 'a1-5.txt', '1-.txt', '1-5_02.txt']) assert.equal(Core.RE_VP.test(bad), false, bad);
   assert.equal(Core.vpBase('4-9_改2.txt'), '4-9.txt');
-  assert.deepEqual(Core.vpShots('1-3、5_改1.txt'), [1, 2, 3, 5]);
-  assert.deepEqual(Core.vpShots('4-9.txt'), [4, 5, 6, 7, 8, 9]);
-  assert.equal(Core.vpShots('镜头1-5_视频提示词.txt'), null);   // 老稿不算：那时的镜头号和现在的镜头表对不上
-  assert.equal(Core.vpShotName([5, 1, 2, 3]), '1-3、5.txt');
-  assert.equal(Core.vpShotName([4, 5, 6, 7, 8, 9]), '4-9.txt');
-  assert.equal(Core.vpShotName([3]), '3.txt');
-  assert.equal(Core.vpShotName([]), '');
+  assert.deepEqual(t('3-3b.txt'), [true, 0, 0, '镜头3-3b', '3-3b']);   // 中间加的镜头号 3b（拍哪几镜照镜头表算，见 关键帧绑定_测试.cjs）
   assert.deepEqual(Core.vpPatchOf('1-5_改2_补1.txt'), { of: '1-5_改2.txt', no: 1 });
   assert.equal(Core.vpLabel('1-5_补3.txt'), '镜头1-5 补3');
   assert.equal(Core.vpTok('1-5_改2_补1.txt'), '1-5改2补1');

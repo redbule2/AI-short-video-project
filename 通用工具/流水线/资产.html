@@ -15,6 +15,7 @@
 <script src="../公用/底座.js"></script>
 <script src="../公用/界面.js"></script>
 <script src="../公用/音色.js"></script>
+<script src="../公用/关键帧绑定.js"></script>
 <script src="流水线.js"></script>
 <script src="资产详情.js"></script>
 <script src="电脑找图.js"></script>
@@ -35,7 +36,8 @@
      这一场要的图都确认了，这一步自动过。图重出过、它的描写改过，那一张要再确认。
    点一张图看大图、写批注（用的是「项目管理」里图片那一样），看大图时顶上也能点「这张确认可用」。
    第四块关键帧（11-13 夜他要的）：资产/第N段 里名字带首帧、尾帧、关键帧的自动列上，别的图点「＋ 新增关键帧」挑；只这一场用，AI 不出。
-     挂到哪条提示词、当首帧还是第几个关键帧，在提示词那一步定。
+     每张绑到镜头表的「一镜一刻」上（2026-11-16 他定，流程图 关键帧绑定_流程图.html）：按镜头一镜一行摆，没绑的放最下面，照名字先猜、你点「认」；
+     同一镜同一刻几张，一张现用、别的备选；镜头表后来改了那一镜的字，标「这一镜改了」。挂到哪条提示词，在提示词那一步定。
    即梦画布上的图（11-14 他要的）：「用已有的图」最下面摆画布上有、本地没有一样的；和本地像素一样的只摆本地那一张，标「画布有」。
    共用的东西（读写流水线.json、顶栏、步骤条、这一场要哪些图、哪张图确认过）在 流水线.js。
    ============================================================ */
@@ -79,7 +81,7 @@ async function removeAsset(s, it, stay) {   // stay：在一样东西自己的�
   try { if (await FS.isDir(at([F.name, ...dir, stem + SHOTS_TAIL]))) await FS.move(at([F.name, ...dir, stem + SHOTS_TAIL]), at([F.name, '历史记录', ...dir, stem + SHOTS_TAIL + '__' + stamp])); } catch (err) { /* 挪不动就留着 */ }
   for (const K of LISTS) for (const x of F.doc[K.key]) x.资产 = x.资产.filter(f => f !== file);
   F.doc.场景图 = F.doc.场景图.filter(f => f !== file);
-  for (const x of F.doc.场) for (const f2 of ['场景图', '人物图', '道具图', '关键帧', '关键帧不用']) x[f2] = arrOf(x[f2]).filter(f => f !== file);
+  for (const x of F.doc.场) { for (const f2 of ['场景图', '人物图', '道具图', '关键帧', '关键帧不用']) x[f2] = arrOf(x[f2]).filter(f => f !== file); SB.unbind(x, file); }
   delete F.doc.可用[file];   // 图不在了，它的「可用」也不留：重出的那一张要重新确认
   touch();
   await flush();
@@ -514,7 +516,7 @@ function impactBox(s) {
     v.提示词.length ? h('p', { class: 'faint small' }, '提示词也有 ' + v.提示词.length + ' 条要再看，在提示词那一步。') : null);
 }
 /* 四块：人物、场景、道具、关键帧，各一个颜色（流水线.css 的 k-ren、k-jing、k-dao、k-zhen） */
-const SEC_NOTE = { 人物: '谁出场', 场景: '在哪儿', 道具: '用什么（特效也算这里）', 关键帧: '每一镜开场的画面，只这一段用' };
+const SEC_NOTE = { 人物: '谁出场', 场景: '在哪儿', 道具: '用什么（特效也算这里）', 关键帧: '绑在镜头表的一镜一刻上，只这一段用' };
 const SEC_EMPTY = { 人物: '还没有：点右边「＋ 新增人物」。', 场景: '还没有：点右边「＋ 新增场景」，全片设定里写的场景（不用图）、场景图、这一段的空镜都在里面。', 道具: '还没有：点右边「＋ 新增道具」。',
   关键帧: '还没有。关键帧在提示词那一步做：哪一条要，点那一条的「出关键帧…」。这一段文件夹里名字带「首帧」「尾帧」「关键帧」的图也自动列上；别的图点右边「＋ 新增关键帧」挑。' };
 const SEC_ADD = { 人物: '人物表里的、全片的人物图、这一段文件夹里的图，挑了这一段就用上；表里没有的能新加一个', 场景: '全片设定里写的场景（不用图）、全片的场景图、这一段文件夹里的图（空镜等），挑了这一段就用上；没写过的能新加一个', 道具: '道具表里的、全片的道具图、这一段文件夹里的图，挑了这一段就用上；表里没有的能新加一个',
@@ -525,8 +527,70 @@ const secEls = (s, list) => SEG_KINDS.map(k => {
     h('div', { class: 'as-sec-h' }, h('b', null, k), mine.length ? h('small', null, String(mine.length)) : null, h('span', { class: 'fn-note' }, SEC_NOTE[k]),
       k === '道具' && s.道具.length ? h('button', { class: 'btn sm ghost', type: 'button', title: '一个道具几种样子（比如面车白天、夜里），一种一张图：写个名字和要求，AI 先写字', onclick: () => addLookDlg(s) }, '加一种样子') : null,
       h('button', { class: 'btn sm ' + kindCls(k), type: 'button', title: SEC_ADD[k], onclick: () => addDlg(s, k) }, icon('plus'), '新增' + k)),
-    mine.length ? h('div', { class: 'wf-grid' }, k === '人物' ? withVoices(s, mine) : mine.map(it => chipEl(s, it))) : h('p', { class: 'fn-note as-sec-e' }, SEC_EMPTY[k]));
+    !mine.length ? h('p', { class: 'fn-note as-sec-e' }, SEC_EMPTY[k]) : k === '关键帧' ? frameSec(s, mine) : h('div', { class: 'wf-grid' }, k === '人物' ? withVoices(s, mine) : mine.map(it => chipEl(s, it))));
 });
+/* ---------- 关键帧绑到镜头表的「一镜一刻」（2026-11-16 他定，流程图 关键帧绑定_流程图.html；算法在 公用/关键帧绑定.js）----------
+   一镜一行：开头、中间、结尾，现用的在前；同一镜同一刻几张，一张现用，别的备选（写提示词默认带现用的）。
+   还没绑的放最下面：照名字先猜（镜头11_首帧 → 镜头11 开头），点「认」绑上，猜错了点「绑到…」自己挑；不是关键帧的点「不是关键帧」（图不动，这一段不再当关键帧）。
+   绑的时候记下那一镜写的什么：镜头表后来改了这一镜，标「这一镜改了」，看过点「还对得上」 */
+function frameSec(s, mine) {
+  const byFile = new Map(mine.map(it => [it.文件, it])), T = SB.table([...byFile.keys()], s.段落, SB.bindsOf(s)), out = [];
+  for (const r of T.rows) if (r.帧.length) out.push(h('div', { class: 'kb-row' }, h('div', { class: 'kb-h' }, h('b', null, '镜头' + r.号), h('span', null, r.写什么 || '—')),
+    h('div', { class: 'wf-grid' }, r.帧.map(x => frameChip(s, byFile.get(x.file), x)))));
+  if (T.loose.length) {
+    const can = T.loose.filter(x => x.guess);
+    out.push(h('div', { class: 'kb-row kb-loose' }, h('div', { class: 'kb-h' }, h('b', null, '还没绑到镜头'), h('span', null, '绑上了，写提示词时才知道它是哪一镜、哪一刻'),
+        can.length > 1 ? h('button', { class: 'fl-link', type: 'button', title: '照名字猜的都认下来：' + can.map(x => baseOf(x.file)).join('、'), onclick: () => { for (const x of can) SB.bind(s, x.file, x.guess.镜, x.guess.刻, s.段落); touch(); paint(); toast('照名字认了 ' + can.length + ' 张'); } }, '照名字全认（' + can.length + ' 张）') : null),
+      h('div', { class: 'wf-grid' }, T.loose.map(x => looseChip(s, byFile.get(x.file), x)))));
+  }
+  return out;
+}
+const kbBtn = (tx, title, fn, cls) => h('button', { class: 'fl-asset-ok' + (cls ? ' ' + cls : ''), type: 'button', title, onkeydown: ev => ev.stopPropagation(), onclick: ev => { ev.stopPropagation(); fn(); } }, tx);
+function frameChip(s, it, x) {
+  const el = chipEl(s, { ...it, sub: [SB.SAY[x.刻] + (x.current ? '' : ' · 备选'), x.stale ? '这一镜改了' : '', it.sub].filter(Boolean).join(' · ') });
+  if (x.stale) el.classList.add('wd-impact');
+  el.classList.add('kb-chip');
+  el.append(h('div', { class: 'kb-acts' },
+    x.stale ? kbBtn('还对得上', '镜头表里这一镜的字改过了：看过这张图，还对得上就点', () => { SB.keep(s, it.文件, s.段落); touch(); paint(); }, 'go') : null,
+    x.current ? null : kbBtn('当现用', '写提示词时带这一张（同一镜同一刻别的几张改成备选）', () => { SB.setCurrent(s, it.文件); touch(); paint(); }),
+    kbBtn('改绑…', '改绑到镜头表别的一镜、别的一刻', () => bindDlg(s, it.文件))));
+  return el;
+}
+function looseChip(s, it, x) {
+  const g = x.guess, el = chipEl(s, { ...it, sub: [x.gone ? '绑的镜头' + x.gone + ' 删了' : '', g ? '猜是镜头' + g.镜 + ' ' + SB.SAY[g.刻] : '猜不出是哪一镜', it.sub].filter(Boolean).join(' · ') });
+  el.classList.add('todo', 'kb-chip');
+  el.append(h('div', { class: 'kb-acts' },
+    g ? kbBtn('认', '绑到镜头' + g.镜 + ' ' + SB.SAY[g.刻], () => { SB.bind(s, it.文件, g.镜, g.刻, s.段落); touch(); paint(); }, 'go') : null,
+    kbBtn('绑到…', '自己挑：镜头表哪一镜、开头中间还是结尾', () => bindDlg(s, it.文件, g)),
+    kbBtn('不是关键帧', '这张不当关键帧用（图不动，只是这一段不再把它列成关键帧）', () => { dropFrame(s, it.文件); touch(); paint(); })));
+  return el;
+}
+/* 绑到…：挑镜头表的一镜、开头中间结尾，要不要当现用 */
+async function bindDlg(s, file, pre) {
+  const nos = SB.nosOf(s.段落), now = SB.bindsOf(s)[file], b = now || pre || null;
+  if (!nos.length) { toast('镜头表还空着：先到「提炼」那一步写好镜头表', 'err'); return; }
+  let pick = b && nos.includes(b.镜) ? b.镜 : '';
+  const moment = window.UI.chips(SB.MOMENTS.map(m => [m, SB.SAY[m]]), b ? b.刻 : '首帧', () => sync());
+  const cur = h('input', { type: 'checkbox' }), curLab = h('label', { class: 'wf-tick' }, cur, h('span', null, '当现用（写提示词时带这一张；同一镜同一刻原来那张改成备选）'));
+  const ok = h('button', { class: 'btn ink', type: 'button' }, '绑上');
+  const busy = () => { const c = SB.currentOf(framesOf(s), SB.bindsOf(s), nos).get(pick + '|' + moment.get()); return c && c !== file ? c : ''; };
+  const sync = () => { const c = busy(); cur.checked = !c || (!!now && !now.备选 && now.镜 === pick && now.刻 === moment.get()); curLab.style.display = c ? "" : "none"; ok.disabled = !pick; };   // 当现用那一格：.wf-tick 是 flex，hidden 盖不住
+  const list = h('div', { class: 'prompt-shots', role: 'radiogroup' }, s.段落.map((x, i) => h('label', { class: 'prompt-shot' },
+    h('input', { type: 'radio', name: 'kb-shot', checked: nos[i] === pick, onchange: () => { pick = nos[i]; sync(); } }),
+    h('span', null, h('b', null, '镜头' + nos[i] + '　' + (str(x.写什么).trim() || '还空着')), str(x.作用).trim() ? h('small', null, '作用　' + x.作用.trim()) : null))));
+  sync();
+  const r = await dialog(close => {
+    ok.onclick = () => { if (pick) close({ no: pick, 刻: moment.get(), current: cur.checked }); };
+    const el = dlgShell('绑到镜头 · ' + baseOf(file), '这张关键帧是镜头表里哪一镜、哪一刻的画面。写提示词时照这个告诉 AI 它放在哪。',
+      [h('div', { class: 'fld' }, h('span', null, '哪一镜'), list), h('div', { class: 'fld' }, h('span', null, '哪一刻'), moment), curLab],
+      [h('button', { class: 'btn ghost', type: 'button', onclick: () => close(null) }, '取消'), ok]);
+    el.classList.add('wide');
+    return el;
+  });
+  if (!r) return;
+  SB.bind(s, file, r.no, r.刻, s.段落, r.current); touch(); paint();
+  toast(baseOf(file) + ' 绑到镜头' + r.no + ' ' + SB.SAY[r.刻]);
+}
 /* 人物那一块：人物表里的每个人，最后一张图后面跟一格音色（试听、挑一段、不用，音色绑定.js，11-15） */
 const withVoices = (s, mine) => mine.flatMap((it, i) => { const n = it.名称, el = chipEl(s, it); return entryOf('人物', n) && !mine.slice(i + 1).some(x => x.名称 === n) ? [el, VoiceBind.chip(n, paint)] : [el]; });
 const DETAIL = adMode();   // 网址带 a=…：这一页是一样东西自己的那一页（资产详情.js，11-14）

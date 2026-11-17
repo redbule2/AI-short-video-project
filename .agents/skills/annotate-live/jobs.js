@@ -36,6 +36,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   /* 提示词的无损读写（和写稿页同一套） */
   const PromptDraft = (() => { try { return require(path.join(TOOLS, '公用', '写稿状态.js')); } catch (e) { log('读不了 公用/写稿状态.js：' + e.message); return null; } })();
   const Core = (() => { try { return require(path.join(TOOLS, '公用', '核心.js')); } catch (e) { log('读不了 公用/核心.js：' + e.message); return null; } })();
+  /* 镜头表的固定号、关键帧绑在哪一镜哪一刻（2026-11-16 他定：号不挪，中间加的是 3b）：和流水线各页同一套 */
+  const SB = (() => { try { return require(path.join(TOOLS, '公用', '关键帧绑定.js')); } catch (e) { log('读不了 公用/关键帧绑定.js：' + e.message); return null; } })();
   /* 每镜几秒（11-15 他定：AI 写稿、照批注改稿时顺手估，出片弹窗照它填时长）：和提示词那一步同一套 */
   const Secs = (() => { try { return require(path.join(TOOLS, '公用', '秒数.js')); } catch (e) { log('读不了 公用/秒数.js：' + e.message); return null; } })();
   const Voice = (() => { try { return require(path.join(TOOLS, '公用', '音色.js')); } catch (e) { log('读不了 公用/音色.js：' + e.message); return null; } })();
@@ -259,7 +261,11 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     return out;
   }
   const sceneOf = (flow, seg) => (Array.isArray(flow.场) ? flow.场 : []).find(s => s && str(s.段) === seg) || null;
-  const parasOf = s => (Array.isArray(s.段落) && s.段落.length ? s.段落 : Array.isArray(s.镜头) ? s.镜头 : []).map(x => ({ 写什么: str(x.写什么 !== undefined ? x.写什么 : x.拍什么).trim(), 作用: str(x.作用).trim() })).filter(x => x.写什么 || x.作用);
+  const parasOf = s => {   // 号：镜头表的固定号（页面存的；老数据没有就照先后补）
+    const raw = (Array.isArray(s.段落) && s.段落.length ? s.段落 : Array.isArray(s.镜头) ? s.镜头 : []).filter(x => x && typeof x === 'object'), nos = SB ? SB.nosOf(raw) : raw.map((x, i) => String(i + 1));
+    return raw.map((x, i) => ({ 号: nos[i], 写什么: str(x.写什么 !== undefined ? x.写什么 : x.拍什么).trim(), 作用: str(x.作用).trim() })).filter(x => x.写什么 || x.作用);
+  };
+  const shotsOf = (s, name) => s && SB ? SB.shotsOf(vpCode(name), name, parasOf(s).map(x => x.号)) : null;   // 这份稿拍的是哪几镜：名字是镜头号的照镜头表认，老稿「镜头6-9_视频提示词」照名字里的数认，认不出给 null
   const rowsText = (rows, pick) => (Array.isArray(rows) ? rows : []).filter(e => e && e.名 && (!pick || pick.includes(e.名))).map(e => e.名 + '：' + (str(e.描写).trim() || '（还没写）')).join('\n') || '（没有）';
   async function docText(file) {
     const r = await node([RW, '读', file]);
@@ -299,8 +305,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     const ps = parasOf(s), seg = segRefs(s), say = str(s.表达).trim();   // 表达：老数据里的「想写什么」（11-16 晚删了这一格），有才列
     return ['出场的人物：' + ((s.人物 || []).join('、') || '（没选）'), '出场的道具：' + ((s.道具 || []).join('、') || '（没选）'),
       ...(seg.length ? ['这一段另挂的参考图（这一段文件夹里的，只这一段用）：' + seg.map(x => x.k + '「' + x.n + '」').join('、')] : []),
-      ...(say ? ['这一段主要表达：' + say] : []), '', '镜头表（一共 ' + ps.length + ' 个镜头，照这个顺序）：',
-      ...ps.map((x, i) => '镜头' + (i + 1) + '　写什么：' + (x.写什么 || '（空）') + '　起什么作用：' + (x.作用 || '（没写）'))].join('\n');
+      ...(say ? ['这一段主要表达：' + say] : []), '', '镜头表（一共 ' + ps.length + ' 个镜头，照这个顺序；镜头号是固定的：删过的镜头不挪号，中间加的带字母，像 3b）：',
+      ...ps.map(x => '镜头' + x.号 + '　写什么：' + (x.写什么 || '（空）') + '　起什么作用：' + (x.作用 || '（没写）'))].join('\n');
   }
   function finalOk(s, scriptMtime) {   // 剧本定稿了没有：有这个时间，也不早于剧本文件最后改动的时间（11-16 起剧本在段落前面，不再和段落定下来的时间比）
     const fin = timeOf(s.剧本定稿);
@@ -454,7 +460,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         if (!ps.length) throw fail('这一段还没有提炼');
         const note = unbom(await fsp.readFile(pj(j.项目, ...j.rel), 'utf8'));
         const now = { 梗概: str(flow.梗概).trim(), ...Object.fromEntries(['人物', '道具'].map(k => [k, (s[k] || []).map(n => { const e = (flow[k] || []).find(x => x && x.名 === n); return { 名: n, 描写: e ? str(e.描写).trim() : '' }; })])),
-          场景: (s.场景文字 || []).map(oneLine).filter(Boolean), 镜头表: ps };
+          场景: (s.场景文字 || []).map(oneLine).filter(Boolean), 镜头表: ps.map(x => ({ 写什么: x.写什么, 作用: x.作用 })) };
         return ['# 任务：按批注改一段戏的提炼', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是照这一段定稿的剧本提炼出来的梗概、人物、道具、场景和镜头表（人可能改过），和人写的批注。请照批注改。',
           '', '## 要求', '1. 只改批注说到的地方，别的一个字都不动（包括标点）。', '2. 批注要加一项、删一项、拆开、并起来的，照做；镜头的先后照剧本正文。',
           '3. 批注是提要求的，照要求改这一处，改动尽量小；批注把原文改写好了的，照抄批注，不要再润色。', '4. 新加的照这几条写：' + DISTILL_RULES.slice(1, 5).map(x => x.replace(/^\d\. /, '')).join(' '),
@@ -926,9 +932,13 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         const flow = await readFlow(j.项目), s = sceneOf(flow, j.段), sp = scriptPath(j.项目, j.段);
         if (!s) throw fail('流水线里没有第' + j.段 + '段');
         if (!(await exists(sp))) throw fail('要先有定稿的剧本，才能写提示词');
-        const ps = parasOf(s), pa = Array.isArray(j.段落) && j.段落.length === 2 ? j.段落 : null;   // 段落：老请求带着的范围 [从, 到]
-        const shots = vpShots(str(j.名)) || (pa && pa[1] >= pa[0] ? Array.from({ length: pa[1] - pa[0] + 1 }, (x, i) => pa[0] + i) : null);   // 名字就是镜头号（11-16）
-        if (shots && !(shots[0] >= 1 && shots[shots.length - 1] <= ps.length)) throw fail('镜头表只有 ' + ps.length + ' 个镜头，没有镜头 ' + shots.filter(n => n > ps.length).join('、'));
+        if (!SB) throw fail('读不了 公用/关键帧绑定.js');
+        const ps = parasOf(s), nos = ps.map(x => x.号), pa = Array.isArray(j.段落) && j.段落.length === 2 ? j.段落 : null;   // 段落：老请求带着的范围 [从, 到]（第几行）
+        const code = vpCode(str(j.名)), ex = code ? SB.expand(code, nos) : null;   // 名字就是镜头号（11-16），照镜头表的固定号认：1-5 是镜头表里从镜头1 到镜头5 那几行
+        if (ex && (ex.missing.length || !ex.nos.length)) throw fail('镜头表里没有镜头 ' + (ex.missing.join('、') || code) + '（现在的镜头表：' + (nos.join('、') || '空的') + '）');
+        const shots = ex ? ex.nos : pa && pa[1] >= pa[0] ? nos.slice(pa[0] - 1, pa[1]) : null;
+        if (!ex && pa && shots.length !== pa[1] - pa[0] + 1) throw fail('镜头表只有 ' + ps.length + ' 个镜头');
+        const binds = SB.bindsOf(s);
         const assets = [];
         for (const k of ['人物', '道具']) for (const n of s[k] || []) { const e = (flow[k] || []).find(x => x && x.名 === n); for (const f of (e && (Array.isArray(e.资产) ? e.资产 : e.资产 ? [e.资产] : [])) || []) assets.push(k + '「' + n + '」：' + f); }
         for (const x of segRefs(s)) assets.push(x.k + '参考「' + x.n + '」（这一段的图）：' + x.f);
@@ -937,10 +947,10 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         for (const v of vo) assets.push(v.line);
         if (j.白模) assets.push('白模视频（这一条要挂，写成 @视频1）：' + j.白模);
         const frames = Array.isArray(j.关键帧) ? j.关键帧 : [];
-        frames.forEach((f, i) => assets.push('关键帧（这一条要挂，第 ' + (i + 1) + ' 张）：' + f));
+        frames.forEach((f, i) => assets.push('关键帧（这一条要挂，第 ' + (i + 1) + ' 张' + (binds[f] ? '，镜头表' + SB.say(binds[f], s.段落) : '') + '）：' + f));
         j.assets = assets.map(x => x.split('：').pop());
         const look = await lookPart(j.项目, flow, s, '写', '全片的光影总基调（【基础设定】的影像风格、光色基调照它写）'), lessons = await lessonsOf(j.项目), gp = await geoPart(j, s.场景图, s), bm = await bmPart(j, j.白模 ? [{ ref: '@视频1', path: j.白模 }] : []);
-        const fp = framePart(frames, '每张定义了什么照图写（图已经让你看过）：这一刻的构图、人物位置、姿态、镜头方向；事件脚本里对应那一镜的开场要和它对得上。');
+        const fp = framePart(frames, '每张定义了什么照图写（图已经让你看过）：这一刻的构图、人物位置、姿态、镜头方向；事件脚本里对应那一镜的开场要和它对得上。', '', s, shots);
         j.images = [...gp.images, ...frameImgs(j, frames)];
         const others = [];
         try {
@@ -977,6 +987,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         const g0 = t.indexOf('【GEO底稿】');
         const geoAt = g0 >= 0 && g0 < a ? await saveGeo(j, t.slice(g0 + 7, a)) : '';
         const list = await refsIn(j, z > a ? t.slice(z, q > z ? q : undefined) : '', j.assets || []);
+        const fb = SB ? SB.bindsOf(sceneOf((await readFlow(j.项目).catch(() => null)) || {}, j.段) || {}) : {};
+        for (const r of list) if (/^@图片/.test(r.ref) && fb[r.path]) r.name = SB.regName(fb[r.path]);   // 关键帧｜镜头11｜开头
         let bmNote = '';
         if (j.白模 && !list.some(r => r.path === j.白模)) {   // AI 没登记白模：照提示词里写的视频编号替它登记；一句都没写，也登记上（生成任务书时会拦下，提醒补那几句）
           const m = /@视频(\d+)/.exec(prompt), ref = m ? '@视频' + m[1] : '@视频1';
@@ -1186,7 +1198,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const RE_VP = Core ? Core.RE_VP : { test: core('RE_VP') };
   const vpPath = j => pj(j.项目, '提示词', segDir(j.段), str(j.名));
   const viaStr = f => n => f(str(n));   // 不是字的当空字
-  const vpVer = viaStr(core('vpVer')), vpBase = viaStr(core('vpBase')), vpNo = viaStr(core('vpNo')), vpShots = viaStr(core('vpShots')), vpLabelOf = viaStr(core('vpLabel')), vpTok = viaStr(core('vpTok'));   // 样片名、画布节点名里写的是 vpTok（和样片自己的「第N条」分开）
+  const vpVer = viaStr(core('vpVer')), vpBase = viaStr(core('vpBase')), vpNo = viaStr(core('vpNo')), vpCode = viaStr(core('vpCode')), vpLabelOf = viaStr(core('vpLabel')), vpTok = viaStr(core('vpTok'));   // 样片名、画布节点名里写的是 vpTok（和样片自己的「第N条」分开）
   const vpLabel = j => vpLabelOf(j.名);
   const taskOfVp = viaStr(core('vpTask')), vpOfTask = viaStr(core('taskVp')), vpPatchOf = viaStr(core('vpPatchOf'));   // 视频提示词_改1.txt ↔ 出片任务_改1.txt；补片稿 视频提示词_改2_补1.txt ↔ 出片任务_改2_补1.txt
   const RE_TASK = Core ? Core.RE_TASK : { test: core('RE_TASK') };
@@ -1334,12 +1346,16 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const FRAME_RE = /首帧|尾帧|关键帧/;
   const framesOf = (j, regs, s) => regs.filter(r => /^@图片\d+$/.test(r.ref) && r.path.startsWith('资产/' + segDir(j.段) + '/') && (FRAME_RE.test(path.basename(r.path)) || (!!s && Array.isArray(s.关键帧) && s.关键帧.includes(r.path))));
   const frameImgs = (j, frames) => frames.map(f => pj(j.项目, ...(f.path || f).split('/'))).filter(p => IMG_RE.test(p));
-  const FRAME_HOW = '写法照 sd25-pe「关键帧锚点」：一张的写「@图片N作为首帧。」，另起一句「该首帧定义……。」（名字带「尾帧」的当尾帧）；几张的照上面的先后，先写「以@图片A至@图片B的顺序作为关键帧。」（编号不连着就用顿号一个个列），第一张当首帧，中间的写「@图片N定义第二个关键帧：……。」，最后一张名字带「尾帧」的当尾帧。写法二放【场景】最前面，写法一放【参考素材职责】最前面。';
+  const FRAME_HOW = '写法照 sd25-pe「关键帧锚点」：一张的写「@图片N作为首帧。」，另起一句「该首帧定义……。」（绑在结尾的、名字带「尾帧」的当尾帧）；几张的照上面的先后，先写「以@图片A至@图片B的顺序作为关键帧。」（编号不连着就用顿号一个个列），第一张当首帧，中间的写「@图片N定义第二个关键帧：……。」，最后一张绑在结尾、名字带「尾帧」的当尾帧。写法二放【场景】最前面，写法一放【参考素材职责】最前面。';
   const FRAME_HOW_SHOT = '这一条的关键帧是一镜一镜写参考哪张的（「@图片…是各镜头的关键帧」那一句，和每一镜开头的「参考@图片N」）：照这个写法留着、接着写，不换成 sd25-pe 的锚点句。';
-  function framePart(frames, how, text) {   // 任务书里讲关键帧的那一段；text：现在的稿（一镜一镜写参考哪张的老稿，照它的写法留着）
+  const FRAME_BIND = '每张后面括号里写着它绑在镜头表哪一镜的哪一刻（人在资产那一步绑的）：开头的是那一镜开场的画面，中间的是那一镜当中的一刻，结尾的是那一镜收尾的画面。事件脚本里演到镜头表那一镜的戏时照它对上，关键帧那几句（「该首帧定义……」「定义第二个关键帧：……」）也照那一镜那一刻写，不要挪去别的镜头。';
+  /* 任务书里讲关键帧的那一段。text：现在的稿（一镜一镜写参考哪张的老稿，照它的写法留着）；s：这一场（有就写明每张绑在哪一镜哪一刻）；shots：这一条拍的镜头号 */
+  function framePart(frames, how, text, s, shots) {
     if (!frames.length) return '';
-    const shot = !!text && !!BmKey && BmKey.isBmk(text);
-    return ['', '## 这一条挂的关键帧（按先后）', ...frames.map((f, i) => (f.ref ? f.ref : '第 ' + (i + 1) + ' 张') + '：' + (f.path || f)), shot ? FRAME_HOW_SHOT : FRAME_HOW, how].join('\n');
+    const shot = !!text && !!BmKey && BmKey.isBmk(text), binds = s && SB ? SB.bindsOf(s) : {}, paras = s && Array.isArray(s.段落) ? s.段落 : [];
+    const line = (f, i) => { const p = f.path || f, b = binds[p];
+      return (f.ref ? f.ref : '第 ' + (i + 1) + ' 张') + '：' + p + (b ? '（镜头表' + SB.say(b, paras) + (b.备选 ? '；备选的一版' : '') + (shots && !shots.includes(b.镜) ? '；不在这一条拍的镜头里' : '') + '）' : s ? '（没绑镜头表）' : ''); };
+    return ['', '## 这一条挂的关键帧（按先后）', ...frames.map(line), ...(frames.some(f => binds[f.path || f]) ? [FRAME_BIND] : []), shot ? FRAME_HOW_SHOT : FRAME_HOW, how].join('\n');
   }
   /* 白模旁边同名的「_说明.md」：人写的（几何体各是什么、几个镜头），切点一镜一行「镜头1：0-4秒」 */
   async function bmNote(j, v) {
@@ -1372,14 +1388,14 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         const side = await sideOf(j), lessons = await lessonsOf(j.项目);
         const raw = unbom(await fsp.readFile(vpPath(j), 'utf8')), pe = isPeText(raw), regs = await regOf(j), vids = vidsOf(regs), frames = framesOf(j, regs, s);
         const perShot = !!BmKey && BmKey.isBmk(raw);   // 一镜一镜写参考哪张的老稿：关键帧照它的写法批（11-15）
-        const bm = await bmPart(j, vids) + framePart(frames, '图已经让你看过。', raw);
+        const bm = await bmPart(j, vids) + framePart(frames, '图已经让你看过。', raw, s, shotsOf(s, j.名));
         j.images = frameImgs(j, frames);
         return ['# 任务：给一份视频提示词写批注（只批不改）', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是一段戏的 Seedance 视频提示词（' + (pe ? '生成目标和事件脚本' : '本段事件和分镜') + '多半是人自己写的），和这一段的剧本（老项目有镜头表的也带上）。请你当一个懂 Seedance 的编辑，给它写批注。',
           '', '## 怎么批', '1. 最多 8 条，要紧的排在前面。只批不改：稿子一个字都不动，你只写批注。写得好的地方不用夸，没问题就少写。',
           '2. 看这几样：和剧本对不对得上（漏戏、加戏、顺序）；人物想干什么、为什么这么反应写清楚没有（前因后果连不连得上）；一镜是不是只讲一两件事；有没有写一直不变的表情姿势、画面里没有的东西、总时长（说清某一段在第几秒的整秒不算）。' + (side.写法 === '自由' ? '用户只把分镜写成自由文本，不因分镜未逐镜分栏、缺少编号或作用字段批评格式。素材等公共区仍然共用，照实际内容核对。' : '镜头数量、顺序、标题和作用由用户决定，不要求镜头和镜头表一一对应。') + '人物的戏照「写戏规矩」看。',
           ...(vids.length ? ['   这一条挂了白模（见下面「这一条挂的白模视频」）：白模和别的素材一样，可以只管其中几秒。看素材里有没有照 sd25-pe 写白模那几句（用在哪几秒、只采用什么、不采用白模外观材质场景、几何体各对应谁），还留着〔〕没填的要提醒；没写清它管哪几秒的，提醒补上。'] : []),
           ...(frames.length ? [perShot ? '   这一条挂了关键帧，是一镜一镜写参考哪张的（见下面「这一条挂的关键帧」）：看每一镜参考的那张和这一镜的戏对不对得上，每一镜开头的秒数是不是整数、一镜接着一镜；不要提醒改成 sd25-pe 的锚点句；图里画了爆炸、烟、火这类会动的东西，挂上会被钉住不动，也要提醒。'
-            : '   这一条挂了关键帧（见下面「这一条挂的关键帧」）：看关键帧那几句照 sd25-pe 写了没有（顺序句、首帧尾帧的角色句、第几个关键帧），定义的状态和图、和事件脚本那一镜的开场对不对得上，还留着〔〕没填的要提醒；图里画了爆炸、烟、火这类会动的东西，挂上会被钉住不动，也要提醒。'] : []),
+            : '   这一条挂了关键帧（见下面「这一条挂的关键帧」）：看关键帧那几句照 sd25-pe 写了没有（顺序句、首帧尾帧的角色句、第几个关键帧），定义的状态和图、和事件脚本那一镜的开场对不对得上，还留着〔〕没填的要提醒；每张绑在镜头表哪一镜哪一刻（括号里写着），看它用的位置对不对得上那一镜那一刻，绑的是别的镜头、没绑的也提醒；图里画了爆炸、烟、火这类会动的东西，挂上会被钉住不动，也要提醒。'] : []),
           '3. 每条要具体、能照着改，用大白话，批注和原因各一句。能给出替换的句子就写「改成」（只写一行：替换「原文」那句话的新句子，照抄就能用）；只是提醒就不写「改成」这一行。',
           ...(pe ? ['4. 「原文」要从稿子里一字不差地抄一句：【生成目标】下面的话、某一镜「镜头N：」后面的一句、或者素材、主体与关系、保持一致里的一整行，好让页面找到它在哪。不要抄「镜头N：」这几个字，不要抄【】段名那一行。',
             '   这一处还空着、没有原文可抄的（比如某一镜还没写、生成目标没写）：不写「原文」和「改成」，在「批注」里直接给一句建议的写法。是对整份的意见，位置写「整体」，不写原文。',
@@ -1434,7 +1450,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         if (!(await exists(vpPath(j)))) throw fail('要改的那份提示词不在了');
       },
       async book(j) {
-        const sp = scriptPath(j.项目, j.段), regs = await regOf(j), vids = vidsOf(regs), frames = framesOf(j, regs, null), vpText = unbom(await fsp.readFile(vpPath(j), 'utf8'));
+        const sp = scriptPath(j.项目, j.段), regs = await regOf(j), vids = vidsOf(regs), vpText = unbom(await fsp.readFile(vpPath(j), 'utf8'));
+        const s = sceneOf((await readFlow(j.项目).catch(() => null)) || {}, j.段), frames = framesOf(j, regs, s);
         return ['# 任务：按批注改视频提示词', '', '今天 ' + today() + '。下面是一份 Seedance 视频提示词的原文，和人写的批注。请照批注改。',
           '', '## 要求', '1. 只改批注说到的地方，别的一个字都不动。批注里的「原文」照抄了要改的那一行；「原文（第N处）」指全文第 N 处一样的文字；「整体」是对整份的意见。',
           '2. 批注要是把原文抄下来改过的，就是要这一行改成批注里写的样子，照抄批注，不要再润色；批注里那句话末尾没打标点的，沿用原句末尾的标点。',
@@ -1444,7 +1461,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           ...(Secs ? ['5. ' + Secs.ASK.replace('回复最后', 'JSON 后面'), ...Secs.ASK_EG] : []),
           '', await shotsPart(),
           '', '## 原文（文件：' + j.名 + '）', vpText, await bmPart(j, vids),
-          framePart(frames, '关键帧那几句的编号和先后、每一镜开头的秒数和参考哪张，批注没说到的不动。', vpText), await lookPart(j.项目, null, sceneOf((await readFlow(j.项目).catch(() => null)) || {}, j.段), '改', '全片的光影总基调（批注说到画面味道时照它改）'), '', '## 批注', unbom(await fsp.readFile(pj(j.项目, ...j.rel), 'utf8')),
+          framePart(frames, '关键帧那几句的编号和先后、每一镜开头的秒数和参考哪张，批注没说到的不动。', vpText, s, shotsOf(s, j.名)), await lookPart(j.项目, null, s, '改', '全片的光影总基调（批注说到画面味道时照它改）'), '', '## 批注', unbom(await fsp.readFile(pj(j.项目, ...j.rel), 'utf8')),
           (await exists(sp)) ? '\n## 这一段的剧本（对照用）\n' + await docText(sp) : '', '', PE_FORMAT, '', PE_DRAMA, '', '## 技能：sd25-pe', await skill('sd25-pe'), TAIL].join('\n');
       },
       async apply(j, text) {

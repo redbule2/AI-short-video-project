@@ -6,17 +6,6 @@
 <title>流水线 · 提示词</title>
 <link rel="stylesheet" href="../公用/样式.css">
 <link rel="stylesheet" href="流水线.css">
-<style>
-.prompt-shots { display: grid; gap: 7px; max-height: 34vh; overflow: auto; }
-.prompt-shot { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; cursor: pointer; }
-.prompt-shot:has(input:checked) { border-color: var(--qing); background: var(--qing-soft); }
-.prompt-shot input { margin-top: 5px; accent-color: var(--qing); }
-.prompt-shot span { display: grid; gap: 3px; min-width: 0; }
-.prompt-shot small { color: var(--ink-3); line-height: 1.6; }
-.prompt-scope { margin-top: 10px; color: var(--ink-2); font-size: 13px; line-height: 1.7; }
-.prompt-scope summary { cursor: pointer; }
-.prompt-scope ol { margin: 6px 0; padding-left: 24px; }
-</style>
 </head>
 <body class="wf">
 <div id="wf"></div>
@@ -32,6 +21,7 @@
 <script src="../公用/对照.js"></script>
 <script src="../公用/点图.js"></script>
 <script src="../公用/找旧版.js"></script>
+<script src="../公用/关键帧绑定.js"></script>
 <script src="流水线.js"></script>
 <script src="../公用/样片归属.js"></script>
 <script>
@@ -218,7 +208,7 @@ async function vidSecs(file) {
 /* 已经写了一半的你来写稿：挂上白模（素材段补两句 sd25-pe 白模写法，记进挂图） */
 async function attachBm(s, e) {
   if (!X.vids.length) { toast('资产 / ' + segName(s.段) + ' 里还没有视频：白模渲好放进去，这里就能挑', 'err'); return; }
-  const sel = bmSelect(rangeOf(e), ''), err = h('div', { class: 'fld-err' }), fit = [...sel.options].find(o => /镜头号对得上/.test(o.textContent) && /白模/.test(o.textContent));
+  const sel = bmSelect(rangeOf(s, e), ''), err = h('div', { class: 'fld-err' }), fit = [...sel.options].find(o => /镜头号对得上/.test(o.textContent) && /白模/.test(o.textContent));
   if (fit) sel.value = fit.value;   // 名字里镜头号对得上的白模先挑上
   const file = await dialog(close => dlgShell('挂白模 · ' + e.label, '挑一段白模视频挂在这一条上。它和别的素材一样，可以只管其中几秒。页面在素材里补两句 sd25-pe 的白模写法：〔〕里它用在哪几秒、提供什么、哪个几何体对应谁，要你来填（没填完不让出片）。',
     [field('白模视频', sel, '放在 资产 / ' + segName(s.段) + '（含下一层文件夹）里的视频'), h('div', null, h('button', { class: 'fl-link', type: 'button', onclick: () => { if (sel.value) seeVideo(sel.value); } }, '先看一眼')), err],
@@ -249,8 +239,16 @@ async function dropBm(s, e, r) {
 
 /* ---------- 关键帧：资产那一步「关键帧」一块里的图（只这一场用），挂在这一条上当 @图片N ---------- */
 const isFrameFile = (s, f) => framesOf(s).includes(f) || FRAME_RE.test(stemOfFile(f));
-const frameRefsOf = (s, e, side) => KeyFrames.order(refsOf(e, side).filter(r => /^@图片\d+$/.test(r.ref) && isFrameFile(s, r.path)).map(r => ({ ...r, name: stemOfFile(r.path) })));   // side：刚读的写稿过程文件（不给就用页面上存的）
-const orderFiles = files => KeyFrames.order(files.map(f => ({ file: f, name: stemOfFile(f) })));
+/* 几张关键帧排先后（2026-11-16 起照绑的镜头：镜头表的先后，同一镜开头、中间、结尾；没绑的照名字排在后面，公用/关键帧绑定.js）。
+   name：给 关键帧写法.js 认首帧、尾帧用的，绑了的照绑的那一刻；ph：句子里〔〕要填的，写明是哪一镜哪一刻 */
+function orderFiles(s, files) {
+  const b = SB.bindsOf(s), byName = KeyFrames.order(files.map(f => ({ file: f, name: stemOfFile(f) }))).map(x => x.file);
+  return SB.order(byName, s.段落, b).map(f => ({ file: f, name: b[f] ? '镜头' + b[f].镜 + '_' + b[f].刻 : stemOfFile(f), bind: b[f] || null,
+    ...(b[f] ? { ph: '〔' + SB.say(b[f], s.段落) + '：这一刻的构图、人物位置、姿态和镜头方向〕' } : {}) }));
+}
+const frameRefsOf = (s, e, side) => { const refs = refsOf(e, side).filter(r => /^@图片\d+$/.test(r.ref) && isFrameFile(s, r.path)); return orderFiles(s, refs.map(r => r.path)).map(x => ({ ...refs.find(r => r.path === x.file), name: stemOfFile(x.file) })); };   // side：刚读的写稿过程文件（不给就用页面上存的）
+/* 一张关键帧绑在哪（弹窗、格子上摆的）：镜头11「…」开头；没绑的说一声 */
+const bindSay = (s, f) => { const b = SB.bindsOf(s)[f]; return b ? SB.say(b, s.段落) : '没绑镜头'; };
 /* 编号别留空号：出片任务书照编号顺序挂素材，空一个号，后面的就全对错了。照 公用/素材编号.js 往前挪（只挪 @图片）：挪过的记进挂图，
    参考素材映射里这一条的登记存好以后跟着挪（moveMapped，11-15 起；以前登记在映射里的就挪不了）。挪不了的（没登记、两处登记对不上）不挪，gap 写为什么 */
 function closeGaps(L, hang, mapped) {
@@ -283,7 +281,7 @@ function framePlan(s, e, text, side, files) {
   for (const l of L) for (const m of l.matchAll(/@图片(\d+)/g)) taken.add(+m[1]);
   for (const k of [...Object.keys(hang), ...mapped.keys()]) if (/^@图片\d+$/.test(k)) taken.add(+k.slice(3));
   const next = () => { let n = 1; while (taken.has(n)) n++; taken.add(n); return '@图片' + n; };
-  const list = orderFiles(files).map(x => { const k = keep.find(r => r.path === x.file); return { ...x, ref: k ? k.ref : next(), desc: k ? sc.desc.get(k.ref) || '' : '' }; });
+  const list = orderFiles(s, files).map(x => { const k = keep.find(r => r.path === x.file); return { ...x, ref: k ? k.ref : next(), desc: k ? sc.desc.get(k.ref) || '' : '' }; });
   for (const x of list) hang[x.ref] = x.file;
   L = KeyFrames.put(L, KeyFrames.lines(list));
   for (let i = L.length - 1; i >= 0; i--) if (/^【(参考素材职责|场景)】$/.test(headKey(L[i])) && had.has(headKey(L[i])) && groupEmpty(L, i)) L.splice(i, L[i + 1] !== undefined && !L[i + 1].trim() ? 2 : 1);   // 原来有句子、这回删空了的组
@@ -298,26 +296,29 @@ async function framesDlg(s, e) {
   try { raw = C.decodeText((await FS.read(at([...dirOf(s), e.name]))).buf).text; } catch (err) { toast('稿子读不了：' + err.message, 'err'); return; }
   const lines = raw.split(/\r\n|\n/), sc = KeyFrames.scan(lines);
   const cur = refsOf(e).filter(r => /^@图片\d+$/.test(r.ref) && (isFrameFile(s, r.path) || sc.refs.includes(r.ref)));
-  const files = orderFiles([...new Set([...framesOf(s), ...cur.map(r => r.path)])]).map(x => x.file);
+  const files = orderFiles(s, [...new Set([...framesOf(s), ...cur.map(r => r.path)])]).map(x => x.file);
   if (!files.length) { toast('这一段还没有关键帧：资产那一步「关键帧」一块里先放上（资产 / ' + segName(s.段) + ' 里名字带首帧、尾帧、关键帧的图自动列上）', 'err'); return; }
-  const picks = new Set(cur.map(r => r.path)), range = rangeOf(e), refOf = f => (cur.find(r => r.path === f) || {}).ref || '';
-  if (!cur.length && range) for (const f of files) { const n = KeyFrames.noOf(stemOfFile(f)); if (n != null && n >= range[0] && n <= range[1] && /首帧/.test(stemOfFile(f))) picks.add(f); }   // 老稿名字里带着段落：这几镜的首帧先勾上
+  const picks = new Set(cur.map(r => r.path)), range = rangeOf(s, e), refOf = f => (cur.find(r => r.path === f) || {}).ref || '', mine = shotsOfPrompt(s, e);
+  if (!cur.length && mine && mine.length) for (const f of SB.forShots(mine, framesOf(s), s.段落, SB.bindsOf(s))) picks.add(f);   // 认得出拍哪几镜的：这几镜现用的关键帧先勾上
+  else if (!cur.length && range) for (const f of files) { const n = KeyFrames.noOf(stemOfFile(f)); if (n != null && n >= range[0] && n <= range[1] && /首帧/.test(stemOfFile(f))) picks.add(f); }   // 老稿名字里带着段落：这几镜的首帧先勾上
   const two = lines.some(l => /^【(人物|道具|场景|动作与声音)】$/.test(headKey(l)));
   if (BmKey.isBmk(lines)) { toast('这一条的关键帧是一镜一镜写参考哪张的（「…是各镜头的关键帧」那一句）：页面不替它重排，打开稿子自己改', 'err'); return; }   // 11-15
   const grid = h('div', { class: 'fl-ag' }), sum = h('div', { class: 'fn-note' });
   const roleOf = (list, i) => KeyFrames.roleOf(list, i);
   const paint = () => {
-    const list = orderFiles([...picks]);
+    const list = orderFiles(s, [...picks]);
     grid.replaceChildren(...files.map(f => {
       const i = list.findIndex(x => x.file === f);
-      return tileEl({ 类别: '关键帧', 文件: f, 名称: stemOfFile(f) }, i >= 0, i >= 0 ? roleOf(list, i) + (refOf(f) ? ' · ' + refOf(f) : '') : refOf(f) ? '现在挂着，这回去掉' : '', () => { picks.has(f) ? picks.delete(f) : picks.add(f); paint(); });
+      const t = tileEl({ 类别: '关键帧', 文件: f, 名称: stemOfFile(f) }, i >= 0, (i >= 0 ? roleOf(list, i) + (refOf(f) ? ' · ' + refOf(f) : '') + ' · ' : refOf(f) ? '现在挂着，这回去掉 · ' : '') + bindSay(s, f), () => { picks.has(f) ? picks.delete(f) : picks.add(f); paint(); });
+      if (i < 0 && !refOf(f) && SB.bindsOf(s)[f]) t.classList.add('kb-t');
+      return t;
     }));
     sum.textContent = list.length ? '挂 ' + list.length + ' 张：' + list.map((x, i) => x.name + '（' + roleOf(list, i) + '）').join('、') : cur.length ? '一张都不挂：素材里的关键帧句子都删掉。' : '还没勾。';
   };
   paint();
   const ok = await dialog(close => {
     const el = dlgShell((cur.length ? '改关键帧 · ' : '挂关键帧 · ') + e.label, '勾这一条要用的关键帧（资产那一步「关键帧」一块里的）。'
-      + ('按镜头号排：第一张当首帧，后面依次是第二、第三个关键帧，最后一张名字带「尾帧」的当尾帧。页面在素材' + (two ? '【场景】' : '【参考素材职责】') + '最前面写好 sd25-pe 的关键帧句子，〔〕里这一刻看得见什么要你来填（没填完不让出片）。')
+      + ('照绑的镜头排（资产那一步绑的）：第一张当首帧，后面依次是第二、第三个关键帧，绑在结尾的当尾帧；〔〕里写着它是哪一镜哪一刻。页面在素材' + (two ? '【场景】' : '【参考素材职责】') + '最前面写好 sd25-pe 的关键帧句子，〔〕里这一刻看得见什么要你来填（没填完不让出片）。')
       + '图里画了爆炸、烟、火的，挂上会被钉住不动，先看一眼。',
       [h('div', { class: 'fl-apick' }, grid), sum],
       [h('button', { class: 'btn ghost', onclick: () => close(false) }, '取消'), h('button', { class: 'btn ink', onclick: () => close(true) }, '好了')]);
@@ -325,7 +326,7 @@ async function framesDlg(s, e) {
     return el;
   });
   if (!ok) return;
-  const want = orderFiles([...picks]).map(x => x.file), side0 = X.side.get(e.name) || {};
+  const want = orderFiles(s, [...picks]).map(x => x.file), side0 = X.side.get(e.name) || {};
   const shape = (text, side) => framePlan(s, e, text, side, want);
   const plan = shape(raw, side0);
   if (plan.text === raw && JSON.stringify(plan.hang) === JSON.stringify(side0.挂图 || {})) { toast('关键帧没有变'); return; }
@@ -405,9 +406,11 @@ async function moveMapped(s, e, p, gone = []) {
 }
 
 /* 名字里带着它管哪几个镜头（1-5.txt；老稿 段落a-b_…、镜头a-b_…）：挂白模时，名字对得上的白模先挑上。视频提示词.txt、视频提示词_02.txt 不带 */
-function rangeOf(e) {
-  const sh = vpShots(e.name || e);
-  if (sh) return [sh[0], sh[sh.length - 1]];
+/* 这一条拍镜头表哪几镜（固定号）：名字是镜头号的照镜头表认，老稿「镜头6-9_视频提示词」照名字里的数认；认不出给 null */
+const shotsOfPrompt = (s, e) => SB.shotsOf(vpCode(e.key || vpBase(e.name)), e.name || e, shotNos(s));
+function rangeOf(s, e) {
+  const c = vpCode(e.key || vpBase(e.name)), sh = c ? SB.expand(c, shotNos(s)).nos.map(n => parseInt(n, 10)) : null;
+  if (sh && sh.length) return [sh[0], sh[sh.length - 1]];
   const k = /^(?:段落|镜头)\s*([0-9]+)(?:\s*[-－—–~～至到]\s*([0-9]+))?(?=_)/.exec(e.name || e);
   if (!k) return null;
   const a = +k[1], b = +(k[2] || k[1]);
@@ -419,13 +422,13 @@ async function newPrompt(s) {
   if (!s.段落.length) { toast('先到「提炼」准备好镜头表，再勾这一条拍哪几个镜头', 'err'); return; }
   const busy = AI.jobs.filter(j => j.事 === '写提示词' && j.段 === s.段 && jobLive(j)).map(j => j.名);   // AI 正在写、文件还没落下的，也占着名字
   const have = promptsOf(s.段), taken = new Set([...have.map(e => e.key), ...busy]);
-  const inWhich = n => have.filter(e => (vpShots(e.key) || []).includes(n)).map(e => vpCode(e.key));   // 这个镜头已经写进哪几条了
-  const picked = new Set(), shotNumbers = () => [...picked].sort((a, b) => a - b);
+  const nos = shotNos(s), inWhich = n => have.filter(e => vpCode(e.key) && SB.expand(vpCode(e.key), nos).nos.includes(n)).map(e => vpCode(e.key));   // 这个镜头已经写进哪几条了
+  const picked = new Set(), shotNumbers = () => nos.filter(n => picked.has(n));   // 镜头表的固定号（2026-11-16）：删过的不挪，中间加的是 3b
   const selection = h('span', { class: 'fn-note', 'aria-live': 'polite' }), namePrev = h('div', { class: 'fname-prev' });
   const shotGrid = h('div', { class: 'prompt-shots', role: 'group', 'aria-label': '勾这一条拍镜头表里的哪几个镜头' });
   let name = '';
   const paintSelection = () => {
-    name = vpShotName(shotNumbers());
+    name = SB.codeOf(shotNumbers(), nos);
     const dup = !!name && taken.has(name);
     selection.textContent = !name ? '' : dup ? '已经有「' + vpLabel(name) + '」这一条了：回到列表打开它改，或者换几个镜头' : '';
     selection.classList.toggle('warn', dup);
@@ -433,9 +436,10 @@ async function newPrompt(s) {
     okBtn.disabled = selfBtn.disabled = !name || dup;
   };
   shotGrid.append(...s.段落.map((shot, index) => {
-    const number = index + 1, inn = inWhich(number);
+    const number = nos[index], inn = inWhich(number);
     const checkbox = h('input', { type: 'checkbox', value: number, 'aria-label': '镜头' + number, onchange: () => {
       checkbox.checked ? picked.add(number) : picked.delete(number); paintSelection();
+      if (!fTouched) { fpick.clear(); for (const f of SB.forShots(shotNumbers(), frames, s.段落, SB.bindsOf(s))) fpick.add(f); paintF(); }   // 勾了几镜：这几镜现用的关键帧跟着勾上（你自己动过关键帧就不替你勾）
     } });
     return h('label', { class: 'prompt-shot' }, checkbox, h('span', null,
       h('b', null, '镜头' + number + '　' + (shot.写什么 || '内容待填写')),
@@ -447,15 +451,16 @@ async function newPrompt(s) {
   const whatField = field('补充要求（可不填）', what);
   const bm = bmSelect(null, '');
   const bmField = X.vids.length ? field('白模视频', bm, '可以不挂。挂了就是一样普通素材，可以只管其中几秒，AI 照它写素材里的白模那两句') : null;
-  const frames = orderFiles(framesOf(s)).map(x => x.file), fpick = new Set(), fGrid = h('div', { class: 'fl-ag' });   // 资产那一步「关键帧」一块里的
-  const fList = () => orderFiles([...fpick]);
+  const frames = orderFiles(s, framesOf(s)).map(x => x.file), fpick = new Set(), fGrid = h('div', { class: 'fl-ag' });   // 资产那一步「关键帧」一块里的
+  const fList = () => orderFiles(s, [...fpick]);
+  let fTouched = false;
   const paintF = () => {
     const list = fList();
-    fGrid.replaceChildren(...frames.map(f => { const i = list.findIndex(x => x.file === f); return tileEl({ 类别: '关键帧', 文件: f, 名称: stemOfFile(f) }, i >= 0, i >= 0 ? KeyFrames.roleOf(list, i) : '', () => { fpick.has(f) ? fpick.delete(f) : fpick.add(f); paintF(); }); }));
+    fGrid.replaceChildren(...frames.map(f => { const i = list.findIndex(x => x.file === f); const t = tileEl({ 类别: '关键帧', 文件: f, 名称: stemOfFile(f) }, i >= 0, (i >= 0 ? KeyFrames.roleOf(list, i) + ' · ' : '') + bindSay(s, f), () => { fTouched = true; fpick.has(f) ? fpick.delete(f) : fpick.add(f); paintF(); }); if (i < 0 && SB.bindsOf(s)[f]) t.classList.add('kb-t'); return t; }));
   };
   paintF();
   const frameField = frames.length ? h('div', { class: 'fld' }, h('span', null, '关键帧'), h('div', { class: 'fl-apick', style: 'max-height:32vh' }, fGrid),
-    h('em', null, '可以不挂。勾了：按镜头号排，第一张当首帧，AI 照勾的这几张写关键帧句子。画了爆炸、烟、火的图挂上会被钉住不动')) : null;
+    h('em', null, '勾了上面的镜头，这几镜现用的关键帧自动勾上（资产那一步绑的），可以去掉或换。照绑的镜头排，第一张当首帧；交给 AI 时每张写明是哪一镜哪一刻。画了爆炸、烟、火的图挂上会被钉住不动')) : null;
   const viaSelf = chNow() === SELF_CH;   // 顶栏选的就是「给我提示词」：只摆复制这一个
   const okBtn = h('button', { class: 'btn ink' }, viaSelf ? '复制任务，自己交给 AI' : '让 ' + chName() + ' 写');
   const selfBtn = h('button', { class: 'btn', title: '不在这里调 AI：把任务复制出来，贴进你自己在 Codex、Claude 里开的对话。它写好，这里自动出现' }, '复制任务，自己交给 AI');
@@ -501,6 +506,8 @@ async function approve(s, e) {
   const gapNote = !gap ? null : h('div', { class: 'fn-note warn' }, fix ? RefNo.say(gap.p) + '点「批准出片」先挪好再出，改之前的一版收进历史记录。'
     : '编号没从 1 连着编，' + (gap.p.blocked ? '页面挪不了：' + gap.p.blocked + '。' : '这份是 AI 写的稿，页面不替它改字：写批注让 AI 改。') + '这样出片会被拦下。');
   const short = vids.filter((r, i) => durs[i] && durs[i] < 2);
+  const kb = SB.check({ hung: frameRefsOf(s, e), shots: shotsOfPrompt(s, e), paras: s.段落, binds: SB.bindsOf(s), text: txt });   // 关键帧对一遍（2026-11-16 他定：只标红提醒，照样能出片）
+  const kbNote = kb.length ? h('div', { class: 'fn-note warn' }, '关键帧有 ' + kb.length + ' 处对不上（照样能出片，看一眼再点）：', h('ul', { style: 'margin:4px 0 0;padding-left:20px' }, kb.map(x => h('li', null, x)))) : null;
   const paint = () => {
     const p = priceOf(model.value, res.value, Math.round(+sec.value || 0), vids.length > 0);
     price.textContent = p ? '估价：约 ' + p.total + ' 积分（' + (vids.length ? '带参考视频的' : '') + model.value + ' ' + res.value + ' 每秒 ' + p.per + '；照以往实扣估的，以即梦报价为准）' : '这种出法以前没实扣过，价钱以即梦报价为准。';
@@ -509,7 +516,7 @@ async function approve(s, e) {
   for (const x of [model, res, sec]) x.addEventListener('input', paint);
   paint();
   const r = await dialog(close => dlgShell('批准出片 · ' + e.label, '点「批准出片」：页面先排好任务书（用哪份提示词、挂哪几个素材、怎么出、存到哪），再把出片的话给你，复制贴进你自己的 Codex，它照任务书去即梦出一条样片。要花积分。',
-    [gapNote, field('模型', model), field('清晰度', res), field('时长（秒）', sec, aiSay + (end ? '事件脚本写到第 ' + end + ' 秒；' : '') + (vids.length && dur ? '白模' + (vids.length > 1 ? '合计' : '') + ' ' + dur.toFixed(1) + ' 秒；' : '') + '可填 4 到 30'), price, warn,
+    [gapNote, kbNote, field('模型', model), field('清晰度', res), field('时长（秒）', sec, aiSay + (end ? '事件脚本写到第 ' + end + ' 秒；' : '') + (vids.length && dur ? '白模' + (vids.length > 1 ? '合计' : '') + ' ' + dur.toFixed(1) + ' 秒；' : '') + '可填 4 到 30'), price, warn,
       field('最多花多少积分', cap, '报价超过这个数，Codex 会停下来问你；不填就是存好草稿、报完价就停'),
       h('div', { class: 'fn-note' }, '即梦账号和画布照这个项目的 资产/出片设置.json。排任务书时先核对这个号能不能改这张画布，对不上就停下，不出片。'), err],
     [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'),
@@ -628,7 +635,7 @@ function frameLine(s, e, skip) {   // skip：下面「出关键帧」那一块�
   const fr = frameRefsOf(s, e).filter(r => !skip || !skip.has(r.path));
   if (!fr.length) return null;
   return h('div', { class: 'wf-item-bm' }, h('span', { class: 'fs-state zhen' }, '关键帧'),
-    fr.map(r => h('span', { class: 'wf-bm' }, h('button', { class: 'fl-link', type: 'button', title: '看这张关键帧：' + r.path, onclick: () => openImage(r.path) }, r.name), h('span', { class: 'faint small' }, r.ref))),
+    fr.map(r => h('span', { class: 'wf-bm' }, h('button', { class: 'fl-link', type: 'button', title: '看这张关键帧：' + r.path, onclick: () => openImage(r.path) }, r.name), h('span', { class: 'faint small' }, r.ref + ' · ' + bindSay(s, r.path)))),
     e.draft ? h('button', { class: 'fl-link mute', type: 'button', title: '多挂几张、去掉几张：素材里的关键帧句子跟着重排', onclick: () => framesDlg(s, e) }, '改…') : null);
 }
 /* ---------- 出关键帧（2026-11-14 文生资产流程图 ⑧，他定的：关键帧在这一步做）：哪一条要关键帧，就在那一条上点「出关键帧…」，定取哪一刻。
@@ -702,12 +709,15 @@ async function grabFrame(file, sec) {
 async function outFrameDlg(s, e) {
   if (scriptState(s).st !== 'final') { toast('剧本定稿以后才能出关键帧', 'err'); return; }
   if (!AI.ok) { toast('本机服务是旧的，重开一次才能出关键帧', 'err'); return; }
-  const pre = framePre(e), ad = '资产/' + segName(s.段) + '/', pd = '提示词/' + segName(s.段) + '/';
+  const ad = '资产/' + segName(s.段) + '/', pd = '提示词/' + segName(s.段) + '/';
   const vid = vidRefs(e)[0] || null, cuts = vid ? await cutsOfVid(vid.path) : [];
   const busy = new Set(AI.jobs.filter(j => j.事 === '写字' && j.段 === s.段 && jobLive(j) && Array.isArray(j.只)).flatMap(j => j.只.filter(k => k.startsWith('关键帧/')).map(k => k.slice(4))));
   const taken = n => busy.has(n) || F.words.has(pd + n + '_提示词.txt') || [...F.words.keys()].some(k => k.startsWith(ad) && !k.slice(ad.length).includes('/') && IMG_RE.test(k) && baseOf(k) === n);
   const moment = window.UI.chips(KF_MOMENT, '首帧', () => sync());
-  const shot = h('input', { class: 'inp', type: 'number', min: '1', max: '60', value: '1', style: 'width:76px' });
+  const nos = shotNos(s), mineNos = shotsOfPrompt(s, e) || [];
+  if (!nos.length) { toast('镜头表还空着：先到「提炼」那一步写好镜头表，关键帧要绑在镜头表的一镜上', 'err'); return; }
+  const shot = h('select', { class: 'inp', style: 'max-width:420px' }, s.段落.map((x, i) => h('option', { value: nos[i] }, '镜头' + nos[i] + '　' + (str(x.写什么).trim() || '还空着') + (mineNos.includes(nos[i]) ? '' : '（不在这一条里）'))));
+  shot.value = mineNos[0] || nos[0];   // 这一条拍的头一镜（2026-11-16：选的是镜头表的镜，不是这一条分镜的第几镜）
   const name = h('input', { class: 'inp', spellcheck: 'false' }), req = h('textarea', { class: 'inp', rows: '3', placeholder: '这一刻画什么：谁在哪、在做什么、朝哪，镜头从哪拍。不填：AI 照这一条的分镜定' });
   const pool = assetsOf(s).list.filter(it => it.at && IMG_RE.test(it.at) && it.类别 !== '关键帧' && !BMF_RE.test(it.at));
   const picks = new Set(), grid = h('div', { class: 'fl-ag' }), count = h('em');
@@ -715,7 +725,7 @@ async function outFrameDlg(s, e) {
   const err = h('div', { class: 'fld-err' }), okBtn = h('button', { class: 'btn ink' }, '让 ' + chName() + ' 写字');
   let named = false, secSet = false;
   const room = () => KF_MAX - (useBm && useBm.checked ? 1 : 0);
-  const auto = () => { const b = pre + '镜头' + Math.max(1, Math.round(+shot.value || 1)) + '_' + moment.get(); let n = b, i = 2; while (taken(n)) n = b + '_' + i++; return n; };
+  const auto = () => { const b = '镜头' + shot.value + '_' + moment.get(); let n = b, i = 2; while (taken(n)) n = b + '_' + i++; return n; };
   const check = () => {
     const n = name.value.trim();
     const why = !n ? '起个名字' : !nameOk(n) ? '名字里有不能当文件名的字' : !FRAME_RE.test(n) ? '名字里要带「首帧」「尾帧」或「关键帧」（资产那一步靠它认出是关键帧）' : /_(候选|白模帧)$/.test(n) ? '名字别用「_候选」「_白模帧」结尾' : taken(n) ? '这个名字已经有了' : '';
@@ -723,7 +733,7 @@ async function outFrameDlg(s, e) {
   };
   const sync = () => {
     if (!named) name.value = auto();
-    if (sec && !secSet) { const c = cuts.find(x => +x.no === Math.round(+shot.value || 1)), m = moment.get(); sec.value = c ? String(m === '首帧' ? +c.a : m === '尾帧' ? Math.max(+c.a, +c.b - 0.5) : (+c.a + +c.b) / 2) : m === '首帧' ? '0' : sec.value || '0'; }
+    if (sec && !secSet) { const c = cuts.find(x => +x.no === parseInt(shot.value, 10)), m = moment.get(); sec.value = c ? String(m === '首帧' ? +c.a : m === '尾帧' ? Math.max(+c.a, +c.b - 0.5) : (+c.a + +c.b) / 2) : m === '首帧' ? '0' : sec.value || '0'; }
     check();
   };
   const paintG = () => {
@@ -734,14 +744,14 @@ async function outFrameDlg(s, e) {
     count.textContent = '勾这一刻画面里有的人物、场景、道具：样子照图，不用字描。已勾 ' + picks.size + ' 张，最多 ' + room() + ' 张。还没确认的也能先勾，出图以前要确认。';
   };
   name.addEventListener('input', () => { named = true; check(); });
-  shot.addEventListener('input', sync);
+  shot.addEventListener('change', sync);
   if (sec) sec.addEventListener('input', () => { secSet = true; });
   if (useBm) useBm.addEventListener('change', () => { while (picks.size > room()) picks.delete([...picks].pop()); paintG(); });
   sync(); paintG();
   const r = await dialog(close => {
-    okBtn.onclick = () => { if (!okBtn.disabled) close({ name: name.value.trim(), req: req.value.trim(), refs: [...picks], bm: !!(useBm && useBm.checked), sec: sec ? Math.max(0, +sec.value || 0) : 0, moment: moment.get(), shot: Math.max(1, Math.round(+shot.value || 1)) }); };
+    okBtn.onclick = () => { if (!okBtn.disabled) close({ name: name.value.trim(), req: req.value.trim(), refs: [...picks], bm: !!(useBm && useBm.checked), sec: sec ? Math.max(0, +sec.value || 0) : 0, moment: moment.get(), shot: shot.value }); };
     const el = dlgShell('出关键帧 · ' + e.label, '这一条视频里的一刻。AI 照这一条的分镜先写字，你批过点「照这个出图」才出图。',
-      [h('div', { class: 'fld' }, h('span', null, '取哪一刻'), h('div', { style: 'display:flex;gap:10px;align-items:center;flex-wrap:wrap' }, moment, h('span', { class: 'faint small' }, '第'), shot, h('span', { class: 'faint small' }, '镜'))),
+      [h('div', { class: 'fld' }, h('span', null, '取哪一刻'), h('div', { style: 'display:flex;gap:10px;align-items:center;flex-wrap:wrap' }, moment)), h('div', { class: 'fld' }, h('span', null, '镜头表哪一镜'), shot, h('em', null, '出好的图绑在这一镜的这一刻上，写提示词时照这个告诉 AI 它放在哪')),
         field('这一刻画什么', req, '可以不填'),
         pool.length ? h('div', { class: 'fld' }, h('span', null, '参考图'), h('div', { class: 'fl-apick', style: 'max-height:30vh' }, grid), count) : h('p', { class: 'fn-note warn' }, '这一段还没有挂上的图：参考图要先在资产那一步出好'),
         vid ? h('div', { class: 'fld' }, h('span', null, '白模'), h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' }, h('label', { class: 'wf-tick' }, useBm, h('span', null, '截白模这一刻当第一张参考图（构图、机位、站位照它）')), h('span', { class: 'faint small' }, '第'), sec, h('span', { class: 'faint small' }, '秒')),
@@ -762,8 +772,9 @@ async function outFrameDlg(s, e) {
   }
   const w = wordFor(s, '关键帧', r.name, '', null);
   w.refs = refs; w.forPrompt = e.name;
+  SB.bind(s, '资产/' + segName(s.段) + '/' + r.name + '.png', r.shot, r.moment, s.段落, true); touch();   // 出之前就绑上，新出的当现用（图没出好以前，写提示词照旧带原来那张）
   await flush();
-  if (await askWords(s, [w], '这一张是「' + e.name + '」第 ' + r.shot + ' 镜' + when + '的画面。' + (ask ? '\n' + ask : ''))) toast('交给 AI 写字了：写好在这一条下面批');
+  if (await askWords(s, [w], '这一张是镜头表镜头' + r.shot + '「' + (str((s.段落[nos.indexOf(r.shot)] || {}).写什么).trim()) + '」' + when + '的画面，挂在「' + e.name + '」这一条上。' + (ask ? '\n' + ask : ''))) toast('交给 AI 写字了：写好在这一条下面批');
   rerender();
 }
 /* 不要这一帧：字、图、候选、批注、白模截图用同一个时间移进历史记录 */
@@ -775,14 +786,14 @@ async function dropFrameWord(s, e, w, ref) {
   for (const rel of [w.txt, w.note, w.img, w.imgNote, w.shots, w.cand, cn + '_批注.md', cn + SHOTS_TAIL, '资产/' + segName(s.段) + '/' + w.stem + '_白模帧.png']) {
     try { if (await hasFile(F.name, rel.split('/')) || await FS.isDir(at([F.name, ...rel.split('/')]))) await archiveFile(rel, stamp); } catch (err) { left.push(rel.split('/').pop()); }
   }
-  s.关键帧 = arrOf(s.关键帧).filter(f => f !== w.img); touch();
+  s.关键帧 = arrOf(s.关键帧).filter(f => f !== w.img); SB.unbind(s, w.img); touch();
   await flush(); await loadSides(); await loadExtra(); rerender();
   toast(left.length ? '这几样没移走：' + left.join('、') : '收进历史记录了，名字后面加了 __' + stamp, left.length ? 'err' : undefined);
 }
 /* 一张关键帧的格子：缩略图、走到哪了、眼下该做的那一件、确认可用 */
 function kfChip(s, e, w, ref) {
   const stop = ev => ev.stopPropagation(), has = w.hasImg, ok = has && w.ok;
-  const tx = [ref ? '挂在 ' + ref : '', chipTx(null, w) || (has ? '' : wordTx(w))].filter(Boolean).join(' · ');
+  const tx = [ref ? '挂在 ' + ref : '', bindSay(s, w.img), chipTx(null, w) || (has ? '' : wordTx(w))].filter(Boolean).join(' · ');
   const open = () => openWord(s, w);   // 进这一帧自己的那一页：字、图、AI 做过什么都在那里（11-14）
   const el = h('div', { class: 'fl-asset k-zhen wd-' + w.step + (has ? '' : ' todo') + (ok ? ' ok' : ''), role: 'button', tabindex: '0',
     title: w.img + (w.need ? '\n要撑住：' + w.need : '') + (w.checkImg ? '\nAI 核图：' + w.checkImg : '') + '\n点一下进这一帧的那一页：看字、批字、批准出图、看图' },

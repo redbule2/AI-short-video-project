@@ -146,5 +146,26 @@ const sideData = () => ({ 写法: '分镜', 分镜稿: structured, 自由稿: '�
     const n = JSON.parse(t.files.get(mapPath).toString()).prompts[key];
     assert.equal(n.秒数.记号, 'old'); assert.equal(Secs.state(n.秒数, t.raw()).st, 'changed');   // 出片弹窗会说「估完以后改过」
   });
+  /* 2026-11-16：镜头表固定号（删过的不挪），关键帧绑在哪一镜哪一刻要写进任务书、素材登记 */
+  const flowPath = path.join(root, '项目', '测试', '定稿的剧本', '流水线.json'), kf = '资产/第1段/镜头4_首帧.png';
+  const flowWith = () => JSON.stringify({ 场: [{ 段: '1', 段落: [{ 号: '1', 写什么: '甲进门' }, { 号: '2', 写什么: '乙抬头' }, { 号: '4', 写什么: '丙递书' }],
+    关键帧绑定: { [kf]: { 镜: '4', 刻: '首帧', 写什么: '丙递书' } } }] });
+  await check('批提示词：挂的关键帧写明绑在镜头表哪一镜哪一刻，号照镜头表的固定号', async () => {
+    const s = setup(pe, { ...peSide(), 挂图: { '@图片1': kf } });
+    s.files.set(flowPath, Buffer.from(flowWith()));
+    const book = await s.K.批注提示词.book(job());
+    assert.ok(book.includes('@图片1：' + kf + '（镜头表镜头4「丙递书」开头）'));
+    assert.match(book, /绑在镜头表哪一镜的哪一刻/);
+    assert.match(book, /看它用的位置对不对得上那一镜那一刻/);
+  });
+  await check('写提示词：绑了镜头的关键帧，素材登记里写明「关键帧｜镜头4｜开头」', async () => {
+    const s = setup(structured, sideData());
+    s.files.delete(promptPath);
+    s.files.set(flowPath, Buffer.from(flowWith()));
+    s.files.set(path.join(root, '项目', '测试', ...kf.split('/')), Buffer.from('png'));
+    await s.K.写提示词.apply({ ...job(), assets: [kf] }, '【提示词】\n【生成目标】\n' + '甲给乙递书。'.repeat(20) + '\n\n【事件脚本】\n镜头1：甲递书。\n【素材登记】\n[{"ref": "@图片1", "name": "关键帧", "path": "' + kf + '"}]');
+    const refs = JSON.parse(s.files.get(mapPath).toString()).prompts['提示词/第1段/视频提示词.txt'].references;
+    assert.equal(refs.length, 1); assert.equal(refs[0].name, '关键帧｜镜头4｜开头');
+  });
   console.log(tested + ' 项回归检查通过；真实项目数据未读写。');
 })().catch(e => { console.error(e); process.exitCode = 1; });

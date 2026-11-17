@@ -29,3 +29,8 @@ test('组名认法、空组', () => {
   assert.deepEqual([0, 2, 4].map(i => KF.groupEmpty(L, i)), [true, false, true]);   // 第 i 行是组名：底下有没有句子
   assert.equal(KF.HOLE, '〔原来的关键帧去掉了，改写这一处〕');
 });
+
+test('绑了镜头的关键帧：〔〕里写明是哪一镜哪一刻（ph）', () => {
+  assert.deepEqual(KF.lines([{ ref: '@图片6', name: '镜头11_首帧', desc: '〔旧的空〕', ph: '〔镜头11「喊冲锋」开头：这一刻〕' }]), ['@图片6作为首帧。', '该首帧定义〔镜头11「喊冲锋」开头：这一刻〕。']);
+  assert.deepEqual(KF.lines([{ ref: '@图片6', name: 'a', desc: '填过的' , ph: '〔x〕' }]), ['@图片6作为首帧。', '该首帧定义填过的。']);
+});

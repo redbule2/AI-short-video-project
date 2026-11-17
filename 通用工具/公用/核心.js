@@ -1104,27 +1104,14 @@ function sceneStem(t) {
 }
 /* 视频提示词（2026-11-16 他定）：名字就是这一条拍的镜头表镜头号，1-5.txt、4-9.txt；只拍一个镜头 3.txt；勾的不连着 1-3、5.txt。
    审片以后照修改方案另存的 _改1、_改2 也算。老稿照旧认：视频提示词.txt 第 1 条、视频提示词_02.txt 第 2 条，名字前面带别的（镜头1-5_视频提示词.txt） */
-const SHOT_CODE = '[0-9]+(?:-[0-9]+)?(?:、[0-9]+(?:-[0-9]+)?)*';
+const SHOT_CODE = '[0-9]+[a-z]?(?:-[0-9]+[a-z]?)?(?:、[0-9]+[a-z]?(?:-[0-9]+[a-z]?)?)*';   // 镜头表的固定号：中间加的镜头是 3b（公用/关键帧绑定.js）
 const RE_VP = new RegExp('(?:(?:^|_)视频提示词(?:_[0-9]+)?|^' + SHOT_CODE + ')(?:_改[0-9]+)?\\.txt$', 'i');
 const vpVer = name => +((/_改([0-9]+)\.txt$/i.exec(String(name)) || [])[1] || 0);   // 改的第几版；原稿是 0
 const vpBase = name => String(name).replace(/_改[0-9]+(\.txt)$/i, '$1');   // 这一条的原稿名
 const vpNo = name => { const b = vpBase(name); return /^视频提示词\.txt$/i.test(b) ? 1 : +((/^视频提示词_([0-9]+)\.txt$/i.exec(b) || [])[1] || 0); };   // 老稿第几条；镜头号起名的、别的老稿是 0
 /* 镜头号起名的：1-5.txt（改几、补几的也算）→ '1-5'；不是这样起名的给 '' */
 const vpCode = name => { const m = new RegExp('^(' + SHOT_CODE + ')(?:_改[0-9]+)?(?:_补[0-9]+)?\\.txt$', 'i').exec(String(name)); return m ? m[1] : ''; };
-/* 镜头号起名的拍哪几个镜头：'1-3、5.txt' → [1, 2, 3, 5]；不是这样起名的给 null */
-const vpShots = name => {
-  const c = vpCode(name);
-  if (!c) return null;
-  const out = new Set();
-  for (const part of c.split('、')) { const [a, b = a] = part.split('-').map(Number); for (let i = Math.min(a, b); i <= Math.max(a, b) && i - Math.min(a, b) < 999; i++) out.add(i); }
-  return [...out].sort((x, y) => x - y);
-};
-/* 勾了哪几个镜头 → 起名：[1, 2, 3, 5] → '1-3、5.txt'；没勾给 '' */
-const vpShotName = nums => {
-  const ns = [...new Set((nums || []).map(Number).filter(n => Number.isInteger(n) && n > 0))].sort((x, y) => x - y), runs = [];
-  for (const n of ns) { const r = runs[runs.length - 1]; if (r && n === r[1] + 1) r[1] = n; else runs.push([n, n]); }
-  return runs.length ? runs.map(([a, b]) => a === b ? String(a) : a + '-' + b).join('、') + '.txt' : '';
-};
+/* 名字里的镜头号拍哪几镜、勾了哪几镜起什么名：照镜头表的固定号算，在 公用/关键帧绑定.js（ShotBind.expand、ShotBind.codeOf） */
 /* 补片稿（AGENTS.md：审片后只换有毛病的几秒）：原名_补1.txt、_补2……，补几是第几处，不是版本号；它不算一版，RE_VP 不认它。
    补的是「原名」那一版出的样片：1-5_改2_补1.txt 补「1-5改2」出的那条，片子放样片旁边的 样片名_补片/补1.mp4（2026-11-16 加） */
 const RE_VP_PATCH = new RegExp('(?:(?:^|_)视频提示词(?:_[0-9]+)?|^' + SHOT_CODE + ')(?:_改[0-9]+)?_补([0-9]+)\\.txt$', 'i');
@@ -1164,7 +1151,7 @@ const Core = {
   parsePrompt, serializePrompt, splitWithEol, joinLines, wrapPara, isBlank, edgeRange, ensureTrailingBlank, promptTemplate, promptSectionKey, promptShotTitle, renumberPromptShots, newPromptShot, PROMPT_SKELETON,
   lintPrompt, lintScript, lintShots, decodeText, hasBom, encodeText, cloneDoc,
   units, redline, diffChars, notesToMd, parseNotes,
-  nameOk, sceneStem, SHOT_CODE, RE_VP, vpVer, vpBase, vpNo, vpCode, vpShots, vpShotName, vpLabel, vpTok, RE_VP_PATCH, vpPatchOf, RE_TASK, vpTask, taskVp, patchOut,
+  nameOk, sceneStem, SHOT_CODE, RE_VP, vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, RE_VP_PATCH, vpPatchOf, RE_TASK, vpTask, taskVp, patchOut,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;
 G.Core = Core;

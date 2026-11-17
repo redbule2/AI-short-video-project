@@ -41,7 +41,7 @@
     }
     return { refs, desc, rows };
   }
-  /* 照 sd25-pe 写一组。list：排好先后的 [{ ref, name, desc }]；desc 空着或者只是一个〔〕，就放这个位置该填什么的提示 */
+  /* 照 sd25-pe 写一组。list：排好先后的 [{ ref, name, desc, ph }]；desc 空着或者只是一个〔〕，就放这个位置该填什么的提示（给了 ph 就用 ph） */
   function lines(list) {
     const out = [];
     if (!list.length) return out;
@@ -52,7 +52,7 @@
     list.forEach((x, i) => {
       const tail = /尾帧/.test(x.name || '');
       const role = list.length === 1 ? (tail ? '尾' : '首') : i === 0 ? '首' : i === list.length - 1 && tail ? '尾' : '中';
-      const d = x.desc && !/^〔[^〔〕]*〕$/.test(x.desc) ? x.desc : PH[role];
+      const d = x.desc && !/^〔[^〔〕]*〕$/.test(x.desc) ? x.desc : x.ph || PH[role];   // ph：要填的〔〕里写明是哪一镜哪一刻（关键帧绑了镜头的，2026-11-16）
       if (role === '中') out.push(x.ref + '定义第' + cn(i + 1) + '个关键帧：' + d + '。');
       else out.push(x.ref + '作为' + role + '帧。', '该' + role + '帧定义' + d + '。');
     });

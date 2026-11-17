@@ -28,7 +28,7 @@ if (!window.Wait && document.currentScript) document.head.append(Object.assign(d
 /* 提示词的名字（2026-11-16 他定）：就是这一条拍的镜头表镜头号，1-5.txt、4-9.txt（写的时候勾镜头）。
    老稿还有 视频提示词.txt、视频提示词_02.txt、段落a-b_视频提示词.txt、镜头a-b_视频提示词.txt，照旧认。
    审片以后改的另存一份，名字后面加 _改1、_改2……（2026-11-14 他定）：原稿、前几版留在原处；一条只摆最新那一版，出片也用它 */
-const { RE_VP, vpVer, vpBase, vpNo, vpCode, vpShots, vpShotName, vpLabel, vpTok, nameOk, sceneStem } = window.Core;   // 视频提示词怎么起名、文件名能不能用：和审片台、本机服务共用 公用/核心.js 那一份
+const { RE_VP, vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, nameOk, sceneStem } = window.Core;   // 视频提示词怎么起名、文件名能不能用：和审片台、本机服务共用 公用/核心.js 那一份
 const VID_RE = /\.(mp4|m4v|mov|webm)$/i;
 const SHOTS_TAIL = '_批注截图';
 const FILE = '流水线.json';
@@ -54,6 +54,9 @@ const kindCls = c => c && c !== '这一段' ? ({ 人物: 'k-ren', 场景: 'k-jin
    名字或它那一层文件夹的名字带「首帧」「尾帧」「关键帧」的自动算（这一场的「关键帧不用」里记着的除外，当了人物、场景、道具的也除外）；
    别的图在资产页点「＋ 新增关键帧」挑，记在这一场的「关键帧」里。挂到哪条提示词、当首帧还是第几个关键帧，在提示词那一步定 */
 const FRAME_RE = /首帧|尾帧|关键帧/;
+/* 镜头表的固定号、关键帧绑到「一镜一刻」（2026-11-16 他定）：公用/关键帧绑定.js。镜头表每一镜存「号」，删了不挪；这一场的「关键帧绑定」：图 → { 镜, 刻, 备选, 写什么 } */
+const SB = window.ShotBind;
+const shotNos = s => SB.nosOf(s.段落);   // 这一场镜头表各镜的号
 const arrOf = v => Array.isArray(v) ? v : [];
 const frameNo = f => { const m = /(?:镜头|段落)\s*0*([0-9]+)/.exec(String(f).split('/').pop()); return m ? +m[1] : null; };   // 镜头3_首帧.png → 3
 const frameSort = (a, b) => (frameNo(a) ?? 1e9) - (frameNo(b) ?? 1e9) || a.localeCompare(b, 'zh', { numeric: true });
@@ -73,13 +76,14 @@ const segKind = (s, f) => KINDS.find(k => segOf(s, k).includes(f)) || (framesOf(
 function putSeg(s, k, f) {   // 这一段的一张图，这一场当 k 用（原来当别的用的，挪过来）
   for (const x of KINDS) if (x !== k) s[SEG_FIELD[x]] = s[SEG_FIELD[x]].filter(g => g !== f);
   s.关键帧 = arrOf(s.关键帧).filter(g => g !== f); s.关键帧不用 = arrOf(s.关键帧不用).filter(g => g !== f);
+  if (k !== '关键帧') SB.unbind(s, f);
   if (k === '关键帧') { if (!isAutoFrame(s, f)) s.关键帧.push(f); return; }   // 名字带首帧、关键帧的本来就算，不用另记
   if (isAutoFrame(s, f)) s.关键帧不用.push(f);   // 名字带首帧的图改当别的用：以后这一场不用它了，也别再自己冒回关键帧里
   if (!s[SEG_FIELD[k]].includes(f)) s[SEG_FIELD[k]].push(f);
 }
 /* 关键帧这一场不用了（图还在 资产/第N段 里） */
 function dropFrame(s, f) {
-  s.关键帧 = arrOf(s.关键帧).filter(g => g !== f);
+  s.关键帧 = arrOf(s.关键帧).filter(g => g !== f); SB.unbind(s, f);
   if (isAutoFrame(s, f) && !arrOf(s.关键帧不用).includes(f)) s.关键帧不用 = [...arrOf(s.关键帧不用), f];
 }
 
@@ -166,6 +170,7 @@ function normDoc(raw) {
       else { const key = x.类别 === '人物' ? '人物' : '道具'; one[key].push(put(key, name, '', file)); }
     }
     one.人物 = uniq(one.人物); one.道具 = uniq(one.道具); one.场景图 = uniq(one.场景图);
+    SB.fillNos(one.段落);   // 镜头表没号的补上（老项目头一回读到：1、2、3……；中间加的 3b）
     doc.场.push(one);
   }
   doc.场.sort((a, b) => C.segCompare(a.段, b.段));
@@ -173,6 +178,7 @@ function normDoc(raw) {
 }
 function serialize(doc) {
   const rows = a => a.filter(x => x.名.trim()).map(x => ({ ...x, 名: x.名.trim(), 描写: x.描写.trim(), 资产: x.资产.length > 1 ? x.资产 : x.资产[0] || '' }));   // 一张图还写成一个字符串（和以前一样），几张才写成列表
+  for (const s of doc.场) SB.fillNos(s.段落);   // 页面上新加的镜头：存的时候定下号
   const 场 = doc.场.map(({ 人物图, 道具图, 关键帧, 关键帧不用, 场景文字, ...s }) => ({ ...s, ...(uniq(场景文字).length ? { 场景文字: uniq(场景文字) } : {}), ...(人物图.length ? { 人物图 } : {}), ...(道具图.length ? { 道具图 } : {}), ...(arrOf(关键帧).length ? { 关键帧 } : {}), ...(arrOf(关键帧不用).length ? { 关键帧不用 } : {}), 名: s.名.trim(), 表达: s.表达.trim(), 段落: s.段落.map(x => ({ ...x, 写什么: x.写什么.trim(), 作用: x.作用.trim() })) }));   // 人物图、道具图（这一段的图当人物、道具用）空着就不写
   const b = doc.补细, has = Object.keys(b.人物).length || Object.keys(b.道具).length || b.场景;
   return JSON.stringify({ 说明: NOTE_LINE, 梗概: doc.梗概.trim(), 人物: rows(doc.人物), 场景: doc.场景.trim(), 场景图: doc.场景图, 道具: rows(doc.道具), 场, ...(has ? { 补细: b } : {}), 可用: doc.可用, ...doc.rest }, null, 2) + '\n';   // 「可用」空了也写上：两个页面合并时，一边全取消了、一边新确认了，才分得清
@@ -642,7 +648,7 @@ function takeDistill(s, v) {
   }
   s.场景文字 = uniq(mine);
   orderCast(s);
-  s.段落 = v.段落.map((x, i) => ({ 写什么: x.写什么, 作用: x.作用, ...(redo && !had.has(key(x)) ? { AI改: old[i] ? key(old[i]) : '（新加的一个镜头）' } : {}) }));
+  s.段落 = SB.keepNos(v.段落.map((x, i) => ({ 写什么: x.写什么, 作用: x.作用, ...(redo && !had.has(key(x)) ? { AI改: old[i] ? key(old[i]) : '（新加的一个镜头）' } : {}) })), s.段落);   // 原来的号尽量留着：关键帧绑在号上
   s.提炼改 = redo || Object.keys(mark).length ? mark : {}; s.提炼批 = {}; s.提炼取 = v.时间; s.提炼总批 = ''; s.定稿 = '';
   touch();
 }
@@ -1158,7 +1164,8 @@ window.addEventListener('pagehide', () => {   // 关页面、刷新、后退：�
 /* ---------- 几页都用的小部件 ---------- */
 /* 一场的镜头表，一个镜头一行：写什么、起什么作用 */
 function paraList(s) {
-  return [h('ol', { class: 'fs-list' }, s.段落.map((x, i) => h('li', null, h('span', { class: 'n' }, '镜头' + (i + 1)), h('span', null, x.写什么.trim() || '—'), h('span', { class: 'y' }, x.作用.trim() || h('span', { class: 'faint' }, '没写作用')))))];
+  const nos = shotNos(s);
+  return [h('ol', { class: 'fs-list' }, s.段落.map((x, i) => h('li', null, h('span', { class: 'n' }, '镜头' + nos[i]), h('span', null, x.写什么.trim() || '—'), h('span', { class: 'y' }, x.作用.trim() || h('span', { class: 'faint' }, '没写作用')))))];
 }
 const secHead = (no, name, sub, ...btns) => h('div', { class: 'fl-sec-h' }, no ? h('span', { class: 'sec-no' }, no) : null, h('span', null, name), sub ? h('em', null, sub) : null, h('span', { class: 'ln' }), btns);
 const poolOf = K => F.pool.filter(x => K.cats(x.类别));
@@ -1294,7 +1301,7 @@ function assetLock(s, lk) {
 function missing(s) {
   const out = [];
   if (!s.段落.length) { out.push('还没有镜头表'); return out; }
-  const nos = k => s.段落.map((x, i) => x[k].trim() ? 0 : i + 1).filter(Boolean);
+  const no = shotNos(s), nos = k => s.段落.map((x, i) => x[k].trim() ? '' : no[i]).filter(Boolean);
   const a = nos('写什么'), b = nos('作用');
   if (a.length) out.push('镜头 ' + a.join('、') + ' 还空着');
   if (b.length) out.push('镜头 ' + b.join('、') + ' 没写作用');
@@ -1426,7 +1433,7 @@ async function pickSegImgs(s, k = '场景') {
   orderCast(s); touch();
   return true;
 }
-function openPickPop(anchor, s, after) {
+function openPickPop(anchor, s, after, only) {   // only：只摆人物、场景、道具里的这一样（提炼页每组后面的「＋ 加人物」）
   s.场景文字 = uniq(s.场景文字);
   popover(anchor, close => {
     const body = h('div', { class: 'fl-pl' }), mine = { 人物: [], 场景: [], 道具: [] };   // 这一场挑过的这一段的图：去掉了也留在这里，能再点回来
@@ -1453,9 +1460,9 @@ function openPickPop(anchor, s, after) {
         ...F.doc.场景图.map(f => item('场景图', f, baseOf(f), '', f)), ...own,
         L.length || gone.length || F.doc.场景图.length || own.length ? null : h('p', { class: 'fl-pop-e' }, '还没有场景。点「＋ 新加一个」用一句话写，不用先有图。')];
     };
-    const paint = () => body.replaceChildren(...[...listPart(KIND.人物), ...scenePart(), ...listPart(KIND.道具)].filter(Boolean));   // 人物、场景、道具
+    const paint = () => body.replaceChildren(...[...(only && only !== '人物' ? [] : listPart(KIND.人物)), ...(only && only !== '场景' ? [] : scenePart()), ...(only && only !== '道具' ? [] : listPart(KIND.道具))].filter(Boolean));   // 人物、场景、道具
     paint();
-    return [h('div', { class: 'fl-pop-h' }, '第' + s.段 + '段出场的'), body, h('div', { class: 'fl-pop-f' }, h('button', { class: 'btn sm ink', type: 'button', onclick: close }, '好了'))];
+    return [h('div', { class: 'fl-pop-h' }, '第' + s.段 + '段出场的' + (only || '')), body, h('div', { class: 'fl-pop-f' }, h('button', { class: 'btn sm ink', type: 'button', onclick: close }, '好了'))];
   });
 }
 

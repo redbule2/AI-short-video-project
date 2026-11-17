@@ -1,0 +1,93 @@
+'use strict';
+/* 公用/关键帧绑定.js：镜头表的固定号、关键帧绑到「一镜一刻」（2026-11-16 他定，流程图 通用工具/流水线/关键帧绑定_流程图.html） */
+const assert = require('node:assert/strict');
+const { test } = require('node:test');
+const SB = require('../公用/关键帧绑定.js');
+
+const rows = (...ws) => ws.map(w => typeof w === 'string' ? { 写什么: w, 作用: '' } : w);
+
+test('镜头号：没号的表 1、2、3；有号的照它，删了不挪', () => {
+  assert.deepEqual(SB.nosOf(rows('a', 'b', 'c')), ['1', '2', '3']);
+  assert.deepEqual(SB.nosOf([{ 号: '1' }, { 号: '2' }, { 号: 11 }, { 号: '镜头12' }]), ['1', '2', '11', '12']);
+});
+
+test('镜头号：中间加的是前一镜加 b、c；最后加的接着排；最前面加的是 0', () => {
+  assert.deepEqual(SB.nosOf([{ 号: '3' }, {}, { 号: '4' }]), ['3', '3b', '4']);
+  assert.deepEqual(SB.nosOf([{ 号: '3' }, {}, {}, { 号: '4' }]), ['3', '3b', '3c', '4']);
+  assert.deepEqual(SB.nosOf([{ 号: '3' }, { 号: '3b' }, {}, { 号: '4' }]), ['3', '3b', '3c', '4']);
+  assert.deepEqual(SB.nosOf([{ 号: '1' }, { 号: '19' }, {}, {}]), ['1', '19', '20', '21']);
+  assert.deepEqual(SB.nosOf([{}, { 号: '1' }]), ['0', '1']);
+  assert.deepEqual(SB.nosOf([{ 号: '2' }, { 号: '2' }]), ['2', '3']);   // 重了的当没有
+  assert.deepEqual(SB.nosOf([{ 号: '9' }, {}, { 号: '11' }]), ['9', '9b', '11']);   // 删掉的 10 不再用
+});
+
+test('fillNos 把号写进表；keepNos 并进 AI 新提炼的表时留住原来的号', () => {
+  const t = SB.fillNos(rows('a', 'b'));
+  assert.deepEqual(t.map(x => x.号), ['1', '2']);
+  const old = [{ 写什么: '甲', 作用: '', 号: '1' }, { 写什么: '乙', 作用: '', 号: '2' }, { 写什么: '丙', 作用: '', 号: '11' }];
+  assert.deepEqual(SB.keepNos(rows('甲', '乙改', '丙'), old).map(x => x.号), ['1', '2', '11']);   // 一样多：改了字的照位置留号
+  assert.deepEqual(SB.keepNos(rows('甲', '新', '乙', '丙'), old).map(x => x.号), ['1', '1b', '2', '11']);   // 中间加了一镜
+  assert.deepEqual(SB.keepNos(rows('甲', '丙'), old).map(x => x.号), ['1', '11']);   // 删了一镜
+});
+
+test('提示词名字里的镜头号：照表里的先后展开、挨着的连起来', () => {
+  const nos = ['1', '1b', '2', '3', '9', '11', '12'];
+  assert.deepEqual(SB.expand('1-2.txt', nos), { nos: ['1', '1b', '2'], missing: [] });
+  assert.deepEqual(SB.expand('9-11、3', nos), { nos: ['3', '9', '11'], missing: [] });
+  assert.deepEqual(SB.expand('10', nos), { nos: [], missing: ['10'] });
+  assert.deepEqual(SB.shotsOf('9-11', '9-11.txt', nos), ['9', '11']);   // 名字是镜头号的照表认
+  assert.deepEqual(SB.shotsOf('', '镜头1-2_视频提示词.txt', nos), ['1', '1b', '2']);   // 老稿照名字里的数认
+  assert.equal(SB.shotsOf('', '视频提示词_02.txt', nos), null);
+  assert.equal(SB.codeOf(['9', '11', '12'], nos), '9-12.txt');
+  assert.equal(SB.codeOf(['3', '1', '1b'], nos), '1-1b、3.txt');
+  assert.equal(SB.codeOf([], nos), '');
+});
+
+test('照名字猜：镜头11_首帧 → 镜头11 首帧；表里没有的号、看不出哪一刻的不猜', () => {
+  const nos = ['1', '2', '11'];
+  assert.deepEqual(SB.guess('资产/第3-4段/镜头11_首帧.png', nos), { 镜: '11', 刻: '首帧' });
+  assert.deepEqual(SB.guess('资产/第3-4段/1-5_镜头2_尾帧.png', nos), { 镜: '2', 刻: '尾帧' });
+  assert.deepEqual(SB.guess('资产/第3-4段/镜头1_关键帧.png', nos), { 镜: '1', 刻: '关键帧' });
+  assert.equal(SB.guess('资产/第3-4段/镜头1b_首帧.png', nos), null);
+  assert.equal(SB.guess('资产/第3-4段/镜头10_首帧.png', nos), null);
+  assert.equal(SB.guess('资产/第3-4段/镜头1_白模底图.png', nos), null);
+});
+
+test('绑上、现用和备选、带哪几张、怎么说', () => {
+  const paras = [{ 写什么: '打出末弹', 号: '1' }, { 写什么: '炸翻敌群', 号: '2' }, { 写什么: '喊冲锋', 号: '11' }];
+  const s = {}, A = '资产/x/镜头1_首帧.png', B = '资产/x/镜头1_首帧_雾.png', C = '资产/x/镜头11_首帧.png', D = '资产/x/镜头11_尾帧.png';
+  assert.ok(SB.bind(s, A, '1', '首帧', paras));
+  assert.ok(SB.bind(s, B, '1', '首帧', paras));   // 同一刻已经有现用的：新绑的当备选
+  assert.ok(SB.bind(s, C, '镜头11', '首帧', paras));
+  assert.ok(SB.bind(s, D, '11', '尾帧', paras));
+  assert.equal(SB.bind(s, 'z.png', '10', '首帧', paras), false);   // 表里没有镜头10
+  assert.deepEqual(s.关键帧绑定[B], { 镜: '1', 刻: '首帧', 备选: true, 写什么: '打出末弹' });
+  const frames = [A, B, C, D], binds = SB.bindsOf(s);
+  assert.deepEqual(SB.forShots(['11', '1'], frames, paras, binds), [A, C, D]);
+  SB.setCurrent(s, B);
+  assert.deepEqual(SB.forShots(['1'], frames, paras, SB.bindsOf(s)), [B]);
+  assert.equal(SB.say(binds[C], paras), '镜头11「喊冲锋」开头');
+  assert.equal(SB.regName(binds[D]), '关键帧｜镜头11｜结尾');
+  assert.deepEqual(SB.order([D, 'y.png', C, A], paras, binds), [A, C, D, 'y.png']);
+});
+
+test('按镜头表摆：没绑的、绑的镜头删了的放最下面，改过字的标出来', () => {
+  const paras = [{ 写什么: '甲', 号: '1' }, { 写什么: '乙改了', 号: '2' }];
+  const binds = { 'a/镜头1_首帧.png': { 镜: '1', 刻: '首帧', 写什么: '甲' }, 'a/镜头2_首帧.png': { 镜: '2', 刻: '首帧', 写什么: '乙' }, 'a/镜头10_首帧.png': { 镜: '10', 刻: '首帧', 写什么: '丙' } };
+  const t = SB.table(['a/镜头1_首帧.png', 'a/镜头2_首帧.png', 'a/镜头10_首帧.png', 'a/镜头2_尾帧.png'], paras, binds);
+  assert.deepEqual(t.rows.map(r => r.帧.map(x => [x.file, x.stale, x.current])), [[['a/镜头1_首帧.png', false, true]], [['a/镜头2_首帧.png', true, true]]]);
+  assert.deepEqual(t.loose, [{ file: 'a/镜头10_首帧.png', gone: '10', guess: null }, { file: 'a/镜头2_尾帧.png', gone: '', guess: { 镜: '2', 刻: '尾帧' } }]);
+});
+
+test('出片前对一遍：没写到、没绑、绑的镜头不在这一条、字改过', () => {
+  const paras = [{ 写什么: '八', 号: '8' }, { 写什么: '九改', 号: '9' }];
+  const binds = { 'a/8.png': { 镜: '8', 刻: '首帧', 写什么: '八' }, 'a/9.png': { 镜: '9', 刻: '首帧', 写什么: '九' } };
+  const hung = [{ ref: '@图片4', path: 'a/8.png' }, { ref: '@图片5', path: 'a/9.png' }, { ref: '@图片6', path: 'a/x.png' }];
+  assert.deepEqual(SB.check({ hung, shots: ['9'], paras, binds, text: '@图片4作为首帧。@图片5定义第二个关键帧。@图片60' }), [
+    '@图片4 是镜头8 的，这一条拍的是镜头9',
+    '镜头9 的字改过，@图片5 还对得上吗',
+    '@图片6 挂着，提示词里没写到它',
+    '@图片6 还没绑到镜头表的哪一镜（资产那一步「关键帧」一块里绑）',
+  ]);
+  assert.deepEqual(SB.check({ hung: hung.slice(0, 1), shots: null, paras, binds, text: '@图片4' }), []);
+});
