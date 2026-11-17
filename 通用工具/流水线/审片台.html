@@ -299,6 +299,7 @@ body.dk { display: block; height: 100vh; overflow: hidden; background: var(--nig
 <script src="../公用/审片.js"></script>
 <script src="../公用/关键帧写法.js"></script>
 <script src="../公用/白模关键帧写法.js"></script>
+<script src="../公用/审片关键帧.js"></script>
 <script src="../公用/点图.js"></script>
 <script src="../公用/找旧版.js"></script>
 <script>
@@ -368,11 +369,15 @@ const xOf = t => Math.min(100, Math.max(0, t * D.fps / Math.max(1, D.frames - 1)
    提示词：挂了哪些素材、一镜一镜写了什么、每一镜几秒
    ============================================================ */
 const MAP = new Map();   // 参考素材映射里这一场各条提示词的登记：文件名 → [{ ref, name, path }]
+const SECS = new Map();  // 同一份里登记的每一镜几秒（写稿时估的）：文件名 → { 镜头: { '1': 4 } }
 async function loadMap() {
-  MAP.clear();
+  MAP.clear(); SECS.clear();
   try {
     const j = JSON.parse(await readText('资产/参考素材映射.json')), pre = '提示词/' + SEGD + '/';
-    for (const [k, v] of Object.entries(j.prompts || {})) if (k.startsWith(pre)) MAP.set(k.slice(pre.length), Array.isArray(v && v.references) ? v.references : []);
+    for (const [k, v] of Object.entries(j.prompts || {})) if (k.startsWith(pre)) {
+      MAP.set(k.slice(pre.length), Array.isArray(v && v.references) ? v.references : []);
+      if (v && v.秒数) SECS.set(k.slice(pre.length), v.秒数);
+    }
   } catch (e) { /* 还没有映射 */ }
 }
 async function loadPromptList() {
@@ -482,11 +487,21 @@ function timeShots() {
     for (const s of sh) { const c = D.cuts.find(x => x.no === s.no); if (c && (s.a == null || s.b == null)) { s.a = c.a; s.b = c.b; } }
     if (all()) D.timed = '白模说明';
   }
+  if (!D.timed && DeskFrames.fillSecs(sh, D.secs)) D.timed = '登记的秒数';   // 正文没写、也没挂白模：照写稿时估的每一镜几秒（11-16 加）
   for (const s of sh) { const c = D.cuts.find(x => x.no === s.no); if (c && !s.title) s.title = c.title; }
   if (D.timed) sh.sort((x, y) => x.a - y.a);
 }
+/* 每一镜挂的几张关键帧（11-16 加：一镜可以挂开头、中间、结尾几张）：s.kfs = [{ ref, 刻, t, from }]，s.kf 是头一张。
+   登记名「关键帧｜镜头1｜结尾」认得出的照它；认不出的照原来的：这一镜写的「首帧参考@图片6」、名字里的镜头号，当开头 */
+function frameShots() {
+  const fr = DeskFrames.framesOf(D.shots, D.refs, D.text);
+  D.shots.forEach((s, i) => {
+    s.kfs = fr[i].length ? fr[i] : s.kf ? DeskFrames.place([{ ref: s.kf, 刻: '开头' }], s) : [];
+    s.kf = s.kfs.length ? s.kfs[0].ref : '';
+  });
+}
 async function loadPrompt(name) {
-  Object.assign(D, { prompt: name, text: '', refs: [], shots: [], timed: '', cuts: [], cur: -1, pick: -1 });
+  Object.assign(D, { prompt: name, text: '', refs: [], shots: [], timed: '', cuts: [], cur: -1, pick: -1, secs: SECS.get(name) || null, kfAt: '', kfPin: '' });
   if (!name) return;
   const dir = '提示词/' + SEGD + '/';
   try { D.text = await readText(dir + name); } catch (e) { toast('提示词读不了：' + e.message, 'err'); return; }
@@ -502,6 +517,7 @@ async function loadPrompt(name) {
   for (const r of vidRefs()) { const c = await cutsOf(r.rel, r.at); if (c.length) { D.cuts = c; break; } }
   D.shots = parseShots(D.text);
   timeShots();
+  frameShots();
 }
 /* 这一场别的样片（成片里的、历史记录里的）：和这一条同一时刻一起放着比 */
 async function loadClips() {
@@ -540,6 +556,7 @@ function shotStep(d) {
 }
 function onShot(i) {
   D.cur = i;
+  const x = kfAtNow(i); D.kfAt = x ? x.ref : '';
   paintCap(); paintShotsOn();
   if (CMP.src === 'kf') paintCmp();
   if (D.tab === 'shot') paintRail();
@@ -588,8 +605,27 @@ function imgUrl(rel) {
   if (!IURL.has(rel)) { const p = FS.file(pjAt(rel)).then(f => URL.createObjectURL(f)); p.catch(() => IURL.delete(rel)); IURL.set(rel, p); }
   return IURL.get(rel);
 }
-const kfOf = i => { const s = D.shots[i]; return s && s.kf ? refBy(s.kf) : null; };
+/* 关键帧：一镜可以挂几张（开头、中间、结尾），放到哪一秒旁边摆哪一张（公用/审片关键帧.js）；没秒数的摆点过的那张（kfPin），没点过摆开头 */
+const kfsOf = i => (D.shots[i] && D.shots[i].kfs) || [];
+const kfAtNow = i => DeskFrames.pick(kfsOf(i), D.timed ? nowSec() : null, D.kfPin);
+const kfOf = i => { const x = kfAtNow(i); return x ? refBy(x.ref) : null; };
 const hasKf = () => D.shots.some(s => s.kf);
+const shotOfKf = ref => D.shots.findIndex(s => (s.kfs || []).some(x => x.ref === ref));
+const kfFrame = (i, x) => x.刻 === '结尾' ? Math.max(shotStartF(i), Math.round(D.shots[i].b * D.fps) - 1) : Math.round(x.t * D.fps);   // 结尾那张对这一镜最后一帧
+function gotoKf(ref) {   // 跳到这张关键帧管的那一刻（没秒数的：跳到那一镜，旁边摆这一张）
+  const i = shotOfKf(ref), x = i >= 0 ? kfsOf(i).find(k => k.ref === ref) : null;
+  if (!x) return;
+  D.kfPin = ref;
+  if (D.timed) { seekTo(kfFrame(i, x)); return; }
+  D.pick = i; D.cur === i ? kfTurn(true) : onShot(i);
+}
+function kfTurn(force) {   // 同一镜里放到了另一张关键帧那一刻：旁边、右边跟着换
+  const x = kfAtNow(D.cur), ref = x ? x.ref : '';
+  if (!force && ref === D.kfAt) return;
+  D.kfAt = ref;
+  if (CMP.src === 'kf') paintCmp();
+  if (D.tab === 'shot') paintRail();
+}
 function restoreCmp() {
   let pref = {};
   try { pref = JSON.parse(localStorage.getItem(CMP_KEY) || '{}') || {}; } catch (e) { /* 坏了就当没记 */ }
@@ -688,7 +724,7 @@ function paintCmpBar() {
     CMP.src && CMP.mode === 'over' ? h('label', { class: 'cb-alpha', title: '上面那一层（对照的）有多深' }, '深浅',
       h('input', { type: 'range', min: '10', max: '90', step: '5', value: String(Math.round(CMP.alpha * 100)), oninput: e => { CMP.alpha = +e.target.value / 100; P.views.style.setProperty('--a', String(CMP.alpha)); savePref(); } })) : null,
     h('span', { class: 'sp' }),
-    CMP.src === 'kf' && D.timed && D.cur >= 0 ? h('button', { class: 'cb-link', type: 'button', title: '关键帧管的是这一镜开头那一刻', onclick: () => gotoShot(D.cur) }, '回这一镜开头比') : null);
+    CMP.src === 'kf' && D.timed && kfOf(D.cur) ? h('button', { class: 'cb-link', type: 'button', title: '关键帧管的是那一刻：开头那张对这一镜第一帧，结尾那张对最后一帧，中间那张对写的第几秒', onclick: () => gotoKf(kfOf(D.cur).ref) }, '回这张关键帧那一刻比') : null);
 }
 function pickVideo(anchor, list) {
   popover(anchor, close => [h('div', { class: 'fl-pop-h' }, '和哪一段白模比'), h('div', { class: 'fl-pl' }, list.map(r => h('button', { type: 'button', class: 'fl-pi' + (CMP.src === 'bm' && CMP.rel === r.rel ? ' on' : ''), onclick: () => { close(); setCmp('bm', r.rel); } },
@@ -840,6 +876,7 @@ function paintTime() {
   P.ph.style.left = x; P.fill.style.width = x;
   const i = shotAt(nowSec());
   if (i !== D.cur) onShot(i);
+  else if (D.timed && kfsOf(i).length > 1) kfTurn();
   if (P.video.paused) syncCmp(false);
 }
 function paintMarks() {
@@ -1065,7 +1102,7 @@ function figureOf(r, acts, more) {   // more：图下面另外摆的（关键帧
 }
 function tiles(list, wide, mini) {
   return h('div', { class: mini ? 'mini-row' : 'grid' + (wide ? ' wide' : '') }, list.map(r => {
-    const shot = r.kind === '关键帧' ? D.shots.findIndex(s => s.kf === r.ref) : -1;
+    const shot = r.kind === '关键帧' ? shotOfKf(r.ref) : -1;
     const img = thumbImg(pjAt(r.at || r.rel), mini ? 160 : 320);
     const el = h('button', { type: 'button', class: 'tile ' + (KIND_CLS[r.kind] || '') + (CMP.src === 'img' && CMP.rel === r.rel ? ' on' : '') + (isKf(r) && goneOf(r) ? ' gone' : ''), title: r.ref + ' · ' + r.label + '\n' + whereOf(r), onclick: () => { const all = imgRefs(); openBox(all, all.indexOf(r)); } },
       img, mini ? null : h('span', { class: 'tr' }, r.ref + (shot >= 0 ? ' · 镜头' + D.shots[shot].no : '') + (isKf(r) && goneOf(r) ? ' · 弃用' : '')), h('span', { class: 'tn' }, mini ? r.ref : r.label));
@@ -1079,20 +1116,30 @@ function paneShot() {
   const out = [], i = D.cur, s = D.shots[i], last = D.shots[D.shots.length - 1];
   if (D.timed && D.dur && Math.abs(D.dur - last.b) > 0.6) out.push(h('p', { class: 'warn' }, '样片 ' + secText(D.dur) + ' 秒，提示词写到第 ' + last.b + ' 秒。时间对不齐，跟到的镜头以画面为准。'));
   if (D.timed === '白模说明') out.push(h('p', { class: 'hint small' }, '提示词里没写每一镜几秒，秒数照白模说明。'));
+  if (D.timed === '登记的秒数') out.push(h('p', { class: 'hint small' }, '提示词正文没写每一镜几秒，照写稿时估的秒数摆。'));
   if (!s) { out.push(h('p', { class: 'hint' }, '这条提示词没写每一镜几秒，跟不上播放：点时间条上面的一镜（或者按 ↑ ↓），这里就摆那一镜写的。')); return out; }
   out.push(h('div', { class: 'sh-h' }, navBtn(-1, i), h('b', null, '镜头 ' + s.no), s.a != null ? h('span', { class: 'sh-t' }, s.a + '-' + s.b + ' 秒') : null, h('span', { class: 'sp' }), navBtn(1, i)));
   if (s.title) out.push(h('div', { class: 'sh-title' }, s.title));
-  const kf = kfOf(i);
-  if (kf) out.push(figureOf(kf, [
-    CMP.src === 'kf' ? h('span', { class: 'on-tag' }, '正摆在片子旁边') : h('button', { class: 'btn sm', type: 'button', title: '片子旁边摆这一镜的关键帧，放到哪一镜换哪一张', onclick: () => setCmp('kf') }, '放到片子旁边对照'),
-    D.timed ? h('button', { class: 'btn sm ghost', type: 'button', title: '关键帧管的是这一镜开头那一刻：跳过去比', onclick: () => gotoShot(i) }, '回这一镜开头') : null], isKf(kf) ? kfMore(kf) : null));
-  else out.push(h('p', { class: 'hint small' }, '这一镜没挂关键帧。'));
+  const ks = kfsOf(i), now = kfAtNow(i), many = ks.length > 1, kset = new Set(ks.map(x => x.ref));   // 一镜几张关键帧：一张一张摆（11-16 加）
+  const jumpText = x => x.刻 === '结尾' ? '跳到这一镜结尾' : x.刻 === '中间' ? '跳到' + (x.t != null ? '第' + secText(x.t) + '秒' : '这一刻') : '回这一镜开头';
+  if (many) out.push(h('p', { class: 'hint small' }, '这一镜挂了 ' + ks.length + ' 张关键帧' + (D.timed ? '：放到哪一刻，片子旁边换哪一张。' : '：点「换成这张」，片子旁边就摆它。')));
+  for (const x of ks) {
+    const r = refBy(x.ref);
+    if (!r) continue;
+    const on = CMP.src === 'kf' && !!now && now.ref === x.ref;
+    out.push(figureOf(r, [
+      on ? h('span', { class: 'on-tag' }, '正摆在片子旁边')
+        : CMP.src !== 'kf' ? h('button', { class: 'btn sm', type: 'button', title: '片子旁边摆这一镜的关键帧，放到哪一刻换哪一张', onclick: () => { setCmp('kf'); if (many) gotoKf(x.ref); } }, '放到片子旁边对照')
+          : !D.timed ? h('button', { class: 'btn sm', type: 'button', onclick: () => gotoKf(x.ref) }, '换成这张') : null,
+      D.timed ? h('button', { class: 'btn sm ghost', type: 'button', title: '关键帧管的是那一刻：开头那张对这一镜第一帧，结尾那张对最后一帧，中间那张对写的第几秒', onclick: () => gotoKf(x.ref) }, jumpText(x)) : null], isKf(r) ? kfMore(r) : null));
+  }
+  if (!ks.length) out.push(h('p', { class: 'hint small' }, '这一镜没挂关键帧。'));
   out.push(h('div', { class: 'sec' }, '提示词这一镜'), h('div', { class: 'body' }, s.raw ? rich(s.raw) : h('span', { class: 'faint' }, '（提示词里没写这一镜）')));
-  const used = [...new Set(s.raw.match(/@(?:图片|视频|音频)\d+/g) || [])].map(refBy).filter(r => isImgRef(r) && r !== kf);
+  const used = [...new Set(s.raw.match(/@(?:图片|视频|音频)\d+/g) || [])].map(refBy).filter(r => isImgRef(r) && !kset.has(r.ref));
   if (used.length) out.push(h('div', { class: 'sec' }, '这一镜提到的图'), tiles(used, false));
   const ns = notesIn(i);
   out.push(h('div', { class: 'sec' }, '这一镜的批注'), ns.length ? ns.map(n => noteItem(n, D.notes.indexOf(n))) : h('p', { class: 'hint small' }, '看到哪里不对，停下来按回车写一句。'));
-  const cast = D.refs.filter(r => ['人物', '道具', '特效', '场景'].includes(r.kind) && r !== kf && !used.includes(r));
+  const cast = D.refs.filter(r => ['人物', '道具', '特效', '场景'].includes(r.kind) && !kset.has(r.ref) && !used.includes(r));
   if (cast.length) out.push(h('div', { class: 'sec' }, '这条挂的人物、道具、场景'), tiles(cast, false, true));
   return out;
 }
@@ -1177,13 +1224,13 @@ function openBox(list, i) {
   const st = { list, i: Math.max(0, i) };
   const img = h('img', { alt: '' }), name = h('b'), path = h('span', { class: 'bx-p' }), acts = h('span', { style: 'display:flex;gap:8px' });
   const paint = () => {
-    const r = st.list[st.i], shot = r.kind === '关键帧' ? D.shots.findIndex(s => s.kf === r.ref) : -1;
+    const r = st.list[st.i], shot = r.kind === '关键帧' ? shotOfKf(r.ref) : -1;
     img.removeAttribute('src');
     imgUrl(r.rel).then(u => { if (D.box && D.box.st === st && st.list[st.i] === r) img.src = u; }).catch(() => {});
     name.textContent = r.ref + ' · ' + r.label; path.textContent = whereOf(r); path.title = whereOf(r);
     fill(acts,
       st.list.length > 1 ? [h('button', { class: 'btn sm', type: 'button', title: '上一张（←）', onclick: () => move(-1) }, '‹'), h('button', { class: 'btn sm', type: 'button', title: '下一张（→）', onclick: () => move(1) }, '›')] : null,
-      shot >= 0 ? h('button', { class: 'btn sm', type: 'button', title: '跳到这一镜开头，片子旁边摆它的关键帧', onclick: () => { closeBox(); setCmp('kf'); gotoShot(shot); } }, '去镜头' + D.shots[shot].no + '对照')
+      shot >= 0 ? h('button', { class: 'btn sm', type: 'button', title: '跳到这张关键帧管的那一刻，片子旁边摆它', onclick: () => { closeBox(); setCmp('kf'); gotoKf(r.ref); } }, '去镜头' + D.shots[shot].no + '对照')
         : h('button', { class: 'btn sm', type: 'button', title: '片子旁边一直摆着这张图', onclick: () => { closeBox(); setCmp('img', r.rel, r); } }, '放到片子旁边对照'),
       isKf(r) ? boxKf(r) : null,
       h('button', { class: 'btn sm ink', type: 'button', onclick: closeBox }, '关（Esc）'));
@@ -1203,7 +1250,7 @@ function closeBox() { if (D.box) { D.box.el.remove(); D.box = null; } }
    怎么改由他拿着批注和自己的 AI 商量（11-15 他定审片只批注），这一页不改图
    ============================================================ */
 const KF = { st: new Map(), shell: null };   // st：图的路径 → { note 图上写了批注 }；shell：盖着的看图页
-const isKf = r => !!r && /^@图片/.test(r.ref) && r.rel.startsWith('资产/' + SEGD + '/') && (r.kind === '关键帧' || D.shots.some(s => s.kf === r.ref));   // 这一场文件夹里的图：名字带首帧、尾帧、关键帧，或者哪一镜开头参考它
+const isKf = r => !!r && /^@图片/.test(r.ref) && r.rel.startsWith('资产/' + SEGD + '/') && (r.kind === '关键帧' || shotOfKf(r.ref) >= 0);   // 这一场文件夹里的图：名字带首帧、尾帧、关键帧，或者哪一镜开头参考它
 const kfStem = r => stem(fileOf(r.rel));
 const kfSide = (r, tail) => r.rel.split('/').slice(0, -1).concat(kfStem(r) + tail).join('/');
 const kfRefOf = kf => !kf ? null : D.refs.find(r => kf.rel && r.rel === kf.rel) || D.refs.find(r => r.ref === kf.ref && (!kf.rel || fileOf(r.rel) === fileOf(kf.rel))) || null;
@@ -1253,12 +1300,12 @@ const pnClip = (s, n) => {   // 截短；@图片12 这种编号不截一半
   for (const m of t.matchAll(/@(?:图片|视频|音频)\s*[0-9]+/g)) if (m.index < n && n < m.index + m[0].length) n = m.index;
   return t.slice(0, n) + '…';
 };
-async function dropKf(r) {   // 弃用一张关键帧：停在这一镜开头（关键帧管的是那一刻），写一条批注说为什么
+async function dropKf(r) {   // 弃用一张关键帧：停在它管的那一刻（开头、中间那一秒、结尾），写一条批注说为什么
   const old = goneOf(r);
   if (old) { openForm(old); return; }
-  const i = D.shots.findIndex(s => s.kf === r.ref);
+  const i = shotOfKf(r.ref), x = i >= 0 ? kfsOf(i).find(k => k.ref === r.ref) : null;
   if (i >= 0 && !D.timed && D.cur !== i) { D.pick = i; onShot(i); }
-  await openForm(null, { kf: { ref: r.ref, rel: r.rel, raw: '' }, f: i >= 0 && D.timed ? shotStartF(i) : null });
+  await openForm(null, { kf: { ref: r.ref, rel: r.rel, raw: '' }, f: x && D.timed ? kfFrame(i, x) : null });
 }
 async function undropKf(n) {   // 撤回弃用：这条批注删掉（截图跟着删），这张照旧挂着
   const body = '这张关键帧照旧挂着，弃用写的这条批注（「' + pnClip(n.text, 40) + '」）删掉。想把理由留成一条普通批注：点「改理由」，再点「不弃用了」。';

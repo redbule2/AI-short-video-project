@@ -126,9 +126,11 @@ kbd { display: inline-block; padding: 0 6px; border: 1px solid var(--line-2); bo
 .lab { flex: none; font: 14px/2 var(--kai); color: var(--tc); letter-spacing: .1em; }
 .geo { flex: none; align-self: baseline; margin-left: -4px; padding: 0 6px; border-radius: 4px; background: var(--dian); color: #fff; font: 600 10px/1.7 var(--sans); letter-spacing: .08em; cursor: help; }
 .ed { flex: 1; min-width: 0; min-height: 1.9em; outline: none; white-space: pre-wrap; word-break: break-word; cursor: text; }
-.ed.ro { cursor: pointer; }
-.blk.nt { cursor: pointer; }
-.blk.nt:hover { background: rgba(184, 56, 43, .04); }
+/* AI 写的一行右边的「批注」小钮（11-16 起 AI 写的也能直接改，批注从这里写）：鼠标停着、正在改的那一行才露出来 */
+.hn-b { flex: none; align-self: center; visibility: hidden; padding: 0 8px; border: 1px solid var(--zhu-line); border-radius: 999px; background: var(--sheet); cursor: pointer; font: 11.5px/1.6 var(--sans); color: var(--zhu); white-space: nowrap; user-select: none; }
+.blk:hover .hn-b, .blk:focus-within .hn-b { visibility: visible; }
+.hn-b:hover { background: var(--zhu-soft); }
+.hn-b::before { content: '批注'; }   /* 字用样式画：不算进这一行的文字，复制几行时也不带上 */
 .blk.noted { box-shadow: inset 2px 0 0 var(--zhu); }
 .blk.red { box-shadow: inset 2px 0 0 var(--zhu); background: rgba(184, 56, 43, .035); }
 /* 你写给 AI 的批注：朱笔，跟在那一行下面（AI 写给你的批注是靛色） */
@@ -451,6 +453,7 @@ body.norail .rail { display: none; }
 <script src="公用/核心.js"></script>
 <script src="公用/写稿状态.js"></script>
 <script src="公用/写稿交互.js"></script>
+<script src="公用/写稿AI行.js"></script>
 <script src="公用/关键帧写法.js"></script>
 <script src="公用/白模关键帧写法.js"></script>
 <script src="公用/音色.js"></script>
@@ -889,14 +892,14 @@ function chip(ref) {
   return el;
 }
 function fill(ed, text) { ed.replaceChildren(...text.split(/(@(?:图片|视频|音频)[0-9]+)/).filter(Boolean).map(t => /^@(图片|视频|音频)[0-9]+$/.test(t) ? chip(t) : document.createTextNode(t))); }
-/* AI 写的一行（左边一道靛色细线）：不在这里直接改，点一下写批注，交给 AI 改，和「提示词」那边一样。
-   还带着没填的〔 〕的行（你新挂资产时页面补的那一行）可以直接填 */
+/* AI 写的一行（左边一道靛色细线）：11-16 起可以直接改（他定），右边「批注」写给 AI 改，和「提示词」那边一样。规矩在 公用/写稿AI行.js */
 function blockEl(b, sec, ai) {
-  const ro = !!ai && !!b.t.trim() && !/〔[^〕]*〕/.test(b.t);
-  const ed = h('div', { class: 'ed' + (ro ? ' ro' : ''), contenteditable: ro ? 'false' : 'true', spellcheck: 'false', 'data-ph': '写在这里…' });
+  const nt = AiLine.notable(ai, b.t);
+  const ed = h('div', { class: 'ed', contenteditable: 'true', spellcheck: 'false', 'data-ph': '写在这里…' });
   fill(ed, b.t);
-  return h('div', { class: 'blk' + (ai ? ' ai' : '') + (ro ? ' nt' : ''), 'data-sec': sec, 'data-lab': b.lab || null, title: ro ? '点一下写批注，交给 AI 改' : null }, b.lab ? h('span', { class: 'lab' }, b.lab + '：') : null,
-    b.geo ? h('span', { class: 'geo', title: '照项目的场景 GEO 放的，各段一字不差。要改就写批注：AI 先改 GEO，再把各段一起换。' }, 'GEO') : null, ed);
+  return h('div', { class: 'blk' + (ai ? ' ai' : '') + (nt ? ' nt' : ''), 'data-sec': sec, 'data-lab': b.lab || null }, b.lab ? h('span', { class: 'lab' }, b.lab + '：') : null,
+    b.geo ? h('span', { class: 'geo', title: AiLine.GEO_TIP }, 'GEO') : null, ed,
+    nt ? h('button', { class: 'hn-b', type: 'button', tabindex: '-1', contenteditable: 'false', title: AiLine.BTN_TIP, 'aria-label': '批注' }) : null);
 }
 
 /* ---------- 你给 AI 写的那几区写批注：存成稿子旁边的「原文件名_批注.md」，和 项目管理.html 是同一个格式，AI 照 AGENTS.md「按批注修改」改 ---------- */
@@ -960,6 +963,7 @@ function paintHNote(blk) {
   if (next && next.classList.contains('hnote')) { if (next.classList.contains('edit')) return; next.remove(); }
   const note = HN.by.get(fullOf(blk));
   blk.classList.toggle('noted', !!note);
+  if (note) blk.dataset.hk = fullOf(blk); else delete blk.dataset.hk;   // 这一行的批注认哪句原文：字改了跟着挪（followNotes）
   if (note) blk.after(h('div', { class: 'hnote', title: '点一下接着改', onclick: () => editHNote(blk) }, note));
 }
 function paintHNotes() {
@@ -995,6 +999,12 @@ function editGNote() {
   const box = noteBox(HN.general, isPe() ? '对 AI 写的这几区整体的意见，比如：素材写多了；主体与关系少写了道具……' : '对 AI 写的这几区整体的意见，比如：基础设定太长；本段少写了道具……', v => { HN.general = v; box.remove(); paintHNotes(); saveHNotes(); });
   g.replaceChildren(box);
 }
+const hnOf = blk => { const n = blk.nextElementSibling; return n && n.classList.contains('hnote') ? n : blk; };   // 这一行下面挂着的批注（没有就是这一行自己）
+/* 改了 AI 写的一行：它的批注挪到改后的原文上，批注文件跟着再存一回 */
+function followNotes() {
+  if (!AiLine.rekey($$('#sheet section .blist > .blk.ai'), HN.by, fullOf)) return;
+  paintSend(); clearTimeout(HN_T); HN_T = setTimeout(saveHNotes, 700);
+}
 /* 右上那个朱色按钮：有批注才出来 */
 function paintSend() {
   const b = $('#sendNotes'), n = hnCount();
@@ -1009,7 +1019,7 @@ async function sendNotes() {
 }
 function toBlock(line, key) {
   const f = key === 'basic' || key === 'seg' ? splitLabel(line) : null;
-  return f ? { lab: f.label, t: f.value.trim(), geo: /^(总场景|分场景|轴线)/.test(f.label) } : { t: line };
+  return f ? { lab: f.label, t: f.value.trim(), geo: AiLine.isGeo(f.label) } : { t: line };
 }
 /* 流水线里这一场写的：主要表达什么、每个剧本段落起什么作用。项目管理「流水线」页写的，这里只看 */
 let FLOW = null, FLOW_ALL = null, FLOW_MAP = null, FLOW_FINE = false;
@@ -1144,7 +1154,7 @@ function paintSteps() { renderMode(); }
 let ST, SAVED_AT = null;
 function setStatus(t, err) { const el = $('#save'); el.classList.toggle('err', !!err); $('span', el).textContent = t; }
 const savedText = () => SAVED_AT ? '已保存 ' + two(SAVED_AT.getHours()) + ':' + two(SAVED_AT.getMinutes()) : '边写边自动保存';
-function touch() { if (!READY) return; VER++; rememberDraft(); setStatus(CONFLICT ? '有修改冲突，输入已保留' : '正在保存…', CONFLICT); clearTimeout(ST); ST = setTimeout(save, 700); }
+function touch() { if (!READY) return; VER++; followNotes(); rememberDraft(); setStatus(CONFLICT ? '有修改冲突，输入已保留' : '正在保存…', CONFLICT); clearTimeout(ST); ST = setTimeout(save, 700); }
 let PULLING = false;   // 正在把外面改的换上：这时候不存（页面上 AI 那几区还是旧的，存了就把 AI 刚写的盖掉）
 async function save() {
   return saveEditor();
@@ -1387,7 +1397,6 @@ function insertAsset(a, where) {
   if (inChip) { range = new Range(); range.setStartAfter(inChip); range.collapse(true); host = inChip.parentElement; }
   const ed = host.closest('.ed');
   if (!ed) return toast('先点一下正文里要插的位置');
-  if (!ed.isContentEditable) return toast('这一行是 AI 写的，不在这里直接改；点它写批注');
   if (a.type === '称谓') {   // 还没有图的：只写叫法，不挂编号
     range.deleteContents();
     const tn = document.createTextNode(a.name);
@@ -1454,12 +1463,14 @@ function onKey(e) {
     e.preventDefault();
     const blk = ed.closest('.blk'), nb = blockEl({ t: '' }, blk.dataset.sec), ne = $('.ed', nb), sel = getSelection();
     if (sel.rangeCount && ed.lastChild) { const tail = new Range(); tail.setStart(sel.focusNode, sel.focusOffset); tail.setEndAfter(ed.lastChild); ne.append(tail.extractContents()); }
-    blk.after(nb); ne.focus(); afterEdit();
+    hnOf(blk).after(nb); ne.focus(); afterEdit();   // 这一行下面挂着批注的，新的一行排在批注后面
     return;
   }
   if (e.key === 'Backspace' && !plain(ed) && !$('.lab', ed.parentNode)) {
-    const blk = ed.closest('.blk'), prev = blk.previousElementSibling;
-    if (prev) { e.preventDefault(); blk.remove(); const pe = $('.ed', prev); if (pe.isContentEditable) focusEnd(pe); afterEdit(); }
+    const blk = ed.closest('.blk');
+    let prev = blk.previousElementSibling;
+    while (prev && !prev.classList.contains('blk')) prev = prev.previousElementSibling;   // 隔着上一行的批注
+    if (prev) { e.preventDefault(); if (hnOf(blk) !== blk) hnOf(blk).remove(); blk.remove(); focusEnd($('.ed', prev)); afterEdit(); }
     return;
   }
   if ((e.ctrlKey || e.metaKey) && /^[biu]$/i.test(e.key)) e.preventDefault();
@@ -1471,16 +1482,16 @@ function afterEdit() { touch(); paintMarks(); clearTimeout(AT_T); AT_T = setTime
 const GUIDE = {
   /* 提示每条不超过 10 个字，只留最要紧的两三条 */
   event: ['本段事件 · AI 写', ['谁要什么', '发生了什么', '情绪从哪来']],
-  refs: ['素材 · AI 写', ['点一行写批注', '输入 @ 引用素材']],
-  basic: ['基础设定 · AI 写', ['点一行写批注']],
-  seg: ['本段 · AI 写', ['点一行写批注']],
+  refs: ['素材 · AI 写', ['可以直接改', '输入 @ 引用素材', '「批注」写给 AI']],
+  basic: ['基础设定 · AI 写', ['可以直接改', '「批注」写给 AI']],
+  seg: ['本段 · AI 写', ['可以直接改', '「批注」写给 AI']],
   shots: ['分镜 · AI 写', ['一镜只写一两件事', '一句台词配一个动作', '听的人要有反应']],
-  keep: ['保持一致 · AI 写', ['点一行写批注']],
+  keep: ['保持一致 · AI 写', ['可以直接改', '「批注」写给 AI']],
 };
 const GUIDE_PE = {
   event: ['生成目标 · AI 写', ['拍什么', '谁要什么', '结束时什么样']],
-  seg: ['主体与关系 · AI 写', ['点一行写批注']],
-  basic: ['基础设定 · AI 写', ['风格写在镜头前面', '点一行写批注']],
+  seg: ['主体与关系 · AI 写', ['可以直接改', '「批注」写给 AI']],
+  basic: ['基础设定 · AI 写', ['风格写在镜头前面', '可以直接改', '「批注」写给 AI']],
   shots: ['事件脚本 · AI 写', ['一镜一行', '台词 {} 音效 <>', '听的人要有反应']],
 };
 function setGuide(key) {
@@ -1919,6 +1930,7 @@ sheet.addEventListener('input', e => {
   if (ed) {
     if (!ed.textContent && ed.firstChild) ed.replaceChildren();   // 删光以后浏览器留下的空行
     const ai = ed.closest('.blk.ai'); if (ai) ai.classList.add('mine');   // AI 写的这一行你改过了
+    if (ai && $('.geo', ai) && !ai.dataset.geoSaid) { ai.dataset.geoSaid = '1'; toast(AiLine.GEO_SAY); }   // 照 GEO 放的：头一回改提醒一句
   }
   if (MODE === '自由') $('#freeCount').textContent = $('#freeText').value.length + ' 字';
   touch(); paintMarks(); checkAt();
@@ -1942,8 +1954,8 @@ sheet.addEventListener('click', e => {
   if (c && A[c.dataset.aid]) return lightbox(A[c.dataset.aid]);
   const wt = (e.ctrlKey || e.metaKey) && e.target.closest('.wr-ta'), wm = wt ? markAt(wt, e.clientX, e.clientY) : null;   // 文字框里按住 Ctrl 点 @图片N：看大图（光点一下照旧是放光标）
   if (wm && wm.a) { hideHov(); return lightbox(wm.a); }
-  const nt = e.target.closest('.blk.nt');   // AI 写的一行：点一下写批注（正选着字要复制的不算）
-  if (nt && !String(getSelection())) { setGuide(nt.dataset.sec); editHNote(nt); }
+  const nb = e.target.closest('.hn-b');   // AI 写的一行右边的「批注」：写批注（点字是放光标、直接改）
+  if (nb) { const blk = nb.closest('.blk'); setGuide(blk.dataset.sec); editHNote(blk); }
 });
 let draggedShot = '';
 sheet.addEventListener('dragstart', e => {
