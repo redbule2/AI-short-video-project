@@ -31,7 +31,7 @@
 .pz-warn .btn { margin: 8px 8px 0 0; }
 .miss { color: var(--zhu); }
 .pz-nt { display: block; margin-top: 2px; font: 13.5px/1.7 var(--kai); color: var(--zhu); white-space: pre-wrap; word-break: break-word; }
-.pz-tx .fq-was, .pz-ct .fq-was { margin: 4px 0 0; }
+.pz-ct .fq-was { margin: 4px 0 0; }
 .fq-was { font-size: 12.5px; line-height: 1.7; color: var(--zhu); }
 .fq-was del { color: var(--ink-3); text-decoration-color: var(--zhu); }
 /* 改的格子：写什么一行，作用、描写几行，批注朱笔 */
@@ -46,31 +46,40 @@
 .pz-ops { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 2px; }
 .pz-ops .sp { flex: 1; }
 .fl-link.danger { color: var(--zhu); text-decoration-color: var(--zhu-line); }
-/* 镜头表：一镜一行，点开在原地改；左边拖着换顺序 */
-.pz-tb { border: 1px solid var(--line-2); border-radius: 10px; background: var(--sheet); }
-.pz-tb:empty { display: none; }
-.pz-r { position: relative; display: grid; grid-template-columns: 22px 40px minmax(0, 1fr) 30px; gap: 6px; align-items: start; padding: 9px 8px 9px 6px; border-top: 1px solid var(--line); cursor: pointer; scroll-margin: 230px 0 40px; outline: 0; }
-.pz-r:first-child { border-top: 0; border-radius: 10px 10px 0 0; }
-.pz-r:last-child { border-radius: 0 0 10px 10px; }
-.pz-r:hover { background: rgba(244, 239, 230, .45); }
-.pz-r:focus-visible { box-shadow: inset 0 0 0 2px var(--dai-line); }
-.pz-g { padding-top: 2px; color: var(--ink-4); letter-spacing: -2px; text-align: center; cursor: grab; touch-action: none; user-select: none; opacity: .55; }
+/* 镜头表：一镜一格，一屏摆下（几栏、每格两行还是一行由 shotGrid 量了定）；点一格，改的那一块浮在上面 */
+.pz-tbw { position: relative; }
+.pz-tb { display: grid; grid-auto-columns: minmax(0, 1fr); gap: 6px 12px; }   /* 没量之前一栏往下排；量完 shotGrid 改成竖着排几栏 */
+.pz-r { position: relative; display: grid; grid-template-columns: 16px 32px minmax(0, 1fr) 26px; gap: 2px; align-items: center; min-width: 0; padding: 0 2px 0 0; border: 1px solid var(--line); border-radius: 7px; background: var(--sheet); cursor: pointer; outline: 0; transition: border-color .12s; }
+.pz-r:hover { border-color: var(--ink-4); }
+.pz-r:focus-visible { border-color: var(--dai-line); box-shadow: 0 0 0 3px var(--dai-soft); }
+.pz-g { color: var(--ink-4); letter-spacing: -2px; text-align: center; cursor: grab; touch-action: none; user-select: none; opacity: .5; }
 .pz-r:hover .pz-g { opacity: 1; }
-.pz-no { padding-top: 1px; font: 15px/1.7 var(--kai); color: var(--dai); white-space: nowrap; }
-.pz-tx { min-width: 0; }
-.pz-tx > b { display: block; font: 600 15.5px/1.7 var(--serif); letter-spacing: .02em; color: var(--ink); word-break: break-word; }
-.pz-tx > small { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; line-height: 1.7; color: var(--ink-3); }
-.pz-r .pz-more { opacity: .4; }
+.pz-no { font: 14.5px/1.4 var(--kai); color: var(--dai); white-space: nowrap; }
+.pz-tx { display: flex; flex-direction: column; min-width: 0; }
+.pz-tx > b, .pz-tx > small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pz-tx > b { font: 600 14.5px/1.5 var(--serif); letter-spacing: .02em; color: var(--ink); }
+.pz-tx > small { font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+.pz-tb.d1 .pz-tx { flex-direction: row; align-items: baseline; gap: 10px; }
+.pz-tb.d1 .pz-tx > b { flex: 0 1 auto; max-width: 72%; }
+.pz-tb.d1 .pz-tx > small { flex: 1 1 0; min-width: 3em; }
+.pz-r .pz-more { width: 24px; height: 24px; opacity: .35; }
 .pz-r:hover .pz-more { opacity: 1; }
-.pz-r.note::after, .pz-c.note::after { content: ''; position: absolute; right: 0; top: 0; border: 7px solid transparent; border-top-color: var(--zhu); border-right-color: var(--zhu); border-top-right-radius: 9px; }
+.pz-r.note::after, .pz-c.note::after { content: ''; position: absolute; right: -1px; top: -1px; border: 6px solid transparent; border-top-color: var(--zhu); border-right-color: var(--zhu); border-top-right-radius: 7px; }
 .pz-r.chg { box-shadow: inset 3px 0 0 var(--zhu-line); }
-.pz-r.open { cursor: default; background: #fffefa; box-shadow: inset 3px 0 0 var(--dai); }
-.pz-r.open .pz-tx { padding-top: 2px; }
+.pz-r.on { border-color: var(--dai); box-shadow: 0 0 0 3px var(--dai-soft); }
 .pz-tb.dragging, .pz-tb.dragging * { cursor: grabbing !important; user-select: none; }
-.pz-r.drag { z-index: 2; background: #fff; box-shadow: 0 10px 24px -10px rgba(40, 28, 16, .45), inset 3px 0 0 var(--dai); }
-.pz-tb.ro .pz-r { grid-template-columns: 40px minmax(0, 1fr); padding-left: 14px; cursor: default; }
-.pz-tb.ro .pz-r:hover { background: none; }
-.pz-tb.ro .pz-tx > p { margin: 0; font-size: 14px; line-height: 1.8; color: var(--ink-2); white-space: pre-wrap; word-break: break-word; }
+.pz-r.drag { z-index: 2; border-color: var(--dai); background: #fff; box-shadow: 0 10px 24px -10px rgba(40, 28, 16, .45); }
+.pz-tb.ro .pz-r { grid-template-columns: 36px minmax(0, 1fr); padding-left: 8px; }
+.pz-add { border: 1px dashed var(--line-2); border-radius: 7px; background: none; cursor: pointer; font-size: 13.5px; letter-spacing: .08em; color: var(--ink-3); }
+.pz-add:hover { border-color: var(--ink-4); color: var(--ink); background: rgba(255, 253, 249, .7); }
+.pz-ed { position: absolute; z-index: 6; padding: 10px 16px 12px; border: 1px solid var(--dai-line); border-radius: 10px; background: #fffefa; box-shadow: 0 22px 48px -16px rgba(40, 28, 16, .5); }
+.pz-ed.chg { box-shadow: inset 3px 0 0 var(--zhu-line), 0 22px 48px -16px rgba(40, 28, 16, .5); }
+.pz-ed-h { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; }
+.pz-ed-h .sp { flex: 1; }
+.pz-ed .fq-was { margin: -4px 0 8px; }
+.pz-ed.ro > b { display: block; font: 600 15.5px/1.7 var(--serif); }
+.pz-ed.ro > p { margin: 4px 0 0; font-size: 14px; line-height: 1.85; color: var(--ink-2); white-space: pre-wrap; word-break: break-word; }
+.wf-main { padding-bottom: 24px; }   /* 这一页没有悬在右下角的按钮：底下不用留那么高 */
 .pz-menu { display: flex; flex-direction: column; padding: 6px; }
 .pz-menu button { padding: 7px 14px; border: 0; border-radius: 6px; background: none; cursor: pointer; text-align: left; font: 14px var(--sans); color: var(--ink); white-space: nowrap; }
 .pz-menu button:hover { background: var(--paper-2); }
@@ -231,103 +240,185 @@ function itemFields(s, k, ref, foot) {
     h('label', { class: 'pz-f z' }, h('span', null, '批注'), nt)];
 }
 
-/* ---------- 镜头表：一镜一行（号、写什么，下面一行灰字是作用）；点一行在原地改，按住左边拖着换顺序，号跟着镜头走 ---------- */
-function shotsTab(s, foot) {
-  const box = h('div', { class: 'pz-tb' });
-  const paint = () => { const nos = shotNos(s); box.replaceChildren(...s.段落.map((sh, i) => sh === OPEN.shot ? openRow(sh, i, nos[i]) : lineRow(sh, i, nos[i]))); foot(); fitAll(); };
-  const focusIn = key => { const x = box.querySelector(`.pz-r.open [data-f="${key}"]`); if (x) { x.focus(); x.setSelectionRange(x.value.length, x.value.length); } };
-  const rowOf = sh => box.querySelector(`.pz-r[data-i="${s.段落.indexOf(sh)}"]`);
-  const open = (sh, key = '写什么') => { OPEN.shot = sh; paint(); focusIn(key); const r = rowOf(sh); if (r) r.scrollIntoView({ block: 'nearest' }); };
-  const close = () => { const sh = OPEN.shot; OPEN.shot = null; paint(); const r = sh && rowOf(sh); if (r) r.focus({ preventScroll: true }); };
-  const addShot = (i = s.段落.length) => { const sh = { 写什么: '', 作用: '' }; s.段落.splice(i, 0, sh); SB.fillNos(s.段落); touch(); open(sh); };   // 号现在就定下：中间加的是 3b，最后加的接着排
-  const del = async sh => {
-    if ((sh.写什么.trim() || sh.作用.trim()) && !(await confirmDlg({ title: '删掉镜头 ' + shotNos(s)[s.段落.indexOf(sh)], body: '「' + (sh.写什么.trim() || sh.作用.trim()) + '」这个镜头删掉。后面镜头的号不变（关键帧、提示词的名字都用着这些号）。', ok: '删掉', danger: true }))) return;
-    if (OPEN.shot === sh) OPEN.shot = null;
+/* ---------- 镜头表：一镜一格，一屏摆下不用滚（11-16 他要的）。先试两行（写什么，下面一行灰字是作用）、一栏；摆不下就分几栏；还摆不下就一格一行。
+   格子竖着排：先排满左边一栏再排右边。点一格，改的那一块浮在它上面（不把别的格子挤走）；按住左边 ⋮⋮ 拖着换顺序，号跟着镜头走。ro：只看 ---------- */
+const FIT = { fn: null };   // 现在摆着的那个镜头表怎么量：改窗口大小时重量
+window.addEventListener('resize', () => { if (FIT.fn) FIT.fn(); });
+function shotGrid(s, foot, ro) {
+  OPEN.shot = null;
+  const wrap = h('div', { class: 'pz-tbw' }), box = h('div', { class: 'pz-tb' + (ro ? ' ro' : '') });
+  const add = ro ? null : h('button', { class: 'pz-add', type: 'button', title: '号接着往下排', onclick: () => addShot() }, '＋ 加一镜');
+  const cells = new Map();   // 镜头 → 它那一格
+  let ed = null;             // 浮着的那一块：{ sh, el }
+  wrap.append(box);
+  const noOf = sh => shotNos(s)[s.段落.indexOf(sh)];
+  const changed = () => { if (foot) foot(); layout(); if (ed) place(); };
+
+  /* 一格：号、写什么、作用；批注是右上角红角，AI 改过的是左边一道红；全文在悬停提示里 */
+  function fill(el, sh) {
+    const t = str(sh.批注).trim(), what = sh.写什么.trim(), why = sh.作用.trim();
+    el.classList.toggle('note', !!t);
+    el.classList.toggle('chg', !!sh.AI改);
+    el.title = [what || '还空着', why ? '作用：' + why : '没写作用', t ? '批注：' + t : '', sh.AI改 ? (/^（新加的/.test(sh.AI改) ? 'AI 新加的' : 'AI 改过，原来是：' + sh.AI改) : '', ro ? '点一下看全文' : '点一下改'].filter(Boolean).join('\n');
+    el.replaceChildren(...[ro ? null : grip(), h('span', { class: 'pz-no' }, noOf(sh)),
+      h('span', { class: 'pz-tx' }, h('b', null, what || h('span', { class: 'miss' }, '还空着')), why ? h('small', null, why) : h('small', { class: ro ? 'faint' : 'miss' }, '没写作用')),
+      ro ? null : h('button', { class: 'fl-ib pz-more', type: 'button', tabindex: '-1', title: '在下面插一镜、写批注、删掉', onclick: e => menu(e.currentTarget, sh) }, icon('more'))].filter(Boolean));
+  }
+  function cell(sh) {
+    const el = h('div', { class: 'pz-r', tabindex: '0',
+      onclick: e => { if (!e.target.closest('.pz-g, .pz-more')) open(sh); },
+      onkeydown: e => { if (e.key === 'Enter' && e.target === e.currentTarget) { e.preventDefault(); open(sh); } } });
+    cells.set(sh, el); fill(el, sh);
+    return el;
+  }
+  function paint() {
+    shut(true); cells.clear();
+    box.replaceChildren(...s.段落.map(cell), ...(add ? [add] : []));
+    if (foot) foot();
+    setTimeout(layout, 0);   // 摆上页面以后再量（窗格藏着时 requestAnimationFrame 不走，用定时）
+  }
+
+  /* 量这一页还剩多高，挑一种摆得下的：先两行一栏、两行几栏，再一行一栏、一行几栏；都摆不下就用最挤的那种（页面才滚） */
+  function layout() {
+    if (!box.isConnected) return;
+    const n = box.children.length, W = box.clientWidth, r = box.getBoundingClientRect(), root = document.getElementById('wf');
+    const avail = innerHeight - (r.top + window.scrollY) - (root.getBoundingClientRect().bottom - r.bottom) - 2;
+    const GAP = 6, opts = [];
+    for (const [d, hh, minW] of [[2, 50, 300], [1, 34, 260]]) for (let c = 1, max = Math.max(1, Math.floor((W + 12) / (minW + 12))); c <= max; c++) opts.push({ d, hh, c });
+    const rows = o => Math.ceil(n / o.c), tall = o => rows(o) * o.hh + (rows(o) - 1) * GAP;
+    const o = opts.find(x => tall(x) <= avail) || opts[opts.length - 1];
+    box.classList.toggle('d1', o.d === 1);
+    box.style.gridTemplateRows = 'repeat(' + rows(o) + ', ' + o.hh + 'px)';
+    box.style.gridAutoFlow = 'column';
+  }
+  FIT.fn = layout;
+
+  /* ---- 浮着改的那一块 ---- */
+  const focusIn = key => { const x = ed && ed.el.querySelector(`[data-f="${key}"]`); if (x) { x.focus(); x.setSelectionRange(x.value.length, x.value.length); } };
+  function open(sh, key = '写什么') {
+    if (ed && ed.sh === sh) { focusIn(key); return; }
+    shut(true);
+    const c = cells.get(sh);
+    if (!c) return;
+    OPEN.shot = sh;
+    c.classList.add('on');
+    ed = { sh, el: ro ? viewOf(sh) : editorOf(sh) };
+    wrap.append(ed.el);
+    fitAll(); place();
+    if (!ro) focusIn(key);
+    document.addEventListener('pointerdown', outside, true);
+  }
+  function shut(quiet) {
+    if (!ed) return;
+    const { sh, el } = ed;
+    ed = null; OPEN.shot = null;
+    el.remove();
+    document.removeEventListener('pointerdown', outside, true);
+    const c = cells.get(sh);
+    if (c) { c.classList.remove('on'); if (!quiet) c.focus({ preventScroll: true }); }
+  }
+  const outside = e => { if (ed && !ed.el.contains(e.target) && !e.target.closest('.pz-r, .fl-pop, .dlg')) shut(true); };   // 点别的格子：那一格自己会接着浮出来
+  /* 浮在那一格上面：至少 560 宽，别出右边；别出窗口下沿，也别钻到钉住的那一条底下 */
+  function place() {
+    if (!ed) return;
+    const c = cells.get(ed.sh), p = ed.el;
+    if (!c) return;
+    const W = wrap.clientWidth, w = Math.min(W, Math.max(c.offsetWidth, 560));
+    p.style.width = w + 'px';
+    p.style.left = Math.max(0, Math.min(c.offsetLeft, W - w)) + 'px';
+    p.style.top = c.offsetTop + 'px';
+    const r = p.getBoundingClientRect(), hd = document.querySelector('.pz-head'), min = hd ? hd.getBoundingClientRect().bottom + 6 : 6;
+    let dy = Math.min(0, innerHeight - 8 - r.bottom);
+    if (r.top + dy < min) dy = min - r.top;
+    if (dy) p.style.top = c.offsetTop + dy + 'px';
+  }
+  function editorOf(sh) {
+    const mk = (key, cls, ph) => {
+      const ta = h('textarea', { class: 'fq-in ' + cls, rows: key === '作用' ? '2' : '1', spellcheck: 'false', placeholder: ph, 'data-f': key });
+      ta.value = str(sh[key]);
+      ta.addEventListener('input', () => {
+        if (key === '写什么' && /[\r\n]/.test(ta.value)) ta.value = ta.value.replace(/\s*[\r\n]+\s*/g, '');   // 写什么只有一行
+        sh[key] = ta.value; fit(ta); touch();
+        const c = cells.get(sh); if (c) fill(c, sh);
+        changed();
+      });
+      ta.addEventListener('keydown', e => {   // 写什么里回车：到作用。作用里回车照常换行，Ctrl+回车到下一镜（最后一镜就加一镜）
+        if (isComposing(e) || e.key !== 'Enter') return;
+        if (key === '写什么') { e.preventDefault(); focusIn('作用'); }
+        else if (e.ctrlKey || e.metaKey) { e.preventDefault(); const j = s.段落.indexOf(sh); if (j < s.段落.length - 1) open(s.段落[j + 1]); else addShot(); }
+      });
+      return ta;
+    };
+    return h('div', { class: 'pz-ed' + (sh.AI改 ? ' chg' : ''), onkeydown: e => { if (e.key === 'Escape' && !isComposing(e)) { e.preventDefault(); shut(); } } },
+      h('div', { class: 'pz-ed-h' }, h('span', { class: 'pz-no' }, '镜头 ' + noOf(sh)), h('span', { class: 'sp' }), h('button', { class: 'fl-ib', type: 'button', title: '收起（Esc）', onclick: () => shut() }, icon('x'))),
+      h('label', { class: 'pz-f' }, h('span', null, '写什么'), mk('写什么', 'what', '这个镜头写什么，一句话')),
+      sh.AI改 ? wasP(sh.AI改, '一个镜头') : null,
+      h('label', { class: 'pz-f' }, h('span', null, '起什么作用'), mk('作用', 'why', '为什么要有这个镜头：它让观众看到什么、明白什么。')),
+      h('label', { class: 'pz-f z' }, h('span', null, '批注'), mk('批注', 'nt', '要怎么改，写给 AI；不用改就空着。比如：作用没写到点上，这个镜头是让观众知道他已经没钱了')),
+      h('div', { class: 'pz-ops' },
+        h('button', { class: 'fl-link', type: 'button', onclick: () => addShot(s.段落.indexOf(sh) + 1) }, '在下面插一镜'),
+        h('button', { class: 'fl-link danger', type: 'button', onclick: () => del(sh) }, '删掉这一镜'),
+        h('span', { class: 'sp' }),
+        h('button', { class: 'btn sm', type: 'button', title: 'Esc', onclick: () => shut() }, '收起')));
+  }
+  const viewOf = sh => h('div', { class: 'pz-ed ro', onkeydown: e => { if (e.key === 'Escape') shut(); } },
+    h('div', { class: 'pz-ed-h' }, h('span', { class: 'pz-no' }, '镜头 ' + noOf(sh)), h('span', { class: 'sp' }), h('button', { class: 'fl-ib', type: 'button', title: '收起（Esc）', onclick: () => shut() }, icon('x'))),
+    h('b', null, sh.写什么.trim() || '—'), h('p', null, sh.作用.trim() || h('span', { class: 'faint' }, '没写作用')));
+
+  /* ---- 加、删、挪 ---- */
+  function addShot(i = s.段落.length) { const sh = { 写什么: '', 作用: '' }; s.段落.splice(i, 0, sh); SB.fillNos(s.段落); touch(); paint(); setTimeout(() => open(sh), 0); }   // 号现在就定下：中间加的是 3b，最后加的接着排；等量完再浮出来
+  async function del(sh) {
+    if ((sh.写什么.trim() || sh.作用.trim()) && !(await confirmDlg({ title: '删掉镜头 ' + noOf(sh), body: '「' + (sh.写什么.trim() || sh.作用.trim()) + '」这个镜头删掉。后面镜头的号不变（关键帧、提示词的名字都用着这些号）。', ok: '删掉', danger: true }))) return;
     s.段落.splice(s.段落.indexOf(sh), 1); touch(); paint();
-  };
-  const menu = (anchor, sh) => popover(anchor, close => h('div', { class: 'pz-menu' },
+  }
+  const menu = (anchor, sh) => { shut(true); popover(anchor, close => h('div', { class: 'pz-menu' },
     h('button', { type: 'button', onclick: () => { close(); addShot(s.段落.indexOf(sh) + 1); } }, '在下面插一镜'),
     h('button', { type: 'button', onclick: () => { close(); open(sh, '批注'); } }, '写批注'),
-    h('button', { type: 'button', class: 'danger', onclick: () => { close(); del(sh); } }, '删掉这一镜')));
-  /* 按住 ⋮⋮ 上下拖：这一行跟着挪，松手就是新的顺序；拖到窗口上下边，页面跟着滚 */
-  const grip = () => { const g = h('span', { class: 'pz-g', title: '按住上下拖，换顺序（号跟着镜头走，不变）' }, '⋮⋮'); g.addEventListener('pointerdown', e => drag(e, g)); return g; };
+    h('button', { type: 'button', class: 'danger', onclick: () => { close(); del(sh); } }, '删掉这一镜'))); };
+  /* 按住 ⋮⋮ 拖：横着看落在哪一栏，竖着看落在那一栏的哪两格中间；松手就是新的顺序。拖到窗口上下边，页面跟着滚 */
+  function grip() { const g = h('span', { class: 'pz-g', title: '按住拖，换顺序（号跟着镜头走，不变）' }, '⋮⋮'); g.addEventListener('pointerdown', e => drag(e, g)); return g; }
   function drag(e, g) {
     if (e.button !== 0) return;
-    e.preventDefault();
-    const row = g.closest('.pz-r'), y0 = e.clientY, head = document.querySelector('.pz-head');
-    let y = y0, on = false, raf = 0;
-    const place = () => {
-      let before = null;
-      for (const r of box.children) { if (r === row) continue; const b = r.getBoundingClientRect(); if (y < b.top + b.height / 2) { before = r; break; } }
-      if (before !== row.nextElementSibling) box.insertBefore(row, before);   // before 是 null：挪到最后
+    e.preventDefault(); shut(true);
+    const row = g.closest('.pz-r'), x0 = e.clientX, y0 = e.clientY, head = document.querySelector('.pz-head');
+    let x = x0, y = y0, on = false, raf = 0;
+    const spot = () => {
+      const others = [...box.children].filter(c => c !== row && c !== add);
+      if (!others.length) return;
+      const left = c => Math.round(c.getBoundingClientRect().left), cols = [...new Set(others.map(left))].sort((a, b) => a - b);
+      let col = cols[0];
+      for (const L of cols) if (x >= L - 6) col = L;   // 指着的那一栏：左边没过它的最右一栏
+      const inCol = others.filter(c => left(c) === col);
+      let before = inCol.find(c => { const b = c.getBoundingClientRect(); return y < b.top + b.height / 2; });
+      if (!before) { const last = inCol[inCol.length - 1]; before = last.nextElementSibling === row ? row.nextElementSibling : last.nextElementSibling; }
+      before = before || add;
+      if (before !== row && before !== row.nextElementSibling) box.insertBefore(row, before);
     };
     const edge = () => {
       const top = head ? head.getBoundingClientRect().bottom : 0, d = y < top + 36 ? -14 : y > innerHeight - 36 ? 14 : 0;
-      if (d) { window.scrollBy(0, d); place(); }
+      if (d) { window.scrollBy(0, d); spot(); }
       raf = requestAnimationFrame(edge);
     };
     const mv = ev => {
-      y = ev.clientY;
-      if (!on) { if (Math.abs(y - y0) < 4) return; on = true; row.classList.add('drag'); box.classList.add('dragging'); raf = requestAnimationFrame(edge); }
-      place();
+      x = ev.clientX; y = ev.clientY;
+      if (!on) { if (Math.hypot(x - x0, y - y0) < 4) return; on = true; row.classList.add('drag'); box.classList.add('dragging'); raf = requestAnimationFrame(edge); }
+      spot();
     };
     const up = () => {
       window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
       cancelAnimationFrame(raf);
       if (!on) return;
       row.classList.remove('drag'); box.classList.remove('dragging');
-      const order = [...box.children].map(r => s.段落[+r.dataset.i]);
+      const order = [...box.children].filter(c => c !== add).map(c => [...cells].find(([, el]) => el === c)[0]);
       if (order.length === s.段落.length && order.some((x, i) => x !== s.段落[i])) { SB.fillNos(s.段落); s.段落.splice(0, s.段落.length, ...order); touch(); }   // 先把号定在镜头上，再换顺序
       paint();
     };
-    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);   // 挂在窗口上：拖着的那一行挪进挪出，按住的那一下不会丢
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);   // 挂在窗口上：拖着的那一格挪进挪出，按住的那一下不会丢
   }
-  function lineRow(sh, i, no) {
-    const t = str(sh.批注).trim(), what = sh.写什么.trim(), why = sh.作用.trim();
-    return h('div', { class: 'pz-r' + (t ? ' note' : '') + (sh.AI改 ? ' chg' : ''), 'data-i': i, tabindex: '0', title: '点一下在这里改',
-        onclick: e => { if (!e.target.closest('.pz-g, .pz-more')) open(sh); },
-        onkeydown: e => { if (e.key === 'Enter' && e.target === e.currentTarget) { e.preventDefault(); open(sh); } } },
-      grip(), h('span', { class: 'pz-no' }, no),
-      h('div', { class: 'pz-tx' }, h('b', null, what || h('span', { class: 'miss' }, '还空着')), why ? h('small', null, why) : h('small', { class: 'miss' }, '没写作用'),
-        t ? h('span', { class: 'pz-nt' }, '批注：' + t) : null, sh.AI改 ? wasP(sh.AI改, '一个镜头') : null),
-      h('button', { class: 'fl-ib pz-more', type: 'button', tabindex: '-1', title: '在下面插一镜、写批注、删掉', onclick: e => menu(e.currentTarget, sh) }, icon('more')));
-  }
-  function openRow(sh, i, no) {
-    const mk = (key, cls, ph) => {
-      const ta = h('textarea', { class: 'fq-in ' + cls, rows: key === '作用' ? '2' : '1', spellcheck: 'false', placeholder: ph, 'data-f': key });
-      ta.value = str(sh[key]);
-      ta.addEventListener('input', () => {
-        if (key === '写什么' && /[\r\n]/.test(ta.value)) ta.value = ta.value.replace(/\s*[\r\n]+\s*/g, '');   // 写什么只有一行
-        sh[key] = ta.value; fit(ta); touch(); foot();
-      });
-      ta.addEventListener('keydown', e => {   // 写什么里回车：到作用。作用里回车照常换行，Ctrl+回车到下一镜（最后一镜就加一镜）。Esc 收起
-        if (isComposing(e)) return;
-        if (e.key === 'Escape') { e.preventDefault(); close(); return; }
-        if (e.key !== 'Enter') return;
-        if (key === '写什么') { e.preventDefault(); focusIn('作用'); }
-        else if (e.ctrlKey || e.metaKey) { e.preventDefault(); const j = s.段落.indexOf(sh); if (j < s.段落.length - 1) open(s.段落[j + 1]); else addShot(); }
-      });
-      return ta;
-    };
-    return h('div', { class: 'pz-r open' + (sh.AI改 ? ' chg' : ''), 'data-i': i },
-      grip(), h('span', { class: 'pz-no' }, no),
-      h('div', { class: 'pz-tx' },
-        h('label', { class: 'pz-f' }, h('span', null, '写什么'), mk('写什么', 'what', '这个镜头写什么，一句话')),
-        sh.AI改 ? wasP(sh.AI改, '一个镜头') : null,
-        h('label', { class: 'pz-f' }, h('span', null, '起什么作用'), mk('作用', 'why', '为什么要有这个镜头：它让观众看到什么、明白什么。')),
-        h('label', { class: 'pz-f z' }, h('span', null, '批注'), mk('批注', 'nt', '要怎么改，写给 AI；不用改就空着。比如：作用没写到点上，这个镜头是让观众知道他已经没钱了')),
-        h('div', { class: 'pz-ops' },
-          h('button', { class: 'fl-link', type: 'button', onclick: () => addShot(s.段落.indexOf(sh) + 1) }, '在下面插一镜'),
-          h('button', { class: 'fl-link danger', type: 'button', onclick: () => del(sh) }, '删掉这一镜'),
-          h('span', { class: 'sp' }),
-          h('button', { class: 'btn sm', type: 'button', title: 'Esc', onclick: close }, '收起'))),
-      h('span'));
-  }
-  if (OPEN.shot && !s.段落.includes(OPEN.shot)) OPEN.shot = null;   // AI 重新提炼过：原来点开的那一镜没了
+
   paint();
-  return [h('p', { class: 'pz-hint' }, s.段落.length ? '一镜一行，点一行就在这里改。按住左边 ⋮⋮ 上下拖，换顺序；号跟着镜头走，不变。' : '还没有镜头表。点上面「让 AI 提炼」，或者自己写。'),
-    box,
-    h('button', { class: 'fl-add', type: 'button', onclick: () => addShot() }, s.段落.length ? '＋ 加一镜（号接着往下排）' : '＋ 自己写一个镜头')];
+  if (!s.段落.length) return [h('p', { class: 'pz-hint' }, ro ? '还没有镜头表' : '还没有镜头表。点上面「让 AI 提炼」，或者自己写。'), ro ? null : wrap];
+  return [wrap];
 }
 
 /* ---------- 出场的：人物、场景、道具三组，一样一张小卡 ---------- */
@@ -397,7 +488,7 @@ const synTab = (s, foot) => [h('p', { class: 'pz-hint' }, '全片的，各段共
 
 /* ---------- 只看（AI 在做、定下来了、剧本没定稿）：还是这三页 ---------- */
 const SHOW = {
-  镜头表: s => { const nos = shotNos(s); return s.段落.length ? h('div', { class: 'pz-tb ro' }, s.段落.map((x, i) => h('div', { class: 'pz-r' }, h('span', { class: 'pz-no' }, nos[i]), h('div', { class: 'pz-tx' }, h('b', null, x.写什么.trim() || '—'), h('p', null, x.作用.trim() || h('span', { class: 'faint' }, '没写作用')))))) : h('p', { class: 'faint' }, '还没有镜头表'); },
+  镜头表: s => shotGrid(s, null, true),
   出场的: s => KINDS.map(k => {
     const list = castOf(s, k);
     return h('div', { class: 'pz-grp ' + kindCls(k) }, h('div', { class: 'pz-gh' }, k, h('em', null, String(list.length))),
@@ -407,7 +498,7 @@ const SHOW = {
   }),
   梗概: () => h('div', { class: 'pz-syn' }, F.doc.梗概.trim() || h('span', { class: 'faint' }, '没写')),
 };
-const EDIT = { 镜头表: shotsTab, 出场的: castTab, 梗概: synTab };
+const EDIT = { 镜头表: shotGrid, 出场的: castTab, 梗概: synTab };
 
 /* 页签上的红点：这一页还有没写完的、写了批注的 */
 function dotsOf(s) {
