@@ -127,6 +127,30 @@ const REPLY = '好的\n' + JSON.stringify({ 梗概: ' 老李开面摊，嘴硬�
     assert.ok(s.hist(['定稿的剧本', '第1段']).some(p => /第1段_提炼_批注__\d{8}-\d{6}\.md$/.test(p)));
   });
 
+  await check('镜头表的作用和秒数（11-16）：要求里写作用的格式、按排第几认镜N、估秒数；回的秒数取整，重新提炼不留 AI 写的号', async () => {
+    const s = setup(scene(), script);
+    const book = await s.K.提炼.book(job());
+    assert.ok(book.includes('二十个字以内') && book.includes('标签｜目的，关系') && book.includes('排第几') && book.includes('"秒数": 3'));
+    assert.ok(!book.includes('不写机位、运镜、时长'));
+    await s.K.提炼.apply(job(), JSON.stringify({ 梗概: '有', 镜头表: [{ 号: '1', 写什么: '端碗', 作用: '铺垫｜为镜2', 秒数: 2.4 }, { 号: '2', 写什么: '烫着', 作用: '转折｜接镜1', 秒数: '' }] }));
+    assert.deepEqual(s.json(outPath).镜头表, [{ 写什么: '端碗', 作用: '铺垫｜为镜2', 秒数: 2 }, { 写什么: '烫着', 作用: '转折｜接镜1' }]);
+  });
+
+  await check('提炼按批注改（11-16）：现在的镜头表带号、秒数、人定；要求照抄号、人定的秒数；回的号都对才留，重了就不留', async () => {
+    const paras = [{ 号: '1', 写什么: '老李端碗', 作用: '铺垫｜为镜3', 秒数: 3, 秒数人定: true }, { 号: '3', 写什么: '烫着了', 作用: '', 秒数: 2 }];
+    const s = setup(scene({ 段落: paras }), { ...script, [notePath]: { text: '## 整体\n批注：只补秒数' } });
+    const j = job(); await s.K.提炼按批注改.prep(j);
+    const book = await s.K.提炼按批注改.book(j);
+    assert.ok(book.includes('"号": "1"') && book.includes('"号": "3"') && book.includes('"秒数人定": true') && book.includes('"秒数": 2'));
+    assert.ok(book.includes('原有的照抄') && book.includes('3b') && book.includes('标了「秒数人定」的是人定的') && book.includes('镜N 的 N 是镜头的「号」'));
+    await s.K.提炼按批注改.apply(j, JSON.stringify({ 梗概: '有', 镜头表: [{ 号: '1', 写什么: '老李端碗', 作用: '铺垫｜为镜3', 秒数: 3 }, { 号: '1b', 写什么: '吹一吹', 作用: '反应｜接镜1', 秒数: 1 }, { 号: '3', 写什么: '烫着了', 作用: '转折｜接镜1b', 秒数: 2 }] }));
+    assert.deepEqual(s.json(outPath).镜头表.map(x => x.号), ['1', '1b', '3']);
+    const s2 = setup(scene({ 段落: paras }), { ...script, [notePath]: { text: '批注' } });
+    const j2 = job(); await s2.K.提炼按批注改.prep(j2);
+    await s2.K.提炼按批注改.apply(j2, JSON.stringify({ 梗概: '有', 镜头表: [{ 号: '1', 写什么: 'a', 作用: '' }, { 号: '1', 写什么: 'b', 作用: '' }] }));
+    assert.deepEqual(s2.json(outPath).镜头表.map(x => x.号), [undefined, undefined]);
+  });
+
   await check('提炼按批注改：这一段还没提炼过就不改', async () => {
     const s = setup(scene({ 段落: [] }), { ...script, [notePath]: { text: '批注' } });
     const j = job(); await s.K.提炼按批注改.prep(j);

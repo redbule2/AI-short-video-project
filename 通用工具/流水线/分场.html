@@ -15,14 +15,6 @@
 .pz-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
 .pz-all { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
 .pz-all.on { color: var(--zhu); text-decoration-color: var(--zhu-line); font-family: var(--kai); font-size: 13.5px; }
-.pz-tabs { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 2px 4px; }
-.pz-tab { padding: 6px 14px 9px; border: 0; border-bottom: 2.5px solid transparent; background: none; cursor: pointer; font: 15px var(--serif); letter-spacing: .1em; color: var(--ink-3); white-space: nowrap; }
-.pz-tab:hover { color: var(--ink); }
-.pz-tab.on { border-bottom-color: var(--ink); color: var(--ink); font-weight: 600; }
-.pz-tab em { margin-left: 6px; padding: 0 7px; border-radius: 9px; background: var(--paper-2); font: normal 12px/1.6 var(--sans); letter-spacing: 0; color: var(--ink-3); }
-.pz-tab small { margin-left: 4px; font: 11.5px var(--sans); letter-spacing: 0; color: var(--ink-4); }
-.pz-tab .dot { display: inline-block; width: 7px; height: 7px; margin-left: 5px; border-radius: 50%; background: var(--zhu); vertical-align: 2px; }
-.pz-tabs .sp { flex: 1; }
 .pz-note { align-self: center; padding-bottom: 4px; font-size: 12.5px; color: var(--dai); }
 .pz-note.todo { color: var(--zhu); }
 .pz-hint { margin: 0 0 10px; font-size: 12.5px; color: var(--ink-3); }
@@ -49,7 +41,7 @@
 /* 镜头表：一镜一格，一屏摆下（几栏、每格两行还是一行由 shotGrid 量了定）；点一格，改的那一块浮在上面 */
 .pz-tbw { position: relative; }
 .pz-tb { display: grid; grid-auto-columns: minmax(0, 1fr); gap: 6px 12px; }   /* 没量之前一栏往下排；量完 shotGrid 改成竖着排几栏 */
-.pz-r { position: relative; display: grid; grid-template-columns: 16px 32px minmax(0, 1fr) 26px; gap: 2px; align-items: center; min-width: 0; padding: 0 2px 0 0; border: 1px solid var(--line); border-radius: 7px; background: var(--sheet); cursor: pointer; outline: 0; transition: border-color .12s; }
+.pz-r { position: relative; display: grid; grid-template-columns: 16px 32px minmax(0, 1fr) auto 26px; gap: 2px; align-items: center; min-width: 0; padding: 0 2px 0 0; border: 1px solid var(--line); border-radius: 7px; background: var(--sheet); cursor: pointer; outline: 0; transition: border-color .12s; }
 .pz-r:hover { border-color: var(--ink-4); }
 .pz-r:focus-visible { border-color: var(--dai-line); box-shadow: 0 0 0 3px var(--dai-soft); }
 .pz-g { color: var(--ink-4); letter-spacing: -2px; text-align: center; cursor: grab; touch-action: none; user-select: none; opacity: .5; }
@@ -69,7 +61,39 @@
 .pz-r.on { border-color: var(--dai); box-shadow: 0 0 0 3px var(--dai-soft); }
 .pz-tb.dragging, .pz-tb.dragging * { cursor: grabbing !important; user-select: none; }
 .pz-r.drag { z-index: 2; border-color: var(--dai); background: #fff; box-shadow: 0 10px 24px -10px rgba(40, 28, 16, .45); }
-.pz-tb.ro .pz-r { grid-template-columns: 36px minmax(0, 1fr); padding-left: 8px; }
+.pz-tb.ro .pz-r { grid-template-columns: 36px minmax(0, 1fr) auto; padding-left: 8px; }
+/* 每镜的秒数、鼠标停在一镜上它连着的那几镜（作用里写的镜N、写到它的）亮起来（11-16，公用/镜头作用.js） */
+.pz-sec { padding: 0 4px 0 6px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+.pz-sec.miss { color: var(--ink-4); }
+.pz-sec.mine { color: var(--dai); }
+.pz-r.hot { border-color: var(--ink-4); background: #fff8e4; }
+.pz-r.lnk { border-color: var(--dai-line); background: #f0f6f5; }
+.pz-r.lnk .pz-no, .pz-r.hot .pz-no { color: var(--zhu); }
+/* 镜头表顶上的色带：一块一镜，宽窄照秒数、颜色照标签；每 15 秒一道红虚线（一条视频一般 15 秒） */
+.sw-sum { margin: 0 0 4px; font-size: 12.5px; color: var(--ink-3); }
+.sw-sum b { font-weight: 600; color: var(--ink-2); }
+.sw-bar { position: relative; display: flex; height: 24px; margin: 0 0 18px; }
+.sw-b { display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 0; overflow: hidden; border-right: 2px solid var(--paper); background: var(--paper-2); color: var(--ink-3); font-size: 11.5px; white-space: nowrap; cursor: pointer; }
+.sw-b:first-child { border-radius: 5px 0 0 5px; }
+.sw-b:last-of-type { border-right: 0; border-radius: 0 5px 5px 0; }
+.sw-b em { font-style: normal; opacity: .75; }
+.sw-b.hot { box-shadow: inset 0 0 0 2px var(--ink-3); }
+.sw-b.lnk { box-shadow: inset 0 0 0 2px var(--dai); }
+.sw-m { position: absolute; top: -3px; bottom: -3px; border-left: 2px dashed var(--zhu); pointer-events: none; }
+.sw-m span { position: absolute; top: 100%; left: -2px; padding-top: 1px; font-size: 11px; line-height: 1.4; color: var(--zhu); white-space: nowrap; }
+/* 改的那一块：作用前面的六个标签点一下换上；作用数着字；秒数 */
+.pz-f > span .pz-cnt { float: right; letter-spacing: 0; font: 12px var(--sans); color: var(--ink-4); }
+.pz-f > span .pz-cnt.over { color: var(--zhu); }
+.pz-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 5px; }
+.pz-tags button { border: 0; cursor: pointer; opacity: .4; filter: saturate(.3); }
+.pz-tags button:hover { opacity: .8; filter: none; }
+.pz-tags button.on { opacity: 1; filter: none; outline: 2px solid var(--ink-3); outline-offset: 1px; }
+.pz-secf { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+.pz-secf > span { font: 13px var(--kai); color: var(--ink-3); letter-spacing: .1em; }
+.pz-secf input { width: 72px; padding: 4px 8px; border: 1px solid var(--line-2); border-radius: 7px; background: #fff; font: 15px var(--sans); color: var(--ink); }
+.pz-secf input:focus { outline: 0; border-color: var(--dai-line); box-shadow: 0 0 0 3px var(--dai-soft); }
+.pz-secf small { font-size: 12.5px; color: var(--ink-3); }
+.pz-secf small.mine { color: var(--dai); }
 .pz-add { border: 1px dashed var(--line-2); border-radius: 7px; background: none; cursor: pointer; font-size: 13.5px; letter-spacing: .08em; color: var(--ink-3); }
 .pz-add:hover { border-color: var(--ink-4); color: var(--ink); background: rgba(255, 253, 249, .7); }
 .pz-ed { position: absolute; z-index: 6; padding: 10px 16px 12px; border: 1px solid var(--dai-line); border-radius: 10px; background: #fffefa; box-shadow: 0 22px 48px -16px rgba(40, 28, 16, .5); }
@@ -134,6 +158,7 @@
 <script src="../公用/底座.js"></script>
 <script src="../公用/界面.js"></script>
 <script src="../公用/关键帧绑定.js"></script>
+<script src="../公用/镜头作用.js"></script>
 <script src="流水线.js"></script>
 <script>
 /* ============================================================
@@ -147,6 +172,8 @@
    11-16 改版（他看了 提炼页改版_设计稿.html 定的）：镜头表、出场的、梗概分三个页签，一次只看一样，回到上回看的那一页；
    段名、页签、「交给 AI 照批注改」「定下来」钉在顶上；镜头表一镜一行，点开在原地改，按住左边拖着换顺序；
    出场的分人物、场景、道具三组，一样一张小卡，点卡在原地改描写、写批注。数据、AI 那边都没变。
+   11-16 晚（他看了 镜头表秒数和作用_设计稿.html 说照推荐的做）：作用写成「标签｜目的，关系」，二十个字以内，标签画成色块；每镜一个预估秒数，
+   你改过的 AI 照批注改时不动；镜头表顶上一条色带（宽窄照秒数、每 15 秒一道线）；鼠标停在一镜上，它连着的那几镜亮起来。规矩在 公用/镜头作用.js。
    共用的东西（读写流水线.json、顶栏、步骤条、小部件、并进来的规矩 takeDistill）在 流水线.js。
    ============================================================ */
 'use strict';
@@ -195,7 +222,7 @@ function notesMd(s) {
     out.push('', '## ' + k + '「' + (k === '场景' ? sceneLabel(id) : id) + '」', '原文：' + (k === '场景' ? id : (e && e.描写.trim()) || '（没写描写）'), '批注：' + t);
   }
   const nos = shotNos(s);
-  for (const { i, t } of notesOf(s)) { const x = s.段落[i]; out.push('', '## 镜头' + nos[i], '原文：写什么：' + (x.写什么.trim() || '（空）') + '　作用：' + (x.作用.trim() || '（空）'), '批注：' + t); }
+  for (const { i, t } of notesOf(s)) { const x = s.段落[i]; out.push('', '## 镜头' + nos[i], '原文：写什么：' + (x.写什么.trim() || '（空）') + '　作用：' + (x.作用.trim() || '（空）') + (Why.secOf(x) ? '　秒数：' + Why.secOf(x) + (x.秒数人定 ? '（人定）' : '') : ''), '批注：' + t); }
   return out.join('\n') + '\n';
 }
 async function fixByNotes(s) {
@@ -249,33 +276,65 @@ function shotGrid(s, foot, ro) {
   const wrap = h('div', { class: 'pz-tbw' }), box = h('div', { class: 'pz-tb' + (ro ? ' ro' : '') });
   const add = ro ? null : h('button', { class: 'pz-add', type: 'button', title: '号接着往下排', onclick: () => addShot() }, '＋ 加一镜');
   const cells = new Map();   // 镜头 → 它那一格
-  let ed = null;             // 浮着的那一块：{ sh, el }
-  wrap.append(box);
+  let ed = null, lit = null; // ed：浮着的那一块 { sh, el }；lit：鼠标停着的那一镜
+  const band = h('div', { class: 'sw-band' });   // 顶上的色带和合计
+  wrap.append(band, box);
   const noOf = sh => shotNos(s)[s.段落.indexOf(sh)];
-  const changed = () => { if (foot) foot(); layout(); if (ed) place(); };
+  const changed = () => { paintBand(); if (foot) foot(); layout(); if (ed) place(); };
+  const secTip = sh => Why.secOf(sh) ? '约 ' + Why.secOf(sh) + ' 秒' + (sh.秒数人定 ? '（你定的，AI 照批注改时不动）' : '（AI 估的）') : '还没估秒数';
 
-  /* 一格：号、写什么、作用；批注是右上角红角，AI 改过的是左边一道红；全文在悬停提示里 */
+  /* 一格：号、写什么、作用（标签是色块）、秒数；批注是右上角红角，AI 改过的是左边一道红；全文在悬停提示里 */
   function fill(el, sh) {
-    const t = str(sh.批注).trim(), what = sh.写什么.trim(), why = sh.作用.trim();
+    const t = str(sh.批注).trim(), what = sh.写什么.trim(), why = sh.作用.trim(), sec = Why.secOf(sh);
     el.classList.toggle('note', !!t);
     el.classList.toggle('chg', !!sh.AI改);
-    el.title = [what || '还空着', why ? '作用：' + why : '没写作用', t ? '批注：' + t : '', sh.AI改 ? (/^（新加的/.test(sh.AI改) ? 'AI 新加的' : 'AI 改过，原来是：' + sh.AI改) : '', ro ? '点一下看全文' : '点一下改'].filter(Boolean).join('\n');
+    el.title = [what || '还空着', why ? '作用：' + why : '没写作用', secTip(sh), t ? '批注：' + t : '', sh.AI改 ? (/^（新加的/.test(sh.AI改) ? 'AI 新加的' : 'AI 改过，原来是：' + sh.AI改) : '', ro ? '点一下看全文' : '点一下改'].filter(Boolean).join('\n');
     el.replaceChildren(...[ro ? null : grip(), h('span', { class: 'pz-no' }, noOf(sh)),
-      h('span', { class: 'pz-tx' }, h('b', null, what || h('span', { class: 'miss' }, '还空着')), why ? h('small', null, why) : h('small', { class: ro ? 'faint' : 'miss' }, '没写作用')),
+      h('span', { class: 'pz-tx' }, h('b', null, what || h('span', { class: 'miss' }, '还空着')), why ? h('small', null, ...Why.bits(why, h)) : h('small', { class: ro ? 'faint' : 'miss' }, '没写作用')),
+      h('span', { class: 'pz-sec' + (sec ? sh.秒数人定 ? ' mine' : '' : ' miss') }, sec ? sec + ' 秒' : '—'),
       ro ? null : h('button', { class: 'fl-ib pz-more', type: 'button', tabindex: '-1', title: '在下面插一镜、写批注、删掉', onclick: e => menu(e.currentTarget, sh) }, icon('more'))].filter(Boolean));
   }
   function cell(sh) {
     const el = h('div', { class: 'pz-r', tabindex: '0',
       onclick: e => { if (!e.target.closest('.pz-g, .pz-more')) open(sh); },
-      onkeydown: e => { if (e.key === 'Enter' && e.target === e.currentTarget) { e.preventDefault(); open(sh); } } });
+      onkeydown: e => { if (e.key === 'Enter' && e.target === e.currentTarget) { e.preventDefault(); open(sh); } },
+      onmouseenter: () => light(sh), onmouseleave: () => light(null) });
     cells.set(sh, el); fill(el, sh);
     return el;
   }
   function paint() {
     shut(true); cells.clear();
     box.replaceChildren(...s.段落.map(cell), ...(add ? [add] : []));
+    paintBand();
     if (foot) foot();
     setTimeout(layout, 0);   // 摆上页面以后再量（窗格藏着时 requestAnimationFrame 不走，用定时）
+  }
+  /* 色带：一块一镜，宽窄照秒数、颜色照标签，每 15 秒一道线；上面一行写合计、大概分几条。点一块打开那一镜 */
+  function paintBand() {
+    const rows = s.段落, st = Why.strip(rows), sum = Why.sum(rows), nos = shotNos(s);
+    if (!rows.length) { band.replaceChildren(); return; }
+    const parts = Math.ceil(st.total / Why.ONE), roomy = rows.length <= 8;
+    band.replaceChildren(
+      h('p', { class: 'sw-sum' }, h('b', null, rows.length + ' 镜'), '　', sum.total ? h('b', null, sum.say) : '还没估秒数',
+        parts > 1 ? '　一条视频一般 ' + Why.ONE + ' 秒，这一段大概要分 ' + parts + ' 条' : '', sum.total ? '　红线是每 ' + Why.ONE + ' 秒' : ''),
+      h('div', { class: 'sw-bar' }, ...st.blocks.map(b => {
+        const sh = rows[b.i], tag = b.tag;
+        return h('div', { class: 'sw-b' + (tag ? ' ' + Why.TAGS[tag] : ''), 'data-i': String(b.i), style: 'flex:' + b.w.toFixed(4) + ' 1 0',
+          title: '镜头' + nos[b.i] + '　' + (sh.写什么.trim() || '还空着') + '\n' + (sh.作用.trim() || '没写作用') + '\n' + secTip(sh),
+          onclick: () => open(sh), onmouseenter: () => light(sh), onmouseleave: () => light(null) },
+          nos[b.i] + (roomy && tag ? ' ' + tag : ''), roomy && b.sec ? h('em', null, b.sec + '秒') : null);   // 镜头多了块窄：只写号，别的看颜色和悬停提示
+      }), ...st.marks.map((m, k) => h('i', { class: 'sw-m', style: 'left:' + (m * 100).toFixed(2) + '%' }, h('span', null, (k + 1) * Why.ONE + ' 秒')))));
+    light(lit);
+  }
+  /* 鼠标停在一镜上：它自己、它作用里写到的那几镜、作用里写到它的那几镜，格子和色带上都亮起来 */
+  function light(sh) {
+    lit = sh && s.段落.includes(sh) ? sh : null;
+    const nos = shotNos(s), me = lit ? nos[s.段落.indexOf(lit)] : '', mine = lit ? Why.refs(lit.作用, nos) : [];
+    const tie = (x, n) => !!lit && x !== lit && (mine.includes(n) || Why.refs(x.作用, nos).includes(me));
+    s.段落.forEach((x, i) => {
+      const c = cells.get(x), b = band.querySelector('.sw-b[data-i="' + i + '"]'), on = !!lit && x === lit, ln = tie(x, nos[i]);
+      for (const el of [c, b]) if (el) { el.classList.toggle('hot', on); el.classList.toggle('lnk', ln); }
+    });
   }
 
   /* 量这一页还剩多高，挑一种摆得下的：先两行一栏、两行几栏，再一行一栏、一行几栏；都摆不下就用最挤的那种（页面才滚） */
@@ -333,27 +392,49 @@ function shotGrid(s, foot, ro) {
     if (dy) p.style.top = c.offsetTop + dy + 'px';
   }
   function editorOf(sh) {
+    const next = () => { const j = s.段落.indexOf(sh); if (j < s.段落.length - 1) open(s.段落[j + 1]); else addShot(); };   // 到下一镜（最后一镜就加一镜）
+    const redo = () => { const c = cells.get(sh); if (c) fill(c, sh); changed(); };
+    const cnt = h('em', { class: 'pz-cnt' }), tags = h('div', { class: 'pz-tags' });
+    const paintWhy = () => {   // 作用数着字（二十个字以内）、标签哪个点着
+      const n = Why.len(sh.作用), tag = Why.split(sh.作用).tag;
+      cnt.textContent = n + ' / ' + Why.MAX;
+      cnt.classList.toggle('over', n > Why.MAX);
+      for (const b of tags.children) b.classList.toggle('on', b.dataset.t === tag);
+    };
     const mk = (key, cls, ph) => {
-      const ta = h('textarea', { class: 'fq-in ' + cls, rows: key === '作用' ? '2' : '1', spellcheck: 'false', placeholder: ph, 'data-f': key });
+      const ta = h('textarea', { class: 'fq-in ' + cls, rows: '1', spellcheck: 'false', placeholder: ph, 'data-f': key });
       ta.value = str(sh[key]);
       ta.addEventListener('input', () => {
-        if (key === '写什么' && /[\r\n]/.test(ta.value)) ta.value = ta.value.replace(/\s*[\r\n]+\s*/g, '');   // 写什么只有一行
+        if (key !== '批注' && /[\r\n]/.test(ta.value)) ta.value = ta.value.replace(/\s*[\r\n]+\s*/g, '');   // 写什么、作用只有一行
         sh[key] = ta.value; fit(ta); touch();
-        const c = cells.get(sh); if (c) fill(c, sh);
-        changed();
+        if (key === '作用') paintWhy();
+        redo();
       });
-      ta.addEventListener('keydown', e => {   // 写什么里回车：到作用。作用里回车照常换行，Ctrl+回车到下一镜（最后一镜就加一镜）
+      ta.addEventListener('keydown', e => {   // 写什么里回车到作用，作用里回车到秒数；Ctrl+回车到下一镜
         if (isComposing(e) || e.key !== 'Enter') return;
-        if (key === '写什么') { e.preventDefault(); focusIn('作用'); }
-        else if (e.ctrlKey || e.metaKey) { e.preventDefault(); const j = s.段落.indexOf(sh); if (j < s.段落.length - 1) open(s.段落[j + 1]); else addShot(); }
+        if (e.ctrlKey || e.metaKey) { e.preventDefault(); next(); }
+        else if (key === '写什么') { e.preventDefault(); focusIn('作用'); }
+        else if (key === '作用') { e.preventDefault(); focusIn('秒数'); }
       });
       return ta;
     };
+    const why = mk('作用', 'what', '标签｜目的，关系。像：铺垫｜阵地眼看守不住，为镜2救场');
+    tags.append(...Why.NAMES.map(t => h('button', { class: 'sw-t ' + Why.TAGS[t], type: 'button', tabindex: '-1', 'data-t': t, title: t + '：' + Why.SAY[t] + '（点一下换上）',
+      onclick: () => { const cur = Why.split(sh.作用); sh.作用 = cur.tag === t ? cur.rest : t + '｜' + cur.rest; why.value = sh.作用; fit(why); touch(); paintWhy(); redo(); why.focus(); } }, t)));
+    paintWhy();
+    /* 秒数：你改了就记「人定」，AI 照批注改时照抄；清空就是没估 */
+    const secHint = h('small');
+    const paintSec = () => { secHint.textContent = !Why.secOf(sh) ? '还没估。照真人做事的快慢填整秒' : sh.秒数人定 ? '你定的：AI 照批注改时不动' : 'AI 估的；你改了就算你的'; secHint.classList.toggle('mine', !!sh.秒数人定); };
+    const sec = h('input', { type: 'text', maxlength: '3', inputmode: 'numeric', placeholder: '—', 'data-f': '秒数', value: Why.secOf(sh) ? String(Why.secOf(sh)) : '',
+      oninput: () => { const v = Why.secOf(sec.value); if (v) { sh.秒数 = v; sh.秒数人定 = true; } else { delete sh.秒数; delete sh.秒数人定; } touch(); paintSec(); redo(); },
+      onkeydown: e => { if (e.key === 'Enter' && !isComposing(e)) { e.preventDefault(); next(); } } });
+    paintSec();
     return h('div', { class: 'pz-ed' + (sh.AI改 ? ' chg' : ''), onkeydown: e => { if (e.key === 'Escape' && !isComposing(e)) { e.preventDefault(); shut(); } } },
       h('div', { class: 'pz-ed-h' }, h('span', { class: 'pz-no' }, '镜头 ' + noOf(sh)), h('span', { class: 'sp' }), h('button', { class: 'fl-ib', type: 'button', title: '收起（Esc）', onclick: () => shut() }, icon('x'))),
       h('label', { class: 'pz-f' }, h('span', null, '写什么'), mk('写什么', 'what', '这个镜头写什么，一句话')),
       sh.AI改 ? wasP(sh.AI改, '一个镜头') : null,
-      h('label', { class: 'pz-f' }, h('span', null, '起什么作用'), mk('作用', 'why', '为什么要有这个镜头：它让观众看到什么、明白什么。')),
+      h('div', { class: 'pz-f' }, h('span', null, '起什么作用', cnt), tags, why),
+      h('label', { class: 'pz-secf' }, h('span', null, '预估秒数'), sec, secHint),
       h('label', { class: 'pz-f z' }, h('span', null, '批注'), mk('批注', 'nt', '要怎么改，写给 AI；不用改就空着。比如：作用没写到点上，这个镜头是让观众知道他已经没钱了')),
       h('div', { class: 'pz-ops' },
         h('button', { class: 'fl-link', type: 'button', onclick: () => addShot(s.段落.indexOf(sh) + 1) }, '在下面插一镜'),
@@ -363,7 +444,7 @@ function shotGrid(s, foot, ro) {
   }
   const viewOf = sh => h('div', { class: 'pz-ed ro', onkeydown: e => { if (e.key === 'Escape') shut(); } },
     h('div', { class: 'pz-ed-h' }, h('span', { class: 'pz-no' }, '镜头 ' + noOf(sh)), h('span', { class: 'sp' }), h('button', { class: 'fl-ib', type: 'button', title: '收起（Esc）', onclick: () => shut() }, icon('x'))),
-    h('b', null, sh.写什么.trim() || '—'), h('p', null, sh.作用.trim() || h('span', { class: 'faint' }, '没写作用')));
+    h('b', null, sh.写什么.trim() || '—'), h('p', null, ...(sh.作用.trim() ? Why.bits(sh.作用, h) : [h('span', { class: 'faint' }, '没写作用')])), h('p', null, secTip(sh)));
 
   /* ---- 加、删、挪 ---- */
   function addShot(i = s.段落.length) { const sh = { 写什么: '', 作用: '' }; s.段落.splice(i, 0, sh); SB.fillNos(s.段落); touch(); paint(); setTimeout(() => open(sh), 0); }   // 号现在就定下：中间加的是 3b，最后加的接着排；等量完再浮出来

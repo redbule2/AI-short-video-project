@@ -68,12 +68,13 @@
     for (const i of idx) { const r = runs[runs.length - 1]; if (r && i === r[1] + 1) r[1] = i; else runs.push([i, i]); }
     return runs.length ? runs.map(([a, b]) => a === b ? nos[a] : nos[a] + '-' + nos[b]).join('、') + '.txt' : '';
   }
-  /* AI 重新提炼、照批注改的镜头表并进来：原来的号尽量留着。字一样的拿原来那一镜的号；剩下的，同一个位置上原来那一镜的号没被拿走就接着用（当它是改了字）；
+  /* AI 重新提炼、照批注改的镜头表并进来：原来的号尽量留着。字一样的拿原来那一镜的号；只改了作用、写什么一样的也是；剩下的，同一个位置上原来那一镜的号没被拿走就接着用（当它是改了字）；
      再剩下的不写号，存的时候补（中间的 3b、最后的接着排）。fresh：新的表（[{ 写什么, 作用 }]），old：原来的表 */
   function keepNos(fresh, old) {
     const oldNos = nosOf(old), key = x => str(x && x.写什么) + '　' + str(x && x.作用), taken = new Set();
     const res = fresh.map(() => '');
     fresh.forEach((x, i) => { const k = (old || []).findIndex((o, j) => !taken.has(oldNos[j]) && key(o) === key(x)); if (k >= 0) { res[i] = oldNos[k]; taken.add(oldNos[k]); } });
+    fresh.forEach((x, i) => { if (res[i] || !str(x && x.写什么)) return; const k = (old || []).findIndex((o, j) => !taken.has(oldNos[j]) && str(o && o.写什么) === str(x.写什么)); if (k >= 0) { res[i] = oldNos[k]; taken.add(oldNos[k]); } });   // 写什么一样、只改了作用（11-16 起作用改写法）：也是原来那一镜
     if (fresh.length === (old || []).length) fresh.forEach((x, i) => { if (!res[i] && !taken.has(oldNos[i])) { res[i] = oldNos[i]; taken.add(oldNos[i]); } });
     fresh.forEach((x, i) => { if (res[i]) x.号 = res[i]; else delete x.号; });
     return fillNos(fresh);
@@ -127,6 +128,12 @@
     }
     for (const r of rows) r.帧.sort((a, b) => MOMENTS.indexOf(a.刻) - MOMENTS.indexOf(b.刻) || (b.current - a.current) || a.file.localeCompare(b.file, 'zh', { numeric: true }));
     return { nos, rows, loose };
+  }
+  /* 资产页一镜一张卡上的三格（开头、中间、结尾）：每一格现用的那张、备选的几张。row：table 给的一镜 */
+  function slots(row) {
+    const all = row && Array.isArray(row.帧) ? row.帧 : [], out = {};
+    for (const m of MOMENTS) { const fs = all.filter(x => x.刻 === m), cur = fs.find(x => x.current) || fs[0] || null; out[m] = { cur, alts: fs.filter(x => x !== cur) }; }
+    return out;
   }
   /* 写提示词时带哪几张：shots（镜头号）里每一镜每一刻现用的那张，照表里先后、开头中间结尾排 */
   function forShots(shots, frames, paras, binds) {
@@ -185,5 +192,5 @@
     }
     return out;
   }
-  return Object.freeze({ normNo, nosOf, fillNos, expand, shotsOf, codeOf, keepNos, MOMENTS, SAY, bindsOf, guess, currentOf, isCurrent, staleOf, table, forShots, order, say, regName, bind, setCurrent, keep, unbind, check });
+  return Object.freeze({ normNo, nosOf, fillNos, expand, shotsOf, codeOf, keepNos, MOMENTS, SAY, bindsOf, guess, currentOf, isCurrent, staleOf, table, slots, forShots, order, say, regName, bind, setCurrent, keep, unbind, check });
 });

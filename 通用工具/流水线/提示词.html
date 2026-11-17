@@ -22,8 +22,10 @@
 <script src="../公用/点图.js"></script>
 <script src="../公用/找旧版.js"></script>
 <script src="../公用/关键帧绑定.js"></script>
+<script src="../公用/镜头作用.js"></script>
 <script src="流水线.js"></script>
 <script src="../公用/样片归属.js"></script>
+<script src="镜头表浮窗.js"></script>
 <script>
 /* ============================================================
    流水线 · 提示词（一场的第四道工序）
@@ -429,9 +431,9 @@ async function newPrompt(s) {
   let name = '';
   const paintSelection = () => {
     name = SB.codeOf(shotNumbers(), nos);
-    const dup = !!name && taken.has(name);
-    selection.textContent = !name ? '' : dup ? '已经有「' + vpLabel(name) + '」这一条了：回到列表打开它改，或者换几个镜头' : '';
-    selection.classList.toggle('warn', dup);
+    const dup = !!name && taken.has(name), pk = Why.pickSay(s.段落.filter((x, i) => picked.has(nos[i])));   // 勾的这几镜一共几秒（提炼时估的，公用/镜头作用.js）
+    selection.textContent = !name ? '' : dup ? '已经有「' + vpLabel(name) + '」这一条了：回到列表打开它改，或者换几个镜头' : pk.say ? '这几镜' + pk.say : '';
+    selection.classList.toggle('warn', dup || !!pk.level);
     namePrev.textContent = '存成：提示词 / ' + segName(s.段) + ' / ' + (name || '（勾了镜头，名字就是镜头号）');
     okBtn.disabled = selfBtn.disabled = !name || dup;
   };
@@ -442,8 +444,8 @@ async function newPrompt(s) {
       if (!fTouched) { fpick.clear(); for (const f of SB.forShots(shotNumbers(), frames, s.段落, SB.bindsOf(s))) fpick.add(f); paintF(); }   // 勾了几镜：这几镜现用的关键帧跟着勾上（你自己动过关键帧就不替你勾）
     } });
     return h('label', { class: 'prompt-shot' }, checkbox, h('span', null,
-      h('b', null, '镜头' + number + '　' + (shot.写什么 || '内容待填写')),
-      shot.作用 ? h('small', null, '作用　' + shot.作用) : null,
+      h('b', null, '镜头' + number + '　' + (shot.写什么 || '内容待填写'), Why.secOf(shot) ? h('span', { class: 'faint' }, '　约 ' + Why.secOf(shot) + ' 秒') : null),
+      shot.作用 ? h('small', null, ...Why.bits(shot.作用, h)) : null,
       inn.length ? h('small', null, '已写进　' + inn.join('、')) : null));
   }));
   const shotField = h('div', { class: 'fld' }, h('span', null, '这一条拍哪几个镜头'), shotGrid, selection);
@@ -900,6 +902,7 @@ function render() {
   const writing = AI.jobs.filter(j => j.事 === '写提示词' && j.段 === seg && jobLive(j) && !list.some(e => e.name === j.名));
   const cl = ClipOf.scene(s), made = new Map(list.map(e => [e.name, cl.made(e, list)])), pf = list.length > 1 ? pfNow() : '全部';   // 只有一条不摆筛选
   const shown = pf === '全部' ? list : list.filter(e => (made.get(e.name).length > 0) === (pf === '已出片'));
+  ShotFloat.paint(s);   // 左边的镜头表（镜头表浮窗.js）
   return [
     h('div', { class: 'wf-bar' },
       h('span', { class: 'fn-note' + (stale.length ? ' warn' : '') }, stale.length ? stale.length + ' 条待核对：它们写好以后，前面（剧本、资产、拍摄风格）又动过。打开看一眼，还对得上就点「沿用」，对不上就写批注让 AI 改，或者进去自己改。'
@@ -922,6 +925,16 @@ start({
   sides() { loadExtra().then(() => { if (!typing()) rerender(); else F.later = true; }); },   // 你正在写：写完再画（tick 里补）
   jobDone() { loadExtra().then(rerender); },
 }).then(() => loadExtra().then(() => { if (F.doc && sceneNow()) rerender(); }));
+
+/* 鼠标停在一条提示词上：左边镜头表里标出它拍的那几镜 */
+let SF_AT = null;
+document.addEventListener('mouseover', ev => {
+  const it = ev.target.closest && ev.target.closest('.wf-item[data-name]'), name = it ? it.dataset.name : '';
+  if (name === SF_AT) return;
+  SF_AT = name;
+  const s = sceneNow(), e = s && name ? promptsOf(s.段).find(x => x.name === name) : null;
+  ShotFloat.mark(e ? shotsOfPrompt(s, e) || [] : []);
+});
 
 /* 字里的 @图片N 点开看大图（公用/点图.js）：照它所在的那一条提示词认图；从一条里打开的弹窗（看改了哪儿、看任务书）照那一条认 */
 let REF_AT = '';

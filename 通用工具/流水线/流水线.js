@@ -32,7 +32,7 @@ const { RE_VP, vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, nameOk, sceneStem } 
 const VID_RE = /\.(mp4|m4v|mov|webm)$/i;
 const SHOTS_TAIL = '_批注截图';
 const FILE = '流水线.json';
-const NOTE_LINE = '项目管理「流水线」页存的。梗概：全片讲什么。人物、道具：全片的，一行一个，「资产」是它引用的那张图（引用了就是对上了）；道具有几个状态、引用了几张图时，「资产」是一个列表，一张图一个状态；「描写改」是这一行的描写最后改动的时间。场景：全片的场景描写，一行写一处地方；场景图：引用的场景图。可用：哪张图人看过、确认能用（图 → 确认的时间），确认过的图各场通用；图重出过、它那一行的描写改过，就要再确认。场：一场一场的，各场的「人物」「道具」写的是上面表里的名字，「场景图」是这一场用的场景图，「场景文字」是这一场用的、只用文字写的地方（全片「场景」里的原句，没有图也算），「段落」是这一场的镜头表（一个镜头写什么、起什么作用；字段名照旧叫「段落」）。先写剧本（11-16 起），剧本定稿以后 AI 照剧本一次提炼出梗概、这一场的人物道具场景和镜头表（定稿的剧本/第N段/第N段_提炼.json），页面并进全片设定和这一场，人再改；「提炼取」是并进来的那一版的时间，「提炼改」记着 AI 改了哪几样、原来是什么，「提炼批」是人写的还没交出去的批注。写提示词时分镜照剧情需要设计，不必和镜头表一一对应，写在提示词的「分镜」里。「剧本定稿」是人看过剧本以后点的时间，有它、而且不早于剧本最后改动的时间，才许提炼；「定稿」是这一场的提炼（出场的、镜头表）定下来的时间，定了才出这一场的资产图；这一场要的图都确认可用了，才写提示词。风格：全片的拍摄风格，「名」是 通用工具/AI短片风格库 里的一种，或者「本项目自己的」（照 提示词/全局资产/全片_光影总基调.txt），「定」是定下来的时间，「换」是从别的风格换过来的时间；一场另选的写在那一场的「风格」里（「风格换」是这一场换风格的时间），没写就照全片的；出资产图、写提示词照它写。「先写提示词」是 true 的场倒着走：人先选出场的人物、写提示词里人写的两块（生成目标、事件脚本），AI 照提示词反推剧本，镜头表、表达、出场的列在 定稿的剧本/第N段/第N段_反推.json，人点「采用」才写进这一场（「反推采用」是采用的那一份的时间）；剧本定稿以后 AI 再把提示词里它写的几块铺进正文。人在页面上写，AI 只读；一场就是一个「第N段」。';
+const NOTE_LINE = '项目管理「流水线」页存的。梗概：全片讲什么。人物、道具：全片的，一行一个，「资产」是它引用的那张图（引用了就是对上了）；道具有几个状态、引用了几张图时，「资产」是一个列表，一张图一个状态；「描写改」是这一行的描写最后改动的时间。场景：全片的场景描写，一行写一处地方；场景图：引用的场景图。可用：哪张图人看过、确认能用（图 → 确认的时间），确认过的图各场通用；图重出过、它那一行的描写改过，就要再确认。场：一场一场的，各场的「人物」「道具」写的是上面表里的名字，「场景图」是这一场用的场景图，「场景文字」是这一场用的、只用文字写的地方（全片「场景」里的原句，没有图也算），「段落」是这一场的镜头表（一个镜头写什么、起什么作用；字段名照旧叫「段落」；作用写成「标签｜目的，关系」，「秒数」是这一镜预估几秒，「秒数人定」是人改过的，AI 照批注改时照抄）。先写剧本（11-16 起），剧本定稿以后 AI 照剧本一次提炼出梗概、这一场的人物道具场景和镜头表（定稿的剧本/第N段/第N段_提炼.json），页面并进全片设定和这一场，人再改；「提炼取」是并进来的那一版的时间，「提炼改」记着 AI 改了哪几样、原来是什么，「提炼批」是人写的还没交出去的批注。写提示词时分镜照剧情需要设计，不必和镜头表一一对应，写在提示词的「分镜」里。「剧本定稿」是人看过剧本以后点的时间，有它、而且不早于剧本最后改动的时间，才许提炼；「定稿」是这一场的提炼（出场的、镜头表）定下来的时间，定了才出这一场的资产图；这一场要的图都确认可用了，才写提示词。风格：全片的拍摄风格，「名」是 通用工具/AI短片风格库 里的一种，或者「本项目自己的」（照 提示词/全局资产/全片_光影总基调.txt），「定」是定下来的时间，「换」是从别的风格换过来的时间；一场另选的写在那一场的「风格」里（「风格换」是这一场换风格的时间），没写就照全片的；出资产图、写提示词照它写。「先写提示词」是 true 的场倒着走：人先选出场的人物、写提示词里人写的两块（生成目标、事件脚本），AI 照提示词反推剧本，镜头表、表达、出场的列在 定稿的剧本/第N段/第N段_反推.json，人点「采用」才写进这一场（「反推采用」是采用的那一份的时间）；剧本定稿以后 AI 再把提示词里它写的几块铺进正文。人在页面上写，AI 只读；一场就是一个「第N段」。';
 const IMG_RE = /\.(png|jpe?g|webp|gif|avif)$/i;
 const CAT_ORDER = ['人物', '场景', '道具', '特效'];
 const AI_FILE = '流水线_AI扩写.json';   // 定稿的剧本/流水线_AI扩写.json：AI 补的人物、道具描写，照 GEO 写的场景段（AI 写，页面只读；你点「采用」才换进流水线）
@@ -56,6 +56,8 @@ const kindCls = c => c && c !== '这一段' ? ({ 人物: 'k-ren', 场景: 'k-jin
 const FRAME_RE = /首帧|尾帧|关键帧/;
 /* 镜头表的固定号、关键帧绑到「一镜一刻」（2026-11-16 他定）：公用/关键帧绑定.js。镜头表每一镜存「号」，删了不挪；这一场的「关键帧绑定」：图 → { 镜, 刻, 备选, 写什么 } */
 const SB = window.ShotBind;
+/* 镜头表每一镜的作用（「标签｜目的，关系」）和预估秒数（2026-11-16 他定）：公用/镜头作用.js */
+const Why = window.ShotWhy;
 const shotNos = s => SB.nosOf(s.段落);   // 这一场镜头表各镜的号
 const arrOf = v => Array.isArray(v) ? v : [];
 const frameNo = f => { const m = /(?:镜头|段落)\s*0*([0-9]+)/.exec(String(f).split('/').pop()); return m ? +m[1] : null; };   // 镜头3_首帧.png → 3
@@ -613,22 +615,23 @@ function normAi(j) {
   const fg = d.风格 && typeof d.风格 === 'object' ? d.风格 : {};   // AI 推荐的拍摄风格（推荐风格那件事写的）
   return { 人物: rows(d.人物), 道具: rows(d.道具), 场景: { 描写: str(sc.描写).trim(), 底稿: cleanFile(sc.底稿), 时间: str(sc.时间) }, 风格: { 推荐: str(fg.推荐).trim(), 理由: str(fg.理由).trim(), 备选: str(fg.备选).trim(), 段: str(fg.段).trim(), 时间: str(fg.时间) } };
 }
-/* AI 提炼的（第N段_提炼.json）：{ 时间, 梗概, 人物: [{ 名, 描写 }], 道具: [同上], 场景: ['地方名：……'], 镜头表: [{ 写什么, 作用 }] }（11-16 以前叫「段落」，两个都认，读进来照旧放在「段落」）。一个镜头都没有就当没有 */
+/* AI 提炼的（第N段_提炼.json）：{ 时间, 梗概, 人物: [{ 名, 描写 }], 道具: [同上], 场景: ['地方名：……'], 镜头表: [{ 号（照批注改的才有）, 写什么, 作用, 秒数 }] }（11-16 以前叫「段落」，两个都认，读进来照旧放在「段落」）。一个镜头都没有就当没有 */
 function normDistill(j, mtime) {
   const rows = a => { const seen = new Set(); return (Array.isArray(a) ? a : []).filter(x => x && typeof x === 'object').map(x => ({ 名: oneLine(x.名), 描写: str(x.描写).trim() })).filter(x => x.名 && !seen.has(x.名) && seen.add(x.名)); };
-  const list = (j && Array.isArray(j.镜头表) ? j.镜头表 : j && Array.isArray(j.段落) ? j.段落 : []).filter(x => x && typeof x === 'object').map(x => ({ 写什么: oneLine(x.写什么), 作用: str(x.作用).trim() })).filter(x => x.写什么 || x.作用);
+  const list = (j && Array.isArray(j.镜头表) ? j.镜头表 : j && Array.isArray(j.段落) ? j.段落 : []).filter(x => x && typeof x === 'object').map(x => ({ ...(SB.normNo(x.号) ? { 号: SB.normNo(x.号) } : {}), 写什么: oneLine(x.写什么), 作用: str(x.作用).trim(), ...(Why.secOf(x) ? { 秒数: Why.secOf(x) } : {}) })).filter(x => x.写什么 || x.作用);
   return list.length ? { 时间: str(j.时间).trim() || '文件 ' + mtime, 梗概: str(j.梗概).trim(), 人物: rows(j.人物), 道具: rows(j.道具), 场景: uniq((Array.isArray(j.场景) ? j.场景 : []).map(oneLine)), 段落: list } : null;
 }
 /* AI 提炼好、照批注改好的，并进全片设定和这一场（11-16 他定：先写剧本，定稿以后再提炼）：
    梗概照 AI 的换；人物、道具表里没有的加一行，有的描写不一样就换成 AI 的（AI 被要求表里有的照抄，不一样多半是批注要改）；
    场景：全片场景里有同一处地方（地方名一样）就换那一行（各场选了它的跟着换），没有就加一行；
-   这一场出场的人物、道具、只用文字写的场景照 AI 列的换（这一段文件夹里挑的图、场景图不动）；镜头表照 AI 的换。
+   这一场出场的人物、道具、只用文字写的场景照 AI 列的换（这一段文件夹里挑的图、场景图不动）；镜头表照 AI 的换：号尽量留原来的，人改过的秒数照抄（公用/镜头作用.js 的 merge）。
    改了的都记下原来是什么（「提炼改」，镜头表记在那个镜头的「AI改」），页面上朱笔标出来，定下来时去掉；你写的批注都交出去了，清掉。
    原来有东西的：流水线先留一版进历史记录 */
 const distillKey = (k, n) => k === '梗概' ? '梗概' : k + '|' + n;
 function takeDistill(s, v) {
   const D = F.doc, mark = {};
   const key = x => (x.写什么.trim() + '　' + x.作用.trim()).trim(), old = s.段落.filter(x => key(x)), had = new Set(old.map(key)), redo = !!(old.length || s.提炼取);
+  const oldNos = shotNos(s), byNo = new Map(s.段落.map((x, i) => [oldNos[i], x]));
   if ((redo || D.梗概.trim() || D.人物.length) && F.text) FS.write(at([F.name, '历史记录', '定稿的剧本', '流水线__' + stampNow() + '.json']), C.encodeText(F.text)).catch(() => {});
   if (v.梗概 && v.梗概 !== D.梗概.trim()) { mark.梗概 = D.梗概.trim() || '（原来没写）'; D.梗概 = v.梗概; }
   for (const k of ['人物', '道具']) {
@@ -648,7 +651,8 @@ function takeDistill(s, v) {
   }
   s.场景文字 = uniq(mine);
   orderCast(s);
-  s.段落 = SB.keepNos(v.段落.map((x, i) => ({ 写什么: x.写什么, 作用: x.作用, ...(redo && !had.has(key(x)) ? { AI改: old[i] ? key(old[i]) : '（新加的一个镜头）' } : {}) })), s.段落);   // 原来的号尽量留着：关键帧绑在号上
+  const fresh = Why.merge(v.段落.map(x => ({ ...x })), s.段落, SB, s.提炼总批);   // 原来的号尽量留着：关键帧绑在号上
+  s.段落 = fresh.map(x => { const o = byNo.get(x.号); return { ...x, ...(redo && !had.has(key(x)) ? { AI改: o && key(o) ? key(o) : '（新加的一个镜头）' } : {}) }; });
   s.提炼改 = redo || Object.keys(mark).length ? mark : {}; s.提炼批 = {}; s.提炼取 = v.时间; s.提炼总批 = ''; s.定稿 = '';
   touch();
 }
@@ -991,6 +995,7 @@ function renderTop() {
     h('div', { class: 'top-right' },
       PAGE.name === '风格' ? null : h('a', { class: 'btn ghost sm wf-styles', href: pageUrl('风格', { p: F.name }), title: '风格库：每种风格现存的几条样片，都能在这里放', onclick: e => { e.preventDefault(); go('风格'); } }, icon('film'), '风格'),   // 11-14 加：风格.html
       PAGE.name === '网盘' ? null : h('a', { class: 'btn ghost sm wf-cloud', href: pageUrl('网盘', { p: F.name }), title: '这个项目在网盘上的那一份：传上去、拿下来、删网盘上的', onclick: e => { e.preventDefault(); go('网盘'); } }, icon('cloud'), '网盘'),
+      window.ScriptCheck ? ScriptCheck.topBtn() : null,   // 内置 AI（对剧本用的，11-16 加；在 对剧本.js）
       chPicker(), h('div', { class: 'status', id: 'fl-status' })));
 }
 /* 一场的页面顶上：剧本 → 提炼 → 资产 → 提示词 → 审片，现在在哪一步、各步什么样；右边换上一场、下一场 */
@@ -1162,11 +1167,6 @@ window.addEventListener('pagehide', () => {   // 关页面、刷新、后退：�
 });
 
 /* ---------- 几页都用的小部件 ---------- */
-/* 一场的镜头表，一个镜头一行：写什么、起什么作用 */
-function paraList(s) {
-  const nos = shotNos(s);
-  return [h('ol', { class: 'fs-list' }, s.段落.map((x, i) => h('li', null, h('span', { class: 'n' }, '镜头' + nos[i]), h('span', null, x.写什么.trim() || '—'), h('span', { class: 'y' }, x.作用.trim() || h('span', { class: 'faint' }, '没写作用')))))];
-}
 const secHead = (no, name, sub, ...btns) => h('div', { class: 'fl-sec-h' }, no ? h('span', { class: 'sec-no' }, no) : null, h('span', null, name), sub ? h('em', null, sub) : null, h('span', { class: 'ln' }), btns);
 const poolOf = K => F.pool.filter(x => K.cats(x.类别));
 
@@ -1857,3 +1857,6 @@ async function styleDlg(s, opt) {
   await flush();
   rerender();
 }
+
+/* 对剧本（2026-11-16 加）：审片、剧本两页自动对剧本，顶栏「内置 AI」各页都有。功能在 对剧本.js，这里替各页引上，各页的 html 不用一个个加 */
+if (!document.querySelector('script[src$="对剧本.js"]')) document.head.append(Object.assign(document.createElement('script'), { src: new URL('对剧本.js', document.currentScript ? document.currentScript.src : location.href).href }));

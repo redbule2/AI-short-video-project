@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>一样资产的那一页改成弹窗 · 设计稿</title>
+<style>
+:root { --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --ink-4: #a99d8f; --line: #d6cab6; --zhu: #a83a2c; --zhu-soft: #fbeee9; --dai: #3e5c5e; --dai-soft: #e9f1ef; --zhe: #9a6a2a; --huang: #fff4c9;
+  --ren: #6b4f93; --jing: #2e6c9e; --dao: #a3651f; --zhen: #3d7a55; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.85 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 32px 22px 120px; }
+h1 { margin: 0 0 4px; font: 600 26px/1.4 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .08em; }
+.sub { margin: 0 0 20px; font-size: 14.5px; color: var(--ink-2); }
+h2 { margin: 34px 0 10px; font: 600 19px/1.5 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .1em; }
+.card { margin: 12px 0; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+.card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 600; }
+.card h3 .no { display: inline-block; min-width: 1.7em; color: var(--dai); }
+.card p { margin: 3px 0; color: var(--ink-2); }
+.opts { margin: 8px 0 2px; }
+.opts label { display: block; margin: 5px 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opts label:hover { background: #faf5ea; }
+.opts input { margin-right: 8px; }
+.opts .rec { color: var(--dai); font-size: 13px; margin-left: 4px; }
+textarea { display: block; width: 100%; margin-top: 8px; min-height: 2.6em; padding: 7px 10px; border: 1px dashed #c8b99f; border-radius: 8px; background: #fffef9; font: 15px/1.7 'Noto Sans SC', 'Microsoft YaHei', sans-serif; color: var(--ink); resize: vertical; }
+textarea:focus { outline: none; border-style: solid; border-color: var(--dai); background: #fff; }
+textarea.has { border-style: solid; border-color: #b9822f; background: var(--huang); }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; background: rgba(255,253,249,.96); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; justify-content: center; font-size: 14px; z-index: 5; }
+.bar button { padding: 6px 14px; border: 1px solid var(--dai); border-radius: 8px; background: #fff; color: var(--dai); font: inherit; cursor: pointer; }
+.bar button:hover { background: #eef5f3; }
+#st { color: var(--ink-2); }
+.foot { margin-top: 26px; font-size: 13px; color: var(--ink-3); }
+.cap { margin: 8px 2px 0; font-size: 13px; color: var(--ink-3); }
+
+/* ---- 现在和以后 ---- */
+.cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.cmp b.h { display: block; margin-bottom: 6px; font-size: 14.5px; }
+.cmp .old b.h { color: var(--zhu); } .cmp .new b.h { color: var(--dai); }
+.long { border: 1px solid var(--line); border-radius: 8px; padding: 6px; background: #fbf8f1; font-size: 12.5px; line-height: 1.5; color: var(--ink-2); }
+.long div { margin: 3px 0; padding: 3px 6px; border-radius: 4px; background: #fff; border: 1px solid #e6dccb; }
+.long .scr { margin: 4px 0; border: 0; border-top: 1px dashed var(--zhu); border-radius: 0; background: none; padding: 0 0 0 4px; color: var(--zhu); font-size: 11.5px; }
+.long .ok { color: var(--dai); border-color: var(--dai); }
+
+/* ---- 以后的样子：资产页在后面，弹窗盖在上面。都能点 ---- */
+.mk { position: relative; height: 640px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); overflow: hidden; font-size: 13px; line-height: 1.6; user-select: none; }
+.mk button { font: inherit; cursor: pointer; }
+/* 后面的资产页 */
+.bg-steps { display: flex; gap: 6px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line); background: #f8f4ec; font-size: 12px; color: var(--ink-3); }
+.bg-steps span { padding: 1px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--sheet); }
+.bg-steps span.on { border-color: var(--ink); color: var(--ink); }
+.bg-head { display: flex; gap: 14px; align-items: flex-end; padding: 8px 18px 0; border-bottom: 1px solid var(--line); background: var(--paper); }
+.bg-head span { padding: 4px 4px 7px; color: var(--ink-3); font: 14px 'Noto Serif SC', SimSun, serif; }
+.bg-head span.on { border-bottom: 2.5px solid var(--dao); color: var(--dao); font-weight: 600; }
+.bg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 12px 18px; }
+.bc { border: 1px solid var(--line); border-top: 3px solid var(--dao); border-radius: 9px; background: var(--sheet); overflow: hidden; cursor: pointer; transition: box-shadow .15s; }
+.bc:hover { box-shadow: 0 6px 14px -10px rgba(40,28,16,.45); }
+.bc .pic { aspect-ratio: 4 / 3; overflow: hidden; display: grid; place-items: center; background: #efe8db; color: var(--ink-4); font-size: 12px; }
+.bc .pic img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.bc .pic.none { background: repeating-linear-gradient(135deg, #f6f1e7 0 8px, #efe8db 8px 16px); }
+.bc .nm { padding: 4px 8px 0; font-weight: 600; font-size: 12.5px; }
+.bc .st { padding: 0 8px 6px; font-size: 11.5px; color: var(--zhu); }
+.bc .st.ok { color: var(--dai); }
+.bc.flash { animation: fl 1.4s ease-out; }
+@keyframes fl { 0%, 50% { box-shadow: 0 0 0 3px var(--dao); } 100% { box-shadow: 0 0 0 3px transparent; } }
+/* 暗下去的一层 */
+.dim { position: absolute; inset: 0; background: rgba(42, 38, 34, .42); backdrop-filter: blur(1.5px); opacity: 0; pointer-events: none; transition: opacity .16s; }
+.mk.open .dim { opacity: 1; pointer-events: auto; cursor: pointer; }
+/* 弹窗 */
+.md { position: absolute; inset: 16px 20px; display: flex; flex-direction: column; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px rgba(214,202,182,.9), 0 30px 60px -20px rgba(30,20,10,.6); opacity: 0; transform: translateY(8px) scale(.985); pointer-events: none; transition: opacity .16s, transform .16s; }
+.mk.open .md { opacity: 1; transform: none; pointer-events: auto; }
+.md-h { flex: none; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--sheet); border-radius: 12px 12px 0 0; }
+.md-t { display: flex; flex-direction: column; padding-left: 10px; border-left: 4px solid var(--dao); line-height: 1.35; }
+.md-t b { font: 600 17px 'Noto Serif SC', SimSun, serif; letter-spacing: .05em; color: var(--dao); }
+.md-t small { font-size: 11.5px; color: var(--ink-3); }
+.sp { flex: 1; }
+.md-n { font-size: 12px; color: var(--ink-3); }
+.rb { width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--sheet); color: var(--ink-2); font-size: 15px; line-height: 1; }
+.rb:hover { border-color: var(--ink-3); color: var(--ink); }
+.rb:disabled { opacity: .35; cursor: default; }
+.rb.x { margin-left: 4px; }
+.rb.x:hover { border-color: var(--zhu); color: var(--zhu); }
+.md-now { flex: none; display: flex; align-items: center; gap: 14px; padding: 7px 14px; border-bottom: 1px solid var(--line); background: #fbf8f1; }
+.trk { flex: none; display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--ink-4); }
+.trk i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid #cdbfa8; background: var(--sheet); }
+.trk i.ok { border-color: var(--dai); background: var(--dai); }
+.trk i.you { border-color: var(--zhu); background: var(--zhu); box-shadow: 0 0 0 3px var(--zhu-soft); }
+.trk em { width: 12px; height: 1.5px; background: #d9ccb6; }
+.trk b { margin-left: 6px; font-weight: 600; color: var(--zhu); white-space: nowrap; }
+.trk b.ok { color: var(--dai); }
+.now { flex: 1; min-width: 0; font-size: 12.5px; color: var(--ink); }
+.md-b { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 11fr) minmax(0, 10fr); gap: 14px; padding: 12px 14px; }
+.md-img { min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.pic-big { flex: 1; min-height: 0; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 9px; background: #efe8db; overflow: hidden; cursor: zoom-in; }
+.pic-big img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.pic-big.none { cursor: default; background: repeating-linear-gradient(135deg, #f6f1e7 0 10px, #efe8db 10px 20px); color: var(--ink-3); font-size: 13px; text-align: center; padding: 20px; }
+.pic-big.none u { text-decoration: none; border-bottom: 1px dotted; color: var(--dai); cursor: pointer; }
+.cap2 { font-size: 11.5px; color: var(--ink-3); text-align: center; }
+.tools { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.tb { padding: 2px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--sheet); color: var(--ink-2); font-size: 12px; }
+.tb:hover { border-color: var(--ink-3); color: var(--ink); }
+.md-txt { min-height: 0; overflow: auto; padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--sheet); }
+.md-txt h4 { margin: 0 0 6px; font: 14px 'KaiTi', 'STKaiti', serif; letter-spacing: .15em; color: var(--ink-2); }
+.row { margin: 0 0 8px; padding: 6px 10px; border: 1px solid #e6dccb; border-radius: 7px; background: #fbf8f1; font-size: 12.5px; }
+.row b { display: block; font: 12.5px 'KaiTi', 'STKaiti', serif; letter-spacing: .1em; color: var(--ink-3); }
+.lab { margin: 10px 0 4px; font: 12.5px 'KaiTi', 'STKaiti', serif; letter-spacing: .12em; color: var(--ink-2); }
+.lab span { margin-left: 8px; font: 11px sans-serif; letter-spacing: 0; color: var(--ink-4); }
+.mk textarea { margin: 0; min-height: 0; height: 120px; padding: 6px 9px; border: 1px solid var(--line); border-style: solid; background: #fffef9; font-size: 12.5px; line-height: 1.7; resize: none; user-select: text; }
+.mk textarea.sm { height: 52px; }
+.mk textarea:focus { border-color: var(--dai); }
+.txt-acts { display: flex; gap: 8px; margin-top: 8px; }
+.log { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 8px; }
+.log summary { cursor: pointer; font-size: 12.5px; color: var(--ink-2); list-style: none; }
+.log summary::before { content: '▸ '; color: var(--ink-4); }
+.log[open] summary::before { content: '▾ '; }
+.log ol { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: var(--ink-2); }
+.log li span { color: var(--ink-4); margin-right: 8px; }
+.md-f { flex: none; display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-top: 1px solid var(--line); background: var(--sheet); border-radius: 0 0 12px 12px; }
+.save { font-size: 12px; color: var(--ink-3); }
+.save.dirty { color: var(--zhu); }
+.kbd { font-size: 11.5px; color: var(--ink-4); }
+.kbd kbd { padding: 0 5px; border: 1px solid #d9ccb6; border-bottom-width: 2px; border-radius: 4px; background: #fff; font: 10.5px sans-serif; color: var(--ink-3); }
+.fb { padding: 6px 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--sheet); color: var(--ink-2); font-size: 13px; }
+.fb:hover { border-color: var(--ink-3); color: var(--ink); }
+.fb.ink { border-color: var(--ink); background: var(--ink); color: #fff; letter-spacing: .08em; box-shadow: 0 8px 18px -8px rgba(40,28,16,.55); }
+.fb.ink:hover { background: #3c362f; }
+/* 第三层：看大图 */
+.big { position: absolute; inset: 0; display: none; flex-direction: column; background: rgba(20, 16, 12, .92); z-index: 3; }
+.big.on { display: flex; }
+.big-h { display: flex; align-items: center; gap: 10px; padding: 8px 12px; color: #eee5d6; font-size: 12.5px; }
+.big-h button { padding: 2px 12px; border: 1px solid #d9ccb6; border-radius: 7px; background: #fffdf9; color: var(--ink); font-size: 12px; }
+.big img { flex: 1; min-height: 0; object-fit: contain; width: 100%; }
+.toast { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%); padding: 5px 16px; border-radius: 999px; background: rgba(42,38,34,.88); color: #fff; font-size: 12.5px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 4; }
+.toast.on { opacity: 1; }
+@media (max-width: 680px) { .cmp { grid-template-columns: 1fr; } .md-b { grid-template-columns: 1fr; overflow: auto; } .bg-grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<main>
+<h1>一样资产的那一页改成弹窗 · 设计稿</h1>
+<p class="sub" id="sub"></p>
+
+<template id="fig-now">
+<div class="cmp">
+<div class="old"><b class="h">现在：点一张卡，换一页</b>
+<div class="long">
+<div>① 资产页点「武装直升机」</div>
+<div>② 整页换掉，重新读一遍，进它那一页</div>
+<div>③ 上面：走到哪一步、眼下；下面：字、图两栏；最底下：AI 做过的事</div>
+<div class="scr">↓ 要往下滚</div>
+<div>④ 该按的钮浮在右下角，离图和字都远</div>
+<div>⑤ 点「回到资产」，整页又换一次，再读一遍</div>
+</div>
+</div>
+<div class="new"><b class="h">以后：点一张卡，弹出来</b>
+<div class="long">
+<div>① 资产页点「武装直升机」</div>
+<div>② 弹窗盖上来，资产页在后面不动</div>
+<div>③ 图、字一屏看全；AI 做过的事收着，要看点开</div>
+<div class="scr ok">该按的那一个在弹窗底边</div>
+<div>④ ‹ › 换下一样，不出弹窗</div>
+<div>⑤ Esc 或 × 关掉，回到刚才的地方，那张卡闪一下</div>
+</div>
+</div>
+</div>
+</template>
+
+<template id="fig-mock">
+<div class="mk open" id="mk">
+  <div class="bg">
+    <div class="bg-steps"><span>剧本 定稿了</span>→<span>提炼 定了</span>→<span class="on">资产 缺 3 张</span>→<span>提示词</span>→<span>审片</span></div>
+    <div class="bg-head"><span>人物 4</span><span>场景 1</span><span class="on">道具 6</span><span>关键帧 19</span></div>
+    <div class="bg-grid" id="bg-grid"></div>
+  </div>
+  <div class="dim" id="dim" title="点暗处关掉"></div>
+  <div class="md" role="dialog" aria-modal="true">
+    <div class="md-h">
+      <div class="md-t"><b id="m-name"></b><small id="m-where"></small></div>
+      <span class="sp"></span>
+      <span class="md-n" id="m-n"></span>
+      <button class="rb" type="button" id="m-prev" title="上一样（键盘 ←）">‹</button>
+      <button class="rb" type="button" id="m-next" title="下一样（键盘 →）">›</button>
+      <button class="rb x" type="button" id="m-x" title="关掉（Esc）">×</button>
+    </div>
+    <div class="md-now"><div class="trk" id="m-trk"></div><div class="now" id="m-now"></div></div>
+    <div class="md-b">
+      <div class="md-img" id="m-img"></div>
+      <div class="md-txt" id="m-txt">
+        <h4>字</h4>
+        <div class="row"><b>要撑住</b><span id="m-need"></span></div>
+        <div class="lab">出图提示词<span>批准出图时一字不改交给 Codex</span></div>
+        <textarea id="m-ta" spellcheck="false"></textarea>
+        <div class="lab">批注<span>哪里不对写这里，点「交给 AI 改」</span></div>
+        <textarea class="sm" id="m-nta" spellcheck="false" placeholder="比如：机头再压低一点"></textarea>
+        <div class="txt-acts"><button class="tb" type="button" id="m-save">存</button><button class="tb" type="button">交给 AI 改</button></div>
+        <details class="log" id="m-log"><summary>AI 在这一样上做过的事（2 回）</summary>
+          <ol><li><span>11-14 16:02</span>写字 · 看过程</li><li><span>11-14 16:20</span>出图 · 看过程</li></ol></details>
+      </div>
+    </div>
+    <div class="md-f">
+      <span class="save" id="m-save-st">都存上了</span>
+      <span class="kbd"><kbd>←</kbd> <kbd>→</kbd> 换一样　<kbd>Esc</kbd> 关　<kbd>Ctrl</kbd>+<kbd>S</kbd> 存</span>
+      <span class="sp"></span>
+      <button class="fb" type="button" id="m-more">下一样要你看的 →</button>
+      <button class="fb ink" type="button" id="m-main"></button>
+    </div>
+  </div>
+  <div class="big" id="big"><div class="big-h"><button type="button" id="big-x">← 回到弹窗</button><span id="big-t"></span><span class="sp"></span><span>在图上框出来写批注</span></div><img id="big-img" alt=""></div>
+  <div class="toast" id="toast"></div>
+</div>
+<p class="cap">都能点：‹ › 换一样；× 或点暗处关掉，后面那张卡闪一下；点后面的卡再弹出来；点图看大图（第三层），「← 回到弹窗」回来；底边深色钮按了会变。图是第3-4段的道具，字是示意。</p>
+</template>
+
+<div id="sections"></div>
+<h2>别的意见</h2>
+<div class="card"><textarea data-k="其他" placeholder="上面没说到的，写在这里（可以不写）"></textarea></div>
+<p class="foot" id="foot"></p>
+</main>
+<div class="bar"><span id="st">在每一块下面的虚线框里写批注，自动存。</span><button id="copy">复制批注</button></div>
+<script>
+/* ===== 内容（改内容只改这一块；怎么摆、怎么存批注在 公用/说明页.js） ===== */
+const ROUND = 1;
+const SUB = '点资产页的一张卡，现在会整页换掉，看完再整页换回来。改成弹窗盖在资产页上面，不换页。你看了定，我再改页面。';
+const FOOT = '2026-11-16 Claude 照 资产详情.js 和第3-4段的道具拟的。还没改页面。';
+const SECTIONS = [
+  { h: '现在哪里不顺', cards: [
+    { id: 'p1', no: '一', t: '换来换去', p: [
+      '点一张卡，整页换掉、重新读；点「回到资产」，又整页换一次。来回一趟，等两回。' ] },
+    { id: 'p2', no: '二', t: '一页要滚', p: [
+      '上面是走到哪一步和「眼下」，中间字和图两栏，最底下 AI 做过的事。字一长就要滚。' ] },
+    { id: 'p3', no: '三', t: '同一件事摆了两处', p: [
+      '「回到资产」左上角一个、右下角又浮一个；「确认可用」图下一个、右下角又一个。' ] },
+  ] },
+  { h: '现在和以后', fig: 'fig-now' },
+  { h: '以后的样子', fig: 'fig-mock' },
+  { h: '每一块怎么用', cards: [
+    { id: 's1', no: '①', t: '开和关', p: [
+      '点卡就弹出来，资产页在后面不动：页签、滚到哪，都还在。',
+      '关：×、Esc、点外面暗处都行。改了的字，关的时候自动存（和现在离开那一页一样）；存不上就不关，说为什么。',
+      '关了，后面那张卡闪一下，状态已经换好。' ] },
+    { id: 's2', no: '②', t: '顶上一行', p: [
+      '左边颜色条、名字、第几段；右边「第 5 / 6 样」和 ‹ ›，键盘 ← → 也能换（光标在字框里时不换）。',
+      '关键帧多一个「删除」，和现在一样。' ] },
+    { id: 's3', no: '③', t: '眼下一行', p: [
+      '五步缩成一排小点，红的是现在这一步；后面一句话说眼下该做什么。原来两大块，现在一行。' ] },
+    { id: 's4', no: '④', t: '中间两栏', p: [
+      '图在左，占满高度，不跟着滚；点图看大图、写批注，盖在弹窗上面，「← 回到弹窗」回来。',
+      '字在右，自己滚。AI 做过的事收在字那一栏最底下，点开才看。',
+      '出了新图时，旧图、新图照旧并排，下面各一个钮「用旧图」「用新图」。' ] },
+    { id: 's5', no: '⑤', t: '底边一行', p: [
+      '左边：存没存、快捷键。右边：眼下该按的那一个（深色），旁边「下一样要你看的 →」。',
+      '该按的只摆这一处，两栏里不再重复摆。右下角浮着的钮去掉。' ] },
+    { id: 's6', no: '⑥', t: '刷新、后退', p: [
+      '网址后面带上是哪一样：刷新了弹窗还开着；浏览器「后退」就是关弹窗。以前存的旧链接也认，打开就是资产页加弹窗。' ] },
+    { id: 's7', no: '⑦', t: '没图想挑现成的', p: [
+      '弹窗里点「挑现成的图」：弹窗关掉，右边挑图那一栏打开，顶上写着给谁挑。' ] },
+  ] },
+  { h: '要你定的', cards: [
+    { id: 'd1', no: '甲', t: '弹窗多大', p: [
+      'A 图最大，看得清。B 左边还露着卡，可图小一圈。' ],
+      opts: [ { v: 'A', t: '几乎盖满，四周留一圈，后面变暗', rec: true }, { v: 'B', t: '右边宽抽屉，占四分之三，左边露着卡' } ] },
+    { id: 'd2', no: '乙', t: '图和字怎么摆', p: [
+      'A 一打开先看到图，图不跟着滚。B 和现在一样，不用重新习惯。' ],
+      opts: [ { v: 'A', t: '图左字右，图钉住，字那一栏自己滚', rec: true }, { v: 'B', t: '照现在：字左图右' } ] },
+    { id: 'd3', no: '丙', t: 'AI 做过的事', p: [
+      'A 一屏放得下，不用滚。B 一眼看到，但要往下滚。' ],
+      opts: [ { v: 'A', t: '收在字那一栏最底下，点开看', rec: true }, { v: 'B', t: '照现在一直摆着' } ] },
+    { id: 'd4', no: '丁', t: '提示词那一步点关键帧', p: [
+      '现在从提示词那一步点关键帧，也是换页，看完回提示词。A 也弹这个窗，一个做法。B 只改资产页，提示词那一步以后再说。' ],
+      opts: [ { v: 'A', t: '也弹这个窗，不换页', rec: true }, { v: 'B', t: '先只改资产页' } ] },
+  ] },
+  { h: '不变的', cards: [
+    { id: 'c1', no: '1', t: '里面能做的事不变', p: [
+      '写字、批字、交给 AI 改、批准出图、看新图、确认可用、照批注改图、删除，做法都不变。只改它摆在哪、怎么开怎么关。' ] },
+  ] },
+];
+window.DOC = { 名: '资产详情弹窗_设计稿', 题: '资产详情弹窗设计稿', 存: 'antou:ad-modal', 轮: ROUND, 副题: SUB, 脚注: FOOT, 先选: { d1: 'A', d2: 'A', d3: 'A', d4: 'A' }, 段: SECTIONS };
+</script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="../公用/说明页.js"></script>
+<script>
+/* 示意：资产页在后面，弹窗盖上来。图从第3-4段的真文件读缩小图；只在这一页上动，不写任何文件 */
+(function () {
+'use strict';
+const PJ = '李云龙大战奥特曼';
+const TRACK = ['AI 写字', '你批字', 'AI 出图', '你看图', '确认可用'];
+const ITEMS = [
+  { n: '飞碟', f: '资产/全局资产/道具/飞碟.png', st: 'img', again: true, need: '第3-4段 镜头2、11、19：天上压着的大飞碟，底面七个舱口' },
+  { n: '榴弹炮', f: '资产/全局资产/道具/榴弹炮.png', st: 'ok', need: '镜头1-5：炮兵阵地上的主炮，炮尾、炮闩看得清' },
+  { n: '重炮单发爆炸', f: '资产/全局资产/特效/重炮单发爆炸.png', st: 'ok', need: '镜头2：末轮炮火炸翻敌群' },
+  { n: '大砍刀', f: '资产/全局资产/道具/大砍刀.png', st: 'img', again: true, need: '镜头7、9：全军亮出大砍刀' },
+  { n: '武装直升机', f: '资产/全局资产/道具/武装直升机.png', st: 'img', need: '镜头6、14-18：地面起飞、近景跟拍扫射，机炮在机头下' },
+  { n: '重机枪', f: '', st: 'none', need: '镜头8、9：机枪子弹打光、全哑' } ];
+const NOW = {
+  none: '还没写字。点「让 AI 写字」，AI 读定稿的剧本写；已经有现成的图，点左边「挑现成的图」。',
+  img: '图出好了，等你看。能用就点底下「确认可用」；要改，点图写批注，再点「照批注改图」。',
+  ok: '这张图确认可用了。要改：改字后点「批准出图」，新图出来和这张并排，你挑。' };
+const $ = id => document.getElementById(id);
+let cur = 4, dirty = false;
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+function img(f, w) { const i = el('img'); i.alt = ''; window.UI.thumbOf(window.Base.at([PJ, ...f.split('/')]), w).then(u => { i.src = u; }).catch(() => { i.alt = '读不到'; }); return i; }
+const stTx = it => it.st === 'ok' ? '✓ 可用' : it.st === 'none' ? '还没写字' : it.again ? '图改过，再看一眼' : '还没确认';
+function grid() {
+  const g = $('bg-grid');
+  g.replaceChildren(...ITEMS.map((it, i) => {
+    const c = el('div', 'bc'); c.dataset.i = i;
+    const p = el('div', 'pic' + (it.f ? '' : ' none'), it.f ? null : '还没有图'); if (it.f) p.append(img(it.f, 300));
+    c.append(p, el('div', 'nm', it.n), el('div', 'st' + (it.st === 'ok' ? ' ok' : ''), stTx(it)));
+    c.onclick = () => open(i);
+    return c;
+  }));
+}
+function toast(t) { const x = $('toast'); x.textContent = t; x.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => x.classList.remove('on'), 1600); }
+function paint() {
+  const it = ITEMS[cur], at0 = { none: 0, img: 3, ok: 5 }[it.st];
+  $('m-name').textContent = '道具「' + it.n + '」';
+  $('m-where').textContent = '第3-4段' + (it.n === '武装直升机' ? ' · 也用在第3-5段' : '');
+  $('m-n').textContent = '第 ' + (cur + 1) + ' / ' + ITEMS.length + ' 样';
+  $('m-prev').disabled = cur === 0; $('m-next').disabled = cur === ITEMS.length - 1;
+  const trk = $('m-trk'); trk.replaceChildren();
+  TRACK.forEach((t, i) => { if (i) trk.append(el('em')); const d = el('i', i < at0 ? 'ok' : i === at0 ? 'you' : ''); d.title = t; trk.append(d); });
+  trk.append(el('b', at0 >= 5 ? 'ok' : '', at0 >= 5 ? '确认可用了' : TRACK[at0]));
+  $('m-now').textContent = (it.again && it.st === 'img' ? '你确认过，后来图重出过：再看一眼。' : '') + NOW[it.st];
+  const box = $('m-img'); box.replaceChildren();
+  if (it.f) {
+    const pb = el('div', 'pic-big'); pb.title = '点开看大图、写批注'; pb.append(img(it.f, 900)); pb.onclick = () => big(it);
+    const tools = el('div', 'tools');
+    const b1 = el('button', 'tb', '看大图、写批注'); b1.type = 'button'; b1.onclick = () => big(it);
+    const b2 = el('button', 'tb', '照批注改图'); b2.type = 'button';
+    tools.append(b1, b2);
+    box.append(pb, el('div', 'cap2', it.st === 'ok' ? '确认过可用' : '还没确认'), tools);
+  } else {
+    const pb = el('div', 'pic-big none'), w = el('div');
+    const u = el('u', null, '挑现成的图'); u.onclick = () => { close(); toast('右边挑图那一栏打开：给「重机枪」挑图'); };
+    w.append('还没有图。字批好了点「批准出图」，Codex 一次出一张。', el('br'), '已经有现成的图？', u); pb.append(w); box.append(pb);
+  }
+  $('m-need').textContent = it.need;
+  $('m-ta').value = it.st === 'none' ? '' : it.n + '，写实战争片质感，冷灰天光，侧前方三分之二角度，完整入画。（示意）';
+  $('m-ta').placeholder = '出图提示词：画面里有什么、什么样、光从哪来。';
+  $('m-nta').value = '';
+  $('m-log').open = false;
+  dirty = false; saveSt();
+  const main = $('m-main'), more = $('m-more');
+  main.style.display = ''; more.className = 'fb';
+  if (it.st === 'img') { main.textContent = '✓ 确认可用'; main.onclick = () => { it.st = 'ok'; it.again = false; paint(); grid(); toast('「' + it.n + '」确认可用了'); }; }
+  else if (it.st === 'none') { main.textContent = '让 AI 写字'; main.onclick = () => toast('交给 AI 写字了，写好这里自动换上'); }
+  else { main.style.display = 'none'; more.className = 'fb ink'; }
+}
+function saveSt() { const s = $('m-save-st'); s.textContent = dirty ? '改了还没存（关的时候自动存）' : '都存上了'; s.classList.toggle('dirty', dirty); }
+function open(i) { cur = i; paint(); $('mk').classList.add('open'); }
+function close() {
+  if (dirty) { dirty = false; toast('改的字存上了'); }
+  $('mk').classList.remove('open'); $('big').classList.remove('on');
+  const c = document.querySelector('.bc[data-i="' + cur + '"]');
+  if (c) { c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); }
+}
+function big(it) { const b = $('big'); $('big-t').textContent = it.f; const i = $('big-img'); window.UI.thumbOf(window.Base.at([PJ, ...it.f.split('/')]), 1400).then(u => { i.src = u; }); b.classList.add('on'); }
+function nextTodo() { for (let k = 1; k <= ITEMS.length; k++) { const j = (cur + k) % ITEMS.length; if (ITEMS[j].st !== 'ok') return j; } return -1; }
+function wire() {
+  const mk = $('mk');
+  if (!mk || mk.dataset.done) return;
+  mk.dataset.done = '1';
+  grid(); paint();
+  $('m-prev').onclick = () => { if (cur > 0) { cur--; paint(); } };
+  $('m-next').onclick = () => { if (cur < ITEMS.length - 1) { cur++; paint(); } };
+  $('m-x').onclick = close; $('dim').onclick = close;
+  $('big-x').onclick = () => $('big').classList.remove('on');
+  $('m-more').onclick = () => { const j = nextTodo(); if (j < 0) { close(); toast('这一段的道具都看过了'); } else { cur = j; paint(); } };
+  for (const t of [$('m-ta'), $('m-nta')]) t.addEventListener('input', () => { dirty = true; saveSt(); });
+  $('m-save').onclick = () => { if (dirty) { dirty = false; saveSt(); toast('存上了'); } };
+  mk.tabIndex = 0;
+  mk.addEventListener('keydown', e => {
+    if (!mk.classList.contains('open')) return;
+    if (e.key === 'Escape') { if ($('big').classList.contains('on')) $('big').classList.remove('on'); else close(); e.preventDefault(); return; }
+    if (e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'ArrowLeft') $('m-prev').click();
+    if (e.key === 'ArrowRight') $('m-next').click();
+  });
+}
+new MutationObserver(() => wire()).observe(document.getElementById('sections'), { childList: true, subtree: true });
+})();
+</script>
+</body>
+</html>

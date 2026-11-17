@@ -17,7 +17,7 @@ const ROOT = process.env.ANTOU_ROOT ? path.resolve(process.env.ANTOU_ROOT) : pat
 const TOOLS = process.env.ANTOU_TOOLS ? path.resolve(process.env.ANTOU_TOOLS) : path.join(ROOT, '通用工具');   // 页面放在这里；ANTOU_TOOLS：总文件夹用试验的、页面用正式的时候用
 const PAGE = process.env.ANTOU_PAGE || path.join(TOOLS, '项目管理.html');   // ANTOU_PAGE：试新版页面时用
 const PORT = Number(process.env.ANTOU_PORT) || 8766;
-const VERSION = 12;            // 12：流水线不直接调 AI，一律给我提示词（11-15 他定）；11：用 AI 的地方都有两种（「AI 用」里选「给我提示词」，或者直接调；直接调 Claude、DeepSeek 开看得见的窗口，handoff.js）；10：资产页「从电脑里找」（/api/pc，pc-files.js）；9：自己交给 AI（任务复制出来贴进自己开的对话，回复写进 回复.md 或跑 reply 命令）；8：审片以后让 AI 出修改方案、照方案改（另存 _改N）；7：流水线「网盘」那一页（/api/wangpan/）；6：双模式草稿的冲突保护与正文/写稿记录联合保存；5：AI 任务
+const VERSION = 13;            // 13：对剧本（定稿、审片批注和剧本对不上，自动写剧本批注；先 Codex 命令行，不行 DeepSeek 接口）；12：流水线不直接调 AI，一律给我提示词（11-15 他定）；11：用 AI 的地方都有两种（「AI 用」里选「给我提示词」，或者直接调；直接调 Claude、DeepSeek 开看得见的窗口，handoff.js）；10：资产页「从电脑里找」（/api/pc，pc-files.js）；9：自己交给 AI（任务复制出来贴进自己开的对话，回复写进 回复.md 或跑 reply 命令）；8：审片以后让 AI 出修改方案、照方案改（另存 _改N）；7：流水线「网盘」那一页（/api/wangpan/）；6：双模式草稿的冲突保护与正文/写稿记录联合保存；5：AI 任务
 const STATIC = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png' };   // 通用工具 里只发这几种
 const ONLINE_MS = 15 * 60e3;   // 这么久之内 AI 来等过，就算它在
 const WAIT_MS = 4 * 60e3;      // 一次最多挂这么久，没有就让等的那头再来一次
@@ -188,7 +188,7 @@ async function handle(req, res) {
       if (url.pathname === '/api/ping') return json(res, { root: path.basename(ROOT), v: VERSION, abs: ROOT, draftSave: true, wangpan: !!wangpan });
       if (url.pathname === '/api/fs' || url.pathname.startsWith('/api/fs/')) return await onFs(req, res, url);
       if (url.pathname.startsWith('/api/ai')) return await onAi(req, res, url);
-      if (url.pathname === '/api/job' || url.pathname.startsWith('/api/job/') || url.pathname === '/api/jimeng') return await jobs.handle(req, res, url, { json, readBody, httpErr });
+      if (url.pathname === '/api/job' || url.pathname.startsWith('/api/job/') || url.pathname === '/api/jimeng' || url.pathname === '/api/builtin-ai') return await jobs.handle(req, res, url, { json, readBody, httpErr });
       if (url.pathname === '/api/pc') return await pc.handle(req, res, url, { json, readBody });
       if (url.pathname.startsWith('/api/wangpan/')) { if (!wangpan) throw httpErr(404, '网盘那一页没装上，看服务的输出'); return await wangpan.handle(req, res, url); }
       throw httpErr(404, '没有这个接口');

@@ -6,6 +6,123 @@
 <title>流水线 · 资产</title>
 <link rel="stylesheet" href="../公用/样式.css">
 <link rel="stylesheet" href="流水线.css">
+<style>
+/* 资产页（11-16 改版，照 资产页改版_设计稿.html）：顶上一条钉住（走到哪了、要按的、四个页签），下面一次只摆一样；
+   人物、场景、道具一样一张大图卡，关键帧一镜一张小卡（三格：开头、中间、结尾），挑图在右边一栏（挑图栏.js）。只这一页用，样式就放在这里 */
+.as-head { position: sticky; top: 117px; z-index: 18; margin: -8px -14px 16px; padding: 10px 14px 0; border-bottom: 1px solid var(--line); background: var(--paper); }
+.as-head.stuck { box-shadow: 0 12px 18px -16px rgba(40, 28, 16, .4); }
+.as-h1 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.as-h1 .sp, .as-tabs .sp { flex: 1; }
+.as-h1 .btn.ghost { color: var(--ink-3); }
+.as-h1 .btn.ghost:hover { color: var(--ink); }
+.as-tabs { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 2px 4px; margin-top: 4px; }
+.as-tabs .pz-tab.on { border-bottom-color: var(--k); color: var(--k); }
+.as-tabs .fl-link { align-self: center; padding-bottom: 4px; }
+.as-hint { margin: 0 0 10px; font-size: 12.5px; color: var(--ink-3); }
+/* 大图卡 */
+.ac-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 12px; }
+.ac { position: relative; min-width: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-top: 3px solid var(--k); border-radius: 10px; background: var(--sheet); transition: border-color .15s, box-shadow .15s; }
+.ac[role=button] { cursor: pointer; }
+.ac[role=button]:hover { box-shadow: 0 8px 18px -12px rgba(40, 28, 16, .4); }
+.ac.bad { box-shadow: 0 0 0 2px var(--zhu-line); }
+.ac.flash { animation: asFlash 1.6s ease; }
+.ac-pic { aspect-ratio: 4 / 3; display: grid; place-items: center; overflow: hidden; border-radius: 7px 7px 0 0; background: var(--paper-2); font: 13.5px var(--kai); color: var(--ink-4); }
+.ac-pic img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.ac-pic.none { background: repeating-linear-gradient(135deg, var(--paper) 0 8px, var(--paper-2) 8px 16px); }
+.ac-bd { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 7px 10px 9px; }
+.ac-nm { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-weight: 600; font-size: 14px; }
+.ac-nm > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-nm small { flex: none; font-weight: normal; font-size: 12px; color: var(--ink-3); }
+.ac-swap { display: none; margin-left: auto; flex: none; padding: 0; border: 0; background: none; font: 12px var(--sans); color: var(--dai); text-decoration: underline dotted; cursor: pointer; }
+.ac:hover .ac-swap, .ac:focus-within .ac-swap { display: inline; }
+.ac-st { font-size: 12px; line-height: 1.55; color: var(--ink-3); }
+.ac-st.ok { color: var(--dai); }
+.ac-st.todo { color: var(--zhu); }
+.ac-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.ac-acts:empty { display: none; }
+.ac-acts .fl-asset-ok { margin-left: 0; }
+.ac > .fl-asset-x { top: 6px; right: 6px; }
+.ac:hover > .fl-asset-x, .ac:focus-within > .fl-asset-x { display: grid; }
+.ac.sug { border-style: dashed; border-top-style: dashed; background: transparent; }
+.ac.sug .ac-st { color: var(--dai); }
+.ac.plus { min-height: 150px; display: grid; place-items: center; padding: 12px; border: 1px dashed var(--line-2); background: transparent; font-size: 13.5px; color: var(--ink-3); text-align: center; cursor: pointer; }
+.ac.plus small { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-4); }
+.ac.plus:hover { border-color: var(--k); color: var(--k); }
+/* 关键帧：顶上「还没绑」一排，下面一镜一张小卡 */
+.kb-tray { margin: 0 0 14px; padding: 10px 12px; border: 1px dashed #c9b48e; border-radius: 10px; background: #fffaf0; }
+.kb-tray.done { padding: 7px 12px; border-color: var(--line-2); background: transparent; }
+.kb-tray.over { border-style: solid; border-color: var(--zhu); background: var(--zhu-soft); }
+.kb-tray-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 13px; }
+.kb-tray-h b { color: var(--zhu); }
+.kb-tray-h .sp { flex: 1; }
+.kb-loose { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.kb-tile { width: 156px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); font-size: 12px; cursor: grab; }
+.kb-tile.sel { outline: 2.5px solid var(--zhu); outline-offset: 1px; }
+.kb-im { aspect-ratio: 16 / 9; display: grid; place-items: center; overflow: hidden; background: var(--paper-2); font: 12px var(--kai); color: var(--ink-4); }
+.kb-im img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.kb-tile .kb-nm { padding: 4px 7px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.kb-tile small { display: block; padding: 0 7px; font-size: 11.5px; color: var(--dai); }
+.kb-tile .kb-acts { padding: 5px 6px 7px; }
+.kb-acts { display: flex; flex-wrap: wrap; gap: 4px; }
+.kb-acts .fl-asset-ok { margin-left: 0; padding: 1px 8px; font-size: 11.5px; }
+.kb-shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 10px; }
+.kb-shot { min-width: 0; padding: 7px 8px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+.kb-shot.chg { box-shadow: inset 3px 0 0 var(--zhu); }
+.kb-sh { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; }
+.kb-sh b { flex: none; font: 600 13.5px var(--serif); color: var(--k); }
+.kb-sh > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.kb-sh .fl-asset-ok { padding: 0 8px; font-size: 11.5px; }
+.kb-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 6px; }
+.kb-slot { position: relative; aspect-ratio: 16 / 9; display: grid; place-items: center; overflow: hidden; border: 1px dashed var(--line-2); border-radius: 6px; background: var(--paper); font: 11.5px var(--kai); color: var(--ink-4); cursor: pointer; }
+.kb-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.kb-slot.has { border-style: solid; border-color: var(--k-line); cursor: grab; }
+.kb-slot:hover { border-color: var(--k); }
+.kb-k { position: absolute; left: 0; bottom: 0; z-index: 1; padding: 0 5px; border-top-right-radius: 5px; background: rgba(42, 38, 34, .55); font: 10.5px/1.6 var(--sans); color: #fff; }
+.kb-more { position: absolute; right: 3px; top: 3px; z-index: 1; padding: 0 5px; border-radius: 7px; background: var(--dai); font: 10.5px/1.6 var(--sans); color: #fff; }
+.kb-ok { position: absolute; left: 3px; top: 3px; z-index: 1; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; background: var(--dai); color: #fff; }
+.kb-ok .ic { width: 10px; height: 10px; stroke-width: 2.4; }
+.kb-gone { font: 11px var(--kai); color: var(--zhu); }
+.kb-picking .kb-slot:not(.has), .kb-dragging .kb-slot:not(.has) { border-color: var(--zhu-line); background: var(--zhu-soft); color: var(--zhu); }
+.kb-picking .kb-slot.has { cursor: copy; }
+.kb-slot.over { border: 2px solid var(--zhu); }
+.fl-pop:has(.kb-menu) { width: 420px; }
+.kb-menu { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 4px; overflow: auto; }
+.kb-mi { display: grid; grid-template-columns: 110px 1fr; gap: 10px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; }
+.kb-mi.cur { border-color: var(--k-line); background: var(--k-soft); }
+.kb-mi-im { aspect-ratio: 16 / 9; overflow: hidden; padding: 0; border: 0; border-radius: 5px; background: var(--paper-2); cursor: zoom-in; }
+.kb-mi-im img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.kb-mi-b { min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
+.kb-mi-b b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-mi-b small { color: var(--ink-3); }
+.kb-mi-n { margin: 6px 12px 4px; }
+/* 挑图栏（挑图栏.js）：右边滑出一栏，不盖左边 */
+.pb { position: fixed; top: 0; right: 0; bottom: 0; z-index: 40; width: min(620px, 64vw); display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 12px; border-left: 1px solid var(--line); background: var(--sheet); box-shadow: -18px 0 40px -24px rgba(40, 28, 16, .45); animation: pbIn .18s ease both; }
+@keyframes pbIn { from { transform: translateX(24px); opacity: 0; } }
+.pb-h { display: flex; align-items: flex-start; gap: 10px; }
+.pb-t { flex: 1; min-width: 0; }
+.pb-t b { display: block; font: 600 16.5px var(--serif); letter-spacing: .06em; }
+.pb-t small { display: block; font-size: 12.5px; line-height: 1.6; color: var(--ink-3); }
+.pb-x { flex: none; width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line-2); border-radius: 50%; background: var(--sheet); color: var(--ink-3); cursor: pointer; }
+.pb-x:hover { color: var(--zhu); border-color: var(--zhu-line); }
+.pb-x .ic { width: 12px; height: 12px; }
+.pb-tabs { display: flex; flex-wrap: wrap; gap: 2px 16px; border-bottom: 1px solid var(--line); }
+.pb-tab { padding: 4px 0 7px; border: 0; border-bottom: 2px solid transparent; background: none; font: 13.5px var(--sans); color: var(--ink-3); cursor: pointer; }
+.pb-tab:hover { color: var(--ink); }
+.pb-tab.on { border-bottom-color: var(--ink); color: var(--ink); font-weight: 600; }
+.pb-tab em { margin-left: 4px; font-style: normal; font-size: 11.5px; font-weight: normal; color: var(--ink-4); }
+.pb-q { width: 100%; }
+.pb-body { flex: 1; min-height: 0; overflow: auto; padding: 2px 2px 6px; }
+.pb-body .pick-lab { margin: 12px 0 6px; font: 13.5px var(--kai); letter-spacing: .15em; color: var(--ink-2); }
+.pb-body .pick-lab:first-child { margin-top: 2px; }
+.pb .fl-ag { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); }
+.pb .fl-at.sel { border-color: var(--zhu); box-shadow: 0 0 0 3px var(--zhu-soft); color: var(--ink); }
+.pb .fl-at.on { opacity: .62; cursor: default; }
+.pb .fl-at small { color: var(--ink-3); }
+.pb-f { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.pb-f .sp { flex: 1; }
+.pb-sel { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--ink-2); }
+@media (max-width: 720px) { .pb { width: 100%; } }
+</style>
 </head>
 <body class="wf">
 <div id="wf"></div>
@@ -16,29 +133,31 @@
 <script src="../公用/界面.js"></script>
 <script src="../公用/音色.js"></script>
 <script src="../公用/关键帧绑定.js"></script>
+<script src="../公用/镜头作用.js"></script>
 <script src="流水线.js"></script>
 <script src="资产详情.js"></script>
 <script src="电脑找图.js"></script>
 <script src="音色绑定.js"></script>
+<script src="挑图栏.js"></script>
 <script>
 
 /* ============================================================
    流水线 · 资产（一场的第三道工序）
    剧本定稿、提炼定了以后才开（11-16 起出场的是剧本定稿以后提炼的）：这一场出场的人物、道具、场景图各对着哪张图。
-   用已有的：点「选出场的」，从全片设定的表里选上；点「用已有的图」，从项目的图里挑一张（删掉的也能放回来）；
-     剧本、镜头表里提到了还没选的，摆在下面点一下选上。
+   11-16 改版（他看了 资产页改版_设计稿.html，四处都照推荐的定）：
+     顶上一条钉住：走到哪了（确认了几张、缺图、字等你批……点了跳过去）、「让 AI 写字」、这一步要按的那一个，下面四个页签：人物、场景、道具、关键帧，一次看一样，回到上回看的那一页。
+     人物、场景、道具：一样一张大图卡。图下名字、走到哪了、眼下该按的钮；点卡进它自己的那一页（资产详情.js）。人物的音色并在卡底下一行。
+       没图的卡「挑现成的图」：右边滑出一栏（挑图栏.js），顶上写明给谁挑，挑中的就挂给它，不再照图名猜。剧本里提到、还没加上的，虚线卡排在后面；最后一张「＋ 加人物」。
+     关键帧：一镜一张小卡，三格（开头、中间、结尾），一格几张的角上「+1」，点一格看这几张、换现用、确认、解绑。没绑的摆在顶上「还没绑」一排：
+       拖到哪一格就绑上，或者点一下图再点格子；格子里的图拖到别的格子就改绑，拖回「还没绑」就解绑。空的格子点一下，从这一段文件夹里挑一张绑上。
    字先定，图后出（2026-11-14 他定的，流程图 文生资产_流程图.html；共用的做法在 流水线.js「文生资产」那一节）：
-     顶上「让 AI 写字」：AI 读定稿的剧本，给这一场还没有字的写字（出图提示词，场景先写 GEO 底稿），已经有的图核一遍撑不撑得住。
-     每一格右边是眼下该做的：写字 → 批字（自己改，或写批注交给 AI 改；字定了点「照这个出图」）→ 图出好了点开看（框出来写批注点「照批注改图」，或者「看字」回去改字）
-     → 确认可用。已经有图的再出，新图先当候选（「看新图」：旧图、新图并排，挑「用旧图」或「用新图」；没挑以前格子上不摆旧图的「可用」）。场景图确认以后，AI 照图再核一遍 GEO 底稿。
+     「让 AI 写字」：AI 读定稿的剧本，给这一场还没有字的写字（出图提示词，场景先写 GEO 底稿），已经有的图核一遍撑不撑得住。
+     每张卡上是眼下该做的：写字 → 批字（自己改，或写批注交给 AI 改；字定了点「照这个出图」）→ 图出好了点开看 → 确认可用。
+     已经有图的再出，新图先当候选（「看新图」：旧图、新图并排，挑「用旧图」或「用新图」；没挑以前卡上不摆旧图的「可用」）。
      只用文字写的场景也能写字、出图：图出好了点「用上这张图」，这一场改用图。道具能「加一种样子」（一个状态一张图）。
-   确认可用：一张图一张图确认（2026-11-12 他定的）。确认记在全片，确认过的图别的场不用再确认；
-     这一场要的图都确认了，这一步自动过。图重出过、它的描写改过，那一张要再确认。
-   点一张图看大图、写批注（用的是「项目管理」里图片那一样），看大图时顶上也能点「这张确认可用」。
-   第四块关键帧（11-13 夜他要的）：资产/第N段 里名字带首帧、尾帧、关键帧的自动列上，别的图点「＋ 新增关键帧」挑；只这一场用，AI 不出。
-     每张绑到镜头表的「一镜一刻」上（2026-11-16 他定，流程图 关键帧绑定_流程图.html）：按镜头一镜一行摆，没绑的放最下面，照名字先猜、你点「认」；
-     同一镜同一刻几张，一张现用、别的备选；镜头表后来改了那一镜的字，标「这一镜改了」。挂到哪条提示词，在提示词那一步定。
-   即梦画布上的图（11-14 他要的）：「用已有的图」最下面摆画布上有、本地没有一样的；和本地像素一样的只摆本地那一张，标「画布有」。
+   确认可用：一张图一张图确认（2026-11-12 他定的）。确认记在全片，确认过的图别的场不用再确认；这一场要的图都确认了，这一步自动过。图重出过、它的描写改过，那一张要再确认。
+   关键帧绑到镜头表的「一镜一刻」上（2026-11-16 他定，流程图 关键帧绑定_流程图.html；算法在 公用/关键帧绑定.js）；同一镜同一刻几张，一张现用、别的备选；
+     镜头表后来改了那一镜的字，那张卡左边一道红线，看过点「还对得上」。挂到哪条提示词，在提示词那一步定。
    共用的东西（读写流水线.json、顶栏、步骤条、这一场要哪些图、哪张图确认过）在 流水线.js。
    ============================================================ */
 'use strict';
@@ -50,21 +169,25 @@ async function usedByPrompts(file) {
     return Object.entries(j.prompts || {}).filter(([, v]) => (v && v.references || []).some(r => r && cleanFile(r.path) === file)).map(([k]) => k);
   } catch (e) { return []; }
 }
-/* 删一张图。两种删法：只是不引用（图还在原处，以后点那一块的「＋ 新增」能再挂回来）；图不要了（移进这个项目的 历史记录，全片各处都不再引用它；
-   想重出：那一格的字还在，点「批字」→「照这个出图」；想要回来就点那一块的「＋ 新增」，在最下面「删掉的」里放回来） */
-async function removeAsset(s, it, stay) {   // stay：在一样东西自己的那一页上删的，删完那一页自己换到别处，这里不重画。回 'unref'、'del'，没删回 false
+/* 删一张图。几种删法：这一段不用它（人物、道具：这一段不出场，全片表里还在）；只是不引用（图还在原处，以后点「挑现成的图」能再挂回来）；
+   图不要了（移进这个项目的 历史记录，全片各处都不再引用它；想重出：那一格的字还在，点「批字」→「照这个出图」；想要回来，挑图那一栏「删掉的」里放回来） */
+async function removeAsset(s, it, stay) {   // stay：在一样东西自己的那一页上删的，删完那一页自己换到别处，这里不重画。回 'drop'、'unref'、'del'，没删回 false
   const file = it.at, isRow = !!KIND[it.类别], e = isRow ? entryOf(it.类别, it.名称) : null, k = kindOf(it.类别), frame = it.类别 === '关键帧';
   const field = isRow || frame ? '' : it.类别 === '人物图' || it.类别 === '道具图' ? it.类别 : '场景图';   // 不是表里一行的：这一场哪一格记着它
   const canUnref = it.own && (frame || (isRow ? !!e && e.资产.includes(file) : s[field].includes(file)));
+  const canDrop = isRow && it.own && !stay && s[it.类别].includes(it.名称);
   const used = await usedByPrompts(file), mineImg = !isRow && segImg(s, file) && !F.doc.场景图.includes(file);   // mineImg：这一段文件夹里的图，只这一场用
   const r = await dialog(close => dlgShell('删掉这张图 · ' + it.名称 + (it.sub ? ' · ' + it.sub : ''), file,
-    [h('p', { class: 'fn-note' }, mineImg ? '图不要了：移进这个项目的「历史记录」（照原来的文件夹放），这一段不再用它。' : '图不要了：移进这个项目的「历史记录」，全片各处都不再引用它。想重出一张：它的字还在，删完点那一格的「批字」→「照这个出图」；后悔了，点「＋ 新增' + k + '」，在最下面放回来。'),
-      canUnref ? h('p', { class: 'fn-note' }, isRow ? '只是不引用：图还留在原处，「' + it.名称 + '」不再挂它（各段都不挂）。以后点「＋ 新增' + k + '」能再挂回来。' : mineImg ? '只是这一段不用：图还留在 资产 / ' + segName(s.段) + ' 里，以后点「＋ 新增' + k + '」能再挑回来。' : '只是这一段不用：图还留在原处，全片还引用着，只是这一段不挂它。') : null,
+    [canDrop ? h('p', { class: 'fn-note' }, '这一段不用「' + it.名称 + '」：这一段不出场，全片的' + k + '表里还在，图也还挂着。') : null,
+      h('p', { class: 'fn-note' }, mineImg ? '图不要了：移进这个项目的「历史记录」（照原来的文件夹放），这一段不再用它。' : '图不要了：移进这个项目的「历史记录」，全片各处都不再引用它。想重出一张：它的字还在，删完点那一格的「批字」→「照这个出图」；后悔了，在挑图那一栏的「删掉的」里放回来。'),
+      canUnref ? h('p', { class: 'fn-note' }, isRow ? '只是不引用：图还留在原处，「' + it.名称 + '」不再挂它（各段都不挂）。以后点「挑现成的图」能再挂回来。' : frame ? '只是这一段不当关键帧：图还留在 资产 / ' + segName(s.段) + ' 里。' : mineImg ? '只是这一段不用：图还留在 资产 / ' + segName(s.段) + ' 里，以后点「＋ 加' + k + '」能再挑回来。' : '只是这一段不用：图还留在原处，全片还引用着，只是这一段不挂它。') : null,
       used.length ? h('p', { class: 'fn-note warn' }, '有提示词挂着这张图：' + used.join('、') + '。移走以后，那边要重新挂图。') : null],
     [h('button', { class: 'btn ghost', 'data-focus': '', onclick: () => close(null) }, '取消'),
-      canUnref ? h('button', { class: 'btn', onclick: () => close('unref') }, isRow ? '只是不引用' : '只是这一段不用') : null,
+      canDrop ? h('button', { class: 'btn', onclick: () => close('drop') }, '这一段不用它') : null,
+      canUnref ? h('button', { class: 'btn', onclick: () => close('unref') }, isRow ? '只是不引用' : frame ? '不当关键帧' : '只是这一段不用') : null,
       h('button', { class: 'btn zhu', onclick: () => close('del') }, '图不要了')]));
   if (!r) return false;
+  if (r === 'drop') { s[it.类别] = s[it.类别].filter(n => n !== it.名称); touch(); paint(); return r; }
   if (r === 'unref') {
     if (isRow) { e.资产 = e.资产.filter(f => f !== file); e.不用 = [...new Set([...(Array.isArray(e.不用) ? e.不用 : []), file])]; }   // 记下「不用」：AI 清单里再列着它，也不替你对回去
     else if (frame) dropFrame(s, file);   // 名字带首帧的：记进这一场的「关键帧不用」，不再自己冒出来
@@ -93,282 +216,67 @@ async function removeAsset(s, it, stay) {   // stay：在一样东西自己的�
   toast('移进历史记录了：' + dest.slice(1).join(' / '));
   return r;
 }
-/* ---------- 用已有的图：项目 资产/全局资产 里的图点一张，这一场就用上它；删掉的（在历史记录里）点一下放回来 ---------- */
-/* 这一张图该挂到哪一行：从哪一格点开的就是那一行；不然看哪一行已经引用它，再不然照图名里的叫法找（老名字「项目_类别_叫法_资产」也认） */
-function rowFor(x, cell) {
-  const K = LISTS.find(k => k.cats(x.类别));
-  if (!K) return null;
-  return (cell && cell.类别 === K.key ? entryOf(K.key, cell.名称) : null) || F.doc[K.key].find(r => r.资产.includes(x.文件)) || F.doc[K.key].find(r => r.名 === tokenOf(x) || r.名 === x.名称) || null;
+/* 给一张卡挑现成的图：人物、道具挂到它那一行；只用文字写的场景改用一张图 */
+function pickFor(s, it) {
+  if (KIND[it.类别] && it.own) return PickBar.open({ s, mode: 'row', k: it.类别, row: it });
+  if (it.文字) return PickBar.open({ s, mode: 'text', k: '场景', text: it.文字 });
+  return null;
 }
-/* 这一段文件夹里的一张图，这一场当 k 用：只这一场用，不挂表里哪一行（原来当别的用的，挪过来） */
-function useSeg(s, k, x) {
-  const was = segKind(s, x.文件);
-  putSeg(s, k, x.文件); orderCast(s); touch();
-  return '「' + x.名称 + '」这一段当' + k + '用上了' + (was && was !== k ? '（原来当' + was + '）' : '') + '，只这一段用';
+
+/* ---------- 页签：人物、场景、道具、关键帧，一次看一样（回到上回看的那一页，头一回是人物） ---------- */
+const TABS = [...KINDS, '关键帧'];
+const tabKey = () => 'antou:flow:as-tab:' + LINK.root + '/' + F.name;
+const tabNow = () => { try { const t = localStorage.getItem(tabKey()); return TABS.includes(t) ? t : TABS[0]; } catch (e) { return TABS[0]; } };
+const setTab = t => { try { localStorage.setItem(tabKey(), t); } catch (e) { /* 记不下：下回从人物开始 */ } };
+const asPin = () => window.UI.pinUnder(document.getElementById('as-head'), document.getElementById('wf-steps'));
+window.addEventListener('scroll', asPin, { passive: true });
+window.addEventListener('resize', asPin);
+function switchTab(t) {
+  if (t === tabNow()) return;
+  setTab(t); KB.sel = ''; repaint();
+  const head = document.getElementById('as-head'), body = document.getElementById('as-body');
+  if (head && body) { const pin = (parseFloat(head.style.top) || 0) + head.offsetHeight, top = body.getBoundingClientRect().top; if (top < pin) window.scrollTo(0, top + window.scrollY - pin - 8); }   // 滚下去了：换页回到这一页的开头
 }
-/* 这一场用上一张已有的图：人物、道具的图挂到 rowFor 找到的那一行（找不到就照叫法加一行），这一场选上；场景图加进全片和这一场 */
-function useImage(s, x, cell) {
-  const file = x.文件;
-  if (isSceneImg(x)) {
-    if (!F.doc.场景图.includes(file)) F.doc.场景图.push(file);
-    if (!s.场景图.includes(file)) s.场景图.push(file);
-    orderCast(s); touch();
-    return '场景图「' + x.名称 + '」这一段用上了';
-  }
-  const K = LISTS.find(k => k.cats(x.类别));
-  let e = rowFor(x, cell);
-  const fresh = !e;
-  if (fresh) { e = { 名: tokenOf(x), 描写: '', 资产: [] }; F.doc[K.key].push(e); }
-  if (!e.资产.includes(file)) {
-    if (!K.multi && e.资产.length) e.不用 = [...new Set([...(Array.isArray(e.不用) ? e.不用 : []), ...e.资产])];   // 人物换图：换下来的那张记进「不用」，AI 清单里列着它也不再替你挂回去
-    e.资产 = K.multi ? [...e.资产, file] : [file];
-  }
-  if (Array.isArray(e.不用)) { e.不用 = e.不用.filter(f => f !== file); if (!e.不用.length) delete e.不用; }
-  if (e.不用时) { delete e.不用时[file]; if (!Object.keys(e.不用时).length) delete e.不用时; }
-  if (!s[K.key].includes(e.名)) s[K.key].push(e.名);
-  orderCast(s); touch();
-  return K.key + '「' + e.名 + '」' + (fresh ? '加进了' + K.key + '表，' : '') + '挂上了这张图，这一段也选上了';
-}
-/* 删掉的图：历史记录/资产/全局资产/类别/原名__时间.后缀（「图不要了」移过去的） */
-async function loadDeleted() {
-  const ls = lister(F.name), out = [];
-  for (const c of (await ls('历史记录/资产/全局资产')).filter(e => e.kind === 'directory').map(e => e.name))
-    for (const e of (await ls('历史记录/资产/全局资产/' + c)).filter(x => x.kind === 'file' && IMG_RE.test(x.name))) {
-      const m = /^(.+)__(\d{8})-(\d{6})(\.[^.]+)$/.exec(e.name);
-      if (m) out.push({ 类别: c, 名称: m[1], 文件: '历史记录/资产/全局资产/' + c + '/' + e.name, 原处: '资产/全局资产/' + c + '/' + m[1] + m[4], 序: m[2] + m[3], 戳: m[2] + '-' + m[3], 时: m[2].slice(4, 6) + '-' + m[2].slice(6) + ' ' + m[3].slice(0, 2) + ':' + m[3].slice(2, 4) });
-    }
-  return out.sort((a, b) => b.序.localeCompare(a.序)).slice(0, 80);
-}
-/* ---------- 新增素材：人物、场景、道具三块各一个「＋ 新增」（k），上面一条的「用已有的图」三样都摆（k 空着）。
-   人物、道具：表里有、这一场还没选的，点名字选上；表里没有的「＋ 新加一个」。
-   全片的图（资产/全局资产）：点一张这一场就用上，人物、道具的图挂到表里那一行（照图名里的叫法找，表里没有就加一行），场景图也进全片的引用。
-   这一段的图（资产/第N段 和下一层文件夹）：只给这一场用，不挂表里哪一行；三样都摆的时候，点了先问当人物、场景还是道具（11-13 他要「挑图时选类别」）。
-   删掉的图（历史记录里）在最下面，点一下放回原处再用上 ---------- */
-const guessKind = x => FRAME_RE.test((x.组 || '') + x.名称) ? '关键帧' : /空镜|场景|底图/.test((x.组 || '') + x.名称) ? '场景' : '';
-const SEG_KINDS = [...KINDS, '关键帧'];   // 这一段的图能当的：人物、场景、道具、关键帧
-async function addDlg(s, k, cell) {   // cell：从「还没有图」「图不在了」那一格点开的：挑的全片的图挂到那一行
-  closePop(); hideHov();
-  let deleted = [], mine = [];
-  try { F.pool = await loadPool(F.name); } catch (e) { /* 读不出来就用手里的 */ }   // 页面开着的时候放进来的图（自己拷的、Codex 出的）也要列出来
-  try { deleted = await loadDeleted(); } catch (e) { deleted = []; }
-  try { mine = await loadSegPool(F.name, s.段); } catch (e) { mine = []; }
-  const row = cell && KIND[cell.类别] ? cell : null;   // 给表里哪一行挑图
-  cvLoad();   // 即梦画布上的图：不等它，读好了摆在最下面
-  await dialog(close => {
-    const box = h('div', { class: 'fl-apick' }), jump = h('div', { class: 'fl-jump' });
-    const here = x => isSceneImg(x) ? s.场景图.includes(x.文件) : LISTS.some(K => K.cats(x.类别) && s[K.key].some(n => { const e = entryOf(K.key, n); return !!e && e.资产.includes(x.文件); }));
-    const owner = x => { if (isSceneImg(x)) return ''; for (const K of LISTS) { const e = F.doc[K.key].find(r => r.资产.includes(x.文件)); if (e) return e.名 + ' 的图'; } return '还没人用'; };
-    const segNote = x => { const u = segKind(s, x.文件); return !u ? '' : !k || u === k ? '这一段当' + u + '用着' : '这一段当' + u + '用着，点了改当' + k; };
-    const pickSeg = async x => {
-      const u = segKind(s, x.文件), g = u || guessKind(x);
-      const to = k || await choiceDlg({ title: '「' + x.名称 + '」这一段当什么用？', body: '这一段文件夹里的图，只给这一段用，不挂到表里哪一行。' + (u ? '现在当' + u + '用着。' : ''),
-        buttons: [{ label: '取消', value: null, cls: 'ghost' }, ...SEG_KINDS.map(c => ({ label: '当' + c, value: c, cls: kindCls(c), focus: c === g }))] });
-      if (!to) return;
-      if (u === to) { toast('这一段已经当' + to + '用着了。不用了点那一格右上角的 ×'); return; }
-      toast(useSeg(s, to, x)); paintBox(); repaint();
-    };
-    const pick = async x => {
-      if (x.类别 === '这一段') return pickSeg(x);
-      const K = LISTS.find(c => c.cats(x.类别)), r = isSceneImg(x) ? null : rowFor(x, row);
-      if (isSceneImg(x) ? s.场景图.includes(x.文件) : r && r.资产.includes(x.文件) && s[K.key].includes(r.名)) { toast('这一段已经在用它了。不用了点那一格右上角的 ×'); return; }
-      if (r && !K.multi && r.资产.length && !r.资产.includes(x.文件) && !(await confirmDlg({ title: '「' + r.名 + '」换成这张图？', body: '现在挂的是 ' + baseOf(r.资产[0]) + '，换成 ' + x.名称 + '。原来那张还留在项目里，随时能换回去。', ok: '换成这一张' }))) return;
-      toast(useImage(s, x, row)); paintBox(); repaint();
-    };
-    const back = async x => {   // 放回原处（批注、批注截图一起），再照点图那样挂上：人物原来有图的，先问换不换
-      try { await FS.move(at([F.name, ...x.文件.split('/')]), at([F.name, ...x.原处.split('/')])); }
-      catch (e) { toast('没放回来：' + e.message + '（原处要是已经有一张同名的图，先处理那一张）', 'err'); return; }
-      const dir = x.原处.split('/').slice(0, -1), stem = stemOf(x.原处.split('/').pop()), old = ['历史记录', ...dir];
-      try { const n = stem + '_批注__' + x.戳 + '.md'; if (await hasFile(F.name, [...old, n]) && !(await hasFile(F.name, [...dir, stem + '_批注.md']))) await FS.move(at([F.name, ...old, n]), at([F.name, ...dir, stem + '_批注.md'])); } catch (e) { /* 挪不动就留在历史记录里 */ }
-      try { const n = stem + SHOTS_TAIL + '__' + x.戳; if (await FS.isDir(at([F.name, ...old, n])) && !(await FS.isDir(at([F.name, ...dir, stem + SHOTS_TAIL])))) await FS.move(at([F.name, ...old, n]), at([F.name, ...dir, stem + SHOTS_TAIL])); } catch (e) { /* 同上 */ }
-      window.UI.dropThumbs();
-      try { F.pool = await loadPool(F.name); } catch (e) { /* 下回再读 */ }
-      await loadSides();
-      deleted = deleted.filter(d => d !== x);
-      paintBox(); repaint();
-      toast('放回来了：' + x.原处);
-      const it = F.pool.find(p => p.文件 === x.原处);
-      if (it) await pick(it);
-    };
-    const fromPc = async () => {   // 电脑别处的图：找到、起好名字，复制进项目（电脑找图.js），再照点图那样用上
-      hideHov();
-      const r = await pcFind({ s, k, row });
-      if (!r) return;
-      window.UI.dropThumbs();
-      try { F.pool = await loadPool(F.name); } catch (e) { /* 下回再读 */ }
-      try { mine = await loadSegPool(F.name, s.段); } catch (e) { /* 同上 */ }
-      await loadSides();
-      toast('复制进来了：' + r.file.replace(/\//g, ' / '));
-      const x = r.seg ? mine.find(m => m.文件 === r.file) : F.pool.find(p => p.文件 === r.file);
-      if (x && r.seg) toast(useSeg(s, r.kind, x));
-      if (x && !r.seg && !here(x)) await pick(x);
-      else { if (x && !r.seg) toast('「' + x.名称 + '」这一段本来就挂着这张图，补上了'); paintBox(); repaint(); }   // 「图不在了」那一格照原名复制回来的
-    };
-    const paintBox = () => {   // 三样都摆：人物、场景、道具（全片的）、这一段的、删掉的；一样：表里的、全片的、这一段的、删掉的。顶上一排点了跳到那一块
-      const out = [], marks = {}, lab = (c, text) => h('div', { class: 'pick-lab ' + kindCls(c) }, text);
-      const mark = (key, el) => { if (!marks[key]) marks[key] = el; return el; };
-      const onCv = cvSame(), cvN = (x, note) => onCv.has(x.文件) ? (note ? note + ' · ' : '') + '画布有' : note;   // 画布上有一样的：只摆本地这一张，标一句
-      if (k && KIND[k] && !row) {   // 表里有、这一场还没选上的（有没有图都在这里）；表里没有的新加一个
-        const K = KIND[k], rest = F.doc[k].filter(e => !s[k].includes(e.名));
-        out.push(mark('表里的', lab(k, k + '表里的')), h('div', { class: 'fl-addrow' },
-          rest.length ? rest.map(e => { const f = e.资产.find(g => !F.gone.has(g)) || '';
-            return h('button', { class: 'fl-ref sug ' + kindCls(k), type: 'button', title: (oneLine(e.描写) || '还没写描写') + '\n点一下，这一段选上它', onclick: () => { s[k].push(e.名); orderCast(s); touch(); paintBox(); repaint(); toast(k + '「' + e.名 + '」这一段选上了'); } },
-              f ? thumbImg(f) : h('i', { class: 'ph' }, k[0]), h('span', null, e.名), h('small', null, f ? '选上' : '还没有图')); }) : h('span', { class: 'fn-note' }, k + '表里的都选上了。'),
-          h('button', { class: 'btn sm ' + kindCls(k), type: 'button', title: '表里没有的：写叫法、描写（能顺手挑一张图），这一段也选上。没有图的，回来点那一格的「写字」', onclick: async () => { close(); const n = await entryDlg(K); if (n && !s[k].includes(n)) { s[k].push(n); orderCast(s); touch(); } paint(); } }, '＋ 新加一个' + k)));
-      }
-      if (k === '场景' && !row) {   // 全片设定里文字写的场景、这一场还没选上的：点一句选上，不用图；没写过的「＋ 新加一个场景」
-        const L = sceneLines(), rest = L.filter(t => !uniq(s.场景文字).includes(t));
-        out.push(mark('文字写的', lab(k, '全片设定里写的（不用图）')), h('div', { class: 'fl-addrow' },
-          rest.length ? rest.map(t => h('button', { class: 'fl-ref sug k-jing', type: 'button', title: t + '\n点一下，这一段选上它（只用文字，不用图）', onclick: () => { s.场景文字 = [...uniq(s.场景文字), t]; orderCast(s); touch(); paintBox(); repaint(); toast('场景「' + sceneLabel(t) + '」这一段选上了'); } },
-            h('i', { class: 'ph' }, '场'), h('span', null, sceneLabel(t)), h('small', null, '选上'))) : h('span', { class: 'fn-note' }, L.length ? '写的都选上了。' : '全片设定里还没写场景。'),
-          h('button', { class: 'btn sm k-jing', type: 'button', title: '一句话写这个地方，记进全片设定的「场景」，这一段也选上。不用先有图', onclick: async () => { close(); await addSceneLine(s); paint(); } }, '＋ 新加一个场景')));
-      }
-      for (const c of k === '关键帧' ? [] : k ? [k] : KINDS) {   // 关键帧只从这一段的图里挑
-        const items = F.pool.filter(c === '场景' ? isSceneImg : x => KIND[c].cats(x.类别));
-        out.push(mark(k ? '全片的' : c, lab(c, k ? '全片的' + c + '图' : c)), items.length ? h('div', { class: 'fl-ag' }, items.map(x => tileEl(x, here(x), cvN(x, here(x) ? '这一段在用' : owner(x)), () => pick(x)))) : h('p', { class: 'fn-note' }, '项目的 资产 / 全局资产 / ' + c + ' 里还没有图。'));
-      }
-      const segList = k === '关键帧' ? [...mine].sort((a, b) => (guessKind(b) === '关键帧') - (guessKind(a) === '关键帧')) : mine;   // 挑关键帧：名字带首帧、关键帧的排前面
-      if (segList.length) for (const [g, list] of segGroups(segList)) out.push(mark('这一段的', lab(k, '这一段的 · ' + (g || segName(s.段) + ' 本层'))),
-        h('div', { class: 'fl-ag' }, list.map(x => { const u = segKind(s, x.文件); return tileEl(u ? { ...x, 类别: u === '关键帧' ? '关键帧' : SEG_FIELD[u] } : x, !!u && (!k || u === k), cvN(x, segNote(x)), () => pick(x)); })));
-      else out.push(mark('这一段的', lab(k, '这一段的')), h('p', { class: 'fn-note' }, '资产 / ' + segName(s.段) + ' 里还没有图。空镜、关键帧、参考图放进去（可以再分一层文件夹，比如「空镜」「关键帧」「单样参考」），这里就有。'));
-      const del = k === '关键帧' ? [] : deleted.filter(x => !k || kindOf(x.类别) === k);
-      if (del.length) out.push(mark('删掉的', h('div', { class: 'pick-lab' }, '删掉的（在历史记录里）')), h('div', { class: 'fl-ag' }, del.map(x => tileEl(x, false, cvN(x, x.时 + ' 删的，点一下放回来'), () => back(x)))));
-      out.push(...cvEls(k, s, mark));
-      jump.replaceChildren(...Object.keys(marks).map(key => h('button', { class: 'btn sm ' + kindCls(KINDS.includes(key) ? key : k), type: 'button', onclick: () => marks[key].scrollIntoView({ block: 'start', behavior: 'smooth' }) }, key)));
-      box.replaceChildren(...out);
-    };
-    paintBox();
-    const title = row ? '给「' + row.名称 + '」挑图' : k ? '新增' + k : '用已有的图';
-    const sub = row ? '点一张全片的图，挂到「' + row.名称 + '」这一行。「这一段的」图点了只给这一段当' + k + '用，不挂到这一行。删掉的图在最下面，点一下放回原处。'
-      : k === '关键帧' ? '关键帧只从 资产 / ' + segName(s.段) + ' 里挑，只给这一段用。名字带「首帧」「尾帧」「关键帧」的已经自动列在资产页上了；别的图点一张，这一段就当关键帧用。挂到哪条提示词，在提示词那一步定。'
-      : k === '场景' ? '全片设定里写的场景点一句就选上，不用图；没写过的点「＋ 新加一个场景」。点一张图，这一段就用上它：全片的场景图也记进全片的引用；「这一段的」是 资产 / ' + segName(s.段) + ' 里的图（空镜等），点了只给这一段当场景用。删掉的图在最下面，点一下放回原处。'
-        : k ? '表里有的点名字选上，表里没有的「＋ 新加一个' + k + '」。点一张图，这一段就用上它：全片的图挂到' + k + '表那一行（照图名里的叫法找，表里没有就加一行' + (KIND[k].multi ? '；一个道具可以挂几张图，一个状态一张' : '') + '）；「这一段的」是 资产 / ' + segName(s.段) + ' 里的图，点了只给这一段当' + k + '用。'
-          : '点一张，这一段就用上它：全片的人物、道具图挂到表里那一行（照图名里的叫法找，表里没有就加一行），场景图加进这一段；「这一段的」是 资产 / ' + segName(s.段) + ' 里的图，点了先选当人物、场景、道具还是关键帧，只给这一段用。删掉的图在最下面，点一下放回原处。';
-    CV.paint = paintBox;
-    const el = dlgShell(title + ' · 第' + s.段 + '段', sub + '即梦画布上有、本地没有一样的图摆在最下面，点一下看大图。', [jump, box],
-      [h('button', { class: 'btn pc-open', type: 'button', title: '电脑别处的图：整台电脑按名字找，或者翻文件夹；选中一张，起好名字，复制进项目该放的地方（原图不动）', onclick: fromPc }, '＋ 从电脑里找'),
-        h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close() }, '好了')]);
-    el.classList.add('wide');
-    return el;
-  });
-  CV.paint = null; clearTimeout(CV.poll);
-  paint();
-}
-/* ---------- 即梦画布上的图（11-14 他要的：资产这一步看得到本地的和画布上的，一样的只摆本地的）。
-   本机服务读项目 资产/出片设置.json 里的画布，和本地的图逐像素比（.agents/skills/annotate-live/canvas.js）：
-   一样的不另摆，本地那一张标「画布有」；画布上有、本地没有一样的，摆在「用已有的图」最下面，点了看大图。只读画布，不传、不删、不下载进项目。
-   登录位：先试默认的，再试总览「即梦授权」里加过的 ---------- */
-const CV = { name: '', st: '', sig: '', data: null, err: '', prog: null, poll: 0, paint: null };
-const cvJm = () => { try { return JSON.parse(localStorage.getItem('antou:flow:jm-list') || '[]').filter(x => typeof x === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(x)); } catch (e) { return []; } };
-const cvUrl = q => { const jm = cvJm(); return '/api/jimeng?' + q + '&p=' + encodeURIComponent(F.name) + (jm.length ? '&jm=' + encodeURIComponent(jm.join(',')) : ''); };
-const cvSame = () => new Set(((CV.name === F.name && CV.data && CV.data.一样) || []).map(x => x.file));
-const cvProgText = () => { const p = CV.prog || [0, 0]; return (CV.data ? '正在重读画布' : '正在读画布、和本地的图一张一张比（头一回要把画布上的图下下来，要几分钟）') + (p[1] ? '：比了 ' + p[0] + ' / ' + p[1] + ' 张' : '：先读画布上有哪些图') + '…'; };
-async function cvLoad(again) {
-  const name = F.name;
-  if (CV.name !== name) Object.assign(CV, { name, st: '', sig: '', data: null, err: '', prog: null });
-  clearTimeout(CV.poll);
-  if (again) { CV.st = '在对'; CV.sig = ''; if (CV.paint) CV.paint(); }
-  try {
-    const j = await (await LINK.req('GET', cvUrl('canvas' + (again ? '&again' : '')))).json();
-    if (name !== F.name) return;
-    if (!j || !('状态' in j)) throw new Error('本机服务还是旧的，重开一次才看得到画布上的图');
-    Object.assign(CV, { st: j.状态, err: j.错误 || '', prog: j.进度 || null });
-    if (Array.isArray(j.只在画布)) CV.data = j;
-    if (j.状态 === '在对' && CV.paint) CV.poll = setTimeout(() => { if (CV.paint) cvLoad(); }, 2000);
-  } catch (e) { Object.assign(CV, { st: '出错', err: e.message }); }
-  const sig = CV.st + '|' + CV.err + '|' + (CV.data ? CV.data.共 + '/' + CV.data.只在画布.length + '/' + (CV.data.一样 || []).length : '');
-  if (sig === CV.sig) { const el = document.getElementById('cv-prog'); if (el && CV.st === '在对') el.textContent = cvProgText(); return; }   // 只是进度变了：只换那一句
-  CV.sig = sig;
-  if (CV.paint) CV.paint();
-}
-/* 画布上的图：经本机服务下下来，缩小了摆；w 是 0 就是原图（看大图用）。一次最多三张 */
-const CV_IMG = new Map(), CV_Q = [];
-let cvBusy = 0;
-function cvPump() {
-  while (cvBusy < 3 && CV_Q.length) {
-    const job = CV_Q.shift(); cvBusy++;
-    (async () => (await window.UI.shrink(await (await LINK.req('GET', cvUrl('img=' + job.rid))).blob(), job.w)).url)().then(job.res, job.rej).finally(() => { cvBusy--; cvPump(); });
-  }
-}
-function cvImg(rid, w) {
-  const k = rid + '@' + w, img = h('img', { alt: '', draggable: 'false' });
-  if (!CV_IMG.has(k)) { const p = new Promise((res, rej) => { CV_Q.push({ rid, w, res, rej }); cvPump(); }); p.catch(() => CV_IMG.delete(k)); CV_IMG.set(k, p); }
-  CV_IMG.get(k).then(u => { img.src = u; }).catch(() => { img.alt = '下不来'; });
-  return img;
-}
-async function cvShow(x) {
-  hideHov();
-  const img = cvImg(x.rid, 0);
-  img.className = 'cv-big';
-  await dialog(close => {
-    const el = dlgShell('画布上的图 · ' + x.名称, '画布节点「' + x.title + '」，' + x.w + '×' + x.h + '。' + (x.注 ? x.注 + '。' : '本地没有一样的图。') + '这里只看，不下载进项目。',
-      [img], [h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close() }, '好了')]);
-    el.classList.add('wide');
-    return el;
-  });
-}
-const cvTile = x => h('button', { type: 'button', class: 'fl-at cv ' + (x.类别 ? kindCls(x.类别) : ''), title: '画布节点：' + x.title + '（' + x.w + '×' + x.h + '）\n' + (x.注 || '本地没有一样的图') + '\n点一下看大图', onclick: () => cvShow(x) },
-  cvImg(x.rid, 220), h('span', null, x.名称 + (x.第几张 ? '（' + x.第几张 + '）' : '')), h('small', null, x.注 ? '和本地同名的不一样' : x.段 && !x.类别 ? '第' + x.段 + '段 · 只在画布' : '只在画布'));
-/* 挑图弹窗最下面那一块。k：挑哪一样（人物、场景、道具只摆名字是这一类的；关键帧只摆这一段的；空着全摆） */
-function cvEls(k, s, mark) {
-  if (CV.name !== F.name) return [];
-  if (CV.st === '没画布') return k ? [] : [mark('画布上的', h('div', { class: 'pick-lab' }, '画布上的')), h('p', { class: 'fn-note' }, '这个项目还没有即梦画布（资产 / 出片设置.json 里没写画布网址）。')];
-  const d = CV.data, all = (d && d.只在画布) || [], busy = !CV.st || CV.st === '在对';
-  const mine = k === '关键帧' ? all.filter(x => x.段 === s.段) : k ? all.filter(x => x.类别 && kindOf(x.类别) === k) : all;
-  if (k && !mine.length && !busy && CV.st !== '出错') return [];   // 挑一样东西的时候，画布上没有这一样：不摆
-  const again = h('button', { class: 'fl-link', type: 'button', title: '重读即梦画布，再和本地的图比一遍', onclick: () => cvLoad(true) }, '再读一遍画布');
-  const note = CV.st === '出错' ? h('p', { class: 'fn-note warn' }, '画布读不了：' + CV.err + '　', again)
-    : busy ? h('p', { class: 'fn-note', id: 'cv-prog' }, cvProgText())
-      : h('p', { class: 'fn-note' }, '画布上一共 ' + d.共 + ' 张图：' + (d.一样 || []).length + ' 张本地有一样的，只摆本地的；下面 ' + all.length + ' 张本地没有一样的' + (mine.length < all.length ? '（这里只摆' + (k === '关键帧' ? '这一段的' : k) + ' ' + mine.length + ' 张）' : '') + '。　', again);
-  return [mark('画布上的', h('div', { class: 'pick-lab' }, '画布上的（本地没有一样的）')), note, mine.length ? h('div', { class: 'fl-ag' }, mine.map(cvTile)) : null].filter(Boolean);
-}
-/* 一格图：右边是眼下该做的，再是「确认可用」，右上角是删除。还没有图的那一格：有字的点一下看字，没字的点一下从已有的图里挑 */
+
+/* ---------- 一张卡：人物、场景、道具 ---------- */
 let IMPACT = new Map();   // 影响清单上列着、还没处理的：'类别/名称' → 为什么（repaint 时算）
-function chipEl(s, it) {
-  const w = wordOf(s, it), stop = ev => ev.stopPropagation(), why = IMPACT.get(kindOf(it.类别) + '/' + it.名称) || (it.文字 ? IMPACT.get('场景/' + sceneStem(it.文字)) : '');
-  const el0 = chipBody(s, it, w, stop);
-  if (why) { el0.classList.add('wd-impact'); el0.title += '\n剧本改了：' + why; }
-  return el0;
-}
-function chipBody(s, it, w, stop) {
-  if (it.文字) {   // 只用文字写的场景：右上角 × 这一场不用它（全片设定里那一句还在）
-    const el = assetChip(it);
-    if (w) {
-      const sm = el.querySelector('small');
-      if (sm) sm.append(' · ' + (w.hasImg ? '图出好了' : wordTx(w)));
-      el.classList.add('wd-' + w.step);
-      el.style.cursor = 'pointer';
-      el.title = it.文字 + '\n点一下进它的那一页：' + (w.hasImg ? '看图、用上这张图' : w.hasTxt ? '看字、批字、批准出图' : '只用文字写也行；要出图，在那一页让 AI 写字');
-      el.addEventListener('click', () => openWord(s, w));   // 11-14：点一样就进它自己的那一页（资产详情.js）
-      el.append(...wordPills(s, it, w));
-    }
-    el.append(h('button', { class: 'fl-asset-x', type: 'button', title: '这一段不用它（全片设定里这一句还在）', onkeydown: stop, onclick: ev => { stop(ev); s.场景文字 = uniq(s.场景文字).filter(t => t !== it.文字); touch(); paint(); } }, icon('x')));
-    return el;
-  }
-  const isImg = !!it.at && IMG_RE.test(it.at);
-  const el = assetChip(w ? { ...it, 状态: chipTx(it, w) || (it.at ? '' : it.状态) } : it, w ? () => openWord(s, w) : isImg ? () => openImage(it.at, shellActs(s, it, w)) : null);
-  if (w && it.at) el.title = '点一下进它的那一页：字、图、AI 做过的事\n' + it.at;
-  if (w) { el.classList.add('wd-' + w.step); if (checkBad(w.checkImg)) el.classList.add('wd-bad'); if (w.geoBack) el.classList.add('wd-geo'); if (w.checkImg) el.title += '\nAI 核图：' + w.checkImg; if (w.need) el.title += '\n要撑住：' + w.need; }
-  if (!it.at) {
-    const isRow = !!KIND[it.类别];
-    if (it.own && w) { el.style.cursor = 'pointer'; el.title = (w.hasTxt ? '还没有图，字写好了' : '还没有图，也还没写字') + '：点一下进它的那一页' + (w.hasTxt ? '看字、批字、批准出图' : '，让 AI 写字，或者挑一张现成的图'); el.addEventListener('click', () => openWord(s, w)); }
-    else if (it.own) { el.style.cursor = 'pointer'; el.title = (it.状态 === '图不在了' && it.文件 ? '挂的图不在了：' + it.文件 + '。' : '还没有图。') + (isRow ? '点一下从已有的图里挑一张，挂到「' + it.名称 + '」；要新出一张，点右边「写字」' : '点一下另挑一张'); el.addEventListener('click', () => addDlg(s, kindOf(it.类别), it)); }
-    if (w) el.append(...wordPills(s, it, w));
-    const e = it.own && it.文件 && isRow ? entryOf(it.类别, it.名称) : null;   // 挂的图不在了、清单里列着却没有的那一格：右上角能去掉
-    if (e) el.append(h('button', { class: 'fl-asset-x', type: 'button', title: e.资产.includes(it.文件) ? '这张图不在了：去掉这个引用' : '这一格不要了（不出这一张）', onkeydown: stop,
-      onclick: ev => { stop(ev); e.资产 = e.资产.filter(f => f !== it.文件); e.不用 = [...new Set([...(Array.isArray(e.不用) ? e.不用 : []), it.文件])]; touch(); paint(); } }, icon('x')));
-    else if (it.own && it.文件 && !isRow && Array.isArray(s[it.类别])) el.append(h('button', { class: 'fl-asset-x', type: 'button', title: '这张图不在了：这一段不再用它', onkeydown: stop,   // 场景图、这一段的图挂着却不在了
-      onclick: ev => { stop(ev); s[it.类别] = s[it.类别].filter(f => f !== it.文件); touch(); paint(); } }, icon('x')));
-    return el;
-  }
-  const ok = okOf(it), again = !ok && !!F.doc.可用[it.at];   // again：确认过，可后来图重出了、或者描写改了
-  if (ok) el.classList.add('ok');
-  if (w) el.append(...wordPills(s, it, w));
-  const cand = !!w && w.step === 'cand';   // 出了新图还没挑：旧图的「可用」先不摆，免得挨着「看新图」看成新图可用（11-15）
-  el.append(...[
-    cand ? null : h('button', { class: 'fl-asset-ok' + (ok ? ' on' : ''), type: 'button', onkeydown: stop,
+const cardKey = it => [it.类别, it.名称, it.sub || '', it.文字 || it.文件 || it.at || ''].join('|');
+function cardEl(s, it, voice) {
+  const w = wordOf(s, it), k = kindOf(it.类别), stop = ev => ev.stopPropagation(), isRow = !!KIND[it.类别];
+  const why = IMPACT.get(k + '/' + it.名称) || (it.文字 ? IMPACT.get('场景/' + sceneStem(it.文字)) : '');
+  const img = !!it.at && IMG_RE.test(it.at), ok = img && okOf(it), again = img && !ok && !!F.doc.可用[it.at], cand = !!w && w.step === 'cand';
+  const open = w ? () => openWord(s, w) : img ? () => openImage(it.at, shellActs(s, it, w)) : it.own && (isRow || it.文字) ? () => pickFor(s, it) : null;
+  /* 走到哪了：一行小字 */
+  const tx = it.文字 ? (w ? (w.hasImg ? '图出好了' : wordTx(w)) : '只用文字写，不用图')
+    : !img ? [it.own ? '' : 'AI 列的', w ? chipTx(it, w) : it.状态 || '还没有图'].filter(Boolean).join(' · ')
+      : [cand || ok ? '' : again ? '图改过、描写改过，再看一眼' : '还没确认', w ? chipTx(it, w) : ''].filter(Boolean).join(' · ');
+  const good = ok && !(w && (checkBad(w.checkImg) || w.geoBack || cand)) && !why;
+  /* 眼下该按的：挑现成的图（没图的）、写字批字看新图（wordPills）、确认可用 */
+  const acts = [
+    it.own && !img && !(w && (w.hasImg || w.drawing)) && (isRow || it.文字) ? h('button', { class: 'fl-asset-ok go', type: 'button', title: isRow ? '从项目里现成的图挑一张，挂给「' + it.名称 + '」' : '从项目里现成的图挑一张，这一段改用图', onkeydown: stop, onclick: ev => { stop(ev); pickFor(s, it); } }, '挑现成的图') : null,
+    ...(w ? wordPills(s, it, w) : []),
+    img && !cand ? h('button', { class: 'fl-asset-ok' + (ok ? ' on' : ''), type: 'button', onkeydown: stop,
       title: ok ? '确认过可用（' + F.doc.可用[it.at].slice(5, 16) + '）。点一下取消' : again ? '你确认过，可后来这张图重出过、或者它的描写改过：再看一眼，能用就再确认' : '这张图看过了、能用。确认过的图，别的段不用再确认',
-      onclick: ev => { stop(ev); confirmImg(s, it, !ok); paint(); } }, ok ? [icon('check'), '可用'] : again ? '再确认' : '确认可用'),
-    h('button', { class: 'fl-asset-x', type: 'button', title: '删掉这张图：只是不引用，或者图也不要了', onclick: ev => { stop(ev); removeAsset(s, it); }, onkeydown: stop }, icon('x'))].filter(Boolean));
+      onclick: ev => { stop(ev); confirmImg(s, it, !ok); paint(); } }, ok ? [icon('check'), '可用'] : again ? '再确认' : '确认可用') : null].filter(Boolean);
+  /* 右上角 ×：有图的删图（几种删法）；没图的这一段不用它、去掉不在了的引用；只用文字写的这一段不用它 */
+  const e = isRow ? entryOf(it.类别, it.名称) : null;
+  const x = !it.own ? null
+    : img ? ['删掉这张图：这一段不用它、只是不引用，或者图也不要了', () => removeAsset(s, it)]
+      : it.文字 ? ['这一段不用它（全片设定里这一句还在）', () => { s.场景文字 = uniq(s.场景文字).filter(t => t !== it.文字); touch(); paint(); }]
+        : e && it.文件 ? [e.资产.includes(it.文件) ? '这张图不在了：去掉这个引用' : '这一格不要了（不出这一张）', () => { e.资产 = e.资产.filter(f => f !== it.文件); e.不用 = [...new Set([...(Array.isArray(e.不用) ? e.不用 : []), it.文件])]; touch(); paint(); }]
+          : isRow ? ['这一段不用「' + it.名称 + '」（全片的' + k + '表里还在）', () => { s[it.类别] = s[it.类别].filter(n => n !== it.名称); touch(); paint(); }]
+            : it.文件 && Array.isArray(s[it.类别]) ? ['这张图不在了：这一段不再用它', () => { s[it.类别] = s[it.类别].filter(f => f !== it.文件); touch(); paint(); }] : null;
+  const swap = isRow && it.own && img && !KIND[it.类别].multi ? h('button', { class: 'ac-swap', type: 'button', title: '另挑一张现成的图挂给「' + it.名称 + '」', onkeydown: stop, onclick: ev => { stop(ev); pickFor(s, it); } }, '换图') : null;
+  const el = h('div', { class: 'ac ' + kindCls(k) + (good ? ' ok' : '') + (w && checkBad(w.checkImg) || why ? ' bad' : ''), 'data-key': cardKey(it), role: open ? 'button' : null, tabindex: open ? '0' : null,
+      title: [w ? '点一下进它的那一页：字、图、AI 做过的事' : img ? '点开看大图' : open ? '点一下挑现成的图' : '', it.at || it.文字 || it.说明 || '', w && w.checkImg ? 'AI 核图：' + w.checkImg : '', w && w.need ? '要撑住：' + w.need : '', why ? '剧本改了：' + why : ''].filter(Boolean).join('\n'),
+      onclick: open, onkeydown: open ? ev => { if (ev.key === 'Enter' && ev.target === ev.currentTarget) open(); } : null },
+    h('div', { class: 'ac-pic' + (img ? '' : ' none') }, img ? thumbImg(it.at, 400) : it.文字 ? '只用文字写' : it.状态 === '图不在了' ? '图不在了' : '还没有图'),
+    h('div', { class: 'ac-bd' },
+      h('div', { class: 'ac-nm' }, h('span', null, it.名称), it.sub ? h('small', null, it.sub) : null, swap),
+      tx ? h('div', { class: 'ac-st' + (good ? ' ok' : !it.own ? '' : ' todo') }, tx) : null,
+      h('div', { class: 'ac-acts' }, acts),
+      voice ? VoiceBind.line(it.名称, paint) : null),
+    x ? h('button', { class: 'fl-asset-x', type: 'button', title: x[0], onkeydown: stop, onclick: ev => { stop(ev); x[1](); } }, icon('x')) : null);
   return el;
 }
 /* 道具加一种样子（一个状态一张图，比如「面车」加「夜里」）：写个名字和要求，交给 AI 写字；写好在道具那一块多一格，照常批字、出图 */
@@ -401,100 +309,223 @@ function suggest(s) {
   }
   return { out, extra };
 }
-function sugEls(s) {
-  const { out, extra } = suggest(s);
-  if (!out.length && !extra.length) return [];
-  const take = x => { if (!s[x.key].includes(x.id)) s[x.key].push(x.id); orderCast(s); touch(); paint(); };
-  const add = c => {   // 加进全片的人物表（描写照剧本里写的），这一场也选上；图还没有，接着让 AI 出
-    if (!F.doc.人物.some(e => e.名 === c.name)) F.doc.人物.push({ 名: c.name, 描写: c.desc || '', 资产: [] });
-    if (!s.人物.includes(c.name)) s.人物.push(c.name);
-    orderCast(s); touch(); paint();
-    toast('「' + c.name + '」加进人物表、这一段也选上了。它还没有图');
-  };
-  return [h('div', { class: 'wf-sug' },
-    out.length ? [h('span', { class: 'fn-note' }, '提到了、还没选上：'), out.map(x => h('button', { class: 'fl-ref sug ' + kindCls(x.key), type: 'button', title: x.only ? (x.key === '场景文字' ? '全片设定里只写了这一处场景，点一下这一段也用它（不用图）' : '全片只引用了这一张场景图，点一下这一段也用它') : '这一段的镜头表、剧本里提到了它，点一下选上', onclick: () => take(x) },
-      x.file && !F.gone.has(x.file) ? thumbImg(x.file) : h('i', { class: 'ph' }, kindOf(x.key)[0]), h('span', null, x.name), h('small', null, kindOf(x.key) + ' · ' + (x.only ? '用它？' : '选上'))))] : null,
-    extra.length ? [h('span', { class: 'fn-note' }, '剧本里有、人物表里没有：'), extra.map(c => h('button', { class: 'fl-ref sug k-ren', type: 'button', title: '加进全片的人物表（描写：' + (c.desc || '剧本里没写') + '），这一段也选上。它还没有图，加了以后可以让 AI 出', onclick: () => add(c) },
-      h('i', { class: 'ph' }, '人'), h('span', null, c.name), h('small', null, '加进人物表')))] : null)];
+/* 一页后面的虚线卡：剧本、镜头表里提到了、还没加上的，点一下加上 */
+function sugCards(s, k) {
+  const { out, extra } = suggest(s), take = x => { if (!s[x.key].includes(x.id)) s[x.key].push(x.id); orderCast(s); touch(); paint(); toast(kindOf(x.key) + '「' + x.name + '」这一段加上了'); };
+  const card = (title, file, name, note, onclick) => h('div', { class: 'ac sug ' + kindCls(k), role: 'button', tabindex: '0', title, onclick, onkeydown: ev => { if (ev.key === 'Enter') onclick(); } },
+    h('div', { class: 'ac-pic' + (file && !F.gone.has(file) ? '' : ' none') }, file && !F.gone.has(file) ? thumbImg(file, 400) : k[0]), h('div', { class: 'ac-bd' }, h('div', { class: 'ac-nm' }, h('span', null, name)), h('div', { class: 'ac-st' }, note)));
+  return [...out.filter(x => kindOf(x.key) === k).map(x => card(x.only ? (x.key === '场景文字' ? '全片设定里只写了这一处场景，点一下这一段也用它（不用图）' : '全片只引用了这一张场景图，点一下这一段也用它') : '这一段的镜头表、剧本里提到了它，点一下加上',
+      x.file, x.name, x.only ? '这一段用它？点一下加上' : '剧本里提到了　点一下加上', () => take(x))),
+    ...(k === '人物' ? extra.map(c => card('加进全片的人物表（描写：' + (c.desc || '剧本里没写') + '），这一段也选上。它还没有图，加了以后可以让 AI 出', '', c.name, '剧本里有、人物表里没有　点一下加上', () => {
+      if (!F.doc.人物.some(e => e.名 === c.name)) F.doc.人物.push({ 名: c.name, 描写: c.desc || '', 资产: [] });
+      if (!s.人物.includes(c.name)) s.人物.push(c.name);
+      orderCast(s); touch(); paint();
+      toast('「' + c.name + '」加进人物表、这一段也选上了。它还没有图');
+    })) : [])];
 }
+const ADD_NOTE = { 人物: '人物表里的、全片的人物图、这一段文件夹的图、新加一个', 场景: '文字写的、全片的场景图、这一段的空镜、新加一个', 道具: '道具表里的、全片的道具图、这一段文件夹的图、新加一个（特效也算这里）' };
+const HINT = { 人物: '点卡进它自己的那一页：看字、批字、出图。音色在人物卡底下。', 场景: '点卡进它自己的那一页。只用文字写的场景也是一张卡，要图就「挑现成的图」或者「写字」让 AI 出。', 道具: '点卡进它自己的那一页。一个道具几种样子，一种一张图：最后一张「＋ 加一种样子」。' };
+/* 人物、场景、道具一页：一样一张卡，剧本里提到的虚线卡，最后「＋ 加」 */
+function kindBody(s, k, list) {
+  const mine = list.filter(it => it.类别 !== '关键帧' && kindOf(it.类别) === k);
+  const cards = mine.map((it, i) => cardEl(s, it, k === '人物' && !!entryOf('人物', it.名称) && !mine.slice(i + 1).some(y => y.名称 === it.名称)));   // 音色跟在这个人最后一张卡上
+  const plus = (label, note, onclick) => h('div', { class: 'ac plus ' + kindCls(k), role: 'button', tabindex: '0', onclick, onkeydown: ev => { if (ev.key === 'Enter') onclick(); } }, h('div', null, label, note ? h('small', null, note) : null));
+  return [h('p', { class: 'as-hint' }, HINT[k]),
+    h('div', { class: 'ac-grid' }, ...cards, ...sugCards(s, k),
+      plus('＋ 加' + k, ADD_NOTE[k], () => PickBar.open({ s, mode: 'add', k })),
+      k === '道具' && s.道具.length ? plus('＋ 加一种样子', '一个道具几种样子（白天、夜里），一种一张图', () => addLookDlg(s)) : null)];
+}
+
+/* ---------- 关键帧：顶上「还没绑」一排，下面一镜一张小卡（三格）。拖到格子里绑，或者点图再点格子 ---------- */
+const KB = { sel: '', drag: '' };   // sel：点选了「还没绑」里哪一张，等你点格子；drag：正在拖哪一张
+const kbBtn = (tx, title, fn, cls) => h('button', { class: 'fl-asset-ok' + (cls ? ' ' + cls : ''), type: 'button', title, onkeydown: ev => ev.stopPropagation(), onclick: ev => { ev.stopPropagation(); fn(); } }, tx);
+const kbOpen = (s, it) => { const w = wordOf(s, it); if (w) openWord(s, w); else if (it.at) openImage(it.at, shellActs(s, it, w)); };
+function kbBind(s, file, no, m) {
+  if (!framesOf(s).includes(file)) return;
+  SB.bind(s, file, no, m, s.段落, true); KB.sel = ''; touch(); paint();
+  toast(baseOf(file) + ' 绑到镜头' + no + ' ' + SB.SAY[m] + '，当现用');
+}
+function kbBody(s, mine) {
+  const byFile = new Map(mine.map(it => [it.文件, it])), T = SB.table([...byFile.keys()], s.段落, SB.bindsOf(s));
+  if (!s.段落.length) return [h('p', { class: 'as-hint' }, '镜头表还空着：先到「提炼」那一步写好镜头表，关键帧绑在镜头表的一镜一刻上。')];
+  if (KB.sel && !T.loose.some(x => x.file === KB.sel)) KB.sel = '';
+  const can = T.loose.filter(x => x.guess);
+  const tray = h('div', { class: 'kb-tray' + (T.loose.length ? '' : ' done'), 'data-tray': '1' },
+    h('div', { class: 'kb-tray-h' },
+      T.loose.length ? h('b', null, '还没绑 ' + T.loose.length + ' 张') : h('span', { class: 'fn-note' }, mine.length ? '关键帧都绑上了。' : '还没有关键帧。关键帧多半在提示词那一步出；这一段文件夹里名字带「首帧」「尾帧」「关键帧」的图自动列上。'),
+      mine.length ? h('span', { class: 'fn-note' }, T.loose.length ? (KB.sel ? '再点一下要绑的格子（Esc 不绑了）' : '拖到下面哪一格就绑上；或者点一下图，再点格子') : '格子里的图拖到别的格子就改绑，拖回这里就解绑') : null,
+      can.length > 1 ? h('button', { class: 'fl-link', type: 'button', title: '照名字猜的都认下来：' + can.map(x => baseOf(x.file)).join('、'), onclick: () => { for (const x of can) SB.bind(s, x.file, x.guess.镜, x.guess.刻, s.段落); touch(); paint(); toast('照名字认了 ' + can.length + ' 张'); } }, '照名字全认（' + can.length + ' 张）') : null,
+      h('span', { class: 'sp' }),
+      h('button', { class: 'btn sm k-zhen', type: 'button', title: '这一段文件夹里的图，挑了就当关键帧，先放进「还没绑」。关键帧多半在提示词那一步出', onclick: () => PickBar.open({ s, mode: 'add', k: '关键帧' }) }, icon('plus'), '加关键帧')),
+    T.loose.length ? h('div', { class: 'kb-loose' }, T.loose.map(x => kbTile(s, byFile.get(x.file), x))) : null);
+  const grid = h('div', { class: 'kb-shots' }, T.rows.map(r => kbShot(s, r, byFile)));
+  return [h('div', { class: 'kb' + (KB.sel ? ' kb-picking' : ''), id: 'kb' }, tray, grid)];
+}
+function kbTile(s, it, x) {
+  const g = x.guess, sel = KB.sel === it.文件;
+  const el = h('div', { class: 'kb-tile' + (sel ? ' sel' : ''), draggable: 'true', 'data-file': it.文件, role: 'button', tabindex: '0',
+      title: it.文件 + '\n拖到下面的格子里绑上；或者点一下选中，再点格子。点两下看大图',
+      onclick: () => { KB.sel = sel ? '' : it.文件; paint(); }, ondblclick: () => { KB.sel = ''; kbOpen(s, it); } },
+    h('div', { class: 'kb-im' }, it.at ? thumbImg(it.at, 300) : '图不在了'),
+    h('div', { class: 'kb-nm' }, it.名称),
+    h('small', null, x.gone ? '绑的镜头' + x.gone + ' 删了' : g ? '猜：镜头' + g.镜 + ' ' + SB.SAY[g.刻] : '猜不出是哪一镜'),
+    h('div', { class: 'kb-acts' },
+      g ? kbBtn('认', '绑到镜头' + g.镜 + ' ' + SB.SAY[g.刻], () => kbBind(s, it.文件, g.镜, g.刻), 'go') : null,
+      kbBtn('不是关键帧', '这张不当关键帧用（图不动，只是这一段不再把它列成关键帧）', () => { dropFrame(s, it.文件); KB.sel = ''; touch(); paint(); })));
+  if (it.at) hoverable(el, it.at, it.名称);
+  return el;
+}
+function kbShot(s, r, byFile) {
+  const sl = SB.slots(r), stale = r.帧.filter(x => x.stale);
+  return h('div', { class: 'kb-shot k-zhen' + (stale.length ? ' chg' : '') },
+    h('div', { class: 'kb-sh' }, h('b', null, '镜头' + r.号), h('span', { title: (r.写什么 || '还空着') + (r.作用 ? '\n作用：' + r.作用 : '') }, r.写什么 || '—'),
+      stale.length ? kbBtn('还对得上', '镜头表里这一镜的字改过了：看过这几张图，还对得上就点', () => { for (const x of stale) SB.keep(s, x.file, s.段落); touch(); paint(); }, 'go') : null),
+    h('div', { class: 'kb-slots' }, SB.MOMENTS.map(m => kbSlot(s, r, m, sl[m], byFile))));
+}
+function kbSlot(s, r, m, slot, byFile) {
+  const cur = slot.cur, it = cur && byFile.get(cur.file), n = slot.alts.length, say = '镜头' + r.号 + ' ' + SB.SAY[m];
+  const el = h('div', { class: 'kb-slot' + (cur ? ' has' : ''), 'data-no': r.号, 'data-m': m, role: 'button', tabindex: '0',
+      title: cur ? say + '：' + baseOf(cur.file) + (n ? '（还有 ' + n + ' 张备选）' : '') + '\n点一下看这一格的图、换现用、确认；拖到别的格子就改绑' : say + '：还没有\n点一下从这一段文件夹里挑一张；或者把「还没绑」里的图拖过来',
+      onclick: ev => kbSlotClick(ev.currentTarget, s, r, m, slot, byFile) },
+    ...(cur && it ? [it.at ? thumbImg(it.at, 300) : h('span', { class: 'kb-gone' }, '图不在了'), h('span', { class: 'kb-k' }, SB.SAY[m]), n ? h('span', { class: 'kb-more' }, '+' + n) : null, it.at && okOf(it) ? h('span', { class: 'kb-ok', title: '确认过可用' }, icon('check')) : null] : [SB.SAY[m]]));
+  if (cur) { el.draggable = true; el.dataset.file = cur.file; }
+  return el;
+}
+function kbSlotClick(anchor, s, r, m, slot, byFile) {
+  if (KB.sel) return kbBind(s, KB.sel, r.号, m);
+  if (!slot.cur) return PickBar.open({ s, mode: 'slot', slot: { no: r.号, 刻: m } });
+  popover(anchor, close => {
+    const all = [slot.cur, ...slot.alts];
+    return [h('div', { class: 'fl-pop-h' }, '镜头' + r.号 + ' · ' + SB.SAY[m]),
+      h('div', { class: 'kb-menu' }, all.map(x => {
+        const it = byFile.get(x.file), ok = !!it.at && okOf(it), cur = x === slot.cur;
+        return h('div', { class: 'kb-mi k-zhen' + (cur ? ' cur' : '') },
+          h('button', { class: 'kb-mi-im', type: 'button', title: '点开看：' + x.file, onclick: () => { close(); kbOpen(s, it); } }, it.at ? thumbImg(it.at, 300) : h('span', { class: 'kb-gone' }, '图不在了')),
+          h('div', { class: 'kb-mi-b' }, h('b', { title: x.file }, it.名称), h('small', null, (cur ? '现用：写提示词带这一张' : '备选') + (x.stale ? ' · 这一镜改了' : '')),
+            h('div', { class: 'kb-acts' },
+              cur ? null : kbBtn('当现用', '写提示词时带这一张（这一格原来那张改成备选）', () => { SB.setCurrent(s, x.file); touch(); close(); paint(); }, 'go'),
+              it.at ? kbBtn(ok ? '✓ 可用' : F.doc.可用[it.at] ? '再确认' : '确认可用', ok ? '确认过可用，点一下取消' : '这张图看过了、能用', () => { confirmImg(s, it, !ok); close(); paint(); }, ok ? 'on' : '') : null,
+              kbBtn('解绑', '从这一格拿下来，放回「还没绑」那一排（图不动）', () => { SB.unbind(s, x.file); touch(); close(); paint(); }),
+              kbBtn('删掉…', '不当关键帧，或者图不要了', () => { close(); removeAsset(s, it); }))));
+      })),
+      h('p', { class: 'fn-note kb-mi-n' }, '要改绑：把格子里的图拖到别的格子。')];
+  });
+}
+/* 拖：页面上只挂一回（#as-body 不换），格子、「还没绑」那一排都认 */
+function kbWire(body) {
+  const clear = () => { KB.drag = ''; const kb = document.getElementById('kb'); if (kb) kb.classList.remove('kb-dragging'); for (const x of body.querySelectorAll('.over')) x.classList.remove('over'); };
+  const target = e => e.target instanceof Element ? e.target.closest('.kb-slot, [data-tray]') : null;
+  body.addEventListener('dragstart', e => {
+    const src = e.target instanceof Element ? e.target.closest('[data-file][draggable=true]') : null;
+    if (!src) return;
+    KB.drag = src.dataset.file; hideHov(); closePop();
+    e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', KB.drag);
+    const kb = document.getElementById('kb'); if (kb) kb.classList.add('kb-dragging');
+  });
+  body.addEventListener('dragend', clear);
+  body.addEventListener('dragover', e => { const t = target(e); if (!t || !KB.drag) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; t.classList.add('over'); });
+  body.addEventListener('dragleave', e => { const t = target(e); if (t && !t.contains(e.relatedTarget)) t.classList.remove('over'); });
+  body.addEventListener('drop', e => {
+    const t = target(e), file = KB.drag, s = sceneNow();
+    clear();
+    if (!t || !file || !s) return;
+    e.preventDefault();
+    if (t.dataset.tray) { if (SB.bindsOf(s)[file]) { SB.unbind(s, file); touch(); paint(); toast(baseOf(file) + ' 解绑了，放回「还没绑」'); } return; }
+    const b = SB.bindsOf(s)[file];
+    if (b && b.镜 === t.dataset.no && b.刻 === t.dataset.m && !b.备选) return;   // 拖回原来那一格
+    kbBind(s, file, t.dataset.no, t.dataset.m);
+  });
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && KB.sel && !PickBar.on && !window.UI.popOpen) { KB.sel = ''; paint(); } });
+
+/* ---------- 顶上那一条：走到哪了（点了跳过去）、要按的、四个页签 ---------- */
 const WORD_JOBS = ['写字', '出图', '改图', '按批注改字', '核GEO'];   // 这一步交给 AI 的几样事
-/* 这一场的图眼下怎么样：顶上那一行和右下角的悬浮按钮都看它 */
+/* 这一场的图眼下怎么样 */
 function barInfo(s) {
   const { list } = assetsOf(s), mine = list.filter(x => x.类别 !== '关键帧'), has = mine.filter(x => x.at), lacking = mine.filter(x => !x.at && !x.文字);   // 只用文字写的场景不算缺；关键帧在提示词那一步做、确认（11-14 流程图丙），不算这一步的数
   const ws = mine.map(it => wordOf(s, it)).filter(Boolean);
   return { list, has, lacking, ws, okN: has.filter(okOf).length, st: assetState(s), cast: mine.length > 0, jobs: AI.jobs.filter(j => WORD_JOBS.includes(j.事) && j.段 === s.段 && jobLive(j)) };
 }
-/* 打开这一场头一样要你看的（字等你批、新图……）：进它的那一页；一样都没找到就跳到下面那一格 */
-function openFirst(s, pred, sel) { const x = adOrder(s).find(y => pred(y.w)); if (x) openWord(s, x.w); else jumpTo(sel); }
-/* 跳到下面那一格，闪一下（缺图的、还没确认的） */
-function jumpTo(sel) {
-  const el = [...document.querySelectorAll('#as-grid ' + sel)].find(e => !e.classList.contains('k-zhen'));   // 关键帧那几格不算这一步的数，不跳过去
+/* 跳到头一张对得上的卡：换到它那一页，滚过去闪一下 */
+function goTo(s, pred) {
+  const it = assetsOf(s).list.filter(x => x.类别 !== '关键帧').find(x => pred(x, wordOf(s, x)));
+  if (!it) return;
+  const k = kindOf(it.类别);
+  if (k !== tabNow()) { setTab(k); repaint(); }
+  const el = [...document.querySelectorAll('#as-body .ac')].find(e => e.dataset.key === cardKey(it));
   if (!el) return;
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
 }
-/* 顶上那一行（11-13 他说原来那一大框「放这里不好看」）：左边是这一场的图走到哪了，点一下跳到那几格；右边是几个次要按钮。
-   该做的下一件事在右下角悬浮（fabEls），和分场页「定下来」一个地方 */
-function barEls(s) {
-  const seg = s.段, { has, lacking, ws, okN, st, cast, jobs } = barInfo(s);
+/* 打开这一场头一样要你看的（字等你批、新图……）：进它的那一页；一样都没找到就跳到那张卡 */
+function openFirst(s, pred) { const x = adOrder(s, {}).find(y => pred(y.w)); if (x) openWord(s, x.w); else goTo(s, (it, w) => !!w && pred(w)); }
+function headEls(s) {
+  const { has, lacking, ws, okN, st, cast, jobs } = barInfo(s);
   const n = k => ws.filter(w => w.step === k).length, none = n('none'), word = n('word'), cand = n('cand'), geo = ws.filter(w => w.geoBack).length, bad = ws.filter(w => w.hasImg && checkBad(w.checkImg)).length;
   const batch = jobs.some(j => j.事 === '写字' && !(Array.isArray(j.只) && j.只.length));
-  const pick = h('button', { class: 'btn sm' + (cast ? ' ghost' : ' ink'), type: 'button', title: '这一段有谁、用什么道具、在哪儿：全片设定里写过的就能选，不用先有图', onclick: e => openPickPop(e.currentTarget, s, paint) }, icon('plus'), '选出场的');
-  const exist = h('button', { class: 'btn sm ghost', type: 'button', title: '人物、场景、道具的图都摆出来挑；这一段文件夹里的图点了先选当什么用。删掉的图也在里面，能放回来。即梦画布上有、本地没有一样的图摆在最下面', onclick: () => addDlg(s, '') }, '用已有的图');
-  const look = F.dirs.has(segName(seg)) ? h('button', { class: 'btn sm ghost', type: 'button', title: '看这一段文件夹里的图，框出来写批注', onclick: () => openShell(at([F.name, '资产', segName(seg)]), '第' + seg + '段的图') }, '看这一段的图') : null;
-  const wordEls = [   // 字等你批、新图、AI 说有问题、GEO 对不上、让 AI 写字：图都确认了也照样摆（AI 核图说撑不住的，确认过也要看得见）
-        word ? h('button', { class: 'as-warn', type: 'button', title: '字写好了，等你批：自己改，或者写批注交给 AI 改；字定了点「批准出图」。点一下打开头一样，看完点「下一样要你看的」', onclick: () => openFirst(s, w => w.step === 'word', '.fl-asset.wd-word') }, '字等你批 ' + word + ' 样') : null,
-        cand ? h('button', { class: 'as-warn', type: 'button', title: '出了新图：和旧图并排比，挑「用旧图」或「用新图」。点一下打开头一张', onclick: () => openFirst(s, w => w.step === 'cand', '.fl-asset.wd-cand') }, '新图 ' + cand + ' 张等你看') : null,
-        bad ? h('button', { class: 'as-warn', type: 'button', title: 'AI 对着定稿的剧本核图，说这几张撑不住戏（确认过的也算）。点一下打开头一张看它说什么：不对就改字重出，或者照批注改图', onclick: () => openFirst(s, w => w.hasImg && checkBad(w.checkImg), '.fl-asset.wd-bad') }, 'AI 说有问题 ' + bad + ' 张') : null,
-        geo ? h('button', { class: 'as-warn', type: 'button', title: 'AI 照确认过的场景图核 GEO 底稿，有对不上、会影响走位或视线的：点一下打开头一张看', onclick: () => openFirst(s, w => !!w.geoBack, '.fl-asset.wd-geo') }, 'GEO 对不上 ' + geo + ' 张') : null,
-        !batch && ws.length ? h('button', { class: 'btn sm' + (none ? ' ink' : ' ghost'), type: 'button', title: 'AI 读定稿的剧本：给这一段还没有字的人物、道具、场景写字（出图提示词，场景先写 GEO 底稿），已经有的图核一遍撑不撑得住。写好了点那一样进它的那一页批，点「批准出图」才出图', onclick: async () => { if (await askWords(s)) paint(); } }, none ? '让 AI 写字（' + none + ' 样）' : '让 AI 再核一遍') : null];   // 要给提示词自己交的：顶栏「AI 用」选「给我提示词」（11-14 晚起，原来这里单摆的「自己交给 AI」并进去了）
-  const left = st.st === 'ok' ? [h('span', { class: 'fs-state ok', title: '图重出了、描写改了，那一张要再确认' }, icon('check'), '这一段的图都确认可用了'), ...wordEls]
-    : !cast ? [h('span', { class: 'as-warn' }, '还没选出场的人物、场景、道具')]
+  const warns = [
+    word ? h('button', { class: 'as-warn', type: 'button', title: '字写好了，等你批：自己改，或者写批注交给 AI 改；字定了点「批准出图」。点一下打开头一样，看完点「下一样要你看的」', onclick: () => openFirst(s, w => w.step === 'word') }, '字等你批 ' + word + ' 样') : null,
+    cand ? h('button', { class: 'as-warn', type: 'button', title: '出了新图：和旧图并排比，挑「用旧图」或「用新图」。点一下打开头一张', onclick: () => openFirst(s, w => w.step === 'cand') }, '新图 ' + cand + ' 张等你看') : null,
+    bad ? h('button', { class: 'as-warn', type: 'button', title: 'AI 对着定稿的剧本核图，说这几张撑不住戏（确认过的也算）。点一下打开头一张看它说什么：不对就改字重出，或者照批注改图', onclick: () => openFirst(s, w => w.hasImg && checkBad(w.checkImg)) }, 'AI 说有问题 ' + bad + ' 张') : null,
+    geo ? h('button', { class: 'as-warn', type: 'button', title: 'AI 照确认过的场景图核 GEO 底稿，有对不上、会影响走位或视线的：点一下打开头一张看', onclick: () => openFirst(s, w => !!w.geoBack) }, 'GEO 对不上 ' + geo + ' 张') : null];
+  const left = st.st === 'ok' ? [h('span', { class: 'fs-state ok', title: '图重出了、描写改了，那一张要再确认' }, icon('check'), '这一段的图都确认可用了')]
+    : !cast ? [h('span', { class: 'as-warn' }, '还没加出场的人物、场景、道具：点下面一页最后的「＋ 加」')]
       : [has.length ? h('button', { class: 'as-prog', type: 'button', title: okN < has.length ? '点一下跳到还没确认的那一张。确认过的图，别的段不用再确认' : '有图的都确认过了',
-          onclick: () => jumpTo('.fl-asset:not(.ok):not(.todo)') },
+          onclick: () => goTo(s, it => !!it.at && !okOf(it)) },
           h('span', { class: 'as-meter' }, h('i', { style: 'width:' + Math.round(okN / has.length * 100) + '%' })), '确认了 ', h('b', null, String(okN)), ' / ' + has.length + ' 张') : null,
-        lacking.length ? h('button', { class: 'as-warn', type: 'button', title: '还没有图：' + lacking.map(x => x.名称).join('、') + '。点一下跳过去；点那一格能从已有的图里挑。用文字锁的不用出', onclick: () => jumpTo('.fl-asset.todo') }, '缺图 ' + lacking.length + ' 样') : null,
-        ...wordEls,
-        st.tx === '待核对' && st.impact ? h('button', { class: 'as-warn', type: 'button', title: '剧本重新定稿以后，AI 对了一遍新旧剧本，列了这几样。点一下跳过去', onclick: () => jumpTo('.fl-asset.wd-impact') }, '待核对：' + st.why)
-          : st.tx === '待核对' ? h('span', { class: 'as-warn', title: '看一遍这些图还合不合适：合适就点右下角「还能用，确认」，不合适的点 × 删掉重出' }, '待核对：' + st.why) : null];
+        lacking.length ? h('button', { class: 'as-warn', type: 'button', title: '还没有图：' + lacking.map(x => x.名称).join('、') + '。点一下跳过去；卡上「挑现成的图」，或者「写字」让 AI 出。用文字锁的不用出', onclick: () => goTo(s, it => !it.at && !it.文字) }, '缺图 ' + lacking.length + ' 样') : null,
+        st.tx === '待核对' && st.impact ? h('button', { class: 'as-warn', type: 'button', title: '剧本重新定稿以后，AI 对了一遍新旧剧本，列了这几样。点一下跳过去', onclick: () => goTo(s, it => IMPACT.has(kindOf(it.类别) + '/' + it.名称)) }, '待核对：' + st.why)
+          : st.tx === '待核对' ? h('span', { class: 'as-warn', title: '看一遍这些图还合不合适：合适就点右边「还能用，确认」，不合适的点 × 删掉重出' }, '待核对：' + st.why) : null];
   const sty = styleName(s) ? null : h('button', { class: 'as-warn', type: 'button', title: '出资产图照拍摄风格写画面质感、颜色和光。不定也能出。点一下挑', onclick: () => styleDlg(s) }, '还没定拍摄风格');   // 只提醒，不拦着（11-14）
-  return [...left, sty, h('span', { class: 'sp' }), pick, exist, look];
+  const ai = !batch && ws.length ? h('button', { class: 'btn sm' + (none ? '' : ' ghost'), type: 'button', title: 'AI 读定稿的剧本：给这一段还没有字的人物、道具、场景写字（出图提示词，场景先写 GEO 底稿），已经有的图核一遍撑不撑得住。写好了点那一样进它的那一页批，点「批准出图」才出图', onclick: async () => { if (await askWords(s)) paint(); } }, none ? '让 AI 写字（' + none + ' 样）' : '让 AI 再核一遍') : null;   // 要给提示词自己交的：顶栏「AI 用」选「给我提示词」
+  /* 这一步要按的那一个（深色），旁边「去写提示词」（提示词不等资产，什么时候写你自己定） */
+  const next = ink => h('button', { class: 'btn sm' + (ink ? ' ink' : ' ghost'), type: 'button', title: '提示词那一步不等资产：什么时候写你自己定，没图的写的时候用文字锁', onclick: () => go('提示词', { s: s.段 }) }, ink ? '下一步：提示词 →' : '去写提示词 →');
+  const main = st.st === 'ok' ? [next(true)]
+    : st.tx === '待核对' && st.impact ? [next(false), h('button', { class: 'btn sm ink', type: 'button', title: '影响清单上列的这几样你都看过了，照旧能用', onclick: () => { const t = nowText(); for (const x of st.impact) keptOf(s)[impactKey(x)] = t; touch(); paint(); toast('列的几样都看过了'); } }, icon('check'), '列的都看过了')]
+      : st.tx === '待核对' ? [next(false), h('button', { class: 'btn sm ink', type: 'button', title: '这一段要的图你又看了一遍，还能用', onclick: () => { s.资产确认 = nowText(); touch(); paint(); toast('第' + s.段 + '段的资产核对过了'); } }, icon('check'), '还能用，确认')]
+        : okN < has.length ? [next(false), h('button', { class: 'btn sm ink', type: 'button', title: '这一段现在有的图你都看过了、都能用。确认过的图，别的段不用再确认', onclick: () => {
+          const t = nowText();
+          for (const it of has.filter(x => !okOf(x))) F.doc.可用[it.at] = t;
+          s.资产确认 = t; touch(); paint(); toast('第' + s.段 + '段的图都确认可用了');
+        } }, icon('check'), okN ? '剩下的都确认可用' : '都确认可用')]
+          : [next(cast)];   // 只差缺的图、AI 在出图：图的事在左边那几个，这里只管往下走
+  return [...left, ...warns, sty, h('span', { class: 'sp' }), ai, ...main];
 }
-/* 右下角悬浮：这一步眼下该做的那一件（深色），旁边一个「去写提示词」（提示词不等资产，什么时候写你自己定） */
-function fabEls(s) {
-  const seg = s.段, { has, okN, st } = barInfo(s);
-  const next = ink => h('button', { class: 'btn' + (ink ? ' ink' : ' sub'), type: 'button', title: '提示词那一步不等资产：什么时候写你自己定，没图的写的时候用文字锁', onclick: () => go('提示词', { s: seg }) }, ink ? '下一步：提示词 →' : '去写提示词 →');
-  if (st.st === 'ok') return [next(true)];
-  if (st.tx === '待核对' && st.impact) return [next(false), h('button', { class: 'btn ink', type: 'button', title: '影响清单上列的这几样你都看过了，照旧能用', onclick: () => { const t = nowText(); for (const x of st.impact) keptOf(s)[impactKey(x)] = t; touch(); paint(); toast('列的几样都看过了'); } }, icon('check'), '列的都看过了')];
-  if (st.tx === '待核对') return [next(false), h('button', { class: 'btn ink', type: 'button', title: '这一段要的图你又看了一遍，还能用', onclick: () => { s.资产确认 = nowText(); touch(); paint(); toast('第' + seg + '段的资产核对过了'); } }, icon('check'), '还能用，确认')];
-  if (okN < has.length) return [h('div', { class: 'wf-fab-note' }, '还有 ' + (has.length - okN) + ' 张没确认'), next(false),
-    h('button', { class: 'btn ink', type: 'button', title: '这一段现在有的图你都看过了、都能用。确认过的图，别的段不用再确认', onclick: () => {
-      const t = nowText();
-      const fresh = has.filter(it => !okOf(it));
-      for (const it of fresh) F.doc.可用[it.at] = t;
-      s.资产确认 = t; touch(); paint(); toast('第' + seg + '段的图都确认可用了');
-    } }, icon('check'), okN ? '剩下的都确认可用' : '都确认可用')];
-  return [next(barInfo(s).cast)];   // 只差缺的图、AI 在出图：图的事在顶上那一行，这里只管往下走（还没选出场的：先选，这里不抢眼）
+/* 页签上的数和红点：有要你做的（缺图、没确认、字等你批、新图、剧本改了；关键帧：还没绑、这一镜改了） */
+function tabMarks(s, list) {
+  const out = {};
+  for (const k of KINDS) {
+    const mine = list.filter(it => it.类别 !== '关键帧' && kindOf(it.类别) === k), ws = mine.map(it => wordOf(s, it)).filter(Boolean);
+    const lack = mine.filter(it => !it.at && !it.文字).length, un = mine.filter(it => it.at && !okOf(it)).length;
+    const need = ws.filter(w => w.step === 'word' || w.step === 'cand' || (w.hasImg && checkBad(w.checkImg)) || w.geoBack).length, imp = mine.filter(it => IMPACT.has(k + '/' + it.名称)).length;
+    out[k] = { n: mine.length, dot: [lack ? lack + ' 样没图' : '', un ? un + ' 张没确认' : '', need ? need + ' 样等你看' : '', imp ? imp + ' 样剧本改了' : ''].filter(Boolean).join('，') };
+  }
+  const frames = list.filter(it => it.类别 === '关键帧'), T = SB.table(frames.map(it => it.文件), s.段落, SB.bindsOf(s)), stale = T.rows.filter(r => r.帧.some(x => x.stale)).length;
+  out.关键帧 = { n: frames.length, dot: s.段落.length ? [T.loose.length ? T.loose.length + ' 张还没绑' : '', stale ? stale + ' 镜改了字' : ''].filter(Boolean).join('，') : '' };
+  return out;
 }
-/* 只换会变的几块（上面那一条、提到了的、各格图）：不整页重画，开着的小窗、滚到的位置都不动。
-   架子不在、或者这一场又锁上了（剧本不算定稿了），返回 false，让外面整页重画 */
+
+/* ---------- 画：只换会变的几块（顶上那一条、AI 在做的、这一页），不整页重画，开着的小窗、滚到的位置都不动。
+   架子不在、或者这一场又锁上了（剧本不算定稿了），返回 false，让外面整页重画 ---------- */
 function repaint() {
-  const s = sceneNow(), bar = document.getElementById('as-bar');
-  if (!s || !bar || assetState(s).st === 'lock') return false;
+  const s = sceneNow(), head = document.getElementById('as-head');
+  if (!s || !head || assetState(s).st === 'lock') return false;
   const flat = a => [a].flat(Infinity).filter(Boolean);
   IMPACT = new Map(impactTodo(s).map(x => [kindOf(x.类别) + '/' + x.名称, x.影响 + '：' + x.为什么]));
   const { list, rec } = assetsOf(s), jobs = AI.jobs.filter(j => WORD_JOBS.includes(j.事) && j.段 === s.段 && jobLive(j)), last = AI.jobs.filter(j => WORD_JOBS.includes(j.事) && j.段 === s.段).pop(), bad = jobs.length || !last ? null : jobFailed(last.事, s.段);
-  bar.replaceChildren(...flat(barEls(s)));
-  const fab = document.getElementById('as-fab');
-  if (fab) fab.replaceChildren(...flat(fabEls(s)));   // 悬浮的那一块不重建：淡入只在头一回
+  const cur = tabNow(), marks = tabMarks(s, list);
+  document.getElementById('as-h1').replaceChildren(...flat(headEls(s)));
+  document.getElementById('as-tabs').replaceChildren(...TABS.map(t => h('button', { class: 'pz-tab ' + kindCls(t) + (t === cur ? ' on' : ''), type: 'button', role: 'tab', 'aria-selected': String(t === cur), onclick: () => switchTab(t) },
+      t, h('em', null, String(marks[t].n)), marks[t].dot ? h('i', { class: 'dot', title: marks[t].dot }) : null)),
+    h('span', { class: 'sp' }),
+    F.dirs.has(segName(s.段)) ? h('button', { class: 'fl-link', type: 'button', title: '看这一段文件夹里的图，框出来写批注', onclick: () => openShell(at([F.name, '资产', segName(s.段)]), '第' + s.段 + '段的图') }, '看这一段文件夹的图') : null);
   document.getElementById('as-more').replaceChildren(...flat([
     jobs.length ? h('div', { class: 'wf-jobs' }, jobs.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题)))) : null,
     bad ? h('p', { style: 'margin-top:10px' }, bad) : null,
     rec && rec.bad ? h('p', { class: 'fn-note warn', style: 'margin-top:12px' }, 'AI 列的资产清单读不了：' + rec.bad) : null,
-    impactBox(s),
-    sugEls(s)]));
-  document.getElementById('as-grid').replaceChildren(...secEls(s, list));
-  paintSteps(); paintStatus();
+    impactBox(s)]));
+  document.getElementById('as-body').replaceChildren(...flat(cur === '关键帧' ? kbBody(s, list.filter(it => it.类别 === '关键帧')) : kindBody(s, cur, list)));
+  paintSteps(); paintStatus(); asPin(); PickBar.refresh();
 }
 /* 剧本重新定稿以后 AI 列的影响清单：列上、还没处理的一样一行（为什么、看过了）；「全部重看」照老办法这一场的图全都再核一遍 */
 function impactBox(s) {
@@ -505,113 +536,40 @@ function impactBox(s) {
   const todo = v ? impactTodo(s, v) : [];
   if (!todo.length) return null;
   const add = { 要改: '要改', 要加: '要加', 不用了: '不用了' };
-  return h('div', { class: 'fl-aibox', style: 'margin-top:12px' },
+  return h('div', { class: 'fl-aibox', style: 'margin:0 0 14px' },
     h('div', { class: 'fl-aibox-h' }, '剧本改了，这几样要再看', h('span', { class: 'sp' }),
       h('button', { class: 'fl-link', type: 'button', title: '不照这份清单：这一段的图全都再核一遍（老办法）', onclick: () => { s.影响全看 = v.时间; touch(); paint(); } }, '全部重看')),
     v.总 ? h('p', null, v.总) : null,
     h('ol', { class: 'wf-notes' }, todo.map(x => h('li', null,
       h('div', null, h('b', null, kindOf(x.类别) + '「' + x.名称 + '」'), h('span', { class: 'wf-lv' + (x.影响 === '要改' ? ' must' : '') }, add[x.影响] || x.影响), x.为什么),
-      h('div', { class: 'faint small' }, x.影响 === '要加' ? '新剧本多出来的：点「选出场的」或「新增」加上' : x.影响 === '不用了' ? '新剧本里没有了：点那一格的 × 去掉' : '点那一格看：字不对点「看字」改字重出，图不对照批注改图',
+      h('div', { class: 'faint small' }, x.影响 === '要加' ? '新剧本多出来的：在那一页最后点「＋ 加」加上' : x.影响 === '不用了' ? '新剧本里没有了：点那张卡右上角的 × 去掉' : '点那张卡看：字不对改字重出，图不对照批注改图',
         h('button', { class: 'fl-link', type: 'button', style: 'margin-left:10px', title: '看过了，照旧能用', onclick: () => { keptOf(s)[impactKey(x)] = nowText(); touch(); paint(); } }, '看过了，照旧'))))),
     v.提示词.length ? h('p', { class: 'faint small' }, '提示词也有 ' + v.提示词.length + ' 条要再看，在提示词那一步。') : null);
 }
-/* 四块：人物、场景、道具、关键帧，各一个颜色（流水线.css 的 k-ren、k-jing、k-dao、k-zhen） */
-const SEC_NOTE = { 人物: '谁出场', 场景: '在哪儿', 道具: '用什么（特效也算这里）', 关键帧: '绑在镜头表的一镜一刻上，只这一段用' };
-const SEC_EMPTY = { 人物: '还没有：点右边「＋ 新增人物」。', 场景: '还没有：点右边「＋ 新增场景」，全片设定里写的场景（不用图）、场景图、这一段的空镜都在里面。', 道具: '还没有：点右边「＋ 新增道具」。',
-  关键帧: '还没有。关键帧在提示词那一步做：哪一条要，点那一条的「出关键帧…」。这一段文件夹里名字带「首帧」「尾帧」「关键帧」的图也自动列上；别的图点右边「＋ 新增关键帧」挑。' };
-const SEC_ADD = { 人物: '人物表里的、全片的人物图、这一段文件夹里的图，挑了这一段就用上；表里没有的能新加一个', 场景: '全片设定里写的场景（不用图）、全片的场景图、这一段文件夹里的图（空镜等），挑了这一段就用上；没写过的能新加一个', 道具: '道具表里的、全片的道具图、这一段文件夹里的图，挑了这一段就用上；表里没有的能新加一个',
-  关键帧: '这一段文件夹里的图，挑了这一段就当关键帧用' };
-const secEls = (s, list) => SEG_KINDS.map(k => {
-  const mine = list.filter(it => kindOf(it.类别) === k);
-  return h('section', { class: 'as-sec ' + kindCls(k) },
-    h('div', { class: 'as-sec-h' }, h('b', null, k), mine.length ? h('small', null, String(mine.length)) : null, h('span', { class: 'fn-note' }, SEC_NOTE[k]),
-      k === '道具' && s.道具.length ? h('button', { class: 'btn sm ghost', type: 'button', title: '一个道具几种样子（比如面车白天、夜里），一种一张图：写个名字和要求，AI 先写字', onclick: () => addLookDlg(s) }, '加一种样子') : null,
-      h('button', { class: 'btn sm ' + kindCls(k), type: 'button', title: SEC_ADD[k], onclick: () => addDlg(s, k) }, icon('plus'), '新增' + k)),
-    !mine.length ? h('p', { class: 'fn-note as-sec-e' }, SEC_EMPTY[k]) : k === '关键帧' ? frameSec(s, mine) : h('div', { class: 'wf-grid' }, k === '人物' ? withVoices(s, mine) : mine.map(it => chipEl(s, it))));
-});
-/* ---------- 关键帧绑到镜头表的「一镜一刻」（2026-11-16 他定，流程图 关键帧绑定_流程图.html；算法在 公用/关键帧绑定.js）----------
-   一镜一行：开头、中间、结尾，现用的在前；同一镜同一刻几张，一张现用，别的备选（写提示词默认带现用的）。
-   还没绑的放最下面：照名字先猜（镜头11_首帧 → 镜头11 开头），点「认」绑上，猜错了点「绑到…」自己挑；不是关键帧的点「不是关键帧」（图不动，这一段不再当关键帧）。
-   绑的时候记下那一镜写的什么：镜头表后来改了这一镜，标「这一镜改了」，看过点「还对得上」 */
-function frameSec(s, mine) {
-  const byFile = new Map(mine.map(it => [it.文件, it])), T = SB.table([...byFile.keys()], s.段落, SB.bindsOf(s)), out = [];
-  for (const r of T.rows) if (r.帧.length) out.push(h('div', { class: 'kb-row' }, h('div', { class: 'kb-h' }, h('b', null, '镜头' + r.号), h('span', null, r.写什么 || '—')),
-    h('div', { class: 'wf-grid' }, r.帧.map(x => frameChip(s, byFile.get(x.file), x)))));
-  if (T.loose.length) {
-    const can = T.loose.filter(x => x.guess);
-    out.push(h('div', { class: 'kb-row kb-loose' }, h('div', { class: 'kb-h' }, h('b', null, '还没绑到镜头'), h('span', null, '绑上了，写提示词时才知道它是哪一镜、哪一刻'),
-        can.length > 1 ? h('button', { class: 'fl-link', type: 'button', title: '照名字猜的都认下来：' + can.map(x => baseOf(x.file)).join('、'), onclick: () => { for (const x of can) SB.bind(s, x.file, x.guess.镜, x.guess.刻, s.段落); touch(); paint(); toast('照名字认了 ' + can.length + ' 张'); } }, '照名字全认（' + can.length + ' 张）') : null),
-      h('div', { class: 'wf-grid' }, T.loose.map(x => looseChip(s, byFile.get(x.file), x)))));
-  }
-  return out;
-}
-const kbBtn = (tx, title, fn, cls) => h('button', { class: 'fl-asset-ok' + (cls ? ' ' + cls : ''), type: 'button', title, onkeydown: ev => ev.stopPropagation(), onclick: ev => { ev.stopPropagation(); fn(); } }, tx);
-function frameChip(s, it, x) {
-  const el = chipEl(s, { ...it, sub: [SB.SAY[x.刻] + (x.current ? '' : ' · 备选'), x.stale ? '这一镜改了' : '', it.sub].filter(Boolean).join(' · ') });
-  if (x.stale) el.classList.add('wd-impact');
-  el.classList.add('kb-chip');
-  el.append(h('div', { class: 'kb-acts' },
-    x.stale ? kbBtn('还对得上', '镜头表里这一镜的字改过了：看过这张图，还对得上就点', () => { SB.keep(s, it.文件, s.段落); touch(); paint(); }, 'go') : null,
-    x.current ? null : kbBtn('当现用', '写提示词时带这一张（同一镜同一刻别的几张改成备选）', () => { SB.setCurrent(s, it.文件); touch(); paint(); }),
-    kbBtn('改绑…', '改绑到镜头表别的一镜、别的一刻', () => bindDlg(s, it.文件))));
-  return el;
-}
-function looseChip(s, it, x) {
-  const g = x.guess, el = chipEl(s, { ...it, sub: [x.gone ? '绑的镜头' + x.gone + ' 删了' : '', g ? '猜是镜头' + g.镜 + ' ' + SB.SAY[g.刻] : '猜不出是哪一镜', it.sub].filter(Boolean).join(' · ') });
-  el.classList.add('todo', 'kb-chip');
-  el.append(h('div', { class: 'kb-acts' },
-    g ? kbBtn('认', '绑到镜头' + g.镜 + ' ' + SB.SAY[g.刻], () => { SB.bind(s, it.文件, g.镜, g.刻, s.段落); touch(); paint(); }, 'go') : null,
-    kbBtn('绑到…', '自己挑：镜头表哪一镜、开头中间还是结尾', () => bindDlg(s, it.文件, g)),
-    kbBtn('不是关键帧', '这张不当关键帧用（图不动，只是这一段不再把它列成关键帧）', () => { dropFrame(s, it.文件); touch(); paint(); })));
-  return el;
-}
-/* 绑到…：挑镜头表的一镜、开头中间结尾，要不要当现用 */
-async function bindDlg(s, file, pre) {
-  const nos = SB.nosOf(s.段落), now = SB.bindsOf(s)[file], b = now || pre || null;
-  if (!nos.length) { toast('镜头表还空着：先到「提炼」那一步写好镜头表', 'err'); return; }
-  let pick = b && nos.includes(b.镜) ? b.镜 : '';
-  const moment = window.UI.chips(SB.MOMENTS.map(m => [m, SB.SAY[m]]), b ? b.刻 : '首帧', () => sync());
-  const cur = h('input', { type: 'checkbox' }), curLab = h('label', { class: 'wf-tick' }, cur, h('span', null, '当现用（写提示词时带这一张；同一镜同一刻原来那张改成备选）'));
-  const ok = h('button', { class: 'btn ink', type: 'button' }, '绑上');
-  const busy = () => { const c = SB.currentOf(framesOf(s), SB.bindsOf(s), nos).get(pick + '|' + moment.get()); return c && c !== file ? c : ''; };
-  const sync = () => { const c = busy(); cur.checked = !c || (!!now && !now.备选 && now.镜 === pick && now.刻 === moment.get()); curLab.style.display = c ? "" : "none"; ok.disabled = !pick; };   // 当现用那一格：.wf-tick 是 flex，hidden 盖不住
-  const list = h('div', { class: 'prompt-shots', role: 'radiogroup' }, s.段落.map((x, i) => h('label', { class: 'prompt-shot' },
-    h('input', { type: 'radio', name: 'kb-shot', checked: nos[i] === pick, onchange: () => { pick = nos[i]; sync(); } }),
-    h('span', null, h('b', null, '镜头' + nos[i] + '　' + (str(x.写什么).trim() || '还空着')), str(x.作用).trim() ? h('small', null, '作用　' + x.作用.trim()) : null))));
-  sync();
-  const r = await dialog(close => {
-    ok.onclick = () => { if (pick) close({ no: pick, 刻: moment.get(), current: cur.checked }); };
-    const el = dlgShell('绑到镜头 · ' + baseOf(file), '这张关键帧是镜头表里哪一镜、哪一刻的画面。写提示词时照这个告诉 AI 它放在哪。',
-      [h('div', { class: 'fld' }, h('span', null, '哪一镜'), list), h('div', { class: 'fld' }, h('span', null, '哪一刻'), moment), curLab],
-      [h('button', { class: 'btn ghost', type: 'button', onclick: () => close(null) }, '取消'), ok]);
-    el.classList.add('wide');
-    return el;
-  });
-  if (!r) return;
-  SB.bind(s, file, r.no, r.刻, s.段落, r.current); touch(); paint();
-  toast(baseOf(file) + ' 绑到镜头' + r.no + ' ' + SB.SAY[r.刻]);
-}
-/* 人物那一块：人物表里的每个人，最后一张图后面跟一格音色（试听、挑一段、不用，音色绑定.js，11-15） */
-const withVoices = (s, mine) => mine.flatMap((it, i) => { const n = it.名称, el = chipEl(s, it); return entryOf('人物', n) && !mine.slice(i + 1).some(x => x.名称 === n) ? [el, VoiceBind.chip(n, paint)] : [el]; });
 const DETAIL = adMode();   // 网址带 a=…：这一页是一样东西自己的那一页（资产详情.js，11-14）
 const paint = () => { if ((DETAIL ? adRepaint : repaint)() === false) rerender(); };
 function render() {
-  const s = sceneNow(), seg = s.段;
+  const s = sceneNow();
   const lk = assetState(s);
-  if (lk.st === 'lock') return assetLock(s, lk);
+  if (lk.st === 'lock') { PickBar.close(); return assetLock(s, lk); }
   setTimeout(repaint, 0);   // 架子先摆上，里面的东西接着填
   pickFromHash(s);
-  return [h('div', { class: 'as-head', id: 'as-bar' }), h('div', { id: 'as-more' }), h('div', { class: 'as-secs', id: 'as-grid' }), h('div', { class: 'wf-fab', id: 'as-fab' })];
+  const body = h('div', { id: 'as-body' });
+  kbWire(body);
+  return [h('div', { class: 'as-head', id: 'as-head' }, h('div', { class: 'as-h1', id: 'as-h1' }), h('div', { class: 'as-tabs', id: 'as-tabs', role: 'tablist' })), h('div', { id: 'as-more' }), body];
 }
 
-/* 从一样东西的那一页点「回资产页挑一张」回来：网址带 #pick=类别/名称，给那一格打开挑图 */
+/* 从一样东西的那一页点「回资产页挑一张」回来：网址带 #pick=类别/名称，换到那一页，给那一张卡打开挑图栏 */
 function pickFromHash(s) {
   let v = '';
   try { v = decodeURIComponent(location.hash.slice(1)); } catch (e) { return; }
   const m = /^pick=([^/]+)\/(.+)$/.exec(v);
   if (!m) return;
   history.replaceState(null, '', location.pathname + location.search);
-  setTimeout(() => { const it = assetsOf(s).list.find(x => x.类别 === m[1] && x.名称 === m[2]); if (it) addDlg(s, kindOf(it.类别), it); }, 60);
+  const it = assetsOf(s).list.find(x => x.类别 === m[1] && x.名称 === m[2]);
+  if (!it) return;
+  if (tabNow() !== kindOf(it.类别)) setTab(kindOf(it.类别));
+  setTimeout(() => pickFor(s, it), 60);
 }
 
 start({ name: '资产', scene: true, render: DETAIL ? adRender : render, repaint: DETAIL ? adRepaint : repaint,

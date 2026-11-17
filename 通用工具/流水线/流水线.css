@@ -142,8 +142,13 @@ body.wf-covered .wf-fab { display: none; }
 .fr-use.vb-play, .fr-use.vb-btn { background: var(--sheet); font-family: inherit; cursor: pointer; }
 .fr-use.vb-play:hover, .fr-use.vb-btn:hover, .vb-play.on { border-color: var(--dai-line); color: var(--dai); }
 .fr-use.vb-btn.warn { border-color: var(--zhu-line); color: var(--zhu); }
-.vb-chip .ph { display: grid; place-items: center; font-size: 20px; color: var(--ink-3); }
-.vb-chip.vb-play.on { background: var(--dai-soft); }
+/* 资产页人物卡底下那一行音色（音色绑定.js 的 line） */
+.vb-line { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); font-size: 12px; color: var(--ink-3); }
+.vb-line .vb-l { flex: none; color: var(--k, var(--ink-3)); }
+.vb-line .vb-n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.vb-line.warn .vb-n { color: var(--zhu); }
+.vb-mini { flex: none; padding: 0 8px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--sheet); font: 11.5px/1.7 var(--sans); color: var(--ink-2); cursor: pointer; }
+.vb-mini:hover { border-color: var(--dai-line); color: var(--dai); }
 .vb-list { display: grid; gap: 6px; max-height: 52vh; overflow: auto; min-width: 380px; }
 .vb-row { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
 .vb-row.on { border-color: var(--dai-line); background: var(--dai-soft); }
@@ -366,6 +371,21 @@ body.wf-covered { overflow: hidden; }
 /* 提示词那一步的筛选（全部 / 已出片 / 没出片）：钉在步骤条下面（top 由 公用/界面.js 的 pinUnder 量了再填） */
 .wf-filter { position: sticky; top: 117px; z-index: 18; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px -14px -8px; padding: 8px 14px; background: var(--paper); }
 .wf-none { margin-top: 16px; }
+/* 镜头表浮窗（镜头表浮窗.js）：钉在左边、步骤条下面（top、宽、高由脚本量了再填），镜头多了框里自己滚；收起是左边一个竖着的小签 */
+.wf-sf { position: fixed; left: 16px; z-index: 25; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); box-shadow: var(--shadow); animation: fade .2s ease both; }
+.wf-sf.float { box-shadow: 0 0 0 1px rgba(214, 202, 182, .95), 0 22px 54px -16px rgba(40, 28, 16, .5); }
+.wf-sf[hidden], .wf-sf-tab[hidden] { display: none; }
+.sf-h { flex: none; display: flex; align-items: baseline; gap: 8px; padding: 10px 14px 8px; border-bottom: 1px solid var(--line); }
+.sf-h b { font: 600 15px var(--serif); letter-spacing: .1em; }
+.sf-h .sp { flex: 1; }
+.sf-list { margin: 0; padding: 4px 0 8px; list-style: none; overflow-y: auto; overscroll-behavior: contain; }
+.sf-list li { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; padding: 6px 14px; font-size: 14px; line-height: 1.65; word-break: break-word; transition: background .15s; }
+.sf-list li + li { border-top: 1px dashed var(--line); }
+.sf-list .n { font: 14px/1.65 var(--kai); color: var(--dai); white-space: nowrap; }
+.sf-list .y { grid-column: 2; font-size: 12.5px; color: var(--ink-3); white-space: pre-wrap; }
+.sf-list li.on { background: var(--dai-soft); box-shadow: inset 3px 0 0 var(--dai); }
+.wf-sf-tab { position: fixed; left: 0; z-index: 25; padding: 14px 7px; border: 1px solid var(--line-2); border-left: 0; border-radius: 0 9px 9px 0; background: var(--sheet); box-shadow: var(--shadow); writing-mode: vertical-rl; font: 14px var(--serif); letter-spacing: .3em; color: var(--ink-2); cursor: pointer; }
+.wf-sf-tab:hover { border-color: var(--ink-4); color: var(--ink); }
 .wf-item { padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); }
 .wf-item.picked { border-color: var(--dai-line); background: #fbfdfc; }
 .wf-item-h { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -397,13 +417,7 @@ select.inp { cursor: pointer; }
 .fl-asset-ok .ic { width: 11px; height: 11px; stroke-width: 2; }
 .fl-asset.ok { border-color: var(--dai-line); }
 .wf-grid .fl-asset { max-width: 320px; }
-.wf-sug { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
-.wf-sug .fl-ref { cursor: pointer; }
-/* 资产页顶上那一行（11-13 他说原来那一大框「放这里不好看」）：左边这一场的图走到哪了（点了跳到那几格），右边几个次要按钮；该做的下一件在右下角悬浮 */
-.as-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 40px; padding: 0 0 12px; border-bottom: 1px solid var(--line); }
-.as-head .sp { flex: 1; }
-.as-head .btn.ghost { color: var(--ink-3); }
-.as-head .btn.ghost:hover { color: var(--ink); }
+/* 资产页顶上那一条：这一场的图走到哪了（点了跳过去）；那一页别的样式在 资产.html 里 */
 .as-prog { display: inline-flex; align-items: center; gap: 4px; padding: 4px 2px; border: 0; background: none; font: 13.5px var(--sans); color: var(--ink-2); cursor: pointer; }
 .as-prog b { font-weight: 600; color: var(--ink); }
 .as-meter { position: relative; width: 120px; height: 6px; margin-right: 8px; border-radius: 999px; background: var(--paper-3); overflow: hidden; }
@@ -411,7 +425,6 @@ select.inp { cursor: pointer; }
 .as-warn { display: inline-flex; align-items: center; padding: 3px 12px; border: 1px solid var(--zhu-line); border-radius: 999px; background: var(--zhu-soft); font: 12.5px var(--sans); color: var(--zhu); }
 button.as-warn { cursor: pointer; }
 button.as-warn:hover { border-color: var(--zhu); }
-.fl-asset.flash { animation: asFlash 1.6s ease; }
 @keyframes asFlash { 0%, 55% { box-shadow: 0 0 0 3px var(--zhu-line); } 100% { box-shadow: 0 0 0 3px transparent; } }
 .wf-fab .btn.sub { padding: 9px 22px; font-size: 13px; letter-spacing: .1em; background: rgba(255, 253, 249, .97); }   /* 悬浮那一块里的次要按钮：浅色、小一号 */
 
@@ -420,14 +433,6 @@ button.as-warn:hover { border-color: var(--zhu); }
 .k-jing { --k: #2e6c9e; --k-soft: rgba(46, 108, 158, .08); --k-line: rgba(46, 108, 158, .42); }
 .k-dao  { --k: #a3651f; --k-soft: rgba(163, 101, 31, .09); --k-line: rgba(163, 101, 31, .45); }
 .k-w { font-weight: 600; color: var(--k); }
-/* 资产页：人物、场景、道具三块，各有一个带颜色的标题 */
-.as-sec { margin-top: 24px; }
-.as-sec-h { display: flex; align-items: center; gap: 10px; padding-bottom: 7px; border-bottom: 2px solid var(--k-line); }
-.as-sec-h b { display: inline-flex; align-items: center; gap: 8px; font: 600 17px var(--serif); letter-spacing: .3em; color: var(--k); }
-.as-sec-h b::before { content: ''; width: 11px; height: 11px; border-radius: 3px; background: var(--k); }
-.as-sec-h small { min-width: 22px; padding: 0 7px; border-radius: 999px; background: var(--k-soft); font: 600 12px/20px var(--sans); text-align: center; color: var(--k); }
-.as-sec .wf-grid { margin-top: 12px; }
-.as-sec-e { margin: 10px 0 0; }
 /* 一格图：左边一道颜色；场景图是横的，小图宽一点 */
 .fl-asset.k-ren, .fl-asset.k-jing, .fl-asset.k-dao { border-left: 4px solid var(--k); }
 .fl-asset.k-jing img { width: 82px; object-position: center; }
@@ -445,16 +450,13 @@ button.as-warn:hover { border-color: var(--zhu); }
 .fl-at.cv { border-style: dashed; }
 .fl-at.cv small { color: var(--ink-3); }
 .cv-big { display: block; max-width: 100%; max-height: 66vh; margin: 0 auto; object-fit: contain; border-radius: 6px; background: var(--paper-2); }
-.fl-jump { display: flex; flex-wrap: wrap; gap: 8px; }
-.fl-jump .btn.k-ren, .fl-jump .btn.k-jing, .fl-jump .btn.k-dao { border-color: var(--k-line); color: var(--k); }
 /* 设定页的分页、总览的设定四格 */
 .wf-tab.k-ren::before, .wf-tab.k-jing::before, .wf-tab.k-dao::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--k); align-self: center; }
 .wf-tab.on.k-ren, .wf-tab.on.k-jing, .wf-tab.on.k-dao { background: var(--k); border-color: var(--k); }
 .wf-tab.on.k-ren::before, .wf-tab.on.k-jing::before, .wf-tab.on.k-dao::before { background: #fff; }
 .wf-tile.k-ren, .wf-tile.k-jing, .wf-tile.k-dao { border-top: 3px solid var(--k); }
 .wf-tile.k-ren b, .wf-tile.k-jing b, .wf-tile.k-dao b { color: var(--k); }
-/* 三块各一个「＋ 新增」；新增弹窗里「表里的」那一排；带颜色的按钮（11-13） */
-.as-sec-h .btn { margin-left: auto; }
+/* 带颜色的按钮（11-13） */
 .btn.k-ren, .btn.k-jing, .btn.k-dao { border-color: var(--k-line); color: var(--k); }
 .btn.k-ren:hover, .btn.k-jing:hover, .btn.k-dao:hover { border-color: var(--k); background: var(--k-soft); }
 /* 第四样：关键帧（11-13 夜），墨绿。只这一场用，图在 资产/第N段 */
@@ -467,7 +469,7 @@ button.as-warn:hover { border-color: var(--zhu); }
 .fl-apick .pick-lab.k-zhen { padding-left: 9px; border-left: 4px solid var(--k); color: var(--k); font-weight: 600; }
 .wf-tile.k-zhen { border-top: 3px solid var(--k); }
 .wf-tile.k-zhen b { color: var(--k); }
-.btn.k-zhen, .fl-jump .btn.k-zhen { border-color: var(--k-line); color: var(--k); }
+.btn.k-zhen { border-color: var(--k-line); color: var(--k); }
 .btn.k-zhen:hover { border-color: var(--k); background: var(--k-soft); }
 .fl-addrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .fl-addrow .fl-ref { cursor: pointer; }
@@ -657,18 +659,28 @@ button.as-warn:hover { border-color: var(--zhu); }
 .prompt-shot { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; cursor: pointer; }
 .prompt-shot:has(input:checked) { border-color: var(--qing); background: var(--qing-soft); }
 .prompt-shot input { margin-top: 5px; accent-color: var(--qing); }
-.prompt-shot span { display: grid; gap: 3px; min-width: 0; }
+.prompt-shot > span { display: grid; gap: 3px; min-width: 0; }
 .prompt-shot small { color: var(--ink-3); line-height: 1.6; }
 .prompt-scope { margin-top: 10px; color: var(--ink-2); font-size: 13px; line-height: 1.7; }
 .prompt-scope summary { cursor: pointer; }
 .prompt-scope ol { margin: 6px 0; padding-left: 24px; }
-/* 资产页关键帧那一块：按镜头表一镜一行（2026-11-16 关键帧绑定） */
-.kb-row { margin-top: 14px; }
-.kb-row .wf-grid { margin-top: 8px; }
-.kb-h { display: flex; gap: 10px; align-items: baseline; font-size: 13px; color: var(--ink-2); }
-.kb-h b { color: var(--ink); white-space: nowrap; }
-.kb-h .fl-link { margin-left: auto; }
-.kb-loose .kb-h b { color: var(--zhu, #a83a2c); }
-.kb-chip { flex-wrap: wrap; row-gap: 6px; }
-.kb-acts { flex-basis: 100%; display: flex; gap: 6px; justify-content: flex-end; }
+/* 提示词页挑关键帧：绑在镜头上、这一条没带的 */
 .fl-at.kb-t small { color: var(--ink-3); }
+/* 页签（提炼页、资产页顶上：人物、场景、道具……一次看一样） */
+.pz-tabs { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 2px 4px; }
+.pz-tab { padding: 6px 14px 9px; border: 0; border-bottom: 2.5px solid transparent; background: none; cursor: pointer; font: 15px var(--serif); letter-spacing: .1em; color: var(--ink-3); white-space: nowrap; }
+.pz-tab:hover { color: var(--ink); }
+.pz-tab.on { border-bottom-color: var(--ink); color: var(--ink); font-weight: 600; }
+.pz-tab em { margin-left: 6px; padding: 0 7px; border-radius: 9px; background: var(--paper-2); font: normal 12px/1.6 var(--sans); letter-spacing: 0; color: var(--ink-3); }
+.pz-tab small { margin-left: 4px; font: 11.5px var(--sans); letter-spacing: 0; color: var(--ink-4); }
+.pz-tab .dot { display: inline-block; width: 7px; height: 7px; margin-left: 5px; border-radius: 50%; background: var(--zhu); vertical-align: 2px; }
+.pz-tabs .sp { flex: 1; }
+
+/* 镜头表作用的标签色块（2026-11-16，公用/镜头作用.js）：提炼页、写提示词勾镜头、镜头表小窗共用；色带的块也照这几种颜色 */
+.sw-t { display: inline-block; margin-right: 6px; padding: 0 5px; border-radius: 4px; font: 600 11.5px/1.65 var(--sans); letter-spacing: 0; white-space: nowrap; vertical-align: 1px; }
+.sw-t.jd, .sw-b.jd { background: #e3eeed; color: #2f5355; }   /* 交代 */
+.sw-t.pd, .sw-b.pd { background: #f4e7cb; color: #7a5a1e; }   /* 铺垫 */
+.sw-t.zz, .sw-b.zz { background: #fbe3dc; color: #9a3326; }   /* 转折 */
+.sw-t.gc, .sw-b.gc { background: #a83a2c; color: #fff; }      /* 高潮 */
+.sw-t.fy, .sw-b.fy { background: #e5edd9; color: #46622f; }   /* 反应 */
+.sw-t.sw, .sw-b.sw { background: #e9e3da; color: #4d453d; }   /* 收尾 */

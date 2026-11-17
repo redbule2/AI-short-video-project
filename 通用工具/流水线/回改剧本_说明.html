@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>流水线：后面发现剧本不对，怎么回去改</title>
+<style>
+  body { margin: 0; padding: 28px 32px 48px; background: #f4efe6; color: #2a2622; font: 15px/1.8 'Noto Sans SC', 'Microsoft YaHei', sans-serif; max-width: 860px; }
+  h1 { font: 600 22px/1.4 'Noto Serif SC', SimSun, serif; letter-spacing: .06em; margin: 0 0 6px; }
+  h2 { font: 600 17px/1.4 'Noto Serif SC', SimSun, serif; margin: 30px 0 10px; }
+  .sub { color: #887e74; font-size: 13px; margin-bottom: 18px; }
+  .rule { background: #fffdf9; border: 1px solid #e5dccd; border-radius: 10px; padding: 14px 18px; }
+  .rule b { color: #a83a2c; }
+  .beat { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 10px 0 4px; font-size: 14px; }
+  .beat span { padding: 3px 10px; border-radius: 6px; }
+  .you { background: #e8efe9; color: #2d4a3a; }
+  .ai { background: #f6e6d8; color: #7a3d14; }
+  .auto { background: #e6e9f2; color: #2e3a5c; }
+  .arrow { color: #b0a698 !important; padding: 0 !important; }
+  .card { background: #fffdf9; border: 1px solid #e5dccd; border-radius: 10px; padding: 12px 18px; margin: 10px 0; }
+  .card b { color: #2a2622; }
+  ul { margin: 6px 0; padding-left: 22px; }
+  .eg { background: #f8f4ec; border-left: 3px solid #c9bba5; padding: 8px 14px; margin: 8px 0; font-size: 14px; color: #554d45; }
+  .note { color: #887e74; font-size: 13px; }
+  .ask { background: #fff6ee; border: 1px solid #e9c9ae; border-radius: 10px; padding: 12px 18px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<h1>后面发现剧本不对，怎么回去改</h1>
+<div class="sub">2026-11-16 · 已经做好，在试验服务上跑通；正式的要重开本机服务（8766）才有</div>
+
+<div class="rule">
+  <div>一句话：<b>片子定稿、写完审片批注，项目自己叫 AI 对一对剧本，不用你复制</b>。对不上的，AI 写成「剧本批注」，<b>剧本本身不动</b>。</div>
+  <div class="note">为什么不让 AI 直接改剧本：项目的规矩是剧本只照批注改；这样你先看到它要改哪一句、为什么，不同意就删掉。</div>
+  <div class="beat">
+    <span class="auto">选定、定稿、写完批注</span><span class="arrow">→</span>
+    <span class="ai">AI 自己对剧本，写剧本批注</span><span class="arrow">→</span>
+    <span class="you">你在剧本页看、删</span><span class="arrow">→</span>
+    <span class="ai">交给 AI 改</span><span class="arrow">→</span>
+    <span class="you">你重新定稿</span>
+  </div>
+  <div class="note">后面两步就是剧本页原来的办法。</div>
+</div>
+
+<h2>谁来对</h2>
+<ul>
+  <li>先用这台电脑上的 Codex，走命令行，不开窗口，照固定格式回（判断、说明、批注、不归剧本）。实测十几到二十几秒。</li>
+  <li>Codex 出错、找不到、回的格式不对，或者超过 6 分钟没对完，换 DeepSeek（接口直接调，实测两三秒）。</li>
+  <li>DeepSeek 的 key 每台电脑自己填：顶栏「内置 AI」。key 存在这台电脑的用户目录里，不进项目、不上网盘、不上 GitHub。这台已经填好，余额 49.73 元。</li>
+</ul>
+
+<h2>一、片子定稿了，提示词和剧本对不上</h2>
+<div class="card">
+  <b>什么时候：</b>审片页点「满意，选定」，或者「这一段定稿」。
+  <br><b>拿什么比：</b>那条样片当初照着出的那一版提示词，和定稿的剧本。<b>以片子为准</b>，剧本跟着改。
+  <br><b>只认：</b>谁在场、谁做什么、先后、台词、结果、在哪儿。镜头、光线、动作细节、长相不往剧本里搬。
+  <br><b>重新定稿时：</b>剧本是跟着片子改的，那几条选定的样片和它们的提示词<b>不标</b>「待核对」，别的照旧标。
+</div>
+
+<h2>二、审片批注和剧本对不上</h2>
+<div class="card">
+  <b>什么时候：</b>在审片台写完批注，点「← 回审片」回来。
+  <br><b>AI 做的事：</b>一条一条分：剧本本身的毛病才写剧本批注；提示词没写好、模型没演好、长相画错、画面太暗这类，放进「不归剧本」，不写。
+  <div class="eg">试验：3-4 镜头8-9 的批注「镜头9 开场就所有机枪都不开火、人人拿刀」→ AI 判断剧本第13行已经这么写了，是提示词多加了过程，剧本不用改。</div>
+</div>
+
+<h2>写出来是什么样</h2>
+<ul>
+  <li>写进剧本旁边那份剧本批注（第N段_剧本_批注.md）；那一段已经有你写的批注，就接在后面。剧本页一打开就看得到，顶上一行写「AI 对剧本写了 N 条批注」。</li>
+  <li>每条末尾标来源，例如：<span class="eg" style="display:inline;padding:2px 8px">〔AI 照定稿的样片写：第3-4段_第13条_镜头8-9_720p 提示词镜头2〕</span></li>
+  <li>先判断再写：判断是「对得上」就一个字不写。同样的材料、剧本也没动过，不再对第二回；同一段同一句批注不写两回。</li>
+  <li>每回对了什么、谁对的、为什么，记在 第N段_对剧本.json，出了问题好查。</li>
+</ul>
+</body>
+</html>

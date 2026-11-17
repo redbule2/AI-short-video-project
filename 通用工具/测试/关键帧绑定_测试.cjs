@@ -28,6 +28,8 @@ test('fillNos 把号写进表；keepNos 并进 AI 新提炼的表时留住原来
   assert.deepEqual(SB.keepNos(rows('甲', '乙改', '丙'), old).map(x => x.号), ['1', '2', '11']);   // 一样多：改了字的照位置留号
   assert.deepEqual(SB.keepNos(rows('甲', '新', '乙', '丙'), old).map(x => x.号), ['1', '1b', '2', '11']);   // 中间加了一镜
   assert.deepEqual(SB.keepNos(rows('甲', '丙'), old).map(x => x.号), ['1', '11']);   // 删了一镜
+  const why = rows('甲', '新', '乙', '丙').map((x, i) => ({ ...x, 作用: '铺垫｜改写的作用' + i }));
+  assert.deepEqual(SB.keepNos(why, old).map(x => x.号), ['1', '1b', '2', '11']);   // 加了一镜、作用全改写了：写什么一样的还是原来那一镜
 });
 
 test('提示词名字里的镜头号：照表里的先后展开、挨着的连起来', () => {
@@ -77,6 +79,24 @@ test('按镜头表摆：没绑的、绑的镜头删了的放最下面，改过�
   const t = SB.table(['a/镜头1_首帧.png', 'a/镜头2_首帧.png', 'a/镜头10_首帧.png', 'a/镜头2_尾帧.png'], paras, binds);
   assert.deepEqual(t.rows.map(r => r.帧.map(x => [x.file, x.stale, x.current])), [[['a/镜头1_首帧.png', false, true]], [['a/镜头2_首帧.png', true, true]]]);
   assert.deepEqual(t.loose, [{ file: 'a/镜头10_首帧.png', gone: '10', guess: null }, { file: 'a/镜头2_尾帧.png', gone: '', guess: { 镜: '2', 刻: '尾帧' } }]);
+});
+
+test('资产页一镜三格：现用的在格里，别的是备选；拖到一格当现用', () => {
+  const paras = [{ 写什么: '甲', 号: '1' }, { 写什么: '乙', 号: '2' }];
+  const s = {}, A = 'a/镜头1_首帧.png', B = 'a/镜头1_首帧_雾.png', C = 'a/镜头1_尾帧.png';
+  SB.bind(s, A, '1', '首帧', paras); SB.bind(s, B, '1', '首帧', paras); SB.bind(s, C, '1', '尾帧', paras);
+  const one = () => SB.slots(SB.table([A, B, C], paras, SB.bindsOf(s)).rows[0]);
+  let x = one();
+  assert.equal(x.首帧.cur.file, A); assert.deepEqual(x.首帧.alts.map(y => y.file), [B]);
+  assert.equal(x.关键帧.cur, null); assert.deepEqual(x.关键帧.alts, []);
+  assert.equal(x.尾帧.cur.file, C);
+  SB.bind(s, B, '1', '首帧', paras, true);   // 拖到已经有图的一格：拖过来的当现用，原来那张改备选
+  x = one();
+  assert.equal(x.首帧.cur.file, B); assert.deepEqual(x.首帧.alts.map(y => y.file), [A]);
+  SB.bind(s, C, '2', '关键帧', paras, true);   // 拖到别的镜头：从原来那一格挪走
+  assert.equal(one().尾帧.cur, null);
+  assert.equal(SB.slots(SB.table([A, B, C], paras, SB.bindsOf(s)).rows[1]).关键帧.cur.file, C);
+  assert.deepEqual(Object.keys(SB.slots(null)), ['首帧', '关键帧', '尾帧']);
 });
 
 test('出片前对一遍：没写到、没绑、绑的镜头不在这一条、字改过', () => {

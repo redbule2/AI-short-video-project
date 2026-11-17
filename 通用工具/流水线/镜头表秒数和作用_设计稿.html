@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>镜头表的秒数和作用 · 设计稿</title>
+<style>
+:root { --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --line: #d6cab6; --zhu: #a83a2c; --zhu-soft: #fbeee9; --dai: #3e5c5e; --huang: #fff4c9; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.85 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif; }
+main { max-width: 820px; margin: 0 auto; padding: 32px 22px 120px; }
+h1 { margin: 0 0 4px; font: 600 26px/1.4 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .08em; }
+.sub { margin: 0 0 20px; font-size: 14.5px; color: var(--ink-2); }
+h2 { margin: 34px 0 10px; font: 600 19px/1.5 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .1em; }
+.card { margin: 12px 0; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+.card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 600; }
+.card h3 .no { display: inline-block; min-width: 1.7em; color: var(--dai); }
+.card p { margin: 3px 0; color: var(--ink-2); }
+.opts { margin: 8px 0 2px; }
+.opts label { display: block; margin: 5px 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opts label:hover { background: #faf5ea; }
+.opts input { margin-right: 8px; }
+.opts .rec { color: var(--dai); font-size: 13px; margin-left: 4px; }
+textarea { display: block; width: 100%; margin-top: 8px; min-height: 2.6em; padding: 7px 10px; border: 1px dashed #c8b99f; border-radius: 8px; background: #fffef9; font: 15px/1.7 'Noto Sans SC', 'Microsoft YaHei', sans-serif; color: var(--ink); resize: vertical; }
+textarea:focus { outline: none; border-style: solid; border-color: var(--dai); background: #fff; }
+textarea.has { border-style: solid; border-color: #b9822f; background: var(--huang); }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; background: rgba(255,253,249,.96); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; justify-content: center; font-size: 14px; }
+.bar button { padding: 6px 14px; border: 1px solid var(--dai); border-radius: 8px; background: #fff; color: var(--dai); font: inherit; cursor: pointer; }
+.bar button:hover { background: #eef5f3; }
+#st { color: var(--ink-2); }
+.foot { margin-top: 26px; font-size: 13px; color: var(--ink-3); }
+.cap { margin: 8px 2px 0; font-size: 13px; color: var(--ink-3); }
+
+/* ---- 标签的颜色：一列看下来就是这段戏的起伏 ---- */
+.tg { display: inline-block; padding: 0 6px; margin-right: 6px; border-radius: 4px; font-size: 12px; line-height: 1.7; font-weight: 600; white-space: nowrap; }
+.t-jd { background: #e3eeed; color: #2f5355; }   /* 交代 */
+.t-pd { background: #f4e7cb; color: #7a5a1e; }   /* 铺垫 */
+.t-zz { background: #fbe3dc; color: #9a3326; }   /* 转折 */
+.t-gc { background: #a83a2c; color: #fff; }      /* 高潮 */
+.t-fy { background: #e5edd9; color: #46622f; }   /* 反应 */
+.t-sw { background: #e9e3da; color: #4d453d; }   /* 收尾 */
+
+/* ---- 示意：第3-5段的镜头表 ---- */
+.jt { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); }
+.jt-strip { position: relative; display: flex; height: 34px; margin: 2px 0 26px; border-radius: 6px; overflow: visible; }
+.jt-strip .b { display: flex; align-items: center; justify-content: center; gap: 4px; border-right: 2px solid var(--sheet); font-size: 12px; white-space: nowrap; overflow: hidden; cursor: default; }
+.jt-strip .b:first-child { border-radius: 6px 0 0 6px; } .jt-strip .b:last-child { border-radius: 0 6px 6px 0; border-right: 0; }
+.jt-strip .b em { font-style: normal; opacity: .75; }
+.jt-strip .mk15 { position: absolute; top: -4px; bottom: -4px; border-left: 2px dashed var(--zhu); }
+.jt-strip .mk15 span { position: absolute; top: 100%; left: -2px; padding-top: 3px; font-size: 11.5px; color: var(--zhu); white-space: nowrap; }
+.jt-tb { border: 1px solid var(--line); border-radius: 8px; background: #fffdf9; }
+.jt-r { display: grid; grid-template-columns: 30px 1fr 48px; gap: 6px; align-items: start; padding: 7px 10px; border-top: 1px solid #ece3d3; transition: background .12s; }
+.jt-r:first-child { border-top: 0; }
+.jt-r .no { font: 600 13px/1.9 'Noto Serif SC', SimSun, serif; color: var(--dai); }
+.jt-r b { display: block; font-weight: 500; }
+.jt-r small { display: block; font-size: 13px; color: var(--ink-2); }
+.jt-r .s { text-align: right; font-size: 13px; color: var(--ink-3); padding-top: 2px; }
+.jt-r.hot { background: #fff6dc; }
+.jt-r.lnk { background: #eef5f3; }
+.jt-r.lnk .no, .jt-r.hot .no { color: var(--zhu); }
+.jt-ft { display: flex; justify-content: space-between; padding: 8px 4px 0; font-size: 13.5px; color: var(--ink-2); }
+.jt-ft b { color: var(--ink); }
+.cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+.cmp > div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); font-size: 14px; }
+.cmp b.h { display: block; margin-bottom: 4px; font-size: 14px; }
+.cmp .old b.h { color: var(--zhu); } .cmp .new b.h { color: var(--dai); }
+.cmp p { margin: 2px 0; color: var(--ink-2); }
+.cmp .n { font-size: 12.5px; color: var(--ink-3); }
+.lg { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 6px 0 2px; font-size: 14.5px; color: var(--ink-2); }
+.lg .tg { justify-self: start; margin-top: 4px; }
+@media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>镜头表的秒数和作用 · 设计稿</h1>
+<p class="sub" id="sub"></p>
+
+<template id="fig-mock">
+<div class="jt">
+  <div class="jt-strip">
+    <div class="b t-pd" data-no="1" style="flex:3">1 铺垫<em>3秒</em></div>
+    <div class="b t-zz" data-no="2" style="flex:3">2 转折<em>3秒</em></div>
+    <div class="b t-jd" data-no="3" style="flex:4">3 交代<em>4秒</em></div>
+    <div class="b t-pd" data-no="4" style="flex:4">4 铺垫<em>4秒</em></div>
+    <div class="b t-gc" data-no="5" style="flex:3">5 高潮<em>3秒</em></div>
+    <div class="b t-sw" data-no="6" style="flex:5">6 收尾<em>5秒</em></div>
+    <div class="mk15" style="left:68.18%"><span>15 秒（一条视频）</span></div>
+  </div>
+  <div class="jt-tb">
+    <div class="jt-r" data-no="1" data-ref="2"><span class="no">1</span><div><b>机枪都不响了，外星战士欢呼冲向沙袋墙</b><small><span class="tg t-pd">铺垫</span>阵地眼看守不住，为镜2救场</small></div><span class="s">3 秒</span></div>
+    <div class="jt-r" data-no="2" data-ref="1"><span class="no">2</span><div><b>金光落在墙前截住敌人，云层裂开战歌骤起</b><small><span class="tg t-zz">转折</span>接镜1，冲锋被金光截住</small></div><span class="s">3 秒</span></div>
+    <div class="jt-r" data-no="3" data-ref="2"><span class="no">3</span><div><b>漫天小悟空落下，领头的落地亮出“童”字</b><small><span class="tg t-jd">交代</span>接镜2，救兵亮相：个小气势足</small></div><span class="s">4 秒</span></div>
+    <div class="jt-r" data-no="4" data-ref="5"><span class="no">4</span><div><b>小悟空列成横阵挡在墙前，舞棒逼退敌人</b><small><span class="tg t-pd">铺垫</span>横阵先压住气势，为镜5开打</small></div><span class="s">4 秒</span></div>
+    <div class="jt-r" data-no="5" data-ref="3"><span class="no">5</span><div><b>两边对冲，领头小悟空一棒一个打飞敌人</b><small><span class="tg t-gc">高潮</span>接镜3，全段最爽：小猴真能打</small></div><span class="s">3 秒</span></div>
+    <div class="jt-r" data-no="6" data-ref="1"><span class="no">6</span><div><b>全线挡住敌人，墙后士兵起身，机枪手惊叹</b><small><span class="tg t-sw">收尾</span>挡死镜1的冲锋，引下段反攻</small></div><span class="s">5 秒</span></div>
+  </div>
+  <div class="jt-ft"><span><b>6 镜　约 22 秒</b></span><span>一条视频一般 15 秒：这一段要分两条</span></div>
+</div>
+<div class="cmp">
+  <div class="old"><b class="h">现在：镜3 的作用（80 个字）</b><p>救兵亮相：先是布满天空的气势，再落到领头小悟空一个人身上。看清他只有十岁孩子那么高、胸前一个“童”字，却盯着高出他一大截的敌人，个头小、气势足的反差让人记住他。</p><p class="n">要读完才知道它干什么；看不出跟哪一镜连着；没有秒数。</p></div>
+  <div class="new"><b class="h">以后（17 个字）</b><p><span class="tg t-jd">交代</span>接镜2，救兵亮相：个小气势足</p><p class="n">色块：干什么。「接镜2」：跟谁连着。后面一句：要观众记住什么。细节剧本里都有，写提示词的 AI 照旧读剧本。</p></div>
+</div>
+<p class="cap">鼠标放到一镜（或顶上色带的一块）上，它连着的那一镜也亮起来。数据是第3-5段的；秒数是我举例估的。</p>
+</template>
+
+<template id="fig-tags">
+<div class="lg">
+  <span class="tg t-jd">交代</span><span>让人知道谁、在哪、出了什么事。人物亮相也算。</span>
+  <span class="tg t-pd">铺垫</span><span>给后面某一镜攒劲，现在还没爆。</span>
+  <span class="tg t-zz">转折</span><span>局面翻过来。</span>
+  <span class="tg t-gc">高潮</span><span>这一段最狠、最爽的那一下。一段一般一个。</span>
+  <span class="tg t-fy">反应</span><span>前面那一下落到人身上：看他怎么接、怎么变。</span>
+  <span class="tg t-sw">收尾</span><span>这段戏落下来，交给下一段。</span>
+</div>
+</template>
+
+<div id="sections"></div>
+<h2>别的意见</h2>
+<div class="card"><textarea data-k="其他" placeholder="上面没说到的，写在这里（可以不写）"></textarea></div>
+<p class="foot" id="foot"></p>
+</main>
+<div class="bar"><span id="st">在每一块下面的虚线框里写批注，自动存。</span><button id="copy">复制批注</button></div>
+<script>
+/* ===== 内容（改内容只改这一块；怎么摆、怎么存批注在 公用/说明页.js） ===== */
+const ROUND = 1;
+const SUB = '镜头表每一镜加上预估秒数；「作用」改成 20 个字以内的固定写法，一眼看出这一镜干什么、跟哪一镜连着。你看了定，我再改。';
+const FOOT = '2026-11-16 Claude 照提炼的代码（jobs.js、分场.html）和第3-5段的镜头表拟的。';
+const SECTIONS = [
+  { h: '看一眼的样子', fig: 'fig-mock', cards: [] },
+  { h: '作用怎么写', note: '一个格式：标签｜目的，关系。连标签一共不超过 20 个字，例：铺垫｜阵地眼看守不住，为镜2救场。标签六个，挑一个：', fig: 'fig-tags', cards: [
+    { id: 'w2', no: '①', t: '标签：页面画成色块', p: [ '一列色块看下来，就是这段戏的起伏。' ] },
+    { id: 'w3', no: '②', t: '目的：观众看到、明白、觉得什么', p: [
+      '一句话。不写怎么拍，不写机位、运镜。' ] },
+    { id: 'w4', no: '③', t: '关系：写跟它连得最紧的那一镜', p: [
+      '不一定是挨着的那一镜（镜5 的爽，接的是镜3 的亮相）。只用两种说法：「接镜N」（因为镜N 才有这一镜）、「为镜N」（给镜N 做准备）。段头段尾可以写「接上段」「引下段」。',
+      '镜头号是固定的，删了镜头不挪号，所以「镜N」不会指错。' ] },
+  ] },
+  { h: '秒数', cards: [
+    { id: 'm1', no: '①', t: 'AI 提炼时估', p: [
+      '每一镜一个整秒数。照真人做事的快慢：说话照这个人平常的语速，动作照生活里的快慢；快动作别给多（给多了 Seedance 会放慢）。和写提示词估秒数是同一条规矩。' ] },
+    { id: 'm2', no: '②', t: '你改过的，AI 不动', p: [
+      '点开一镜，多一个秒数框，可以改。你改过的记下来：以后 AI 照批注改，这一镜的秒数照抄，除非批注点名要它改。',
+      '你没改过的：批注说到这一镜、或者写什么改了，AI 重估；别的照抄。' ] },
+    { id: 'm3', no: '③', t: '用在哪', p: [
+      '镜头表底下写合计。写提示词勾镜头时，显示勾的这几镜一共几秒：过 15 秒黄字提醒，过 30 秒红字（即梦最长 30 秒）。',
+      '写提示词的 AI 拿它当参考。出片的时长照旧用写提示词时估的（那时分镜更细，更准）。' ] },
+  ] },
+  { h: '要你定的', cards: [
+    { id: 'd1', no: '甲', t: '作用前面要不要标签', p: [
+      'A 一眼看出干什么，一列看出起伏，占 3 个字。B 字多 3 个，但要读完才知道。' ],
+      opts: [ { v: 'A', t: '要，六个标签带颜色', rec: true }, { v: 'B', t: '不要，只写一句话' } ] },
+    { id: 'd2', no: '乙', t: '关系怎么写', p: [
+      'A 能指到隔着几镜的那一镜，鼠标放上去能亮。B 只能说前后挨着的。' ],
+      opts: [ { v: 'A', t: '写镜号：「接镜3」「为镜5」', rec: true }, { v: 'B', t: '不写号：「接上一镜」「引下一镜」' } ] },
+    { id: 'd3', no: '丙', t: '镜头表顶上要不要色带', p: [
+      '色带一块一镜，宽窄照秒数，颜色照标签，画一道 15 秒的线。一眼看出哪里拖、哪里该切成两条。只占一行。' ],
+      opts: [ { v: 'A', t: '要', rec: true }, { v: 'B', t: '不要，每镜后面写秒数就够' } ] },
+    { id: 'd4', no: '丁', t: '已经提炼过的段', p: [
+      '第3-4段 18 镜没写作用，第3-5段 6 镜的作用是长句，都没有秒数。',
+      'B 是我替你写一条整体批注「只补秒数、照新写法改作用，写什么一字不动」，用现有的「交给 AI 照批注改」跑，改完你在提炼页看红线。' ],
+      opts: [ { v: 'A', t: '不动，下回提炼再说' }, { v: 'B', t: '3-4、3-5 照新写法补上', rec: true } ] },
+  ] },
+  { h: '要改的地方（不用你定）', cards: [
+    { id: 'c1', no: '1', t: 'AI 那边（jobs.js）', p: [
+      '提炼、提炼按批注改的要求换成上面的写法；AI 回的每一镜多一个「秒数」；你改过的秒数照抄。改完要重开 8766，到时候先问你。' ] },
+    { id: 'c2', no: '2', t: '提炼页（分场.html）', p: [
+      '每格加标签色块、秒数；点开多一个秒数框；作用框数着字「14/20」，过了变红；表底合计；鼠标放上去，连着的那一镜亮起来。' ] },
+    { id: 'c3', no: '3', t: '写提示词勾镜头那里、镜头表小窗', p: [
+      '一样显示标签、秒数，勾镜头时显示合计。' ] },
+    { id: 'c4', no: '4', t: '旧数据照认', p: [
+      '没标签的作用照常显示，没秒数的显示「—」，不报错。' ] },
+  ] },
+];
+window.DOC = { 名: '镜头表秒数和作用_设计稿', 题: '镜头表秒数和作用设计稿', 存: 'antou:shot-secs-why', 轮: ROUND, 副题: SUB, 脚注: FOOT, 先选: { d1: 'A', d2: 'A', d3: 'A', d4: 'B' }, 段: SECTIONS };
+
+/* 示意里的连线：鼠标放到一镜上，它连着的那一镜亮起来（它提到的、提到它的都算） */
+document.addEventListener('mouseover', e => {
+  const r = e.target.closest('.jt-r, .jt-strip .b');
+  document.querySelectorAll('.jt-r.hot, .jt-r.lnk').forEach(x => x.classList.remove('hot', 'lnk'));
+  if (!r) return;
+  const no = r.dataset.no, rows = [...document.querySelectorAll('.jt-r')], me = rows.find(x => x.dataset.no === no);
+  if (!me) return;
+  me.classList.add('hot');
+  rows.forEach(x => { if (x !== me && (x.dataset.no === me.dataset.ref || x.dataset.ref === no)) x.classList.add('lnk'); });
+});
+</script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="../公用/说明页.js"></script>
+</body>
+</html>

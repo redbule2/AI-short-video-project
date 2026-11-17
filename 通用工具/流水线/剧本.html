@@ -41,6 +41,7 @@
 <script src="../公用/底座.js"></script>
 <script src="../公用/界面.js"></script>
 <script src="../公用/关键帧绑定.js"></script>
+<script src="../公用/镜头作用.js"></script>
 <script src="流水线.js"></script>
 <script>
 /* ============================================================
@@ -63,9 +64,10 @@ async function finalScript(s) {
   const now = nowText(), { st, again } = scriptState(s), prev = again ? s.剧本定稿 : st === 'ok' ? s.上回定稿 || '' : '';   // prev：上回定稿的时间（11-16 以前让 AI 重写时剧本定稿清空了，记在「上回定稿」里；老数据还认）
   if (!s.头回定稿) s.头回定稿 = s.剧本定稿 || now;   // 头一回定稿是什么时候：以后再定稿就是「重新定稿」，这一场的资产要再核对一遍
   s.剧本定稿 = now; delete s.上回定稿; touch();
+  const kept = prev && window.ScriptCheck ? await ScriptCheck.keepClips(s, prev) : 0;   // 照定稿的样片改的剧本：那几条样片和提示词不标待核对（11-16 加，对剧本.js）
   await flush();
   swapCard(s);
-  if (prev) { s.影响上回 = prev; touch(); await flush(); swapCard(s); toast('第' + s.段 + '段重新定稿了：提炼、资产、提示词标成待核对。想让 AI 列出具体哪几样资产、提示词，点剧本上方的「让 AI 列影响」'); }   // 11-15 起不自动开（只复制、不自动开）
+  if (prev) { s.影响上回 = prev; touch(); await flush(); swapCard(s); toast('第' + s.段 + '段重新定稿了：提炼、资产、提示词标成待核对' + (kept ? '（剧本是跟着定稿的片子改的，那 ' + kept + ' 条样片照旧算定稿）' : '') + '。想让 AI 列出具体哪几样资产、提示词，点剧本上方的「让 AI 列影响」'); }   // 11-15 起不自动开（只复制、不自动开）
   else toast('第' + s.段 + '段剧本定稿了。下一步：让 AI 照剧本提炼梗概、人物、场景、道具和镜头表');
   if (!filmStyle()) styleDlg(null, { first: true });   // 片子还没定拍摄风格：照剧本挑一个（关上也行，以后在全片设定、这一场顶上都能定）
 }
@@ -298,6 +300,8 @@ function barEls(s) {
     h('button', { class: 'btn sm ink', type: 'button', title: '存上，回去看剧本、写批注、定稿', onclick: edClose }, '写好了，看剧本')].filter(Boolean);
   if (jobLive(fixing)) return [jobLine(fixing), barNote('改好以后，下面改动的地方显示成红批。')];
   if (bad) out.push(bad);
+  const ck = st !== 'none' && window.ScriptCheck ? ScriptCheck.scriptNote(s) : null;   // 片子定稿、审片批注和剧本对不上：AI 写了几条批注（11-16 加）
+  if (ck) out.push(ck);
   const fin =(label, cls) => h('button', { class: 'btn sm ' + (cls || ''), title: '剧本看过了，就照这一版。定稿以后才出这一段的资产图', onclick: () => finalScript(s) }, label);
   const mine = (label, cls) => h('button', { class: 'btn sm ' + (cls || ''), type: 'button', title: '在下面直接写，边写边存', onclick: () => edOpen(s) }, icon('pen'), label);
   if (st === 'none') out.push(barNote(d.combined ? '汇总稿里有这一段，还没有单独的剧本。点「写剧本」，先摆上汇总稿里这一段。' : '还没有剧本。点「写剧本」，直接从正文写。'), sp(), mine('写剧本', 'ink'));

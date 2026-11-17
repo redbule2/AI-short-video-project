@@ -18,6 +18,7 @@
 <script src="../公用/点图.js"></script>
 <script src="../公用/找旧版.js"></script>
 <script src="../公用/关键帧绑定.js"></script>
+<script src="../公用/镜头作用.js"></script>
 <script src="流水线.js"></script>
 <script src="../公用/样片归属.js"></script>
 <script>
@@ -27,6 +28,7 @@
      满意：选定它是哪一条提示词的成品；每一条都选定了，再连起来检查衔接，点「这一场定稿」。
      不满意：写批注 → 点「复制批注」贴给你自己的 AI，商量怎么改 → 回前面那一道重新走（多半是「提示词」那一步改稿、再批准出片）。
      审片只批注，不出方案（2026-11-15 他定）。
+     选定、这一段定稿、写完批注回来：项目自己调 AI 和剧本对一对，对不上的写成剧本批注（2026-11-16 他定，对剧本.js）。
    没选上的样片及时移进 历史记录/成片/第N段（批注、截图、补片文件夹跟着一起移，名字不改）。
    共用的东西（读写流水线.json、顶栏、步骤条、AI 任务）在 流水线.js。
    ============================================================ */
@@ -70,6 +72,7 @@ function openDesk(s, vid, list) {
     SHELL = null; window.DESK_HOST = null;
     document.body.classList.remove('wf-covered');
     await refresh(); await loadExtra(); rerender();
+    if (window.ScriptCheck) ScriptCheck.onNotes(s, vid, pr);   // 写了批注的：自动看看哪几条是剧本的毛病（11-16 加，对剧本.js）
   };
   window.DESK_HOST = { close };
   SHELL = h('div', { class: 'wf-shell' }, frame);
@@ -118,6 +121,7 @@ function cardOf2(s, vid, list) {
     if (!pick.value) { toast('先选它是哪一条提示词的成品', 'err'); return; }
     sel[pick.value] = vid; s.成片定稿 = ''; touch(); rerender();
     toast('选定了：' + labelOf2(pick.value) + ' 用这一条');
+    if (window.ScriptCheck) { const e = list.find(x => x.key === pick.value); ScriptCheck.onPick(s, vid, verOf(s, vid, e) || (e ? e.name : pick.value)); }   // 定稿的提示词和剧本对一对（11-16 加）
   };
   const drop = () => { delete sel[mine]; s.成片定稿 = ''; touch(); rerender(); };
   return h('div', { class: 'wf-item' + (mine ? ' picked' : ''), 'data-vid': vid },
@@ -184,6 +188,7 @@ function render() {
   const finish = async () => {
     if (!(await confirmDlg({ title: '第' + seg + '段定稿', body: '选定的 ' + list.length + ' 条：' + list.map(e => labelOf2(e.key) + ' → ' + stemOf2(sel[e.key])).join('；') + '。' + (list.length > 1 ? '定稿前点「连起来看」看一遍，动作、声音、剧情接得上。' : ''), ok: list.length > 1 ? '连起来看过了，定稿' : '定稿' }))) return;
     s.成片定稿 = nowText(); touch(); rerender(); toast('第' + seg + '段定稿了');
+    if (window.ScriptCheck) for (const e of list) ScriptCheck.onPick(s, sel[e.key], verOf(s, sel[e.key], e) || e.name);   // 每条定稿的再和剧本对一对；选定时对过、没变的不再对
   };
   const bar = s.成片定稿 && all
     ? [h('span', { class: 'fs-state ok', title: '定稿的时间：' + s.成片定稿 }, icon('check'), '这一段定稿了 ' + s.成片定稿.slice(5, 16)), h('span', { class: 'fn-note' }, '没选上的样片可以移进历史记录。'), h('span', { class: 'sp' }),
@@ -195,7 +200,7 @@ function render() {
     done.length > 1 ? h('button', { class: 'btn sm' + (all ? ' ink' : ''), title: '选定的几条按第1条、第2条……的顺序在网页里接着放，不存文件', onclick: () => playAll(s, list) }, icon('play'), '连起来看') : null,
     all && vids.length ? h('button', { class: 'btn ink', onclick: finish }, '这一段定稿') : null];
   return [
-    h('div', { class: 'wf-bar' }, bar), styleBox(s),
+    h('div', { class: 'wf-bar' }, bar), styleBox(s), window.ScriptCheck ? ScriptCheck.lines(s) : null,
     making.length ? h('div', { class: 'wf-jobs' }, making.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题)))) : null,
     h('div', { class: 'wf-items' }, vids.map(v => cardOf2(s, v, list))),
   ];

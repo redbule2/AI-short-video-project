@@ -40,6 +40,9 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const SB = (() => { try { return require(path.join(TOOLS, '公用', '关键帧绑定.js')); } catch (e) { log('读不了 公用/关键帧绑定.js：' + e.message); return null; } })();
   /* 每镜几秒（11-15 他定：AI 写稿、照批注改稿时顺手估，出片弹窗照它填时长）：和提示词那一步同一套 */
   const Secs = (() => { try { return require(path.join(TOOLS, '公用', '秒数.js')); } catch (e) { log('读不了 公用/秒数.js：' + e.message); return null; } })();
+  /* 镜头表每一镜的作用（「标签｜目的，关系」）和预估秒数（11-16 他定）：和提炼页、写提示词勾镜头同一套 */
+  const Why = (() => { try { return require(path.join(TOOLS, '公用', '镜头作用.js')); } catch (e) { log('读不了 公用/镜头作用.js：' + e.message); return null; } })();
+  const secOf = x => Why ? Why.secOf(x) : 0;
   const Voice = (() => { try { return require(path.join(TOOLS, '公用', '音色.js')); } catch (e) { log('读不了 公用/音色.js：' + e.message); return null; } })();
   const two = n => String(n).padStart(2, '0');
   const stampOf = (d = new Date()) => d.getFullYear() + two(d.getMonth() + 1) + two(d.getDate()) + '-' + two(d.getHours()) + two(d.getMinutes()) + two(d.getSeconds());
@@ -263,7 +266,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const sceneOf = (flow, seg) => (Array.isArray(flow.场) ? flow.场 : []).find(s => s && str(s.段) === seg) || null;
   const parasOf = s => {   // 号：镜头表的固定号（页面存的；老数据没有就照先后补）
     const raw = (Array.isArray(s.段落) && s.段落.length ? s.段落 : Array.isArray(s.镜头) ? s.镜头 : []).filter(x => x && typeof x === 'object'), nos = SB ? SB.nosOf(raw) : raw.map((x, i) => String(i + 1));
-    return raw.map((x, i) => ({ 号: nos[i], 写什么: str(x.写什么 !== undefined ? x.写什么 : x.拍什么).trim(), 作用: str(x.作用).trim() })).filter(x => x.写什么 || x.作用);
+    return raw.map((x, i) => ({ 号: nos[i], 写什么: str(x.写什么 !== undefined ? x.写什么 : x.拍什么).trim(), 作用: str(x.作用).trim(), 秒数: secOf(x), ...(x.秒数人定 && secOf(x) ? { 秒数人定: true } : {}) })).filter(x => x.写什么 || x.作用);
   };
   const shotsOf = (s, name) => s && SB ? SB.shotsOf(vpCode(name), name, parasOf(s).map(x => x.号)) : null;   // 这份稿拍的是哪几镜：名字是镜头号的照镜头表认，老稿「镜头6-9_视频提示词」照名字里的数认，认不出给 null
   const rowsText = (rows, pick) => (Array.isArray(rows) ? rows : []).filter(e => e && e.名 && (!pick || pick.includes(e.名))).map(e => e.名 + '：' + (str(e.描写).trim() || '（还没写）')).join('\n') || '（没有）';
@@ -305,8 +308,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     const ps = parasOf(s), seg = segRefs(s), say = str(s.表达).trim();   // 表达：老数据里的「想写什么」（11-16 晚删了这一格），有才列
     return ['出场的人物：' + ((s.人物 || []).join('、') || '（没选）'), '出场的道具：' + ((s.道具 || []).join('、') || '（没选）'),
       ...(seg.length ? ['这一段另挂的参考图（这一段文件夹里的，只这一段用）：' + seg.map(x => x.k + '「' + x.n + '」').join('、')] : []),
-      ...(say ? ['这一段主要表达：' + say] : []), '', '镜头表（一共 ' + ps.length + ' 个镜头，照这个顺序；镜头号是固定的：删过的镜头不挪号，中间加的带字母，像 3b）：',
-      ...ps.map(x => '镜头' + x.号 + '　写什么：' + (x.写什么 || '（空）') + '　起什么作用：' + (x.作用 || '（没写）'))].join('\n');
+      ...(say ? ['这一段主要表达：' + say] : []), '', '镜头表（一共 ' + ps.length + ' 个镜头，照这个顺序；镜头号是固定的：删过的镜头不挪号，中间加的带字母，像 3b。作用写成「标签｜目的，关系」，关系里的镜N 是镜头号；秒数是提炼时照真人快慢估的，只作参考）：',
+      ...ps.map(x => '镜头' + x.号 + '　写什么：' + (x.写什么 || '（空）') + '　起什么作用：' + (x.作用 || '（没写）') + (x.秒数 ? '　约 ' + x.秒数 + ' 秒' : ''))].join('\n');
   }
   function finalOk(s, scriptMtime) {   // 剧本定稿了没有：有这个时间，也不早于剧本文件最后改动的时间（11-16 起剧本在段落前面，不再和段落定下来的时间比）
     const fin = timeOf(s.剧本定稿);
@@ -321,9 +324,14 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     '2. 人物：这一段剧本里出场的人（有台词、有动作的），一人一项。全片人物表里有的，名字和描写都照抄表里的，一个字不改；表里没有的新写：名字用剧本里的叫法，描写只写看得见的（年纪、长相、身材、穿着、一两处特征），两三句话，不写性格和心理。群众（路人若干这一类）不列。',
     '3. 道具：这一段剧情用到、要出图的东西（人拿着用的、剧情围着它转的；特效也算），一样一项。表里有的照抄名字和描写；新的写样子、结构、材质、颜色、新旧，两三句话。背景里随手的杂物不列。',
     '4. 场景：这一段在哪儿，一处地方一行，写成「地方名：一句话写在哪、什么样」。全片场景里有的那一行一个字不改照抄；没有的新写。',
-    '5. 镜头表：照剧本正文的先后分镜头，每个镜头是连着的一段戏、讲一件事（一个小目的、一个转折）。镜头数照戏来，别硬凑，也别切得太碎。几个镜头连起来要盖住整个剧本：不漏、不重。每个镜头写两样：「写什么」一句话，这个镜头发生了什么，二十个字以内；「作用」一两句，为什么要有这个镜头，它让观众看到什么、明白什么、感觉到什么。',
-    '6. 都照剧本来：不改剧本内容，不加剧本里没有的；不写机位、运镜、时长。'];
-  const DISTILL_JSON = '{"梗概": "……", "人物": [{"名": "……", "描写": "……"}], "道具": [{"名": "……", "描写": "……"}], "场景": ["地方名：……"], "镜头表": [{"写什么": "……", "作用": "……"}, {"写什么": "……", "作用": "……"}]}';   // 「镜头表」11-16 以前叫「段落」：AI 回的两个都认
+    shotRule('镜N 的 N 是这个镜头在你回复的镜头表里排第几（从 1 数）'),
+    '6. 都照剧本来：不改剧本内容，不加剧本里没有的；不写机位、运镜；秒数只写在「秒数」里。'];
+  /* 镜头表那一条（11-16 他定：作用二十个字以内写成「标签｜目的，关系」，每镜一个预估秒数；公用/镜头作用.js）。how：镜N 的 N 怎么认 */
+  function shotRule(how) {
+    return '5. 镜头表：照剧本正文的先后分镜头，每个镜头是连着的一段戏、讲一件事（一个小目的、一个转折）。镜头数照戏来，别硬凑，也别切得太碎。几个镜头连起来要盖住整个剧本：不漏、不重。每个镜头写三样：「写什么」一句话，这个镜头发生了什么，二十个字以内；'
+      + (Why ? Why.ruleWhy(how) + Why.RULE_SEC : '「作用」一两句，为什么要有这个镜头，它让观众看到什么、明白什么、感觉到什么；「秒数」照真人做事的快慢估一个整秒数。');
+  }
+  const distillJson = withNo => '{"梗概": "……", "人物": [{"名": "……", "描写": "……"}], "道具": [{"名": "……", "描写": "……"}], "场景": ["地方名：……"], "镜头表": [' + [1, 2].map(n => '{' + (withNo ? '"号": "' + n + '", ' : '') + '"写什么": "……", "作用": "……", "秒数": ' + (n + 2) + '}').join(', ') + ']}';   // 「镜头表」11-16 以前叫「段落」：AI 回的两个都认
   const distillRel = seg => ['定稿的剧本', segDir(seg), segDir(seg) + '_提炼.json'];
   async function distillBase(j) {
     const flow = await readFlow(j.项目), s = sceneOf(flow, j.段), sp = scriptPath(j.项目, j.段);
@@ -334,10 +342,13 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   }
   const restScenes = (flow, s) => (Array.isArray(flow.场) ? flow.场 : []).filter(x => x && x !== s && x.段).map(x => '第' + x.段 + '段 ' + (str(x.名).trim() || '（没起名）') + (str(x.表达).trim() ? '：' + str(x.表达).trim() : '')).join('\n') || '（没有别的段）';   // 表达：老数据里的「想写什么」，有才带
   const rowsOf = list => { const seen = new Set(); return (Array.isArray(list) ? list : []).filter(x => x && typeof x === 'object').map(x => ({ 名: oneLine(x.名), 描写: str(x.描写).trim() })).filter(x => x.名 && !seen.has(x.名) && seen.add(x.名)); };
-  async function putDistill(j, text, done) {
+  /* keepNo：照批注改的，AI 照抄了原来的号（新加的照规矩起）：号都对、不重才留着，页面照它并；重新提炼的不留，页面照字认原来的号 */
+  async function putDistill(j, text, done, keepNo) {
     const got = jsonIn(text);
-    const paras = (Array.isArray(got.镜头表) ? got.镜头表 : Array.isArray(got.段落) ? got.段落 : []).filter(x => x && typeof x === 'object').map(x => ({ 写什么: oneLine(x.写什么), 作用: str(x.作用).trim() })).filter(x => x.写什么 || x.作用);
+    const paras = (Array.isArray(got.镜头表) ? got.镜头表 : Array.isArray(got.段落) ? got.段落 : []).filter(x => x && typeof x === 'object').map(x => ({ 号: keepNo && SB ? SB.normNo(x.号) : '', 写什么: oneLine(x.写什么), 作用: str(x.作用).trim(), 秒数: secOf(x) })).filter(x => x.写什么 || x.作用);
     if (!paras.length) throw fail('AI 没按要的格式回（要 {"梗概", "人物", "道具", "场景", "镜头表"}，镜头表至少一个镜头）');
+    const nosOk = paras.every(x => x.号) && new Set(paras.map(x => x.号)).size === paras.length;
+    for (const x of paras) { if (!nosOk) delete x.号; if (!x.秒数) delete x.秒数; }
     const out = { 梗概: str(got.梗概).trim(), 人物: rowsOf(got.人物), 道具: rowsOf(got.道具), 场景: [...new Set((Array.isArray(got.场景) ? got.场景 : []).map(oneLine).filter(Boolean))], 镜头表: paras };
     const rel = distillRel(j.段);
     await archive(j.项目, rel);
@@ -442,7 +453,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       async book(j) {
         const { flow, s, script } = await distillBase(j);
         return ['# 任务：照定稿的剧本提炼梗概、人物、道具、场景和镜头表', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是这一段定稿的剧本，和现在已有的全片设定（前面几段定稿以后提炼的，可能还空着）。请照剧本提炼下面五样，后面照它出人物、道具、场景图，写视频提示词时照镜头表的先后拍。',
-          '', '## 要求', ...DISTILL_RULES, '', '## 回复一段 JSON，像这样', DISTILL_JSON,
+          '', '## 要求', ...DISTILL_RULES, '', '## 回复一段 JSON，像这样', distillJson(false),
           '', '## 这一段：第' + j.段 + '段｜' + (str(s.名).trim() || '（没起名）'), ...(str(s.表达).trim() ? ['这一段想写什么：' + str(s.表达).trim()] : []),
           '', '## 定稿的剧本', script, '', '## 现在的全片设定', settingText(flow), '', '## 别的段（只为了写全片梗概）', restScenes(flow, s), TAIL].join('\n');
       },
@@ -460,16 +471,18 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         if (!ps.length) throw fail('这一段还没有提炼');
         const note = unbom(await fsp.readFile(pj(j.项目, ...j.rel), 'utf8'));
         const now = { 梗概: str(flow.梗概).trim(), ...Object.fromEntries(['人物', '道具'].map(k => [k, (s[k] || []).map(n => { const e = (flow[k] || []).find(x => x && x.名 === n); return { 名: n, 描写: e ? str(e.描写).trim() : '' }; })])),
-          场景: (s.场景文字 || []).map(oneLine).filter(Boolean), 镜头表: ps.map(x => ({ 写什么: x.写什么, 作用: x.作用 })) };
+          场景: (s.场景文字 || []).map(oneLine).filter(Boolean), 镜头表: ps.map(x => ({ 号: x.号, 写什么: x.写什么, 作用: x.作用, ...(x.秒数 ? { 秒数: x.秒数 } : {}), ...(x.秒数人定 ? { 秒数人定: true } : {}) })) };
         return ['# 任务：按批注改一段戏的提炼', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是照这一段定稿的剧本提炼出来的梗概、人物、道具、场景和镜头表（人可能改过），和人写的批注。请照批注改。',
           '', '## 要求', '1. 只改批注说到的地方，别的一个字都不动（包括标点）。', '2. 批注要加一项、删一项、拆开、并起来的，照做；镜头的先后照剧本正文。',
-          '3. 批注是提要求的，照要求改这一处，改动尽量小；批注把原文改写好了的，照抄批注，不要再润色。', '4. 新加的照这几条写：' + DISTILL_RULES.slice(1, 5).map(x => x.replace(/^\d\. /, '')).join(' '),
-          '5. 回复改好以后的全部内容（没改的照抄），格式照下面。', '', '## 回复一段 JSON，像这样', DISTILL_JSON,
+          '3. 批注是提要求的，照要求改这一处，改动尽量小；批注把原文改写好了的，照抄批注，不要再润色。', '4. 新加的照这几条写：' + [...DISTILL_RULES.slice(1, 4), shotRule('镜N 的 N 是镜头的「号」')].map(x => x.replace(/^\d\. /, '')).join(' '),
+          '5. 镜头表每个镜头带「号」：原有的照抄；新加的照规矩起：插在中间的是前一镜的号加 b、c（镜头3 后面加的是 3b），加在最后的接着最大的号往后排；删掉的号不再用。批注里的「镜头N」也是这个号。',
+          '6. 秒数：标了「秒数人定」的是人定的，照抄，除非批注说到这一镜的秒数；没标的，批注说到这一镜、或者这一镜的写什么改了，就重估，别的照抄；还没有秒数的补上。回复里不写「秒数人定」。',
+          '7. 回复改好以后的全部内容（没改的照抄），格式照下面。', '', '## 回复一段 JSON，像这样', distillJson(true),
           '', '## 现在的提炼', JSON.stringify(now, null, 2), '', '## 批注', note, '', '## 这一段：第' + j.段 + '段｜' + (str(s.名).trim() || '（没起名）'),
           '', '## 定稿的剧本', script, '', '## 全片的设定（只为了认人物、道具）', settingText(flow), TAIL].join('\n');
       },
       async apply(j, text) {
-        const r = await putDistill(j, text, '照批注改好了');
+        const r = await putDistill(j, text, '照批注改好了', true);
         await archive(j.项目, j.rel);
         return r;
       },
@@ -1497,6 +1510,12 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     try { ops = JSON.parse(t.slice(a, z + 1)); } catch (e) { throw fail('AI 没按要的格式回（要一段 JSON 列表）'); }
     return (Array.isArray(ops) ? ops : []).filter(o => o && typeof o.原文 === 'string' && o.原文.trim() && typeof o.改成 === 'string');
   };
+  /* ---------- 对剧本（11-16 他定）：审片页自动开，不用复制给 AI；先本机 Codex 命令行，不行换 DeepSeek 接口。都在 script-check.js ---------- */
+  const BUILTIN = '内置';
+  CHANNELS[BUILTIN] = { 名: '内置 AI', 说明: '对剧本：先本机 Codex 命令行，不行换 DeepSeek 接口', ok: () => true, 模型: [], 默认模型: () => '', 模型说明: '', 深度: [], 默认深度: () => '', 深度说明: '' };
+  const Check = require('./script-check.js')({ ROOT, HOME, fsp, pj, run, writeFile, withFileLocks, Core, log, nowText, today, str, fail, segDir, scriptPath, exists, unbom });
+  Object.assign(KINDS, Check.KINDS);
+
   /* ---------- 任务：排队、一个一个做 ---------- */
   const jobs = [], byId = new Map();
   let seq = 0;
@@ -1560,7 +1579,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     const K = KINDS[str(b.事)];
     if (!K) throw fail('不认识这件事：' + b.事);
     /* 11-15 他定：流水线不再直接调 AI，用 AI 的地方一律「给我提示词」——人复制，贴进自己开的对话（页面传别的也照这个；假通道只在试验服务上有） */
-    b.渠道 = CHANNELS.mock && b.渠道 === 'mock' ? 'mock' : SELF;
+    b.渠道 = K.builtin ? BUILTIN : CHANNELS.mock && b.渠道 === 'mock' ? 'mock' : SELF;   // 对剧本（11-16 他定）：项目自己调，不复制
     const ch = CHANNELS[str(b.渠道)];
     if (!ch) throw fail('不认识这个渠道：' + b.渠道);
     if (!K.local && !ch.ok()) throw fail('这台电脑上 ' + ch.名 + ' 调不起来');
@@ -1588,6 +1607,11 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     j.标题 = K.title(j);
     const same = jobs.find(x => live(x) && lockOf(x) === lockOf(j));
     if (same) return same;   // 同一件事已经在做：不重开
+    if (j.跳过) {   // 备材料时看出不用做（对剧本：上回对过一样的）：记一笔做完，不开
+      Object.assign(j, { 状态: '做完', 结果: j.跳过, 结束: Date.now() });
+      jobs.push(j); byId.set(j.id, j);
+      return j;
+    }
     jobs.push(j); byId.set(j.id, j);
     while (jobs.length > 200) byId.delete(jobs.shift().id);
     log('开了一个 AI 任务：' + j.标题 + '（' + chLabel(j) + '）');
@@ -1837,6 +1861,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     const p = url.pathname, q = url.searchParams;
     try {
       if (p === '/api/jimeng') return await jimeng(req, res, q, { json, httpErr });
+      if (p === '/api/builtin-ai') return await Check.handle(req, res, url, { json, readBody });   // 内置 AI：Codex 在不在、DeepSeek 的 key
       if (req.method === 'GET' && p === '/api/job') {
         if (q.has('channels')) return json(res, { channels: Object.entries(CHANNELS).filter(([id]) => id === SELF || id === 'mock').map(([id, c]) => {   // 11-15 起只剩给我提示词（试验服务多一个假通道）
           const d = c.默认深度 ? c.默认深度() : '';   // 推理深度：能选哪几档、不选时用哪档（空＝照那个 AI 自己的默认，说不准是哪档）

@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>资产页改版 · 设计稿</title>
+<style>
+:root { --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --line: #d6cab6; --zhu: #a83a2c; --zhu-soft: #fbeee9; --dai: #3e5c5e; --huang: #fff4c9;
+  --ren: #6b5a8e; --jing: #3e6a8a; --dao: #b0702f; --zhen: #4f7d5a; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.85 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif; }
+main { max-width: 900px; margin: 0 auto; padding: 32px 22px 120px; }
+h1 { margin: 0 0 4px; font: 600 26px/1.4 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .08em; }
+.sub { margin: 0 0 20px; font-size: 14.5px; color: var(--ink-2); }
+h2 { margin: 34px 0 10px; font: 600 19px/1.5 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .1em; }
+.card { margin: 12px 0; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+.card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 600; }
+.card h3 .no { display: inline-block; min-width: 1.7em; color: var(--dai); }
+.card p { margin: 3px 0; color: var(--ink-2); }
+.opts { margin: 8px 0 2px; }
+.opts label { display: block; margin: 5px 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opts label:hover { background: #faf5ea; }
+.opts input { margin-right: 8px; }
+.opts .rec { color: var(--dai); font-size: 13px; margin-left: 4px; }
+textarea { display: block; width: 100%; margin-top: 8px; min-height: 2.6em; padding: 7px 10px; border: 1px dashed #c8b99f; border-radius: 8px; background: #fffef9; font: 15px/1.7 'Noto Sans SC', 'Microsoft YaHei', sans-serif; color: var(--ink); resize: vertical; }
+textarea:focus { outline: none; border-style: solid; border-color: var(--dai); background: #fff; }
+textarea.has { border-style: solid; border-color: #b9822f; background: var(--huang); }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; background: rgba(255,253,249,.96); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; justify-content: center; font-size: 14px; z-index: 5; }
+.bar button { padding: 6px 14px; border: 1px solid var(--dai); border-radius: 8px; background: #fff; color: var(--dai); font: inherit; cursor: pointer; }
+.bar button:hover { background: #eef5f3; }
+#st { color: var(--ink-2); }
+.foot { margin-top: 26px; font-size: 13px; color: var(--ink-3); }
+.cap { margin: 8px 2px 0; font-size: 13px; color: var(--ink-3); }
+
+/* ---- 现在和以后 ---- */
+.cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.cmp b.h { display: block; margin-bottom: 6px; font-size: 14.5px; }
+.cmp .old b.h { color: var(--zhu); } .cmp .new b.h { color: var(--dai); }
+.long { border: 1px solid var(--line); border-radius: 8px; padding: 6px; background: #fbf8f1; font-size: 11.5px; line-height: 1.4; color: var(--ink-2); }
+.long div { margin: 3px 0; padding: 3px 6px; border-radius: 4px; background: #fff; border: 1px solid #e6dccb; }
+.long .r { background: #f2eef8; border-color: #d6cce6; } .long .d { background: #fbf1e4; border-color: #e8cf9f; } .long .z { background: #edf4ee; border-color: #c4dac8; }
+.long .scr { margin: 4px 0; border: 0; border-top: 1px dashed var(--zhu); border-radius: 0; background: none; padding: 0 0 0 4px; color: var(--zhu); font-size: 11px; }
+.long .ok { color: var(--dai); border-color: var(--dai); }
+.why { margin: 6px 2px 0; font-size: 13px; color: var(--ink-3); }
+
+/* ---- 以后的样子：照流水线的颜色画的，页签能点 ---- */
+.mk { position: relative; border: 1px solid var(--line); border-radius: 10px; background: #fbf8f1; overflow: hidden; font-size: 14px; line-height: 1.6; user-select: none; }
+.mk > input[type=radio], .mk input.dr { display: none; }
+.mk-top { padding: 10px 14px 0; background: #fffdf9; border-bottom: 1px solid var(--line); box-shadow: 0 3px 8px -6px rgba(0,0,0,.25); }
+.mk-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mk-title b { font: 600 15px 'Noto Serif SC', SimSun, serif; color: var(--ink-2); }
+.mk-pin { font-size: 11.5px; color: var(--dai); }
+.mk-sp { flex: 1; }
+.mk-prog { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
+.mk-prog i { display: inline-block; width: 70px; height: 5px; border-radius: 3px; background: #e6dccb; overflow: hidden; }
+.mk-prog i::before { content: ''; display: block; width: 62%; height: 100%; background: var(--dai); }
+.mk-btn { padding: 3px 12px; border: 1px solid var(--ink); border-radius: 8px; background: #fff; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; color: var(--ink); }
+.mk-btn.ink { background: var(--ink); color: #fff; }
+.mk-btn.sm { padding: 1px 9px; font-size: 12px; }
+.mk-btn.go { border-color: var(--dai); color: var(--dai); }
+.mk-tabs { display: flex; align-items: center; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+.mk-tab { padding: 6px 12px 8px; border-bottom: 2.5px solid transparent; cursor: pointer; color: var(--ink-2); white-space: nowrap; }
+.mk-tab em { font-style: normal; margin-left: 4px; padding: 0 6px; border-radius: 9px; background: #efe8db; font-size: 12px; color: var(--ink-3); }
+.mk-tab i.dot { display: inline-block; width: 7px; height: 7px; margin-left: 4px; border-radius: 50%; background: var(--zhu); vertical-align: 2px; }
+.mk-tab:hover { color: var(--ink); }
+#mk-t1:checked ~ .mk-top label[for=mk-t1], #mk-t2:checked ~ .mk-top label[for=mk-t2], #mk-t3:checked ~ .mk-top label[for=mk-t3], #mk-t4:checked ~ .mk-top label[for=mk-t4] { border-bottom-color: var(--ink); color: var(--ink); font-weight: 600; }
+.mk-p { display: none; padding: 12px 14px 16px; min-height: 360px; }
+#mk-t1:checked ~ .p1, #mk-t2:checked ~ .p2, #mk-t3:checked ~ .p3, #mk-t4:checked ~ .p4 { display: block; }
+.mk-hint { margin: 0 0 10px; font-size: 12.5px; color: var(--ink-3); }
+
+/* 大图卡 */
+.gc { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.ac { position: relative; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; background: #fffdf9; overflow: hidden; border-top: 3px solid var(--ren); }
+.ac.dao { border-top-color: var(--dao); } .ac.jing { border-top-color: var(--jing); }
+.ac .pic { aspect-ratio: 4 / 3; background: #efe8db center / cover no-repeat; display: grid; place-items: center; color: var(--ink-3); font-size: 13px; overflow: hidden; }
+.ac .pic img { width: 100%; height: 100%; object-fit: contain; background: #f3eee4; }
+.ac .pic.none { background: repeating-linear-gradient(135deg, #f6f1e7 0 8px, #efe8db 8px 16px); }
+.ac .bd { padding: 7px 9px 9px; }
+.ac .nm { font-weight: 600; font-size: 14px; }
+.ac .st { font-size: 12px; color: var(--ink-3); }
+.ac .st.ok { color: var(--dai); } .ac .st.todo { color: var(--zhu); }
+.ac .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.ac .vo { margin-top: 6px; padding-top: 5px; border-top: 1px dashed #e3d9c6; font-size: 12px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.ac .vo u { text-decoration: none; border-bottom: 1px dotted; color: var(--dai); cursor: default; }
+.ac .x { position: absolute; right: 6px; top: 6px; width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,.85); color: #a3978a; font-size: 12px; display: grid; place-items: center; }
+.ac.plus { border: 1px dashed var(--line); border-top: 1px dashed var(--line); background: transparent; display: grid; place-items: center; color: var(--ink-3); font-size: 13px; min-height: 120px; text-align: center; padding: 10px; }
+.ac.sug { border-style: dashed; background: transparent; opacity: .9; }
+.ac.sug .st { color: var(--dai); }
+
+/* 挑图：右边滑出一栏 */
+.drw { display: none; position: absolute; top: 0; right: 0; bottom: 0; width: 56%; min-width: 340px; background: #fffdf9; border-left: 1px solid var(--line); box-shadow: -10px 0 24px -14px rgba(0,0,0,.35); padding: 12px 14px; z-index: 2; flex-direction: column; }
+.mk .dr:checked ~ .mk-p .drw, .mk .dr:checked ~ .drw { display: flex; }
+.drw-h { display: flex; align-items: center; gap: 8px; }
+.drw-h b { font: 600 15px 'Noto Serif SC', SimSun, serif; }
+.drw-h label { margin-left: auto; cursor: pointer; color: var(--ink-3); font-size: 18px; line-height: 1; }
+.drw-tabs { display: flex; gap: 12px; margin: 8px 0 6px; font-size: 13px; border-bottom: 1px solid #ece3d3; }
+.drw-tabs span { padding: 3px 0 6px; color: var(--ink-3); }
+.drw-tabs span.on { color: var(--ink); font-weight: 600; border-bottom: 2px solid var(--ink); }
+.drw-tabs em { font-style: normal; font-size: 11.5px; margin-left: 3px; color: var(--ink-3); }
+.drw-q { padding: 4px 9px; border: 1px solid var(--line); border-radius: 7px; font-size: 13px; color: var(--ink-3); background: #fff; }
+.drw-g { flex: 1; overflow: hidden; display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 8px; align-content: start; }
+.drw-g .t { aspect-ratio: 1; border: 1px solid #e6dccb; border-radius: 7px; background: #f3eee4; overflow: hidden; position: relative; }
+.drw-g .t img { width: 100%; height: 100%; object-fit: contain; }
+.drw-g .t.sel { outline: 2.5px solid var(--dai); outline-offset: 1px; }
+.drw-g .t small { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 5px; font-size: 11px; background: rgba(255,253,249,.88); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drw-f { display: flex; align-items: center; gap: 8px; padding-top: 8px; border-top: 1px solid #ece3d3; margin-top: 8px; font-size: 13px; color: var(--ink-3); }
+
+/* 关键帧：一镜一张小卡 */
+.tray { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 10px; margin: 0 0 12px; border: 1px dashed #c9b48e; border-radius: 9px; background: #fffaf0; }
+.tray > b { font-size: 13px; color: var(--zhu); margin-right: 4px; }
+.tray .hint { font-size: 12px; color: var(--ink-3); }
+.fr { width: 92px; border: 1px solid var(--line); border-radius: 6px; background: #fff; overflow: hidden; cursor: grab; font-size: 11px; line-height: 1.4; }
+.fr .im { aspect-ratio: 16 / 9; background: #e9e1d2; overflow: hidden; }
+.fr .im img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fr span { display: block; padding: 1px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
+.fr span small { color: var(--dai); }
+.fr.sel { outline: 2.5px solid var(--zhu); outline-offset: 1px; }
+.shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 8px; }
+.sh { border: 1px solid var(--line); border-radius: 9px; background: #fffdf9; padding: 6px 7px 7px; }
+.sh.chg { box-shadow: inset 3px 0 0 var(--zhu); }
+.sh-h { display: flex; gap: 6px; align-items: baseline; font-size: 12.5px; white-space: nowrap; overflow: hidden; }
+.sh-h b { font: 600 13px 'Noto Serif SC', SimSun, serif; color: var(--zhen); }
+.sh-h span { overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
+.sh-h .w { color: var(--zhu); font-size: 11.5px; margin-left: auto; flex: none; }
+.slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 4px; }
+.slot { position: relative; aspect-ratio: 16 / 9; border: 1px dashed #d5c8b2; border-radius: 5px; display: grid; place-items: center; font-size: 10.5px; color: #b5a891; background: #faf6ee; overflow: hidden; }
+.slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.slot.has { border-style: solid; border-color: #c4dac8; }
+.slot .k { position: absolute; left: 0; bottom: 0; padding: 0 4px; font-size: 10px; color: #fff; background: rgba(42,38,34,.55); border-top-right-radius: 4px; z-index: 1; }
+.slot .more { position: absolute; right: 2px; top: 2px; padding: 0 4px; border-radius: 6px; font-size: 10px; color: #fff; background: var(--dai); z-index: 1; }
+.slot.over, .mk.picking .slot:not(.has) { border-color: var(--zhu); color: var(--zhu); background: var(--zhu-soft); }
+.slot.over { border-style: solid; }
+.flash { animation: fl 1.2s ease-out; }
+@keyframes fl { 0% { box-shadow: 0 0 0 3px var(--zhen); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (max-width: 680px) { .cmp { grid-template-columns: 1fr; } .drw { width: 100%; } }
+</style>
+</head>
+<body>
+<main>
+<h1>资产页改版 · 设计稿</h1>
+<p class="sub" id="sub"></p>
+
+<template id="fig-now">
+<div class="cmp">
+<div class="old"><b class="h">现在：一长页，第3-4段要滚四屏半</b>
+<div class="long">
+<div>顶上：确认进度、缺图、让 AI 写字、选出场的、用已有的图……</div>
+<div>提到了、还没选上：3 个</div>
+<div class="r">人物 4 格 ＋ 音色 4 格</div><div>场景 1 格</div><div class="d">道具 6 格</div>
+<div class="scr">↓ 第一屏到这里</div>
+<div class="z">关键帧：镜头1 一行（2 张小图）</div><div class="z">镜头2 一行（2 张）</div><div class="z">镜头3 一行（2 张）</div><div class="z">镜头4 一行（1 张，右边空着）</div><div class="z">……</div><div class="z">镜头19 一行（1 张）</div>
+<div class="scr">↓ 关键帧一块就占 2500 像素</div>
+</div>
+<p class="why">给人物挑图的弹窗又是 91 张一长条，3700 像素高。</p>
+</div>
+<div class="new"><b class="h">以后：四个页签，一次看一样</b>
+<div class="long">
+<div style="background:#fffdf9;border-color:var(--line)"><b style="color:var(--ink)">人物 4</b> · 场景 1 · 道具 6 · 关键帧 20　　确认 5/8　<b style="color:var(--ink)">剩下的都确认</b></div>
+<div class="scr ok">↑ 这一条钉在顶上，滚到哪都在</div>
+<div class="z">镜头1 ▢▢▢　镜头2 ▢▢▢　镜头3 ▢▢▢　镜头4 ▢▢▢</div>
+<div class="z">镜头5 ▢▢▢　镜头6 ▢▢▢　镜头7 ▢▢▢　镜头8 ▢▢▢</div>
+<div class="z">……　18 镜五排</div>
+<div class="scr ok">↓ 关键帧一屏多一点看完</div>
+</div>
+<p class="why">挑图改成右边滑出一栏，分组看，不再一长条。</p>
+</div>
+</div>
+</template>
+
+<template id="fig-path">
+<div class="cmp">
+<div class="old"><b class="h">现在：给「炮手」挂一张现成的图</b>
+<div class="long">
+<div>① 点「炮手」那一格</div>
+<div>② 进了炮手自己那一页</div>
+<div>③ 找「回资产页挑一张」（写过字就没这个钮了）</div>
+<div>④ 回到资产页，弹出大弹窗</div>
+<div>⑤ 91 张图一长条，滚着找</div>
+<div>⑥ 点一张：照图名猜挂给谁，名字对不上就新加一行</div>
+</div>
+</div>
+<div class="new"><b class="h">以后</b>
+<div class="long">
+<div>① 炮手那张卡上点「挑现成的图」</div>
+<div>② 右边滑出一栏，顶上写着「给炮手挑图」</div>
+<div>③ 点一张，再点「挂给炮手」</div>
+<div class="scr ok">挂给谁一开始就定了，不用猜</div>
+</div>
+</div>
+</div>
+</template>
+
+<template id="fig-mock">
+<div class="mk" id="mk">
+<input type="radio" name="mk-tab" id="mk-t1" checked><input type="radio" name="mk-tab" id="mk-t2"><input type="radio" name="mk-tab" id="mk-t3"><input type="radio" name="mk-tab" id="mk-t4">
+<input type="checkbox" class="dr" id="mk-dr">
+<div class="mk-top">
+  <div class="mk-title"><b>第3-4段 · 资产</b><span class="mk-pin">（这一条钉在顶上）</span><span class="mk-sp"></span>
+    <span class="mk-prog"><i></i>确认了 5 / 8 张</span>
+    <button class="mk-btn" type="button">让 AI 写字（3 样）</button>
+    <button class="mk-btn ink" type="button">✓ 剩下的都确认可用</button></div>
+  <div class="mk-tabs">
+    <label class="mk-tab" for="mk-t1">人物<em>4</em><i class="dot" title="2 个还没有图"></i></label>
+    <label class="mk-tab" for="mk-t2">场景<em>1</em></label>
+    <label class="mk-tab" for="mk-t3">道具<em>6</em><i class="dot" title="1 样没图，3 张没确认"></i></label>
+    <label class="mk-tab" for="mk-t4">关键帧<em>20</em><i class="dot" title="2 张还没绑"></i></label>
+    <span class="mk-sp"></span>
+    <span style="font-size:12.5px;color:var(--ink-3)">看这一段文件夹的图</span>
+  </div>
+</div>
+
+<div class="mk-p p1">
+  <p class="mk-hint">点图进它自己那一页（看字、批字、出图，和现在一样）。音色并在卡底下。</p>
+  <div class="gc">
+    <div class="ac"><div class="pic"><img data-f="资产/全局资产/人物/我军士兵.png" alt=""></div><div class="bd"><div class="nm">我军士兵</div><div class="st ok">✓ 可用</div><div class="vo">音色：还没有　<u>挑一段</u></div></div><span class="x">×</span></div>
+    <div class="ac"><div class="pic"><img data-f="资产/全局资产/人物/外星战士.png" alt=""></div><div class="bd"><div class="nm">外星战士</div><div class="st ok">✓ 可用</div><div class="vo">音色：还没有　<u>挑一段</u></div></div><span class="x">×</span></div>
+    <div class="ac"><div class="pic none">还没有图</div><div class="bd"><div class="nm">直升机驾驶员</div><div class="st todo">还没写字</div>
+      <div class="acts"><label class="mk-btn sm go" for="mk-dr">挑现成的图</label><span class="mk-btn sm">让 AI 写字</span></div></div><span class="x">×</span></div>
+    <div class="ac"><div class="pic none">还没有图</div><div class="bd"><div class="nm">炮手</div><div class="st todo">还没写字</div>
+      <div class="acts"><label class="mk-btn sm go" for="mk-dr">挑现成的图</label><span class="mk-btn sm">让 AI 写字</span></div></div><span class="x">×</span></div>
+    <div class="ac sug"><div class="pic"><img data-f="资产/全局资产/人物/李云龙.png" alt=""></div><div class="bd"><div class="nm">李云龙</div><div class="st">剧本里提到了　点一下加上</div></div></div>
+    <div class="ac plus">＋ 加人物<br><small>人物表里的、这一段文件夹的图、新加一个</small></div>
+  </div>
+</div>
+
+<div class="mk-p p2">
+  <p class="mk-hint">和人物一样。全片设定里只用文字写的场景，也是一张卡（没有图，写着那一句）。</p>
+  <div class="gc">
+    <div class="ac jing"><div class="pic"><img data-f="资产/第3-4段/镜头5_空镜.png" alt=""></div><div class="bd"><div class="nm">镜头5_空镜</div><div class="st ok">✓ 可用 · 这一段的</div></div><span class="x">×</span></div>
+    <div class="ac plus">＋ 加场景<br><small>文字写的、全片的场景图、这一段的空镜</small></div>
+  </div>
+</div>
+
+<div class="mk-p p3">
+  <p class="mk-hint">每张卡只摆眼下该做的那一个钮。</p>
+  <div class="gc">
+    <div class="ac dao"><div class="pic"><img data-f="资产/全局资产/道具/飞碟.png" alt=""></div><div class="bd"><div class="nm">飞碟</div><div class="st todo">图改过，再看一眼</div><div class="acts"><span class="mk-btn sm go">再确认</span></div></div><span class="x">×</span></div>
+    <div class="ac dao"><div class="pic"><img data-f="资产/全局资产/道具/榴弹炮.png" alt=""></div><div class="bd"><div class="nm">榴弹炮</div><div class="st ok">✓ 可用</div></div><span class="x">×</span></div>
+    <div class="ac dao"><div class="pic"><img data-f="资产/全局资产/特效/重炮单发爆炸.png" alt=""></div><div class="bd"><div class="nm">重炮单发爆炸</div><div class="st ok">✓ 可用</div></div><span class="x">×</span></div>
+    <div class="ac dao"><div class="pic"><img data-f="资产/全局资产/道具/大砍刀.png" alt=""></div><div class="bd"><div class="nm">大砍刀</div><div class="st todo">图改过，再看一眼</div><div class="acts"><span class="mk-btn sm go">再确认</span></div></div><span class="x">×</span></div>
+    <div class="ac dao"><div class="pic"><img data-f="资产/全局资产/道具/武装直升机.png" alt=""></div><div class="bd"><div class="nm">武装直升机</div><div class="st todo">还没确认</div><div class="acts"><span class="mk-btn sm go">确认可用</span></div></div><span class="x">×</span></div>
+    <div class="ac dao"><div class="pic none">还没有图</div><div class="bd"><div class="nm">重机枪</div><div class="st todo">还没写字</div><div class="acts"><label class="mk-btn sm go" for="mk-dr">挑现成的图</label><span class="mk-btn sm">让 AI 写字</span></div></div><span class="x">×</span></div>
+    <div class="ac plus">＋ 加道具<br><small>还有「加一种样子」</small></div>
+  </div>
+</div>
+
+<div class="mk-p p4">
+  <div class="tray" id="mk-tray"><b>还没绑 2 张</b>
+    <div class="fr" draggable="true" data-n="镜头12_尾帧"><div class="im"><img data-f="资产/第3-4段/镜头12_首帧.png" alt=""></div><span>镜头12_尾帧 <small>猜：12 结尾</small></span></div>
+    <div class="fr" draggable="true" data-n="炮手近景"><div class="im"><img data-f="资产/第3-4段/镜头3_首帧.png" alt=""></div><span>炮手近景</span></div>
+    <span class="hint">拖到下面哪一格就绑上；或者点一下图，再点格子。照名字猜得出的，<u style="text-decoration:none;border-bottom:1px dotted;color:var(--dai)">全认（1 张）</u></span>
+  </div>
+  <div class="shots" id="mk-shots"></div>
+  <p class="cap" style="margin-top:10px">试试：把上面「还没绑」的图拖到一格里，或者点一下图再点一格。<br>每格里三小格：开头、中间、结尾。角上「+1」是还有一张备选，点开换。左边红线：镜头表里这一镜的字改过了。</p>
+</div>
+
+<div class="drw">
+  <div class="drw-h"><b>给「炮手」挑图</b><span style="font-size:12px;color:var(--ink-3)">挑中的挂到全片的炮手</span><label for="mk-dr" title="收起">×</label></div>
+  <div class="drw-tabs"><span class="on">全片的<em>13</em></span><span>删掉的<em>5</em></span><span>画布上的<em>0</em></span></div>
+  <div class="drw-q">搜名字…</div>
+  <div class="drw-g">
+    <div class="t"><img data-f="资产/全局资产/人物/李云龙.png" alt=""><small>李云龙</small></div>
+    <div class="t sel"><img data-f="资产/全局资产/人物/我军士兵.png" alt=""><small>我军士兵</small></div>
+    <div class="t"><img data-f="资产/全局资产/人物/赵刚.png" alt=""><small>赵刚</small></div>
+    <div class="t"><img data-f="资产/全局资产/人物/外星战士.png" alt=""><small>外星战士</small></div>
+    <div class="t"><img data-f="资产/全局资产/人物/小悟空.png" alt=""><small>小悟空</small></div>
+    <div class="t"><img data-f="资产/全局资产/人物/外星战士_Tripo第一版_四视图.png" alt=""><small>外星战士_Tripo…</small></div>
+  </div>
+  <div class="drw-f"><span>＋ 从电脑里找</span><span class="mk-sp"></span><span>选中：我军士兵</span><button class="mk-btn ink" type="button">挂给炮手</button></div>
+</div>
+</div>
+<p class="cap">上面四个页签能点；人物、道具里「挑现成的图」能点开右边那一栏；关键帧能拖。数据是第3-4段的；关键帧「还没绑」那两张、镜头7 的「这一镜改了」是摆上去示意的。</p>
+</template>
+
+<div id="sections"></div>
+<h2>别的意见</h2>
+<div class="card"><textarea data-k="其他" placeholder="上面没说到的，写在这里（可以不写）"></textarea></div>
+<p class="foot" id="foot"></p>
+</main>
+<div class="bar"><span id="st">在每一块下面的虚线框里写批注，自动存。</span><button id="copy">复制批注</button></div>
+<script>
+/* ===== 内容（改内容只改这一块；怎么摆、怎么存批注在 公用/说明页.js） ===== */
+const ROUND = 1;
+const SUB = '资产页一长页要来回滚；给人物挑图、给关键帧绑镜头，都要绕好几步。改成分四页、挑图在右边一栏、关键帧拖着绑。你看了定，我再改页面。';
+const FOOT = '2026-11-16 Claude 照资产页的代码（资产.html、资产详情.js）和第3-4段的实际数据拟的。他回「照推荐的改」，四处都选 A，当天改好：资产.html 重写，挑图那一栏是 挑图栏.js，三格算法在 公用/关键帧绑定.js 的 slots。';
+const SECTIONS = [
+  { h: '现在难用在哪', cards: [
+    { id: 'p1', no: '一', t: '一长页，要来回滚', p: [
+      '第3-4段这一页 3400 像素高，四屏半。',
+      '关键帧一块就占 2500：一镜一行，多半只有一张小图，右边空着。' ] },
+    { id: 'p2', no: '二', t: '图太小，看不清', p: [
+      '每格的图只有指甲盖大，要点进去才看得清是哪张。' ] },
+    { id: 'p3', no: '三', t: '给人物挂图要绕一大圈', p: [
+      '要进它那一页、再回来，弹窗里 91 张一长条，挂给谁还靠图名猜。写过字以后，连「回资产页挑一张」都没了。' ] },
+    { id: 'p4', no: '四', t: '关键帧改绑看不到图', p: [
+      '点「改绑…」弹窗：看不到这张是什么图；19 镜一长条单选，滚着找，再点「绑上」。' ] },
+    { id: 'p5', no: '五', t: '音色单占一格', p: [
+      '每个人后面跟一格「××的音色」，人物一块的格子多了一倍。' ] },
+  ] },
+  { h: '现在和以后', fig: 'fig-now' },
+  { h: '挂一张现成的图', fig: 'fig-path' },
+  { h: '以后的样子', fig: 'fig-mock' },
+  { h: '每一块怎么用', cards: [
+    { id: 's1', no: '①', t: '顶上一条钉住', p: [
+      '四个页签：人物、场景、道具、关键帧，一次看一样。页签上带数，有要你做的打红点（缺图、没确认、没绑）。',
+      '确认进度、「让 AI 写字」「剩下的都确认可用」也在这一条里，不再浮在右下角。' ] },
+    { id: 's2', no: '②', t: '人物、场景、道具：大图卡', p: [
+      '图占卡的大半，一眼看清。图下：名字、走到哪了、眼下该按的那一个钮。点图进它自己那一页，和现在一样。',
+      '没图的卡两个钮：「挑现成的图」「让 AI 写字」。音色并进人物卡底下一行。',
+      '剧本里提到、还没加上的，虚线卡排在后面；最后一张「＋ 加人物」，原来顶上的「选出场的」「用已有的图」挪进这里。' ] },
+    { id: 's3', no: '③', t: '挑图：右边滑出一栏', p: [
+      '顶上写死「给炮手挑图」，挑中的就挂给炮手，不再照名字猜。',
+      '栏里分组：全片的、删掉的、画布上的，一次看一组，能搜名字。底下「从电脑里找」照旧。',
+      '一栏只盖住右半边，左边的卡还看得见。' ] },
+    { id: 's4', no: '④', t: '关键帧：一镜一张小卡', p: [
+      '一张卡：镜头号、写什么，下面三小格：开头、中间、结尾。四五张一排，18 镜一屏多一点。',
+      '同一格有备选的，角上「+1」，点开换哪张现用。镜头表改过字的，卡左边一道红线，点开看过点「还对得上」。' ] },
+    { id: 's5', no: '⑤', t: '绑关键帧：拖过去', p: [
+      '没绑的图摆在顶上「还没绑」一排。拖到哪一格就绑上；不想拖，点一下图、再点格子。',
+      '改绑也一样：从这一格拖到那一格。照名字猜得出的，还是一下「全认」。不用弹窗了。' ] },
+  ] },
+  { h: '要你定的', cards: [
+    { id: 'd1', no: '甲', t: '四样怎么分开', p: [
+      'A 一次只看一样，最清楚。B 不用点来点去，但还是一长页。C 一次只看一样东西，格子最少，可看不到别的图。' ],
+      opts: [ { v: 'A', t: '顶上四个页签，一次看一样', rec: true }, { v: 'B', t: '还是一长页，每块能收起' }, { v: 'C', t: '左边一列名字，右边看选中的那一样' } ] },
+    { id: 'd2', no: '乙', t: '关键帧怎么绑', p: [
+      'A 一下就绑上，绑在哪看得见。B 不用拖，但下拉框里还是一长条。C 改动最小，还是要开弹窗。' ],
+      opts: [ { v: 'A', t: '拖到格子里；或点图再点格子', rec: true }, { v: 'B', t: '每张图下一个下拉框，选镜头和哪一刻' }, { v: 'C', t: '照旧弹窗，弹窗里加上这张图' } ] },
+    { id: 'd3', no: '丙', t: '挑图摆在哪', p: [
+      'A 左边的卡还看得见，挂给谁写在顶上。B 盖住整页，一次看的图多。' ],
+      opts: [ { v: 'A', t: '右边滑出一栏', rec: true }, { v: 'B', t: '照旧大弹窗，里面分组不一长条' } ] },
+    { id: 'd4', no: '丁', t: '卡多大', p: [
+      'A 图看得清，一排四五张。B 一排能多摆，图还是小。' ],
+      opts: [ { v: 'A', t: '大图卡', rec: true }, { v: 'B', t: '照旧小条，只把图放大一点' } ] },
+  ] },
+  { h: '不变的', cards: [
+    { id: 'c1', no: '1', t: '数据和 AI 不动', p: [
+      '流水线.json 怎么存、AI 写字出图、确认可用的规矩、每一样自己那一页，都不变。只改资产页怎么摆、怎么挑图、怎么绑。' ] },
+  ] },
+];
+window.DOC = { 名: '资产页改版_设计稿', 题: '资产页改版设计稿', 存: 'antou:asset-redesign', 轮: ROUND, 副题: SUB, 脚注: FOOT, 先选: { d1: 'A', d2: 'A', d3: 'A', d4: 'A' }, 段: SECTIONS };
+</script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="../公用/说明页.js"></script>
+<script>
+/* 示意图里的图：从第3-4段的真文件读缩小图；关键帧一镜一卡、拖着绑的样子（只在这一页上动，不写任何文件） */
+(function () {
+'use strict';
+const PJ = '李云龙大战奥特曼';
+const SHOTS = [['1', '炮兵打出末弹', ['镜头1_首帧', '镜头1b_首帧', ''], [0, 1, 0]], ['2', '末轮炮火炸翻敌群', ['镜头2_首帧', '', ''], [1, 0, 0]], ['3', '最后弹壳退膛', ['镜头3_首帧', '', ''], [1, 0, 0]],
+  ['4', '炮兵弹箱见底', ['镜头4_首帧', '', ''], 0], ['5', '全线炮声渐息', ['镜头5_首帧', '', ''], [1, 0, 0]], ['6', '地面直升机起飞', ['镜头6_首帧', '', ''], 0], ['7', '全军亮出大砍刀', ['镜头7_首帧', '', ''], 0, 1],
+  ['8', '机枪子弹打光', ['镜头8_首帧', '', ''], 0], ['9', '机枪全哑人人握刀', ['镜头9_首帧', '', ''], 0], ['11', '外星战士喊冲锋', ['镜头11_首帧', '', ''], 0], ['12', '敌军扑向沙袋墙', ['镜头12_首帧', '', ''], 0],
+  ['13', '机群前出防线', ['镜头13_首帧', '', ''], 0], ['14', '近景跟拍直升机扫射', ['镜头14_首帧', '', ''], 0], ['15', '阵前敌军被扫清', ['镜头15_首帧', '', ''], 0], ['16', '直升机机炮停火', ['镜头16_首帧', '', ''], 0],
+  ['17', '驾驶员连按开火钮', ['镜头17_首帧', '', ''], 0], ['18', '机群哑火掉头返航', ['镜头18_首帧', '', ''], 0], ['19', '外星战士又冲上来', ['镜头19_首帧', '', ''], 0]];
+const SAY = ['开头', '中间', '结尾'];
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+function fill(root) {
+  for (const img of root.querySelectorAll('img[data-f]:not([data-done])')) {
+    img.dataset.done = '1';
+    window.UI.thumbOf(window.Base.at([PJ, ...img.dataset.f.split('/')]), 260).then(u => { img.src = u; }).catch(() => { img.alt = '读不到'; });
+  }
+}
+function slotEl(stem, i, more) {
+  const s = el('div', 'slot' + (stem ? ' has' : ''));
+  s.dataset.k = SAY[i];
+  if (stem) { const im = el('img'); im.dataset.f = '资产/第3-4段/' + stem + '.png'; s.append(im, el('span', 'k', SAY[i])); if (more) s.append(el('span', 'more', '+' + more)); }
+  else s.textContent = SAY[i];
+  return s;
+}
+function shots(box) {
+  for (const [no, tx, st, more, chg] of SHOTS) {
+    const c = el('div', 'sh' + (chg ? ' chg' : ''));
+    const hd = el('div', 'sh-h'); hd.append(el('b', null, '镜头' + no), el('span', null, tx));
+    if (chg) hd.append(el('span', 'w', '这一镜改了'));
+    const sl = el('div', 'slots'); st.forEach((f, i) => sl.append(slotEl(f, i, Array.isArray(more) ? more[i] : 0)));
+    c.append(hd, sl); box.append(c);
+  }
+}
+let pick = null;
+function bind(fr, slot) {
+  const mk = document.getElementById('mk');
+  const src = fr.querySelector('img');
+  slot.classList.add('has'); slot.textContent = '';
+  const im = el('img'); im.src = src ? src.src : ''; slot.append(im, el('span', 'k', slot.dataset.k));
+  const card = slot.closest('.sh'); card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash');
+  fr.remove(); pick = null; mk.classList.remove('picking');
+  const tray = document.getElementById('mk-tray'), n = tray.querySelectorAll('.fr').length;
+  tray.querySelector('b').textContent = n ? '还没绑 ' + n + ' 张' : '都绑上了';
+}
+function wire() {
+  const box = document.getElementById('mk-shots');
+  if (!box || box.dataset.done) return;
+  box.dataset.done = '1';
+  shots(box);
+  const mk = document.getElementById('mk');
+  mk.addEventListener('dragstart', e => { const fr = e.target.closest('.fr'); if (!fr) return; pick = fr; e.dataTransfer.setData('text/plain', fr.dataset.n); });
+  mk.addEventListener('dragover', e => { const s = e.target.closest('.slot'); if (s && pick) { e.preventDefault(); s.classList.add('over'); } });
+  mk.addEventListener('dragleave', e => { const s = e.target.closest('.slot'); if (s) s.classList.remove('over'); });
+  mk.addEventListener('drop', e => { const s = e.target.closest('.slot'); if (!s || !pick) return; e.preventDefault(); s.classList.remove('over'); bind(pick, s); });
+  mk.addEventListener('click', e => {
+    const fr = e.target.closest('.fr'), s = e.target.closest('.slot');
+    if (fr) { mk.querySelectorAll('.fr.sel').forEach(x => x.classList.remove('sel')); if (pick === fr) { pick = null; mk.classList.remove('picking'); return; } pick = fr; fr.classList.add('sel'); mk.classList.add('picking'); return; }
+    if (s && pick && pick.classList.contains('sel')) bind(pick, s);
+  });
+}
+new MutationObserver(() => { wire(); fill(document); }).observe(document.getElementById('sections'), { childList: true, subtree: true });
+})();
+</script>
+</body>
+</html>
