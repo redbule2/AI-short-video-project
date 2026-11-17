@@ -500,7 +500,7 @@ async function approve(s, e) {
     try { durs = await Promise.all(vids.map(r => vidSecs(r.path))); dur = durs.reduce((x, y) => x + y, 0); } catch (err) { toast('白模读不出时长：' + err.message + '。秒数照默认的填', 'err'); }
   }
   const model = h('select', { class: 'inp' }, ['Seedance 2.5 样片', 'Seedance 2.5', 'Seedance 2.0 mini', 'Seedance 2.0 VIP'].map(v => h('option', { value: v }, v)));
-  const res = h('select', { class: 'inp' }, ['480p', '720p', '1080p'].map(v => h('option', { value: v }, v)));
+  const res = h('select', { class: 'inp' }, ['480p', '720p', '1080p'].map(v => h('option', { value: v }, v))), resHint = h('span');
   const def = e.patch ? 4 : ai ? Secs.fit(ai) : end >= 4 && end <= 30 ? end : dur ? Math.min(30, Math.max(4, Math.round(dur))) : 15;
   const aiSay = e.patch ? '补片：按最短的 4 秒出，剪的时候留要的那几秒。' : ai ? 'AI 估的：' + Secs.say(est) + '。' + (ai < Secs.MIN ? '不到 4 秒，按 4 秒出，剪的时候剪短。' : ai > Secs.MAX ? '超过 30 秒，这一条装不下，要分条。' : '')
     + (es.st === 'changed' ? '估完以后稿子又改过，秒数可能不准。' : es.st === 'missing' ? '镜头' + es.lack.join('、') + ' 没估。' : '') : '这份稿没估过秒数（AI 写稿、改稿时才估）。';
@@ -512,6 +512,10 @@ async function approve(s, e) {
   const kb = SB.check({ hung: frameRefsOf(s, e), shots: shotsOfPrompt(s, e), paras: s.段落, binds: SB.bindsOf(s), text: txt });   // 关键帧对一遍（2026-11-16 他定：只标红提醒，照样能出片）
   const kbNote = kb.length ? h('div', { class: 'fn-note warn' }, '关键帧有 ' + kb.length + ' 处对不上（照样能出片，看一眼再点）：', h('ul', { style: 'margin:4px 0 0;padding-left:20px' }, kb.map(x => h('li', null, x)))) : null;
   const paint = () => {
+    const draft = /样片/.test(model.value);   // 11-16 他定：样片就是 480p，不能选（即梦样片只收 480p；那天选了 720p，Codex 查到不收就停了）
+    if (draft) res.value = '480p';
+    res.disabled = draft;
+    resHint.textContent = draft ? '样片只出 480p' : '';
     const p = priceOf(model.value, res.value, Math.round(+sec.value || 0), vids.length > 0);
     price.textContent = p ? '估价：约 ' + p.total + ' 积分（' + (vids.length ? '带参考视频的' : '') + model.value + ' ' + res.value + ' 每秒 ' + p.per + '；照以往实扣估的，以即梦报价为准）' : '这种出法以前没实扣过，价钱以即梦报价为准。';
     warn.textContent = vids.length && /2\.0/.test(model.value) ? '2.0 这一家会把白模原样搬进片子（灰模、白柱子照出），带白模建议用 2.5。' : '';
@@ -519,7 +523,7 @@ async function approve(s, e) {
   for (const x of [model, res, sec]) x.addEventListener('input', paint);
   paint();
   const r = await dialog(close => dlgShell('批准出片 · ' + e.label, '点「批准出片」：页面先排好任务书（用哪份提示词、挂哪几个素材、怎么出、存到哪），再把出片的话给你，复制贴进你自己的 Codex，它照任务书去即梦出一条样片。要花积分。',
-    [gapNote, kbNote, field('模型', model), field('清晰度', res), field('时长（秒）', sec, aiSay + (end ? '事件脚本写到第 ' + end + ' 秒；' : '') + (vids.length && dur ? '白模' + (vids.length > 1 ? '合计' : '') + ' ' + dur.toFixed(1) + ' 秒；' : '') + '可填 4 到 30'), price, warn,
+    [gapNote, kbNote, field('模型', model), field('清晰度', res, resHint), field('时长（秒）', sec, aiSay + (end ? '事件脚本写到第 ' + end + ' 秒；' : '') + (vids.length && dur ? '白模' + (vids.length > 1 ? '合计' : '') + ' ' + dur.toFixed(1) + ' 秒；' : '') + '可填 4 到 30'), price, warn,
       field('最多花多少积分', cap, '报价超过这个数，Codex 会停下来问你；不填就是存好草稿、报完价就停'),
       h('div', { class: 'fn-note' }, '即梦账号和画布照这个项目的 资产/出片设置.json。排任务书时先核对这个号能不能改这张画布，对不上就停下，不出片。'), err],
     [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'),
