@@ -125,9 +125,9 @@
 .sw-t.gc, .ws-strip i.gc { background: #a83a2c; color: #fff; }      /* 高潮 */
 .sw-t.fy, .ws-strip i.fy { background: #e5edd9; color: #46622f; }   /* 反应 */
 .sw-t.sw, .ws-strip i.sw { background: #e9e3da; color: #4d453d; }   /* 收尾 */
-.ws-head { position: sticky; top: -14px; z-index: 1; margin: 0 -14px; padding: 6px 14px 1px; background: #faf9f7; }
+.ws-head { position: sticky; top: -14px; z-index: 1; margin: 0 -14px; padding: 6px 14px 1px; background: var(--panel); }
 .ws-strip { display: flex; height: 16px; margin: 2px 0 5px; border-radius: 4px; overflow: hidden; }
-.ws-strip i { min-width: 3px; background: var(--paper-3); border-right: 1.5px solid #faf9f7; opacity: .55; }
+.ws-strip i { min-width: 3px; background: var(--paper-3); border-right: 1.5px solid var(--panel); opacity: .55; }
 .ws-strip i:last-child { border-right: 0; }
 .ws-strip i.me { opacity: 1; box-shadow: inset 0 0 0 1.5px var(--tc); }
 .ws-cap { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 0 0 8px; font-size: 12px; line-height: 1.6; color: var(--ink-3); }
@@ -140,3 +140,40 @@
 .ws-list small { display: block; font-size: 12px; line-height: 1.65; color: var(--ink-3); }
 .ws-list .sc { font-size: 12px; line-height: 1.8; color: var(--ink-4); white-space: nowrap; }
 .ws-list li.me { background: #fff6dc; box-shadow: inset 2px 0 0 var(--tc); }
+
+/* 2026-11-16 配色：他定「甲 暖灰台面」＋「聚光」（通用工具/流水线/写稿页配色_设计稿.html）。
+   四层一层比一层亮：台面（整页底）→ 右栏、底栏 → 镜头卡 → 写字框。他说颜色过渡要自然：相邻两层只差一点，不用实线框，用很淡的边和柔影子分开；
+   顶栏往下渐变到接近台面；正文顶上那一条钉住时，底下渐隐，不画实线。 */
+:root {
+  --desk: #e8e3da; --panel: #f3efe8; --card: #fdfbf8; --card-h1: #f6f3ee; --card-h2: #faf8f4;
+  --edge: rgba(92, 72, 44, .10); --edge-2: rgba(92, 72, 44, .17);
+  --lift: 0 1px 2px rgba(70, 52, 28, .05), 0 8px 22px -14px rgba(70, 52, 28, .28);
+}
+body { background: var(--desk); }
+.top { background: linear-gradient(to bottom, #f7f5f1, #eeeae2); border-bottom-color: var(--edge); }
+.editor-mode { border-bottom-color: var(--edge); }
+.mode-tabs { border-color: var(--edge-2); background: rgba(92, 72, 44, .06); }
+.mode-tabs .on { border-color: var(--edge); background: var(--card); }
+.sheet-head { background: var(--desk); }
+.sheet-head::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 18px; background: linear-gradient(to bottom, var(--desk), rgba(232, 227, 218, 0)); pointer-events: none; opacity: 0; transition: opacity .2s; }
+.canvas.stuck .sheet-head { box-shadow: none; }
+.canvas.stuck .sheet-head::after { opacity: 1; }
+.sheet-head .mini-b { border-color: var(--edge-2); background: rgba(255, 255, 255, .72); }
+.shared-settings > .sec, .free-section { border-color: var(--edge); background: var(--card); box-shadow: var(--lift); }
+.p-shot { border-color: var(--edge); background: var(--card); box-shadow: var(--lift); transition: opacity .25s ease, box-shadow .25s ease, border-color .25s ease; }
+.p-shot .shot-h { border-bottom-color: var(--edge); background: linear-gradient(to bottom, var(--card-h1), var(--card-h2)); }
+.p-shot .shot-title { border-bottom-color: var(--edge-2); }
+.shot-purpose { border-color: var(--edge-2); }
+.shot-bottom { border-top-color: var(--edge); }
+.wr { border-color: var(--edge-2); background: #fff; }
+.add-shot { border-color: var(--edge-2); background: rgba(255, 255, 255, .4); }
+.rail { border: 0; background: var(--panel); box-shadow: 0 0 0 1px var(--edge), var(--lift); }
+.rail-tabs, .pin { border-bottom-color: var(--edge); }
+.pin { background: var(--panel); }
+.rail-body { background: var(--panel); }
+.guide { border-top: 0; background: var(--panel); box-shadow: 0 0 0 1px var(--edge); }
+/* 聚光：光标在哪一镜，那一镜带青边浮起来，别的镜淡下去；鼠标移上去看得清，不打字时都一样亮 */
+.p-shot:focus-within { border-color: var(--qing-line); box-shadow: 0 0 0 1px var(--qing-line), 0 14px 30px -16px rgba(31, 107, 105, .4); }
+.p-shot:focus-within .shot-h { background: linear-gradient(to bottom, rgba(31, 107, 105, .075), rgba(31, 107, 105, .03)); }
+.pshots:has(.p-shot:focus-within) .p-shot:not(:focus-within) { opacity: .6; }
+.pshots:has(.p-shot:focus-within) .p-shot:not(:focus-within):hover { opacity: .92; }
