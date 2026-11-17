@@ -82,10 +82,15 @@
     }
     return keepSecs(fresh, old, oldNos, all);
   }
+  /* AI 改过的那一镜原来是什么：只说改了的那几样，页面朱笔标出来（只补了作用的，别让人以为写什么也动了） */
+  function was(o, x) {
+    const t = (v, k) => str(v && v[k]).trim();
+    return [t(o, '写什么') !== t(x, '写什么') ? '写什么：' + (t(o, '写什么') || '（空）') : '', t(o, '作用') !== t(x, '作用') ? '作用：' + (t(o, '作用') || '（原来没写）') : ''].filter(Boolean).join('　');
+  }
   /* 页面上画作用：色块＋后面那句。h：界面.js 的 h；cls：后面那句的样式 */
   function bits(why, h, cls) {
     const { tag, rest } = split(why);
     return [tag ? h('span', { class: 'sw-t ' + TAGS[tag], title: tag + '：' + SAY[tag] }, tag) : null, h('span', { class: cls || 'sw-r' }, rest)].filter(Boolean);
   }
-  return Object.freeze({ MAX, ONE, LONGEST, TAGS, NAMES, SAY, ruleWhy, RULE_SEC, split, len, refs, renum, secOf, sum, pickSay, strip, keepSecs, merge, bits });
+  return Object.freeze({ MAX, ONE, LONGEST, TAGS, NAMES, SAY, ruleWhy, RULE_SEC, split, len, refs, renum, secOf, sum, pickSay, strip, keepSecs, merge, was, bits });
 });

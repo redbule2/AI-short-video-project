@@ -24,6 +24,7 @@
 <script src="../公用/关键帧绑定.js"></script>
 <script src="../公用/镜头作用.js"></script>
 <script src="流水线.js"></script>
+<script src="资产详情.js"></script>
 <script src="../公用/样片归属.js"></script>
 <script src="镜头表浮窗.js"></script>
 <script>
@@ -796,9 +797,9 @@ async function dropFrameWord(s, e, w, ref) {
 function kfChip(s, e, w, ref) {
   const stop = ev => ev.stopPropagation(), has = w.hasImg, ok = has && w.ok;
   const tx = [ref ? '挂在 ' + ref : '', bindSay(s, w.img), chipTx(null, w) || (has ? '' : wordTx(w))].filter(Boolean).join(' · ');
-  const open = () => openWord(s, w);   // 进这一帧自己的那一页：字、图、AI 做过什么都在那里（11-14）
-  const el = h('div', { class: 'fl-asset k-zhen wd-' + w.step + (has ? '' : ' todo') + (ok ? ' ok' : ''), role: 'button', tabindex: '0',
-    title: w.img + (w.need ? '\n要撑住：' + w.need : '') + (w.checkImg ? '\nAI 核图：' + w.checkImg : '') + '\n点一下进这一帧的那一页：看字、批字、批准出图、看图' },
+  const open = () => openWord(s, w);   // 弹出这一帧的弹窗（资产详情.js）：字、图、AI 做过什么都在那里，这一页不动
+  const el = h('div', { class: 'fl-asset k-zhen wd-' + w.step + (has ? '' : ' todo') + (ok ? ' ok' : ''), 'data-img': w.img, role: 'button', tabindex: '0',
+    title: w.img + (w.need ? '\n要撑住：' + w.need : '') + (w.checkImg ? '\nAI 核图：' + w.checkImg : '') + '\n点一下弹出来：看字、批字、批准出图、看图' },
     has ? thumbImg(w.img) : h('span', { class: 'ph' }, w.hasTxt ? '有字' : '待写'),
     h('span', { class: 'nm' }, w.stem, h('small', null, h('b', { class: 'k-w' }, '关键帧'), tx ? ' · ' + tx : '')));
   el.addEventListener('click', open);
@@ -921,7 +922,7 @@ function render() {
 }
 
 start({
-  name: '提示词', scene: true, render,
+  name: '提示词', scene: true, render, leave: adLeave,   // leave：关键帧弹窗里改了没存的字，去别的页前先存上
   sides() { loadExtra().then(() => { if (!typing()) rerender(); else F.later = true; }); },   // 你正在写：写完再画（tick 里补）
   jobDone() { loadExtra().then(rerender); },
 }).then(() => loadExtra().then(() => { if (F.doc && sceneNow()) rerender(); }));

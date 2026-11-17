@@ -146,7 +146,7 @@
    剧本定稿、提炼定了以后才开（11-16 起出场的是剧本定稿以后提炼的）：这一场出场的人物、道具、场景图各对着哪张图。
    11-16 改版（他看了 资产页改版_设计稿.html，四处都照推荐的定）：
      顶上一条钉住：走到哪了（确认了几张、缺图、字等你批……点了跳过去）、「让 AI 写字」、这一步要按的那一个，下面四个页签：人物、场景、道具、关键帧，一次看一样，回到上回看的那一页。
-     人物、场景、道具：一样一张大图卡。图下名字、走到哪了、眼下该按的钮；点卡进它自己的那一页（资产详情.js）。人物的音色并在卡底下一行。
+     人物、场景、道具：一样一张大图卡。图下名字、走到哪了、眼下该按的钮；点卡弹出它的弹窗（资产详情.js；11-16 起不换页）。人物的音色并在卡底下一行。
        没图的卡「挑现成的图」：右边滑出一栏（挑图栏.js），顶上写明给谁挑，挑中的就挂给它，不再照图名猜。剧本里提到、还没加上的，虚线卡排在后面；最后一张「＋ 加人物」。
      关键帧：一镜一张小卡，三格（开头、中间、结尾），一格几张的角上「+1」，点一格看这几张、换现用、确认、解绑。没绑的摆在顶上「还没绑」一排：
        拖到哪一格就绑上，或者点一下图再点格子；格子里的图拖到别的格子就改绑，拖回「还没绑」就解绑。空的格子点一下，从这一段文件夹里挑一张绑上。
@@ -161,61 +161,7 @@
    共用的东西（读写流水线.json、顶栏、步骤条、这一场要哪些图、哪张图确认过）在 流水线.js。
    ============================================================ */
 'use strict';
-/* 这张图有没有提示词挂着：看 资产/参考素材映射.json（AI 写提示词时登记的） */
-async function usedByPrompts(file) {
-  try {
-    if (!(await hasFile(F.name, ['资产', '参考素材映射.json']))) return [];
-    const j = await readJson(at([F.name, '资产', '参考素材映射.json']));
-    return Object.entries(j.prompts || {}).filter(([, v]) => (v && v.references || []).some(r => r && cleanFile(r.path) === file)).map(([k]) => k);
-  } catch (e) { return []; }
-}
-/* 删一张图。几种删法：这一段不用它（人物、道具：这一段不出场，全片表里还在）；只是不引用（图还在原处，以后点「挑现成的图」能再挂回来）；
-   图不要了（移进这个项目的 历史记录，全片各处都不再引用它；想重出：那一格的字还在，点「批字」→「照这个出图」；想要回来，挑图那一栏「删掉的」里放回来） */
-async function removeAsset(s, it, stay) {   // stay：在一样东西自己的那一页上删的，删完那一页自己换到别处，这里不重画。回 'drop'、'unref'、'del'，没删回 false
-  const file = it.at, isRow = !!KIND[it.类别], e = isRow ? entryOf(it.类别, it.名称) : null, k = kindOf(it.类别), frame = it.类别 === '关键帧';
-  const field = isRow || frame ? '' : it.类别 === '人物图' || it.类别 === '道具图' ? it.类别 : '场景图';   // 不是表里一行的：这一场哪一格记着它
-  const canUnref = it.own && (frame || (isRow ? !!e && e.资产.includes(file) : s[field].includes(file)));
-  const canDrop = isRow && it.own && !stay && s[it.类别].includes(it.名称);
-  const used = await usedByPrompts(file), mineImg = !isRow && segImg(s, file) && !F.doc.场景图.includes(file);   // mineImg：这一段文件夹里的图，只这一场用
-  const r = await dialog(close => dlgShell('删掉这张图 · ' + it.名称 + (it.sub ? ' · ' + it.sub : ''), file,
-    [canDrop ? h('p', { class: 'fn-note' }, '这一段不用「' + it.名称 + '」：这一段不出场，全片的' + k + '表里还在，图也还挂着。') : null,
-      h('p', { class: 'fn-note' }, mineImg ? '图不要了：移进这个项目的「历史记录」（照原来的文件夹放），这一段不再用它。' : '图不要了：移进这个项目的「历史记录」，全片各处都不再引用它。想重出一张：它的字还在，删完点那一格的「批字」→「照这个出图」；后悔了，在挑图那一栏的「删掉的」里放回来。'),
-      canUnref ? h('p', { class: 'fn-note' }, isRow ? '只是不引用：图还留在原处，「' + it.名称 + '」不再挂它（各段都不挂）。以后点「挑现成的图」能再挂回来。' : frame ? '只是这一段不当关键帧：图还留在 资产 / ' + segName(s.段) + ' 里。' : mineImg ? '只是这一段不用：图还留在 资产 / ' + segName(s.段) + ' 里，以后点「＋ 加' + k + '」能再挑回来。' : '只是这一段不用：图还留在原处，全片还引用着，只是这一段不挂它。') : null,
-      used.length ? h('p', { class: 'fn-note warn' }, '有提示词挂着这张图：' + used.join('、') + '。移走以后，那边要重新挂图。') : null],
-    [h('button', { class: 'btn ghost', 'data-focus': '', onclick: () => close(null) }, '取消'),
-      canDrop ? h('button', { class: 'btn', onclick: () => close('drop') }, '这一段不用它') : null,
-      canUnref ? h('button', { class: 'btn', onclick: () => close('unref') }, isRow ? '只是不引用' : frame ? '不当关键帧' : '只是这一段不用') : null,
-      h('button', { class: 'btn zhu', onclick: () => close('del') }, '图不要了')]));
-  if (!r) return false;
-  if (r === 'drop') { s[it.类别] = s[it.类别].filter(n => n !== it.名称); touch(); paint(); return r; }
-  if (r === 'unref') {
-    if (isRow) { e.资产 = e.资产.filter(f => f !== file); e.不用 = [...new Set([...(Array.isArray(e.不用) ? e.不用 : []), file])]; }   // 记下「不用」：AI 清单里再列着它，也不替你对回去
-    else if (frame) dropFrame(s, file);   // 名字带首帧的：记进这一场的「关键帧不用」，不再自己冒出来
-    else s[field] = s[field].filter(f => f !== file);
-    touch(); if (!stay) paint();
-    return r;
-  }
-  const parts = file.split('/'), dir = parts.slice(0, -1), name = parts[parts.length - 1], dot = name.lastIndexOf('.'), stem = dot > 0 ? name.slice(0, dot) : name, stamp = stampNow();
-  const dest = [F.name, '历史记录', ...dir, stem + '__' + stamp + (dot > 0 ? name.slice(dot) : '')];
-  try { await FS.move(at([F.name, ...parts]), at(dest)); }
-  catch (err) { toast('没移走：' + err.message, 'err'); return false; }
-  // 看大图时写的批注、批注截图跟着一起收走：不然重出的同名图一打开就带着旧批注
-  try { if (await hasFile(F.name, [...dir, stem + '_批注.md'])) await FS.move(at([F.name, ...dir, stem + '_批注.md']), at([F.name, '历史记录', ...dir, stem + '_批注__' + stamp + '.md'])); } catch (err) { /* 挪不动就留着 */ }
-  try { if (await FS.isDir(at([F.name, ...dir, stem + SHOTS_TAIL]))) await FS.move(at([F.name, ...dir, stem + SHOTS_TAIL]), at([F.name, '历史记录', ...dir, stem + SHOTS_TAIL + '__' + stamp])); } catch (err) { /* 挪不动就留着 */ }
-  for (const K of LISTS) for (const x of F.doc[K.key]) x.资产 = x.资产.filter(f => f !== file);
-  F.doc.场景图 = F.doc.场景图.filter(f => f !== file);
-  for (const x of F.doc.场) { for (const f2 of ['场景图', '人物图', '道具图', '关键帧', '关键帧不用']) x[f2] = arrOf(x[f2]).filter(f => f !== file); SB.unbind(x, file); }
-  delete F.doc.可用[file];   // 图不在了，它的「可用」也不留：重出的那一张要重新确认
-  touch();
-  await flush();
-  window.UI.dropThumbs();   // 重出的图会回到同一个名字：做好的缩小图不能再用
-  try { F.pool = await loadPool(F.name); } catch (err) { /* 下回再读 */ }
-  await loadSides();
-  if (stay) return r;
-  rerender();
-  toast('移进历史记录了：' + dest.slice(1).join(' / '));
-  return r;
-}
+/* 删一张图（removeAsset、usedByPrompts）在 资产详情.js：卡上的 ×、弹窗里的「删除」共用 */
 /* 给一张卡挑现成的图：人物、道具挂到它那一行；只用文字写的场景改用一张图 */
 function pickFor(s, it) {
   if (KIND[it.类别] && it.own) return PickBar.open({ s, mode: 'row', k: it.类别, row: it });
@@ -267,8 +213,8 @@ function cardEl(s, it, voice) {
           : isRow ? ['这一段不用「' + it.名称 + '」（全片的' + k + '表里还在）', () => { s[it.类别] = s[it.类别].filter(n => n !== it.名称); touch(); paint(); }]
             : it.文件 && Array.isArray(s[it.类别]) ? ['这张图不在了：这一段不再用它', () => { s[it.类别] = s[it.类别].filter(f => f !== it.文件); touch(); paint(); }] : null;
   const swap = isRow && it.own && img && !KIND[it.类别].multi ? h('button', { class: 'ac-swap', type: 'button', title: '另挑一张现成的图挂给「' + it.名称 + '」', onkeydown: stop, onclick: ev => { stop(ev); pickFor(s, it); } }, '换图') : null;
-  const el = h('div', { class: 'ac ' + kindCls(k) + (good ? ' ok' : '') + (w && checkBad(w.checkImg) || why ? ' bad' : ''), 'data-key': cardKey(it), role: open ? 'button' : null, tabindex: open ? '0' : null,
-      title: [w ? '点一下进它的那一页：字、图、AI 做过的事' : img ? '点开看大图' : open ? '点一下挑现成的图' : '', it.at || it.文字 || it.说明 || '', w && w.checkImg ? 'AI 核图：' + w.checkImg : '', w && w.need ? '要撑住：' + w.need : '', why ? '剧本改了：' + why : ''].filter(Boolean).join('\n'),
+  const el = h('div', { class: 'ac ' + kindCls(k) + (good ? ' ok' : '') + (w && checkBad(w.checkImg) || why ? ' bad' : ''), 'data-key': cardKey(it), 'data-img': w ? w.img : it.at || null, role: open ? 'button' : null, tabindex: open ? '0' : null,
+      title: [w ? '点一下弹出来：字、图、AI 做过的事' : img ? '点开看大图' : open ? '点一下挑现成的图' : '', it.at || it.文字 || it.说明 || '', w && w.checkImg ? 'AI 核图：' + w.checkImg : '', w && w.need ? '要撑住：' + w.need : '', why ? '剧本改了：' + why : ''].filter(Boolean).join('\n'),
       onclick: open, onkeydown: open ? ev => { if (ev.key === 'Enter' && ev.target === ev.currentTarget) open(); } : null },
     h('div', { class: 'ac-pic' + (img ? '' : ' none') }, img ? thumbImg(it.at, 400) : it.文字 ? '只用文字写' : it.状态 === '图不在了' ? '图不在了' : '还没有图'),
     h('div', { class: 'ac-bd' },
@@ -324,7 +270,7 @@ function sugCards(s, k) {
     })) : [])];
 }
 const ADD_NOTE = { 人物: '人物表里的、全片的人物图、这一段文件夹的图、新加一个', 场景: '文字写的、全片的场景图、这一段的空镜、新加一个', 道具: '道具表里的、全片的道具图、这一段文件夹的图、新加一个（特效也算这里）' };
-const HINT = { 人物: '点卡进它自己的那一页：看字、批字、出图。音色在人物卡底下。', 场景: '点卡进它自己的那一页。只用文字写的场景也是一张卡，要图就「挑现成的图」或者「写字」让 AI 出。', 道具: '点卡进它自己的那一页。一个道具几种样子，一种一张图：最后一张「＋ 加一种样子」。' };
+const HINT = { 人物: '点卡弹出来：看字、批字、出图。音色在人物卡底下。', 场景: '点卡弹出来。只用文字写的场景也是一张卡，要图就「挑现成的图」或者「写字」让 AI 出。', 道具: '点卡弹出来。一个道具几种样子，一种一张图：最后一张「＋ 加一种样子」。' };
 /* 人物、场景、道具一页：一样一张卡，剧本里提到的虚线卡，最后「＋ 加」 */
 function kindBody(s, k, list) {
   const mine = list.filter(it => it.类别 !== '关键帧' && kindOf(it.类别) === k);
@@ -457,7 +403,7 @@ function goTo(s, pred) {
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
 }
-/* 打开这一场头一样要你看的（字等你批、新图……）：进它的那一页；一样都没找到就跳到那张卡 */
+/* 打开这一场头一样要你看的（字等你批、新图……）：弹出它；一样都没找到就跳到那张卡 */
 function openFirst(s, pred) { const x = adOrder(s, {}).find(y => pred(y.w)); if (x) openWord(s, x.w); else goTo(s, (it, w) => !!w && pred(w)); }
 function headEls(s) {
   const { has, lacking, ws, okN, st, cast, jobs } = barInfo(s);
@@ -477,7 +423,7 @@ function headEls(s) {
         st.tx === '待核对' && st.impact ? h('button', { class: 'as-warn', type: 'button', title: '剧本重新定稿以后，AI 对了一遍新旧剧本，列了这几样。点一下跳过去', onclick: () => goTo(s, it => IMPACT.has(kindOf(it.类别) + '/' + it.名称)) }, '待核对：' + st.why)
           : st.tx === '待核对' ? h('span', { class: 'as-warn', title: '看一遍这些图还合不合适：合适就点右边「还能用，确认」，不合适的点 × 删掉重出' }, '待核对：' + st.why) : null];
   const sty = styleName(s) ? null : h('button', { class: 'as-warn', type: 'button', title: '出资产图照拍摄风格写画面质感、颜色和光。不定也能出。点一下挑', onclick: () => styleDlg(s) }, '还没定拍摄风格');   // 只提醒，不拦着（11-14）
-  const ai = !batch && ws.length ? h('button', { class: 'btn sm' + (none ? '' : ' ghost'), type: 'button', title: 'AI 读定稿的剧本：给这一段还没有字的人物、道具、场景写字（出图提示词，场景先写 GEO 底稿），已经有的图核一遍撑不撑得住。写好了点那一样进它的那一页批，点「批准出图」才出图', onclick: async () => { if (await askWords(s)) paint(); } }, none ? '让 AI 写字（' + none + ' 样）' : '让 AI 再核一遍') : null;   // 要给提示词自己交的：顶栏「AI 用」选「给我提示词」
+  const ai = !batch && ws.length ? h('button', { class: 'btn sm' + (none ? '' : ' ghost'), type: 'button', title: 'AI 读定稿的剧本：给这一段还没有字的人物、道具、场景写字（出图提示词，场景先写 GEO 底稿），已经有的图核一遍撑不撑得住。写好了点那一样弹出来批，点「批准出图」才出图', onclick: async () => { if (await askWords(s)) paint(); } }, none ? '让 AI 写字（' + none + ' 样）' : '让 AI 再核一遍') : null;   // 要给提示词自己交的：顶栏「AI 用」选「给我提示词」
   /* 这一步要按的那一个（深色），旁边「去写提示词」（提示词不等资产，什么时候写你自己定） */
   const next = ink => h('button', { class: 'btn sm' + (ink ? ' ink' : ' ghost'), type: 'button', title: '提示词那一步不等资产：什么时候写你自己定，没图的写的时候用文字锁', onclick: () => go('提示词', { s: s.段 }) }, ink ? '下一步：提示词 →' : '去写提示词 →');
   const main = st.st === 'ok' ? [next(true)]
@@ -525,7 +471,7 @@ function repaint() {
     rec && rec.bad ? h('p', { class: 'fn-note warn', style: 'margin-top:12px' }, 'AI 列的资产清单读不了：' + rec.bad) : null,
     impactBox(s)]));
   document.getElementById('as-body').replaceChildren(...flat(cur === '关键帧' ? kbBody(s, list.filter(it => it.类别 === '关键帧')) : kindBody(s, cur, list)));
-  paintSteps(); paintStatus(); asPin(); PickBar.refresh();
+  paintSteps(); paintStatus(); asPin(); PickBar.refresh(); adSync();   // 开着弹窗：跟着换（资产详情.js）
 }
 /* 剧本重新定稿以后 AI 列的影响清单：列上、还没处理的一样一行（为什么、看过了）；「全部重看」照老办法这一场的图全都再核一遍 */
 function impactBox(s) {
@@ -546,34 +492,18 @@ function impactBox(s) {
         h('button', { class: 'fl-link', type: 'button', style: 'margin-left:10px', title: '看过了，照旧能用', onclick: () => { keptOf(s)[impactKey(x)] = nowText(); touch(); paint(); } }, '看过了，照旧'))))),
     v.提示词.length ? h('p', { class: 'faint small' }, '提示词也有 ' + v.提示词.length + ' 条要再看，在提示词那一步。') : null);
 }
-const DETAIL = adMode();   // 网址带 a=…：这一页是一样东西自己的那一页（资产详情.js，11-14）
-const paint = () => { if ((DETAIL ? adRepaint : repaint)() === false) rerender(); };
+const paint = () => { if (repaint() === false) rerender(); };
 function render() {
   const s = sceneNow();
   const lk = assetState(s);
   if (lk.st === 'lock') { PickBar.close(); return assetLock(s, lk); }
   setTimeout(repaint, 0);   // 架子先摆上，里面的东西接着填
-  pickFromHash(s);
   const body = h('div', { id: 'as-body' });
   kbWire(body);
   return [h('div', { class: 'as-head', id: 'as-head' }, h('div', { class: 'as-h1', id: 'as-h1' }), h('div', { class: 'as-tabs', id: 'as-tabs', role: 'tablist' })), h('div', { id: 'as-more' }), body];
 }
 
-/* 从一样东西的那一页点「回资产页挑一张」回来：网址带 #pick=类别/名称，换到那一页，给那一张卡打开挑图栏 */
-function pickFromHash(s) {
-  let v = '';
-  try { v = decodeURIComponent(location.hash.slice(1)); } catch (e) { return; }
-  const m = /^pick=([^/]+)\/(.+)$/.exec(v);
-  if (!m) return;
-  history.replaceState(null, '', location.pathname + location.search);
-  const it = assetsOf(s).list.find(x => x.类别 === m[1] && x.名称 === m[2]);
-  if (!it) return;
-  if (tabNow() !== kindOf(it.类别)) setTab(kindOf(it.类别));
-  setTimeout(() => pickFor(s, it), 60);
-}
-
-start({ name: '资产', scene: true, render: DETAIL ? adRender : render, repaint: DETAIL ? adRepaint : repaint,
-  ...(DETAIL ? { sub: true, step: adFrom(), wide: true, leave: adLeave } : {}),
+start({ name: '资产', scene: true, render, repaint, leave: adLeave,   // leave：弹窗里改了没存的字，去别的页前先存上
   jobDone(ended) {   // 只用文字写的场景，图出好了：这一场改用这张图（全片设定里那一句还在）
     for (const j of ended) {
       if (j.事 !== '出图' || j.状态 !== '做完' || j.类别 !== '场景' || !j.文件名) continue;

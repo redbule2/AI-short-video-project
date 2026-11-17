@@ -652,7 +652,7 @@ function takeDistill(s, v) {
   s.场景文字 = uniq(mine);
   orderCast(s);
   const fresh = Why.merge(v.段落.map(x => ({ ...x })), s.段落, SB, s.提炼总批);   // 原来的号尽量留着：关键帧绑在号上
-  s.段落 = fresh.map(x => { const o = byNo.get(x.号); return { ...x, ...(redo && !had.has(key(x)) ? { AI改: o && key(o) ? key(o) : '（新加的一个镜头）' } : {}) }; });
+  s.段落 = fresh.map(x => { const o = byNo.get(x.号); return { ...x, ...(redo && !had.has(key(x)) ? { AI改: o && key(o) ? Why.was(o, x) : '（新加的一个镜头）' } : {}) }; });
   s.提炼改 = redo || Object.keys(mark).length ? mark : {}; s.提炼批 = {}; s.提炼取 = v.时间; s.提炼总批 = ''; s.定稿 = '';
   touch();
 }
@@ -706,7 +706,7 @@ function openShell(parts, title, extra) {   // extra(close)：顶上那一条里
   if (SHELL) SHELL.remove();
   const close = () => { if (!SHELL) return; SHELL.remove(); SHELL = null; document.body.classList.remove('wf-covered'); refresh(); };
   SHELL = h('div', { class: 'wf-shell' },
-    h('div', { class: 'wf-shell-h' }, h('button', { class: 'btn sm ink', type: 'button', onclick: close }, '← 回到流水线'), h('span', { class: 'wf-shell-t' }, title || ''), h('span', { class: 'sp' }),
+    h('div', { class: 'wf-shell-h' }, h('button', { class: 'btn sm ink', type: 'button', onclick: close }, typeof adIsOpen === 'function' && adIsOpen() ? '← 回到弹窗' : '← 回到流水线'), h('span', { class: 'wf-shell-t' }, title || ''), h('span', { class: 'sp' }),
       extra ? [extra(close)].flat(Infinity).filter(Boolean) : null),
     h('iframe', { class: 'wf-shell-frame', title: title || '看文件', src: shellUrl(parts) }));
   document.body.append(SHELL); document.body.classList.add('wf-covered');
@@ -1004,9 +1004,9 @@ function stepsEls() {
   if (!s) return [];
   const info = stepInfo(s), i0 = F.doc.场.indexOf(s), prev = F.doc.场[i0 - 1], next = F.doc.场[i0 + 1], out = [];
   STEPS.forEach(([page, no, label], i) => {
-    const x = info[i], on = (PAGE.step || PAGE.name) === page;   // PAGE.step：一页里的小页（资产那一页点开的一样东西）算哪一步；PAGE.sub：在小页里，点这一步回到它的大页
+    const x = info[i], on = PAGE.name === page;
     if (i) out.push(h('span', { class: 'wf-arrow' }, '→'));
-    out.push(h('button', { class: 'wf-step ' + x.st + (on ? ' on' : ''), type: 'button', title: x.st === 'lock' ? x.tx + '才能做这一步' : null, onclick: () => { if (!on || PAGE.sub) go(page, { s: s.段 }); } },
+    out.push(h('button', { class: 'wf-step ' + x.st + (on ? ' on' : ''), type: 'button', title: x.st === 'lock' ? x.tx + '才能做这一步' : null, onclick: () => { if (!on) go(page, { s: s.段 }); } },
       h('i', null, x.st === 'ok' ? icon('check') : no), label, h('small', null, x.tx)));
   });
   out.push(h('span', { class: 'sp' }));
@@ -1036,6 +1036,7 @@ function renderAll() {
     PAGE.scene && !F.bad ? h('nav', { class: 'wf-steps', id: 'wf-steps' }, stepsEls()) : null,
     h('main', { class: 'wf-main' }, h('div', { class: 'fl' + (PAGE.wide ? ' wide' : ''), id: 'fl-body' }, F.bad ? badBox() : PAGE.render()))].filter(Boolean));
   paintStatus(); fitAll();
+  if (typeof adSync === 'function') adSync();   // 开着一样东西的弹窗（资产详情.js）：它盖在整页上面，跟着换
 }
 function rerender(sc) {
   F.redraw = F.later = false;
@@ -1615,11 +1616,11 @@ async function archiveFile(rel, stamp, tail) {   // 收进历史记录（照原�
   await FS.move(at([F.name, ...parts, name]), at([F.name, '历史记录', ...parts, base + '__' + stamp + (tail || '') + ext]));
 }
 const pageRepaint = async () => { await loadSides(); if (!(PAGE.repaint && PAGE.repaint() !== false)) rerender(); };
-/* 看字、批字、批准出图：点一样东西，进它自己的那一页（资产.html?a=图的路径，写在 资产详情.js）。
-   11-14 他说原来的小窗太黑盒：AI 写了什么、照什么写的、做到哪了，都要在一页里看得见 */
+/* 看字、批字、批准出图：点一样东西，弹出它的弹窗（资产详情.js 的 adOpen；11-16 起不换页）。
+   11-14 他说原来的小窗太黑盒：AI 写了什么、照什么写的、做到哪了，都要看得见。没引 资产详情.js 的页面：去资产那一步弹出来 */
 function openWord(s, w) {
-  const kf = w.frame && (PAGE.name === '提示词' || query().from === '提示词');   // 关键帧从提示词那一步点进来的：看完回提示词
-  go('资产', { s: s.段, a: w.img, ...(kf ? { from: '提示词', v: w.forPrompt || '' } : {}) });
+  if (typeof adOpen === 'function') return adOpen(s, w);
+  go('资产', { s: s.段 }, 'a=' + w.img + (w.forPrompt ? '|' + w.forPrompt : ''));
 }
 /* 「用新图」：旧图和它的批注、批注截图用同一个时间收进历史记录，新图（候选）换成原来的名字，算确认可用；参考素材映射里这张图的 SHA-256 跟着换。
    画布上的旧节点：出片任务书里会让 Codex 照 AGENTS.md 改名（加同一个 __时间）再传新的 */
@@ -1679,7 +1680,6 @@ const shellActs = (s, it, w) => close => {
   return [
     w && w.checkImg ? noteEl('AI 核图', w.checkImg) : null,
     w && w.geoBack ? h('span', { class: 'fn-note as-note warn', title: w.geoBack }, 'GEO 对不上：要拿回去批图') : null,
-    w && !PAGE.sub ? h('button', { class: 'btn sm ghost', type: 'button', title: '进这一样的那一页：看字（出图提示词' + (w.cat === '场景' ? '、GEO 底稿' : '') + '）、AI 做过什么。改了字点「批准出图」，新图先当候选', onclick: () => { close(); openWord(s, w); } }, '看字') : null,
     w ? h('button', { class: 'btn sm', type: 'button', disabled: w.drawing, title: '先在图上框出来、写好批注，再点这里：Codex 以这张为底只改你说到的地方，改出来的先当候选', onclick: async () => { if (await askEditImg(s, w)) close(); } }, '照批注改图') : null,
     ok ? h('span', { class: 'fs-state ok', title: '确认的时间：' + F.doc.可用[file] }, icon('check'), '确认过可用')
       : h('button', { class: 'btn sm', type: 'button', title: '这张图看过了、能用。确认过的图，别的段不用再确认', onclick: () => { it && it.at ? confirmImg(s, it, true) : confirmW(s, w, true); toast('「' + label + '」确认可用'); close(); } }, icon('check'), '这张确认可用')];
@@ -1714,7 +1714,7 @@ function wordPills(s, it, w) {
   if (w.step === 'ai-img' || w.step === 'ai-word') return [h('span', { class: 'fl-asset-ok busy', title: '做完这里自动换' }, h('i', { class: 'wt-ring' }), WORD_TX[w.step])];
   if (it && it.文字 && w.hasImg) return [b('用上这张图', '图出好了：这一段改用这张图（全片设定里那一句还在）', () => { useSceneImg(s, it.文字, w.img); pageNow(); })];
   if (w.step === 'cand') return [b('看新图', w.hasImg ? '出了一张新图：点开和旧图并排比，挑「用旧图」或「用新图」' : '出了一张新图：点开看，用不用', () => openWord(s, w))];
-  if (w.step === 'word') return [b(w.hasNote ? '批注没交' : '批字', '进这一样的那一页看字：自己改，或者写批注交给 AI 改；字定了点「批准出图」', () => openWord(s, w))];
+  if (w.step === 'word') return [b(w.hasNote ? '批注没交' : '批字', '弹出来看字：自己改，或者写批注交给 AI 改；字定了点「批准出图」', () => openWord(s, w))];
   if (w.step === 'none') return [b('写字', '交给 AI 写这一样的字（出图提示词' + (w.cat === '场景' ? '，先写 GEO 底稿' : '') + '）：读定稿的剧本，写清要撑住什么戏。写好你批，点「照这个出图」才出图', async () => { if (await askWords(s, [w])) pageNow(); })];
   return [];
 }
