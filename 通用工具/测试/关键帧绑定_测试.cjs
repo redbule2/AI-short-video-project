@@ -99,6 +99,16 @@ test('资产页一镜三格：现用的在格里，别的是备选；拖到一�
   assert.deepEqual(Object.keys(SB.slots(null)), ['首帧', '关键帧', '尾帧']);
 });
 
+test('一张一张看的先后：照镜头表，开头中间结尾，同一刻现用在前，没绑的最后', () => {
+  const paras = [{ 写什么: '一', 号: '1' }, { 写什么: '二', 号: '2' }], s = {};
+  const f = n => '资产/第1段/' + n + '.png';
+  SB.bind(s, f('二尾'), '2', '尾帧', paras); SB.bind(s, f('一尾'), '1', '尾帧', paras);
+  SB.bind(s, f('一首_雾'), '1', '首帧', paras); SB.bind(s, f('一首'), '1', '首帧', paras, true);   // 后绑的当现用，先绑的雾版改备选
+  const t = SB.table([f('没绑'), f('二尾'), f('一尾'), f('一首_雾'), f('一首')], paras, SB.bindsOf(s));
+  assert.deepEqual(SB.seq(t), [f('一首'), f('一首_雾'), f('一尾'), f('二尾'), f('没绑')]);
+  assert.deepEqual(SB.seq(SB.table([], paras, {})), []);
+});
+
 test('出片前对一遍：没写到、没绑、绑的镜头不在这一条、字改过', () => {
   const paras = [{ 写什么: '八', 号: '8' }, { 写什么: '九改', 号: '9' }];
   const binds = { 'a/8.png': { 镜: '8', 刻: '首帧', 写什么: '八' }, 'a/9.png': { 镜: '9', 刻: '首帧', 写什么: '九' } };

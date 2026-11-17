@@ -135,6 +135,8 @@
     for (const m of MOMENTS) { const fs = all.filter(x => x.刻 === m), cur = fs.find(x => x.current) || fs[0] || null; out[m] = { cur, alts: fs.filter(x => x !== cur) }; }
     return out;
   }
+  /* 一张一张看的先后（关键帧弹窗的上一张、下一张）：照镜头表，每一镜开头、中间、结尾，同一刻现用在前；没绑的放最后。t：table 给的 */
+  const seq = t => [...t.rows.flatMap(r => r.帧.map(x => x.file)), ...t.loose.map(x => x.file)];
   /* 写提示词时带哪几张：shots（镜头号）里每一镜每一刻现用的那张，照表里先后、开头中间结尾排 */
   function forShots(shots, frames, paras, binds) {
     const nos = nosOf(paras), cur = currentOf(frames, binds, nos), out = [];
@@ -192,5 +194,5 @@
     }
     return out;
   }
-  return Object.freeze({ normNo, nosOf, fillNos, expand, shotsOf, codeOf, keepNos, MOMENTS, SAY, bindsOf, guess, currentOf, isCurrent, staleOf, table, slots, forShots, order, say, regName, bind, setCurrent, keep, unbind, check });
+  return Object.freeze({ normNo, nosOf, fillNos, expand, shotsOf, codeOf, keepNos, MOMENTS, SAY, bindsOf, guess, currentOf, isCurrent, staleOf, table, slots, seq, forShots, order, say, regName, bind, setCurrent, keep, unbind, check });
 });

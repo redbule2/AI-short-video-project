@@ -7,16 +7,20 @@
      左边是图，不跟着滚：现在的图、AI 核图说了什么，点图看大图、写批注（盖在弹窗上面）；出了新图，旧图、新图并排，各自下面一个钮「用旧图」「用新图」；
      右边是字，自己滚：要撑住什么戏、AI 替你定的、参考图、GEO 底稿（场景）、出图提示词、批注；最下面折着 AI 做过的事、以前的字；
      底边：存没存、键盘怎么按；右边是这一步要按的那一个（深色，只摆这一处）和「下一样要你看的」。
+   关键帧（11-16 他要的：镜头当主角）：标题是「镜头11 · 开头」和这一镜写的什么；下面一排是这一镜开头、中间、结尾的几张，点哪张看哪张，
+     旁边是这一张的「当现用」「解绑」；没绑的那一排给「绑到哪一镜」。上一张、下一张照镜头表排。
+   点「确认可用」（关键帧、人物、场景、道具都是）：自动换到下一张要确认的，都确认了就关掉。
    网址带 #a=图的路径（|哪一条提示词）：刷新还开着，按「后退」关掉。老网址 资产.html?a=… 也认，换成 #a=…。
    改了的字，关掉、换一样、去别的页时自动存上（改之前的那一版收进历史记录）；存不上不关，说为什么；Ctrl+S 也能存。
    写字、出图、候选、确认这些做法和资产格子共用，在 流水线.js「文生资产」那一节；删一张图（removeAsset）资产格子也用，放在这里
    ============================================================ */
 'use strict';
 const AD = { q: null, pushed: false, skipPop: false, urlDone: false, closing: false, root: null, ui: null, title: '', nav: null,
-  key: '', base: null, mt: '', failMt: '', dirty: false, saveErr: '', loading: false, outside: false, els: null, cur: null, hist: null, histKey: '', scan: null, scanKey: '', imgSig: '', logSig: '', picT: '' };
+  key: '', base: null, mt: '', failMt: '', dirty: false, saveErr: '', loading: false, outside: false, els: null, cur: null, hist: null, histKey: '', scan: null, scanKey: '', imgSig: '', logSig: '', shotSig: '', picT: '' };
 const adIsOpen = () => !!AD.q;
 const escRe = t => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const adLabel = w => (w.frame ? '关键帧' : w.cat) + '「' + (w.frame ? w.stem : w.name + (w.state ? '（' + w.state + '）' : '')) + '」';
+const adBind = w => w.frame ? SB.bindsOf(w.s)[w.img] || null : null;   // 关键帧绑在哪一镜哪一刻
+const adLabel = w => { const b = adBind(w); return b ? '镜头' + b.镜 + ' ' + SB.SAY[b.刻] + (b.备选 ? '（备选）' : '') : (w.frame ? '关键帧' : w.cat) + '「' + (w.frame ? w.stem : w.name + (w.state ? '（' + w.state + '）' : '')) + '」'; };
 const adStamp = w => [F.words.get(w.txt) || 0, w.geo ? F.words.get(w.geo) || 0 : 0, F.words.get(w.note) || 0].join('/');
 const adNeedsYou = w => w.step === 'word' || w.step === 'cand' || w.step === 'img';
 const relDir = r => { const p = '项目/' + F.name + '/'; return r && r.startsWith(p) ? r.slice(p.length) : ''; };   // 任务记录（从总文件夹算起）→ 项目里的路径
@@ -46,8 +50,13 @@ function adFind(s) {
   }
   return null;
 }
-/* 上一样、下一样用：人物、场景、道具照资产格子的先后排；关键帧只在这一场的关键帧里排（照镜头号） */
-const adOrder = (s, w) => { const list = assetsOf(s).list, mine = w.frame ? list.filter(it => it.类别 === '关键帧') : KINDS.flatMap(k => list.filter(it => kindOf(it.类别) === k)); return mine.map(it => ({ it, w: wordOf(s, it) })).filter(x => x.w); };
+/* 上一样、下一样用：人物、场景、道具照资产格子的先后排；关键帧只在这一场的关键帧里排（照镜头表：每一镜开头、中间、结尾，没绑的最后，SB.seq） */
+function adOrder(s, w) {
+  const list = assetsOf(s).list, wrap = mine => mine.map(it => ({ it, w: wordOf(s, it) })).filter(x => x.w);
+  if (!w.frame) return wrap(KINDS.flatMap(k => list.filter(it => kindOf(it.类别) === k)));
+  const by = new Map(list.filter(it => it.类别 === '关键帧').map(it => [it.文件, it]));
+  return wrap(SB.seq(SB.table([...by.keys()], s.段落, SB.bindsOf(s))).map(f => by.get(f)));
+}
 const adUnit = w => w.frame ? '张' : '样';
 /* 这一样眼下在做的 AI 任务、上一回没做成的 */
 function adMine(s, w) {
@@ -97,10 +106,10 @@ async function adClose(fromPop) {
 function adMount() {
   if (AD.root) return;
   AD.title = document.title;
-  const ui = { head: h('div', { class: 'adm-h' }), now: h('div', { class: 'adm-now' }), img: h('section', { class: 'adm-img' }), word: h('div'),
+  const ui = { head: h('div', { class: 'adm-h' }), shot: h('div', { class: 'adm-shot' }), now: h('div', { class: 'adm-now' }), img: h('section', { class: 'adm-img' }), word: h('div'),
     logSum: h('summary'), logBody: h('div', { class: 'adm-logb' }), gone: h('div', { class: 'adm-gone' }), foot: h('div', { class: 'adm-f' }) };
   ui.txt = h('section', { class: 'adm-txt' }, ui.word, h('details', { class: 'adm-log' }, ui.logSum, ui.logBody));
-  ui.box = h('div', { class: 'adm-box', role: 'dialog', 'aria-modal': 'true', tabindex: '-1' }, ui.head, ui.now, h('div', { class: 'adm-b' }, ui.img, ui.txt), ui.gone, ui.foot);
+  ui.box = h('div', { class: 'adm-box', role: 'dialog', 'aria-modal': 'true', tabindex: '-1' }, ui.head, ui.shot, ui.now, h('div', { class: 'adm-b' }, ui.img, ui.txt), ui.gone, ui.foot);
   AD.ui = ui;
   AD.root = h('div', { class: 'adm' }, h('div', { class: 'adm-dim', title: '点这里关掉', onclick: () => adClose() }), ui.box);
   const sw = window.innerWidth - document.documentElement.clientWidth;   // 滚动条收起来了：后面那一页别往右跳
@@ -119,7 +128,7 @@ function adUnmount() {
   const wf = document.getElementById('wf');
   if (wf) wf.inert = false;
   if (AD.title) document.title = AD.title;
-  Object.assign(AD, { q: null, root: null, ui: null, nav: null, cur: null, els: null, key: '', base: null, mt: '', failMt: '', dirty: false, saveErr: '', outside: false, hist: null, histKey: '', scan: null, scanKey: '', imgSig: '', logSig: '' });
+  Object.assign(AD, { q: null, root: null, ui: null, nav: null, cur: null, els: null, key: '', base: null, mt: '', failMt: '', dirty: false, saveErr: '', outside: false, hist: null, histKey: '', scan: null, scanKey: '', imgSig: '', logSig: '', shotSig: '' });
 }
 /* 关掉以后，后面那一页上这一样的卡闪一下（翻到别的页签去了、不在眼前的，不闪） */
 function adFlash(img) {
@@ -255,8 +264,19 @@ async function adEditImg(s, w) { if (await askEditImg(s, w)) await pageRepaint()
 async function adConfirm(s, it, w, on) {
   if (it && it.at) confirmImg(s, it, on); else confirmW(s, w, on);
   await flush(); pageNow();
+  if (on && AD.q) {   // 11-16 他要的：确认了自动换到下一张要你看的图（关键帧照镜头表，人物场景道具照格子的先后，往后找，到头从头接着找）；都确认了就关掉
+    const { list, i } = AD.nav || { list: [], i: -1 };
+    const next = [...list.slice(i + 1), ...list.slice(0, Math.max(i, 0))].find(x => x.w.img !== w.img && !(x.it && x.it.文字) && (x.w.step === 'img' || x.w.step === 'cand'));   // 只用文字写的场景不算：它那张图是「用上这张图」，不是确认
+    if (next) { toast(adLabel(w) + ' 确认可用了，换到' + adLabel(next.w)); await adOpen(s, next.w); return; }
+    const rest = w.frame ? 0 : assetsOf(s).list.filter(x => x.类别 !== '关键帧' && x.at && x.at !== w.img && !okOf(x)).length;   // 弹不出来的（这一段文件夹里当人物用的图这类）：在卡上确认
+    toast(adLabel(w) + ' 确认可用了。' + (rest ? '弹窗里的都看完了，还有 ' + rest + ' 张没确认，在卡上点「确认可用」' : '这一段' + (w.frame ? '有图的关键帧' : '人物、场景、道具有图的') + '都确认过了'));
+    await adClose();
+    return;
+  }
   toast(on ? adLabel(w) + ' 确认可用了' : '取消了确认');
 }
+/* 关键帧换一镜、换现用、解绑、绑上：改这一场的「关键帧绑定」（公用/关键帧绑定.js），后面那一页和弹窗跟着重摆 */
+function adRebind(fn, say) { fn(); touch(); pageNow(); if (say) toast(say); }
 async function adUseCand(s, it, w) {
   if (!(await takeCand(w))) return;
   await pageRepaint();
@@ -392,13 +412,69 @@ function adHeadEls(s, it, w) {
   const { list, i } = AD.nav, u = adUnit(w), prev = i > 0 ? list[i - 1] : null, next = i >= 0 && i < list.length - 1 ? list[i + 1] : null, users = w.frame ? [] : usersOf(w.img);
   const where = ['第' + s.段 + '段', w.frame && w.forPrompt ? vpLabel(w.forPrompt) + '的一刻' : '', users.length > 1 ? '用在 ' + users.map(x => '第' + x + '段').join('、') : ''].filter(Boolean).join(' · ');
   const nav = (txt, x, cls, lab, key) => h('button', { class: 'adm-rb ' + cls, type: 'button', disabled: !x, 'aria-label': lab, title: x ? lab + '：' + adLabel(x.w) + '（键盘 ' + key + '）' : '这一段没有' + lab + '了', onclick: () => { if (x) adOpen(s, x.w); } }, txt);
-  return [h('div', { class: 'ad-title ' + kindCls(w.frame ? '关键帧' : w.cat) }, h('b', null, adLabel(w)), h('small', null, where)),
+  const sh = w.frame ? adShotOf(s, w) : null;
+  return [sh ? adShotTitle(s, w, sh) : h('div', { class: 'ad-title ' + kindCls(w.cat) }, h('b', null, adLabel(w)), h('small', null, where)),
     h('span', { class: 'sp' }),
     w.frame && w.hasImg ? h('button', { class: 'btn sm ghost', type: 'button', disabled: adBusy(s, w), title: '删掉这张关键帧：只是这一段不用，或者图也不要了（移进历史记录）', onclick: () => adDelete(s, it, w) }, '删除这张') : null,
-    list.length > 1 && i >= 0 ? h('span', { class: 'adm-n' }, '第 ' + (i + 1) + ' / ' + list.length + ' ' + u) : null,
+    sh && sh.row ? h('span', { class: 'adm-n', title: '这一段镜头表的第几镜。‹ › 一张一张换，照镜头表排' }, '镜头表第 ' + (sh.T.rows.indexOf(sh.row) + 1) + ' / ' + sh.T.rows.length + ' 镜')
+      : list.length > 1 && i >= 0 ? h('span', { class: 'adm-n' }, '第 ' + (i + 1) + ' / ' + list.length + ' ' + u) : null,
     list.length > 1 ? nav('‹', prev, 'adm-prev', '上一' + u, '←') : null,
     list.length > 1 ? nav('›', next, 'adm-next', '下一' + u, '→') : null,
     adX()];
+}
+/* ---------- 关键帧：镜头当主角（11-16 他要的）。标题是这一镜，下面一排是这一镜的几张 ---------- */
+/* 这一张绑在哪一镜、那一镜的字、这一场关键帧按镜头表摆的样子（SB.table）；by：图 → 它的 { it, w }（缩略图点了换过去用） */
+function adShotOf(s, w) {
+  const by = new Map(adOrder(s, w).map(x => [x.w.img, x]));
+  if (!by.has(w.img)) by.set(w.img, { it: null, w });   // 提示词那一步加的、资产格子里没有的
+  const T = SB.table([...by.keys()], s.段落, SB.bindsOf(s)), b = adBind(w);
+  return { T, b, by, row: b ? T.rows.find(r => r.号 === b.镜) || null : null };
+}
+function adShotTitle(s, w, { b, row }) {
+  const where = ['第' + s.段 + '段', row && row.作用 ? '作用：' + row.作用 : '', w.forPrompt ? '用在 ' + vpLabel(w.forPrompt) : '', w.stem].filter(Boolean).join(' · ');
+  if (!b) return h('div', { class: 'ad-title ad-shot-t k-zhen' }, h('div', { class: 'l1' }, h('b', null, '还没绑镜头')), h('div', { class: 'w' }, '这一张还不知道是哪一镜：在下面选好镜头，再点开头、中间或结尾'), h('small', null, where));
+  return h('div', { class: 'ad-title ad-shot-t k-zhen' },
+    h('div', { class: 'l1' }, h('b', null, '镜头' + b.镜), h('span', { class: 'm', title: SB.SAY[b.刻] + '：' + b.刻 }, SB.SAY[b.刻]), b.备选 ? h('span', { class: 'alt', title: '这一刻有几张，写提示词带的是现用那张' }, '备选') : null),
+    h('div', { class: 'w', title: row ? row.写什么 : '' }, row ? row.写什么 || '（这一镜还没写什么）' : '这一镜已经从镜头表里删了'),
+    h('small', null, where));
+}
+const adThumbOk = x => !!x && x.w.hasImg && x.w.ok;
+/* 一张小图：点了换过去。on：开着的就是它 */
+function adThumb(s, w, file, by, tag) {
+  const x = by.get(file), on = file === w.img, ok = adThumbOk(x), todo = !!x && x.w.hasImg && !x.w.ok;
+  return h('button', { class: 'adm-th' + (on ? ' on' : ''), type: 'button', 'aria-current': on ? 'true' : null,
+      title: baseOf(file) + (tag ? '（' + tag + '）' : '') + '\n' + (ok ? '确认过可用' : todo ? '还没确认' : x ? WORD_TX[x.w.step] : '') + (on ? '' : '\n点一下看这一张'),
+      onclick: () => { if (!on && x) adOpen(s, x.w); } },
+    x && x.w.hasImg ? thumbImg(file, 300) : h('span', null, x && x.w.hasTxt ? '有字没图' : '图不在了'),
+    ok ? h('i', { class: 'adm-th-ok', title: '确认过可用' }, icon('check')) : todo ? h('i', { class: 'adm-th-todo', title: '还没确认' }) : null,
+    tag ? h('em', null, tag) : null);
+}
+/* 标题下面那一排：绑了的是这一镜开头、中间、结尾各几张（现用在前），右边这一张的「还对得上」「当现用」「解绑」；
+   没绑的是「还没绑」的那几张，右边「绑到 镜头几 · 开头／中间／结尾」 */
+function adShotEls(s, w, sh) {
+  const { T, b, by, row } = sh, btn = (tx, title, fn, cls) => h('button', { class: 'btn sm' + (cls ? ' ' + cls : ''), type: 'button', title, onclick: fn }, tx);
+  if (b && row) {
+    const sl = SB.slots(row), cur = w.img;
+    const group = m => {
+      const all = [sl[m].cur, ...sl[m].alts].filter(Boolean), many = all.length > 1;
+      const empty = typeof PickBar !== 'undefined'
+        ? h('button', { class: 'adm-th none', type: 'button', title: '镜头' + row.号 + ' ' + SB.SAY[m] + '还没有关键帧：点一下关掉弹窗，从这一段文件夹里挑一张绑上', onclick: async () => { if (await adClose()) PickBar.open({ s, mode: 'slot', slot: { no: row.号, 刻: m } }); } }, '没有')
+        : h('span', { class: 'adm-th none' }, '没有');
+      return h('div', { class: 'adm-g' }, h('b', null, SB.SAY[m]), h('div', { class: 'adm-g-r' }, all.length ? all.map(x => adThumb(s, w, x.file, by, many ? (x === sl[m].cur ? '现用' : '备选') : '')) : empty));
+    };
+    const me = row.帧.find(x => x.file === cur);
+    return [h('span', { class: 'adm-shot-lab' }, '这一镜的关键帧'), ...SB.MOMENTS.map(group), h('span', { class: 'sp' }),
+      me && me.stale ? btn('还对得上', '镜头表里这一镜的字改过了（绑的时候是「' + b.写什么 + '」）：看过这张图还对得上就点', () => adRebind(() => SB.keep(s, cur, s.段落), '记下了：还对得上'), 'ink') : null,
+      b.备选 ? btn('当现用', '写提示词时带这一张（这一刻原来那张改成备选）', () => adRebind(() => SB.setCurrent(s, cur), adLabel(w).replace('（备选）', '') + ' 换成这一张')) : null,
+      btn('解绑', '从这一镜拿下来，放回「还没绑」那一排（图不动）', () => adRebind(() => SB.unbind(s, cur), '解绑了，放回「还没绑」'), 'ghost')];
+  }
+  /* 没绑的（或者绑的那一镜删了）：这几张一排，右边选一镜绑上 */
+  if (!T.rows.length) return [h('span', { class: 'adm-shot-lab' }, '还没绑镜头'), h('span', { class: 'fn-note' }, '镜头表还空着：先到「提炼」那一步写好镜头表，关键帧绑在镜头表的一镜一刻上。')];
+  const loose = T.loose.map(x => x.file), g = (T.loose.find(x => x.file === w.img) || {}).guess;
+  const sel = h('select', { class: 'inp sm adm-bind-sel', title: '绑到哪一镜' }, T.rows.map(r => h('option', { value: r.号, selected: g && g.镜 === r.号 ? true : null }, '镜头' + r.号 + (r.写什么 ? '　' + clipNote(r.写什么, 14) : ''))));
+  return [h('span', { class: 'adm-shot-lab' }, '还没绑的'), h('div', { class: 'adm-g-r' }, loose.map(f => adThumb(s, w, f, by, ''))), h('span', { class: 'sp' }),
+    h('span', { class: 'adm-bind' }, h('span', { class: 'fn-note' }, g ? '照名字猜：镜头' + g.镜 + ' ' + SB.SAY[g.刻] + '。绑到' : '绑到'), sel,
+      SB.MOMENTS.map(m => btn(SB.SAY[m], '绑到选的那一镜的' + SB.SAY[m] + '，当现用（那一刻原来有图的改成备选）', () => adRebind(() => SB.bind(s, w.img, sel.value, m, s.段落, true), '绑到镜头' + sel.value + ' ' + SB.SAY[m] + '，当现用'))))];
 }
 function adNowEls(s, it, w, jobs) {
   const txtScene = !!(it && it.文字 && w.hasImg);
@@ -557,7 +633,7 @@ function adRepaint() {
   const r = adFind(s);
   u.box.classList.toggle('gone', !r);
   if (!r) {
-    AD.cur = null;
+    AD.cur = null; AD.shotSig = ''; u.shot.replaceChildren();
     u.head.replaceChildren(h('div', { class: 'ad-title' }, h('b', null, '这一样不在了')), h('span', { class: 'sp' }), adX());
     u.gone.replaceChildren(h('p', null, '这一样不在第' + s.段 + '段里了：改了名、换了图，或者这一段不用它了。'), h('button', { class: 'btn ink', type: 'button', onclick: () => adClose() }, '关掉'));
     return;
@@ -576,6 +652,11 @@ function adRepaint() {
   if (AD.picT && AD.picT !== pt) window.UI.dropThumbs();   // 图重出过、候选换了一张：缩小图重做
   AD.picT = pt;
   u.head.replaceChildren(...adHeadEls(s, it, w).filter(Boolean));
+  u.box.classList.toggle('frame', !!w.frame);
+  u.shot.classList.toggle('k-zhen', !!w.frame);   // 关键帧的颜色（--k）
+  const sh = w.frame ? adShotOf(s, w) : null;   // 关键帧：标题下面那一排，变了才重摆（「绑到」选的那一镜不丢）
+  const ssig = sh ? JSON.stringify([w.img, sh.b, sh.row, sh.T.loose, sh.T.rows.map(r => r.号 + r.写什么), [...sh.by.values()].map(x => [x.w.img, x.w.step, x.w.hasImg, x.w.hasTxt])]) : '';
+  if (ssig !== AD.shotSig) { AD.shotSig = ssig; u.shot.replaceChildren(...(sh ? adShotEls(s, w, sh) : []).flat(Infinity).filter(Boolean)); }
   const now = adNowEls(s, it, w, jobs);
   u.now.className = 'adm-now ' + now.cls;
   u.now.replaceChildren(...now.kids.filter(Boolean));

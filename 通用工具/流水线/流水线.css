@@ -589,7 +589,38 @@ body.ad-open { overflow: hidden; }
 .adm-log > summary small { margin-left: 10px; font: 11.5px var(--sans); letter-spacing: 0; color: var(--ink-4); }
 .adm-logb { margin-top: 8px; }
 .adm-gone { display: none; }
-.adm-box.gone .adm-now, .adm-box.gone .adm-b, .adm-box.gone .adm-f { display: none; }
+.adm-box.gone .adm-shot, .adm-box.gone .adm-now, .adm-box.gone .adm-b, .adm-box.gone .adm-f { display: none; }
+/* 关键帧的弹窗（11-16）：标题是这一镜，下面一排是这一镜开头、中间、结尾的几张；图比字宽 */
+.adm-box.frame .adm-b { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.ad-shot-t { min-width: 0; flex: 0 1 auto; }
+.ad-shot-t .l1 { display: flex; align-items: center; gap: 10px; }
+.ad-shot-t .l1 b { font: 600 24px/1.3 var(--serif); letter-spacing: .06em; color: var(--k); }
+.ad-shot-t .l1 .m { padding: 1px 10px; border: 1px solid var(--k-line); border-radius: 10px; background: var(--k-soft); font: 13.5px/1.5 var(--kai); letter-spacing: .1em; color: var(--k); }
+.ad-shot-t .l1 .alt { padding: 1px 8px; border: 1px dashed var(--line-2); border-radius: 10px; font-size: 12px; color: var(--ink-3); }
+.ad-shot-t .w { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 16px/1.55 var(--kai); color: var(--ink); }
+.ad-shot-t small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-shot { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 18px; border-bottom: 1px solid var(--line); background: var(--sheet); }
+.adm-shot:empty { display: none; }
+.adm-shot .sp { flex: 1; }
+.adm-shot-lab { font: 13.5px var(--kai); letter-spacing: .12em; color: var(--ink-3); }
+.adm-g { display: flex; align-items: center; gap: 8px; }
+.adm-g + .adm-g { padding-left: 16px; border-left: 1px solid var(--line); }
+.adm-g > b { font: 600 13px var(--kai); letter-spacing: .1em; color: var(--k, var(--ink-2)); }
+.adm-g-r { display: flex; flex-wrap: wrap; gap: 6px; }
+.adm-th { position: relative; width: 108px; aspect-ratio: 16 / 9; display: grid; place-items: center; overflow: hidden; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--paper-2); font: 11.5px var(--kai); color: var(--ink-4); cursor: pointer; }
+.adm-th img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.adm-th:hover:not(.on):not(span) { border-color: var(--k); }
+.adm-th.on { border-color: var(--k); box-shadow: 0 0 0 2px var(--sheet), 0 0 0 4px var(--k); cursor: default; }
+.adm-th.none { border-style: dashed; background: var(--paper); }
+span.adm-th.none { cursor: default; }
+.adm-th em { position: absolute; left: 0; bottom: 0; z-index: 1; padding: 0 5px; border-top-right-radius: 5px; background: rgba(42, 38, 34, .58); font: 10.5px/1.6 var(--sans); font-style: normal; color: #fff; }
+.adm-th-ok, .adm-th-todo { position: absolute; left: 3px; top: 3px; z-index: 1; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; }
+.adm-th-ok { background: var(--dai); color: #fff; }
+.adm-th-ok .ic { width: 10px; height: 10px; stroke-width: 2.4; }
+.adm-th-todo { width: 10px; height: 10px; left: 5px; top: 5px; background: var(--zhu); box-shadow: 0 0 0 2px #fff; }
+.adm-bind { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.adm-bind-sel { max-width: 15em; padding: 4px 8px; font-size: 13px; }
+@media (max-width: 900px) { .adm-box.frame .adm-b { grid-template-columns: minmax(0, 1fr); } .adm-th { width: 84px; } }
 .adm-box.gone .adm-gone { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; font: 16px/1.8 var(--kai); color: var(--ink-2); }
 .adm-f { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 14px 10px 18px; border-top: 1px solid var(--line); border-radius: 0 0 12px 12px; background: var(--sheet); }
 .adm-f .sp { flex: 1; }

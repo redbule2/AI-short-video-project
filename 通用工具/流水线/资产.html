@@ -56,8 +56,8 @@
 .kb-tray-h b { color: var(--zhu); }
 .kb-tray-h .sp { flex: 1; }
 .kb-loose { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-.kb-tile { width: 156px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); font-size: 12px; cursor: grab; }
-.kb-tile.sel { outline: 2.5px solid var(--zhu); outline-offset: 1px; }
+.kb-tile { width: 156px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); font-size: 12px; cursor: pointer; }
+.kb-tile:hover { border-color: var(--k-line); }
 .kb-im { aspect-ratio: 16 / 9; display: grid; place-items: center; overflow: hidden; background: var(--paper-2); font: 12px var(--kai); color: var(--ink-4); }
 .kb-im img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .kb-tile .kb-nm { padding: 4px 7px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
@@ -75,26 +75,15 @@
 .kb-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 6px; }
 .kb-slot { position: relative; aspect-ratio: 16 / 9; display: grid; place-items: center; overflow: hidden; border: 1px dashed var(--line-2); border-radius: 6px; background: var(--paper); font: 11.5px var(--kai); color: var(--ink-4); cursor: pointer; }
 .kb-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.kb-slot.has { border-style: solid; border-color: var(--k-line); cursor: grab; }
+.kb-slot.has { border-style: solid; border-color: var(--k-line); }
 .kb-slot:hover { border-color: var(--k); }
 .kb-k { position: absolute; left: 0; bottom: 0; z-index: 1; padding: 0 5px; border-top-right-radius: 5px; background: rgba(42, 38, 34, .55); font: 10.5px/1.6 var(--sans); color: #fff; }
 .kb-more { position: absolute; right: 3px; top: 3px; z-index: 1; padding: 0 5px; border-radius: 7px; background: var(--dai); font: 10.5px/1.6 var(--sans); color: #fff; }
 .kb-ok { position: absolute; left: 3px; top: 3px; z-index: 1; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; background: var(--dai); color: #fff; }
 .kb-ok .ic { width: 10px; height: 10px; stroke-width: 2.4; }
 .kb-gone { font: 11px var(--kai); color: var(--zhu); }
-.kb-picking .kb-slot:not(.has), .kb-dragging .kb-slot:not(.has) { border-color: var(--zhu-line); background: var(--zhu-soft); color: var(--zhu); }
-.kb-picking .kb-slot.has { cursor: copy; }
+.kb-dragging .kb-slot:not(.has) { border-color: var(--zhu-line); background: var(--zhu-soft); color: var(--zhu); }
 .kb-slot.over { border: 2px solid var(--zhu); }
-.fl-pop:has(.kb-menu) { width: 420px; }
-.kb-menu { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 4px; overflow: auto; }
-.kb-mi { display: grid; grid-template-columns: 110px 1fr; gap: 10px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; }
-.kb-mi.cur { border-color: var(--k-line); background: var(--k-soft); }
-.kb-mi-im { aspect-ratio: 16 / 9; overflow: hidden; padding: 0; border: 0; border-radius: 5px; background: var(--paper-2); cursor: zoom-in; }
-.kb-mi-im img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.kb-mi-b { min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
-.kb-mi-b b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kb-mi-b small { color: var(--ink-3); }
-.kb-mi-n { margin: 6px 12px 4px; }
 /* 挑图栏（挑图栏.js）：右边滑出一栏，不盖左边 */
 .pb { position: fixed; top: 0; right: 0; bottom: 0; z-index: 40; width: min(620px, 64vw); display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 12px; border-left: 1px solid var(--line); background: var(--sheet); box-shadow: -18px 0 40px -24px rgba(40, 28, 16, .45); animation: pbIn .18s ease both; }
 @keyframes pbIn { from { transform: translateX(24px); opacity: 0; } }
@@ -148,8 +137,9 @@
      顶上一条钉住：走到哪了（确认了几张、缺图、字等你批……点了跳过去）、「让 AI 写字」、这一步要按的那一个，下面四个页签：人物、场景、道具、关键帧，一次看一样，回到上回看的那一页。
      人物、场景、道具：一样一张大图卡。图下名字、走到哪了、眼下该按的钮；点卡弹出它的弹窗（资产详情.js；11-16 起不换页）。人物的音色并在卡底下一行。
        没图的卡「挑现成的图」：右边滑出一栏（挑图栏.js），顶上写明给谁挑，挑中的就挂给它，不再照图名猜。剧本里提到、还没加上的，虚线卡排在后面；最后一张「＋ 加人物」。
-     关键帧：一镜一张小卡，三格（开头、中间、结尾），一格几张的角上「+1」，点一格看这几张、换现用、确认、解绑。没绑的摆在顶上「还没绑」一排：
-       拖到哪一格就绑上，或者点一下图再点格子；格子里的图拖到别的格子就改绑，拖回「还没绑」就解绑。空的格子点一下，从这一段文件夹里挑一张绑上。
+     关键帧：一镜一张小卡，三格（开头、中间、结尾），一格几张的角上「+1」。点一格、点「还没绑」里的一张，直接弹出它的弹窗（11-16 他要的：一下就进，不再先弹小窗）：
+       弹窗里看这一镜的几张、换现用、确认、解绑、绑到哪一镜（资产详情.js）。没绑的摆在顶上「还没绑」一排，拖到哪一格就绑上；
+       格子里的图拖到别的格子就改绑，拖回「还没绑」就解绑。空的格子点一下，从这一段文件夹里挑一张绑上。
    字先定，图后出（2026-11-14 他定的，流程图 文生资产_流程图.html；共用的做法在 流水线.js「文生资产」那一节）：
      「让 AI 写字」：AI 读定稿的剧本，给这一场还没有字的写字（出图提示词，场景先写 GEO 底稿），已经有的图核一遍撑不撑得住。
      每张卡上是眼下该做的：写字 → 批字（自己改，或写批注交给 AI 改；字定了点「照这个出图」）→ 图出好了点开看 → 确认可用。
@@ -179,7 +169,7 @@ window.addEventListener('scroll', asPin, { passive: true });
 window.addEventListener('resize', asPin);
 function switchTab(t) {
   if (t === tabNow()) return;
-  setTab(t); KB.sel = ''; repaint();
+  setTab(t); repaint();
   const head = document.getElementById('as-head'), body = document.getElementById('as-body');
   if (head && body) { const pin = (parseFloat(head.style.top) || 0) + head.offsetHeight, top = body.getBoundingClientRect().top; if (top < pin) window.scrollTo(0, top + window.scrollY - pin - 8); }   // 滚下去了：换页回到这一页的开头
 }
@@ -282,42 +272,41 @@ function kindBody(s, k, list) {
       k === '道具' && s.道具.length ? plus('＋ 加一种样子', '一个道具几种样子（白天、夜里），一种一张图', () => addLookDlg(s)) : null)];
 }
 
-/* ---------- 关键帧：顶上「还没绑」一排，下面一镜一张小卡（三格）。拖到格子里绑，或者点图再点格子 ---------- */
-const KB = { sel: '', drag: '' };   // sel：点选了「还没绑」里哪一张，等你点格子；drag：正在拖哪一张
+/* ---------- 关键帧：顶上「还没绑」一排，下面一镜一张小卡（三格）。点一下就弹出弹窗；拖到格子里绑 ---------- */
+const KB = { drag: '' };   // drag：正在拖哪一张
 const kbBtn = (tx, title, fn, cls) => h('button', { class: 'fl-asset-ok' + (cls ? ' ' + cls : ''), type: 'button', title, onkeydown: ev => ev.stopPropagation(), onclick: ev => { ev.stopPropagation(); fn(); } }, tx);
 const kbOpen = (s, it) => { const w = wordOf(s, it); if (w) openWord(s, w); else if (it.at) openImage(it.at, shellActs(s, it, w)); };
 function kbBind(s, file, no, m) {
   if (!framesOf(s).includes(file)) return;
-  SB.bind(s, file, no, m, s.段落, true); KB.sel = ''; touch(); paint();
+  SB.bind(s, file, no, m, s.段落, true); touch(); paint();
   toast(baseOf(file) + ' 绑到镜头' + no + ' ' + SB.SAY[m] + '，当现用');
 }
 function kbBody(s, mine) {
   const byFile = new Map(mine.map(it => [it.文件, it])), T = SB.table([...byFile.keys()], s.段落, SB.bindsOf(s));
   if (!s.段落.length) return [h('p', { class: 'as-hint' }, '镜头表还空着：先到「提炼」那一步写好镜头表，关键帧绑在镜头表的一镜一刻上。')];
-  if (KB.sel && !T.loose.some(x => x.file === KB.sel)) KB.sel = '';
   const can = T.loose.filter(x => x.guess);
   const tray = h('div', { class: 'kb-tray' + (T.loose.length ? '' : ' done'), 'data-tray': '1' },
     h('div', { class: 'kb-tray-h' },
       T.loose.length ? h('b', null, '还没绑 ' + T.loose.length + ' 张') : h('span', { class: 'fn-note' }, mine.length ? '关键帧都绑上了。' : '还没有关键帧。关键帧多半在提示词那一步出；这一段文件夹里名字带「首帧」「尾帧」「关键帧」的图自动列上。'),
-      mine.length ? h('span', { class: 'fn-note' }, T.loose.length ? (KB.sel ? '再点一下要绑的格子（Esc 不绑了）' : '拖到下面哪一格就绑上；或者点一下图，再点格子') : '格子里的图拖到别的格子就改绑，拖回这里就解绑') : null,
+      mine.length ? h('span', { class: 'fn-note' }, T.loose.length ? '拖到下面哪一格就绑上；或者点开图，在弹窗里选绑到哪一镜' : '点一格弹出来看；格子里的图拖到别的格子就改绑，拖回这里就解绑') : null,
       can.length > 1 ? h('button', { class: 'fl-link', type: 'button', title: '照名字猜的都认下来：' + can.map(x => baseOf(x.file)).join('、'), onclick: () => { for (const x of can) SB.bind(s, x.file, x.guess.镜, x.guess.刻, s.段落); touch(); paint(); toast('照名字认了 ' + can.length + ' 张'); } }, '照名字全认（' + can.length + ' 张）') : null,
       h('span', { class: 'sp' }),
       h('button', { class: 'btn sm k-zhen', type: 'button', title: '这一段文件夹里的图，挑了就当关键帧，先放进「还没绑」。关键帧多半在提示词那一步出', onclick: () => PickBar.open({ s, mode: 'add', k: '关键帧' }) }, icon('plus'), '加关键帧')),
     T.loose.length ? h('div', { class: 'kb-loose' }, T.loose.map(x => kbTile(s, byFile.get(x.file), x))) : null);
   const grid = h('div', { class: 'kb-shots' }, T.rows.map(r => kbShot(s, r, byFile)));
-  return [h('div', { class: 'kb' + (KB.sel ? ' kb-picking' : ''), id: 'kb' }, tray, grid)];
+  return [h('div', { class: 'kb', id: 'kb' }, tray, grid)];
 }
 function kbTile(s, it, x) {
-  const g = x.guess, sel = KB.sel === it.文件;
-  const el = h('div', { class: 'kb-tile' + (sel ? ' sel' : ''), draggable: 'true', 'data-file': it.文件, role: 'button', tabindex: '0',
-      title: it.文件 + '\n拖到下面的格子里绑上；或者点一下选中，再点格子。点两下看大图',
-      onclick: () => { KB.sel = sel ? '' : it.文件; paint(); }, ondblclick: () => { KB.sel = ''; kbOpen(s, it); } },
+  const g = x.guess, open = () => kbOpen(s, it);
+  const el = h('div', { class: 'kb-tile', draggable: 'true', 'data-file': it.文件, role: 'button', tabindex: '0',
+      title: it.文件 + '\n点一下弹出来看，在弹窗里选绑到哪一镜；或者拖到下面的格子里绑上',
+      onclick: open, onkeydown: ev => { if (ev.key === 'Enter' && ev.target === ev.currentTarget) open(); } },
     h('div', { class: 'kb-im' }, it.at ? thumbImg(it.at, 300) : '图不在了'),
     h('div', { class: 'kb-nm' }, it.名称),
     h('small', null, x.gone ? '绑的镜头' + x.gone + ' 删了' : g ? '猜：镜头' + g.镜 + ' ' + SB.SAY[g.刻] : '猜不出是哪一镜'),
     h('div', { class: 'kb-acts' },
       g ? kbBtn('认', '绑到镜头' + g.镜 + ' ' + SB.SAY[g.刻], () => kbBind(s, it.文件, g.镜, g.刻), 'go') : null,
-      kbBtn('不是关键帧', '这张不当关键帧用（图不动，只是这一段不再把它列成关键帧）', () => { dropFrame(s, it.文件); KB.sel = ''; touch(); paint(); })));
+      kbBtn('不是关键帧', '这张不当关键帧用（图不动，只是这一段不再把它列成关键帧）', () => { dropFrame(s, it.文件); touch(); paint(); })));
   if (it.at) hoverable(el, it.at, it.名称);
   return el;
 }
@@ -331,31 +320,12 @@ function kbShot(s, r, byFile) {
 function kbSlot(s, r, m, slot, byFile) {
   const cur = slot.cur, it = cur && byFile.get(cur.file), n = slot.alts.length, say = '镜头' + r.号 + ' ' + SB.SAY[m];
   const el = h('div', { class: 'kb-slot' + (cur ? ' has' : ''), 'data-no': r.号, 'data-m': m, role: 'button', tabindex: '0',
-      title: cur ? say + '：' + baseOf(cur.file) + (n ? '（还有 ' + n + ' 张备选）' : '') + '\n点一下看这一格的图、换现用、确认；拖到别的格子就改绑' : say + '：还没有\n点一下从这一段文件夹里挑一张；或者把「还没绑」里的图拖过来',
-      onclick: ev => kbSlotClick(ev.currentTarget, s, r, m, slot, byFile) },
+      title: cur ? say + '：' + baseOf(cur.file) + (n ? '（还有 ' + n + ' 张备选）' : '') + '\n点一下弹出来：看这一镜的几张、确认、换现用；拖到别的格子就改绑' : say + '：还没有\n点一下从这一段文件夹里挑一张；或者把「还没绑」里的图拖过来',
+      onclick: () => { if (!cur) PickBar.open({ s, mode: 'slot', slot: { no: r.号, 刻: m } }); else if (it) kbOpen(s, it); },
+      onkeydown: ev => { if (ev.key === 'Enter' && ev.target === ev.currentTarget) ev.currentTarget.click(); } },
     ...(cur && it ? [it.at ? thumbImg(it.at, 300) : h('span', { class: 'kb-gone' }, '图不在了'), h('span', { class: 'kb-k' }, SB.SAY[m]), n ? h('span', { class: 'kb-more' }, '+' + n) : null, it.at && okOf(it) ? h('span', { class: 'kb-ok', title: '确认过可用' }, icon('check')) : null] : [SB.SAY[m]]));
   if (cur) { el.draggable = true; el.dataset.file = cur.file; }
   return el;
-}
-function kbSlotClick(anchor, s, r, m, slot, byFile) {
-  if (KB.sel) return kbBind(s, KB.sel, r.号, m);
-  if (!slot.cur) return PickBar.open({ s, mode: 'slot', slot: { no: r.号, 刻: m } });
-  popover(anchor, close => {
-    const all = [slot.cur, ...slot.alts];
-    return [h('div', { class: 'fl-pop-h' }, '镜头' + r.号 + ' · ' + SB.SAY[m]),
-      h('div', { class: 'kb-menu' }, all.map(x => {
-        const it = byFile.get(x.file), ok = !!it.at && okOf(it), cur = x === slot.cur;
-        return h('div', { class: 'kb-mi k-zhen' + (cur ? ' cur' : '') },
-          h('button', { class: 'kb-mi-im', type: 'button', title: '点开看：' + x.file, onclick: () => { close(); kbOpen(s, it); } }, it.at ? thumbImg(it.at, 300) : h('span', { class: 'kb-gone' }, '图不在了')),
-          h('div', { class: 'kb-mi-b' }, h('b', { title: x.file }, it.名称), h('small', null, (cur ? '现用：写提示词带这一张' : '备选') + (x.stale ? ' · 这一镜改了' : '')),
-            h('div', { class: 'kb-acts' },
-              cur ? null : kbBtn('当现用', '写提示词时带这一张（这一格原来那张改成备选）', () => { SB.setCurrent(s, x.file); touch(); close(); paint(); }, 'go'),
-              it.at ? kbBtn(ok ? '✓ 可用' : F.doc.可用[it.at] ? '再确认' : '确认可用', ok ? '确认过可用，点一下取消' : '这张图看过了、能用', () => { confirmImg(s, it, !ok); close(); paint(); }, ok ? 'on' : '') : null,
-              kbBtn('解绑', '从这一格拿下来，放回「还没绑」那一排（图不动）', () => { SB.unbind(s, x.file); touch(); close(); paint(); }),
-              kbBtn('删掉…', '不当关键帧，或者图不要了', () => { close(); removeAsset(s, it); }))));
-      })),
-      h('p', { class: 'fn-note kb-mi-n' }, '要改绑：把格子里的图拖到别的格子。')];
-  });
 }
 /* 拖：页面上只挂一回（#as-body 不换），格子、「还没绑」那一排都认 */
 function kbWire(body) {
@@ -382,7 +352,6 @@ function kbWire(body) {
     kbBind(s, file, t.dataset.no, t.dataset.m);
   });
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && KB.sel && !PickBar.on && !window.UI.popOpen) { KB.sel = ''; paint(); } });
 
 /* ---------- 顶上那一条：走到哪了（点了跳过去）、要按的、四个页签 ---------- */
 const WORD_JOBS = ['写字', '出图', '改图', '按批注改字', '核GEO'];   // 这一步交给 AI 的几样事
