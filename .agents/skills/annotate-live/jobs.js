@@ -1813,30 +1813,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       return { ok: r.code === 0, code: r.code, data, raw: (r.out || r.err).trim().slice(0, 4000) };
     } catch (e) { return { ok: false, error: '即梦命令行调不起来：' + e.message }; }
   }
-  /* 出片前核对即梦账号和画布：这个登录位登着，画布在这个号名下（canvas ls 列得出来才能改；列不出来的只能看）。
-     11-14 出过一回：出片设置里的画布是奔跑号的，任务书写的是默认号，Codex 到了画布上才发现只能看 */
-  async function jmCheck(canvasUrl, profile) {
-    const id = (/ai-canvas\/([0-9a-f-]{36})/i.exec(str(canvasUrl)) || [])[1];
-    if (!id) throw fail('资产/出片设置.json 里没写画布，或者画布网址不对（要 https://jimeng.jianying.com/ai-tool/ai-canvas/… 这种）');
-    if (!/^[A-Za-z0-9_-]{0,40}$/.test(profile)) throw fail('资产/出片设置.json 里的「登录位」名字不对：只能是字母、数字、横线，默认号留空');
-    const pf = profile ? ['--profile', profile] : [], who = profile ? '登录位「' + profile + '」' : '默认号';
-    const st = await jm([...pf, 'auth', 'status']);
-    if (st.error) throw fail(st.error);
-    if (!(st.data && st.data.data && st.data.data.loggedIn)) throw fail('即梦' + who + '没登录：先到首页「即梦授权」登录');
-    const ac = await jm([...pf, 'auth', 'account']);
-    const nick = str(((ac.data || {}).data || {}).displayName) || '读不出昵称';
-    let cursor = '', hit = null;
-    for (let i = 0; i < 20 && !hit; i++) {   // 一页最多 100 张，翻到底
-      const r = await jm([...pf, 'canvas', 'ls', '--limit', '100', '--format', 'json', ...(cursor ? ['--cursor', cursor] : [])]);
-      const d = r.data && r.data.data;
-      if (!r.ok || !d || !Array.isArray(d.items)) throw fail('查不到即梦' + who + '名下有哪些画布：' + (r.error || r.raw || '没有回音').slice(0, 200));
-      hit = d.items.find(x => x && x.projectId === id) || null;
-      if (!d.hasMore || !d.nextCursor) break;
-      cursor = d.nextCursor;
-    }
-    if (!hit) throw fail('画布 ' + id.slice(0, 8) + ' 不在即梦' + who + '（' + nick + '）名下，这个号只能看、不能改。资产/出片设置.json 里的「画布」和「登录位」要是同一个号的');
-    return { id, nick, name: str(hit.name) || id.slice(0, 8) };
-  }
+  const jmCheck = require('./jm-check.js')({ jm, fail, str });   // 出片前核对即梦账号和画布（三条命令一起查，10 分钟内同号同画布不重查；11-16 挪出去）
   const canvas = require('./canvas.js')({ HOME, JM, run, log });   // 资产页看画布上的图（只读画布，11-14 加）
   async function jimeng(req, res, q, { json, httpErr }) {
     if (req.method === 'GET' && (q.has('canvas') || q.has('img'))) return canvas.handle(req, res, q, { json, httpErr });
