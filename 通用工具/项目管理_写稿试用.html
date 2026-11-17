@@ -443,6 +443,7 @@ body.norail .rail { display: none; }
         <div id="pane-ai" hidden></div>
         <div id="pane-lint" hidden></div>
         <div id="pane-script" hidden></div>
+        <div id="pane-shots" hidden></div>
       </div>
     </aside>
   </div>
@@ -458,6 +459,9 @@ body.norail .rail { display: none; }
 <script src="公用/等待.js"></script>
 <script src="公用/底座.js"></script>
 <script src="公用/界面.js"></script>
+<script src="公用/镜头作用.js"></script>
+<script src="公用/关键帧绑定.js"></script>
+<script src="公用/写稿镜头表.js"></script>
 <script>
 'use strict';
 const $ = (s, r) => (r || document).querySelector(s);
@@ -1605,11 +1609,13 @@ function paintAi() {
       h('div', { class: 'nl-w' }, [n.where, n.lv, n.tag, n.state ? (n.state === 'done' ? '已照改' : n.state === 'ok' ? '看过了' : '不改') : ''].filter(Boolean).join('　·　')), h('div', { class: 'nl-n' }, n.say)))));
 }
 
-/* ---------- 右栏：资产、AI 批注、校对、剧本（「分镜 / 关键词」11-15 他说不要了） ---------- */
-const RAIL_TABS = [['assets', '资产'], ['ai', '批注'], ['lint', '校对'], ['script', '剧本']];
+/* ---------- 右栏：资产、AI 批注、校对、剧本、镜头表（「分镜 / 关键词」11-15 他说不要了；镜头表 11-16 加，公用/写稿镜头表.js） ---------- */
+const RAIL_TABS = [['assets', '资产'], ['ai', '批注'], ['lint', '校对'], ['script', '剧本'], ['shots', '镜头表']];
 let RAIL = 'assets', PIN = null;
 const GOPEN = new Set(['本段', '人物', '道具', '特效']);   // 资产栏里展开着的类别；场景图大、先收着
-function showRail(k) { RAIL = k; for (const [x] of RAIL_TABS) $('#pane-' + x).hidden = x !== k; paintTabs(); if (k === 'ai') paintAi(); if (k === 'lint') paintLint(); if (k === 'assets') paintAssets(); if (k === 'script') paintScript(); }
+function showRail(k) { RAIL = k; for (const [x] of RAIL_TABS) $('#pane-' + x).hidden = x !== k; paintTabs(); if (k === 'ai') paintAi(); if (k === 'lint') paintLint(); if (k === 'assets') paintAssets(); if (k === 'script') paintScript(); if (k === 'shots') paintShots(); }
+/* 整段的镜头表，这一条拍的几镜标亮（流水线里没有镜头表的项目，这个页签不摆） */
+const paintShots = () => { if (RAIL === 'shots') WriteShots.paint($('#pane-shots'), flowParas(), STEM + '.txt', Core.vpCode(STEM + '.txt')); };
 function paintTabs() {
   const nAi = NOTES.filter(n => !n.state).length, nLint = LINT.filter(x => !x.info).length;
   const box = $('#rail-tabs');
@@ -1618,6 +1624,7 @@ function paintTabs() {
     const b = box.children[i], text = label + (k === 'ai' && nAi ? ' ' + nAi : k === 'lint' && nLint ? ' ' + nLint : '');
     b.className = 'rail-tab' + (RAIL === k ? ' on' : '') + (k === 'ai' && (nAi || AI.busy) ? ' has-ai' : '') + (k === 'lint' && nLint ? ' has' : '');
     if (b.textContent !== text) b.textContent = text;
+    b.hidden = k === 'shots' && !flowParas().length;
   });
 }
 function paintLint() {

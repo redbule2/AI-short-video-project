@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>写稿页配色 · 设计稿</title>
+<style>
+:root { --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --line: #d6cab6; --zhu: #a83a2c; --dai: #3e5c5e; --huang: #fff4c9;
+  --serif: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  --sans: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --kai: 'KaiTi', 'STKaiti', 'Kaiti SC', 'BiauKai', 'Noto Serif SC', serif; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.85 var(--sans); }
+main { max-width: 1080px; margin: 0 auto; padding: 32px 22px 120px; }
+h1 { margin: 0 0 4px; font: 600 26px/1.4 var(--serif); letter-spacing: .08em; }
+.sub { margin: 0 0 16px; font-size: 14.5px; color: var(--ink-2); }
+h2 { margin: 38px 0 6px; font: 600 19px/1.5 var(--serif); letter-spacing: .1em; }
+.card { margin: 12px 0; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+.card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 600; }
+.card h3 .no { display: inline-block; min-width: 1.7em; color: var(--dai); }
+.card p { margin: 3px 0; color: var(--ink-2); }
+.opts { margin: 8px 0 2px; }
+.opts label { display: block; margin: 5px 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opts label:hover { background: #faf5ea; }
+.opts input { margin-right: 8px; }
+.opts .rec { color: var(--dai); font-size: 13px; margin-left: 4px; }
+textarea { display: block; width: 100%; margin-top: 8px; min-height: 2.6em; padding: 7px 10px; border: 1px dashed #c8b99f; border-radius: 8px; background: #fffef9; font: 15px/1.7 var(--sans); color: var(--ink); resize: vertical; }
+textarea:focus { outline: none; border-style: solid; border-color: var(--dai); background: #fff; }
+textarea.has { border-style: solid; border-color: #b9822f; background: var(--huang); }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; background: rgba(255,253,249,.96); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; justify-content: center; font-size: 14px; z-index: 5; }
+.bar button { padding: 6px 14px; border: 1px solid var(--dai); border-radius: 8px; background: #fff; color: var(--dai); font: inherit; cursor: pointer; }
+.bar button:hover { background: #eef5f3; }
+#st { color: var(--ink-2); }
+.foot { margin-top: 26px; font-size: 13px; color: var(--ink-3); }
+.layers { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 10px 0 0; font-size: 13.5px; color: var(--ink-2); }
+.layers span { display: inline-flex; align-items: center; gap: 6px; }
+.layers i { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,.12); }
+
+/* ================= 示意：写稿页（照真页面的摆法缩小画） ================= */
+.mk {
+  /* 现在的颜色 */
+  --base: #f5f3ef; --top: #ffffff; --side-on: rgba(31,107,105,.08); --head: #f5f3ef;
+  --card: #ffffff; --cardh: #f9f8f5; --card-b: #e6e2db; --card-sh: 0 2px 4px rgba(30,28,24,.025);
+  --ed: #ffffff; --ed-b: #d4cfc6; --rail: #ffffff; --rail-b: #faf9f7; --rail-line: #d4cfc6; --guide: #ffffff; --chip: #ffffff;
+  --ink: #1f1c19; --ink-2: #4d4842; --ink-3: #736c64; --ink-4: #a39d95; --qing: #1f6b69; --qing-soft: rgba(31,107,105,.08); --dian: #4a53a6; --zhu: #b8382b;
+  height: 480px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #cfc8bb; border-radius: 10px;
+  background: var(--base); color: var(--ink); font: 13px/1.7 var(--sans); box-shadow: 0 12px 30px -20px rgba(30,28,24,.5);
+}
+.mk-top { flex: none; display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid rgba(0,0,0,.07); background: var(--top); }
+.mk-top b { font: 600 16px/1.3 var(--serif); letter-spacing: .06em; }
+.mk-top .crumb { color: var(--ink-3); font-size: 12px; }
+.mk-top .try { padding: 0 7px; border-radius: 99px; background: var(--zhu); color: #fff; font-size: 10.5px; }
+.mk-top .sp { flex: 1; }
+.mk-top .st { color: var(--ink-3); font-size: 11.5px; }
+.mk-top .btn { padding: 3px 10px; border: 1px solid rgba(0,0,0,.14); border-radius: 6px; background: var(--chip); font-size: 11.5px; }
+.mk-top .btn.plain { border-color: transparent; background: none; }
+.mk-top .btn.dian { background: var(--dian); border-color: var(--dian); color: #fff; }
+.mk-stage { flex: 1; min-height: 0; display: flex; gap: 14px; padding: 12px 14px 0; }
+.mk-side { flex: 0 0 128px; color: var(--ink-2); font-size: 12px; }
+.mk-st { font: 600 15px/1.3 var(--serif); color: var(--ink); margin-bottom: 8px; }
+.mk-mode { display: flex; gap: 2px; padding: 2px; border: 1px solid rgba(0,0,0,.1); border-radius: 7px; background: rgba(0,0,0,.035); margin-bottom: 10px; font-size: 11px; text-align: center; }
+.mk-mode span { flex: 1; padding: 3px 0; border-radius: 5px; }
+.mk-mode .on { background: var(--chip); box-shadow: 0 1px 2px rgba(0,0,0,.08); color: var(--ink); }
+.mk-k { margin: 6px 0 2px; font-size: 11px; color: var(--ink-3); }
+.mk-o { padding: 3px 8px; border-radius: 5px; }
+.mk-o.on { background: var(--side-on); color: var(--qing); }
+.mk-s { padding: 1px 8px 1px 16px; font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-s.on { color: var(--qing); }
+.mk-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.mk-scroll { flex: 1; min-height: 0; overflow: hidden; }
+.mk-head { display: flex; align-items: baseline; gap: 8px; padding-bottom: 8px; background: var(--head); }
+.mk-head b { font: 600 18px/1.3 var(--serif); letter-spacing: .06em; }
+.mk-head span { font: 13px var(--serif); color: var(--ink-3); }
+.mk-head i { font-style: normal; padding: 0 7px; border: 1px solid rgba(0,0,0,.13); border-radius: 5px; background: var(--chip); font-size: 10.5px; color: var(--ink-2); }
+.mk-head u { text-decoration: none; color: var(--qing); font-size: 11.5px; }
+.mk-lab { display: flex; align-items: center; gap: 7px; margin: 2px 0 8px; font: 12px var(--kai); letter-spacing: .25em; color: var(--qing); }
+.mk-lab .no { width: 18px; height: 18px; display: grid; place-items: center; border: 1px solid rgba(31,107,105,.32); border-radius: 50%; font: 10px var(--serif); letter-spacing: 0; }
+.mk-lab em { font: normal 10px/1.7 var(--sans); letter-spacing: 0; padding: 0 7px; border: 1px solid rgba(31,107,105,.32); border-radius: 99px; background: var(--qing-soft); }
+.mk-card { border: 1px solid var(--card-b); border-radius: 9px; background: var(--card); box-shadow: var(--card-sh); overflow: hidden; transition: all .2s; }
+.mk-ch { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--cardh); border-bottom: 1px solid var(--card-b); }
+.mk-ch .no { padding: 0 8px; border-radius: 4px; background: var(--qing); color: #fff; font: 11.5px/1.7 var(--kai); letter-spacing: .12em; }
+.mk-ch b { flex: 1; font: 600 13.5px/1.4 var(--serif); }
+.mk-ch .ops { font-size: 10.5px; color: var(--ink-3); word-spacing: 4px; }
+.mk-body { padding: 8px 12px 10px; }
+.mk-pp { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; color: var(--ink-3); }
+.mk-pp .in { flex: 1; padding: 2px 8px; border: 1px solid var(--ed-b); border-radius: 5px; background: var(--ed); color: var(--ink-4); }
+.mk-cap { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--ink-3); margin-bottom: 3px; }
+.mk-ed { padding: 6px 10px; border: 1px solid var(--ed-b); border-radius: 7px; background: var(--ed); font: 13.5px/1.85 var(--serif); color: var(--ink); }
+.mk-ed .r { padding: 0 2px; border-radius: 3px; background: rgba(0,0,0,.05); }
+.mk-card.focus .mk-ed { border-color: var(--qing); box-shadow: 0 0 0 3px var(--qing-soft); }
+.caret { display: inline-block; width: 1.5px; height: 1.1em; margin-left: 1px; vertical-align: -2px; background: var(--qing); animation: bl 1s steps(1) infinite; }
+@keyframes bl { 50% { opacity: 0; } }
+.mk-ins { margin: 5px 0; text-align: center; font-size: 11px; color: var(--ink-3); }
+.mk-guide { flex: none; margin: 8px 0 0; padding: 6px 12px; border-top: 1px solid rgba(0,0,0,.07); background: var(--guide); font-size: 11px; color: var(--ink-2); border-radius: 8px 8px 0 0; }
+.mk-guide b { margin-right: 8px; font: 12.5px var(--kai); color: var(--qing); letter-spacing: .1em; }
+.mk-rail { flex: 0 0 236px; display: flex; flex-direction: column; margin-bottom: 12px; border: 1px solid var(--rail-line); border-radius: 10px; overflow: hidden; background: var(--rail); }
+.mk-rt { display: flex; justify-content: space-between; padding: 8px 12px 0; font: 12.5px var(--kai); color: var(--dian); }
+.mk-rt small { font: 10px var(--sans); color: var(--ink-3); }
+.mk-tabs { display: flex; padding: 4px 8px 0; border-bottom: 1px solid rgba(0,0,0,.08); font-size: 11px; color: var(--ink-3); text-align: center; }
+.mk-tabs span { flex: 1; padding: 5px 0; }
+.mk-tabs .on { color: var(--ink); box-shadow: inset 0 -2px 0 var(--qing); }
+.mk-rb { flex: 1; padding: 8px 10px; background: var(--rail-b); overflow: hidden; }
+.mk-strip { display: flex; height: 10px; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+.mk-strip i { border-right: 1px solid var(--rail-b); opacity: .55; }
+.mk-strip i.me { opacity: 1; box-shadow: inset 0 0 0 1px var(--qing); }
+.mk-sc { display: flex; justify-content: space-between; font-size: 10px; color: var(--ink-3); margin-bottom: 4px; }
+.mk-sc b { color: var(--qing); }
+.mk-row { display: grid; grid-template-columns: 16px 1fr auto; gap: 4px; padding: 3px 5px; border-radius: 5px; font-size: 11px; line-height: 1.5; }
+.mk-row .n { color: var(--qing); font-family: var(--serif); font-weight: 600; }
+.mk-row small { display: block; font-size: 10px; color: var(--ink-3); }
+.mk-row .s { font-size: 10px; color: var(--ink-4); }
+.mk-row.me { background: #fff6dc; box-shadow: inset 2px 0 0 var(--qing); }
+.t { display: inline-block; margin-right: 4px; padding: 0 3px; border-radius: 3px; font-size: 9.5px; font-weight: 600; }
+.pd { background: #f4e7cb; color: #7a5a1e; } .zz { background: #fbe3dc; color: #9a3326; } .fy { background: #e5edd9; color: #46622f; } .gc { background: #a83a2c; color: #fff; } .sw { background: #e9e3da; color: #4d453d; }
+
+/* ---- 甲：暖灰台面，白只给写字的地方 ---- */
+.mk.s-a { --base: #e2dccf; --top: #f8f6f1; --side-on: #fbf9f5; --head: #e2dccf; --chip: #fbf9f5;
+  --card: #fffefc; --cardh: #f4f0e9; --card-b: #dcd4c7; --card-sh: 0 1px 2px rgba(60,45,25,.06), 0 10px 24px -16px rgba(60,45,25,.4);
+  --ed: #ffffff; --ed-b: #d8d0c3; --rail: #f3efe8; --rail-b: #f3efe8; --rail-line: #d8d0c3; --guide: #f3efe8; }
+/* ---- 乙：中间一整张白纸，两边灰下去 ---- */
+.mk.s-b { --base: #ebe7e0; --top: #f6f3ee; --side-on: #f8f6f2; --head: #ffffff; --chip: #ffffff;
+  --card: transparent; --cardh: transparent; --card-b: transparent; --card-sh: none;
+  --ed: #fcfbf8; --ed-b: #e4ded3; --rail: #f3f0ea; --rail-b: #f3f0ea; --rail-line: #dcd6cb; --guide: #ffffff; }
+.mk.s-b .mk-mid { margin: -12px 0 0; padding: 12px 18px 0; background: #fff; box-shadow: 0 0 0 1px #e2dcd1, 0 8px 28px -12px rgba(40,32,20,.3); }
+.mk.s-b .mk-card { border-radius: 0; }
+.mk.s-b .mk-card + .mk-ins + .mk-card { border-top: 1px dashed #e2dcd1; padding-top: 4px; }
+.mk.s-b .mk-ch { padding: 6px 0; border-bottom: 0; }
+.mk.s-b .mk-body { padding: 2px 0 6px; }
+.mk.s-b .mk-card.focus .mk-ed { background: #fff; }
+.mk.s-b .mk-guide { margin: 8px -18px 0; border-radius: 0; }
+/* ---- 丙：青灰台面，和青色的镜头号一个调子 ---- */
+.mk.s-c { --base: #dbe4e1; --top: #f5f8f7; --side-on: #f7faf9; --head: #dbe4e1; --chip: #f7faf9;
+  --card: #ffffff; --cardh: #eff4f3; --card-b: #cdd9d6; --card-sh: 0 1px 2px rgba(20,55,55,.06), 0 10px 24px -16px rgba(20,55,55,.4);
+  --ed: #ffffff; --ed-b: #cbd6d3; --rail: #eef3f2; --rail-b: #eef3f2; --rail-line: #cdd9d6; --guide: #eef3f2; }
+/* ---- 聚光：正在写的那一镜浮起来，别的镜淡一点（只在打字时） ---- */
+.mk.spot .mk-card.focus { box-shadow: 0 0 0 1px var(--qing), 0 14px 30px -14px rgba(31,107,105,.45); border-color: var(--qing); }
+.mk.spot .mk-card.focus .mk-ch { background: rgba(31,107,105,.07); }
+.mk.spot .mk-card:not(.focus) { opacity: .62; box-shadow: none; }
+@media (max-width: 760px) { .mk-side, .mk-rail { display: none; } }
+</style>
+</head>
+<body>
+<main>
+<h1>写稿页配色 · 设计稿</h1>
+<p class="sub" id="sub"></p>
+<div id="sections"></div>
+<h2>别的意见</h2>
+<div class="card"><textarea data-k="其他" placeholder="上面没说到的，写在这里（可以不写）"></textarea></div>
+<p class="foot" id="foot"></p>
+</main>
+<div class="bar"><span id="st">选好、写好自动存。</span><button id="copy">复制批注</button></div>
+<script>
+/* 示意的页面只写一份，四种颜色各套一个样式（s-a 甲、s-b 乙、s-c 丙，spot 聚光），做成 <template> 给 说明页.js 摆 */
+const STRIP = [['pd',4],['pd',3],['pd',2],['zz',5],['fy',4],['pd',5,1],['pd',4,1],['zz',5,1],['fy',3,1],['zz',3],['pd',4],['zz',3],['gc',4],['fy',4],['zz',2],['fy',3],['fy',4],['sw',4]];
+const ROWS = [['5','全线炮声渐息','fy','反应','炮阵一门门哑火','4'],['6','地面直升机起飞','pd','铺垫','还有直升机能拼','5',1],['7','全军亮出大砍刀','pd','铺垫','没炮弹就拼刀','4',1],['8','机枪子弹打光','zz','转折','最后的火力也断了','5',1],['9','机枪全哑人人握刀','fy','反应','枪声全停','3',1],['11','外星战士喊冲锋','zz','转折','敌人看穿弹尽','3']];
+const MOCK = `
+<div class="mk-top"><b>李云龙大战奥特曼</b><span class="crumb">/ 第3-4段 · 镜头6-9 · 写稿</span><span class="try">试用版</span><span class="sp"></span><span class="st">● 边写边自动保存</span><span class="btn">预览全文</span><span class="btn plain">收起侧栏</span><span class="btn dian">请 AI 批</span></div>
+<div class="mk-stage">
+  <div class="mk-side">
+    <div class="mk-st">分镜提示词</div>
+    <div class="mk-mode"><span class="on">分镜模式</span><span>自由模式</span></div>
+    <div class="mk-k">本条提示词</div>
+    <div class="mk-o">生成目标</div><div class="mk-o">素材</div><div class="mk-o">基础设定</div><div class="mk-o">保持一致</div><div class="mk-o on">分镜 4</div>
+    <div class="mk-s on">6 地面直升机起飞</div><div class="mk-s">7 全军亮出大砍刀</div><div class="mk-s">8 机枪子弹打光</div><div class="mk-s">9 机枪全哑人人握刀</div>
+  </div>
+  <div class="mk-mid">
+    <div class="mk-scroll">
+      <div class="mk-head"><b>第3-4段</b><span>镜头6-9</span><i>生成目标 ▾</i><i>素材 ▾</i><i>基础设定 ▾</i><i>保持一致 ▾</i><u>＋ 整体批注</u></div>
+      <div class="mk-lab"><span class="no">五</span>事件脚本<em>一镜一行 · 自由增删 · 拖动排序</em></div>
+      <div class="mk-card focus">
+        <div class="mk-ch"><span class="no">镜头 6</span><b>地面直升机起飞</b><span class="ops">↑ ↓ 复制 收起 删除</span></div>
+        <div class="mk-body">
+          <div class="mk-pp"><span>作用</span><span class="in">这一镜想起什么作用？自由填写，也可留空</span></div>
+          <div class="mk-cap"><span>镜头正文</span><span>自由写 · 输入 @ 引用素材</span></div>
+          <div class="mk-ed">0-3秒，画面从<span class="r">@图片6</span>定义的首帧开始。大全景，机位贴近地面，在停机坪西侧朝东拍；第一帧起镜头就微微往前推，跟着离地的直升机往上摇。<span class="caret"></span></div>
+        </div>
+      </div>
+      <div class="mk-ins">＋ 在这里插入一镜</div>
+      <div class="mk-card">
+        <div class="mk-ch"><span class="no">镜头 7</span><b>全军亮出大砍刀</b><span class="ops">↑ ↓ 复制 收起 删除</span></div>
+        <div class="mk-body">
+          <div class="mk-cap"><span>镜头正文</span><span>自由写 · 输入 @ 引用素材</span></div>
+          <div class="mk-ed">3-6秒，开场照<span class="r">@图片7</span>。大全景，机位在炮阵后方上空朝东俯拍，越过一排排榴弹炮看向前沿的沙袋墙……</div>
+        </div>
+      </div>
+    </div>
+    <div class="mk-guide"><b>写稿</b>写到哪一区，这里提醒那一区怎么写。</div>
+  </div>
+  <div class="mk-rail">
+    <div class="mk-rt">AI 建议与参考<small>按需选用</small></div>
+    <div class="mk-tabs"><span>资产</span><span>批注</span><span>校对</span><span>剧本</span><span class="on">镜头表</span></div>
+    <div class="mk-rb">
+      <div class="mk-strip">${STRIP.map(([c, s, me]) => `<i class="${c}${me ? ' me' : ''}" style="flex:${s}"></i>`).join('')}</div>
+      <div class="mk-sc"><span>这一条拍 <b>镜6-9</b> · 约 17 秒</span><span>18 镜 · 约 66 秒</span></div>
+      ${ROWS.map(([n, w, c, t, y, s, me]) => `<div class="mk-row${me ? ' me' : ''}"><span class="n">${n}</span><div>${w}<small><span class="t ${c}">${t}</span>${y}</small></div><span class="s">${s} 秒</span></div>`).join('')}
+    </div>
+  </div>
+</div>`;
+const LAYERS = {
+  now: [['#f5f3ef', '整页底'], ['#ffffff', '顶栏、镜头卡、写字框、右栏，全是白']],
+  a: [['#e2dccf', '台面（整页底）'], ['#f3efe8', '右栏、底栏'], ['#f4f0e9', '镜头卡头'], ['#ffffff', '写字框']],
+  b: [['#ebe7e0', '两边'], ['#f3f0ea', '右栏'], ['#ffffff', '中间整张纸'], ['#fcfbf8', '没在写的字框']],
+  c: [['#dbe4e1', '台面（带一点青）'], ['#eef3f2', '右栏、底栏'], ['#eff4f3', '镜头卡头'], ['#ffffff', '写字框']],
+};
+for (const [id, cls, lay] of [['fig-now', '', 'now'], ['fig-a', 's-a', 'a'], ['fig-b', 's-b', 'b'], ['fig-c', 's-c', 'c'], ['fig-spot', 's-a spot', 'a']]) {
+  const t = document.createElement('template');
+  t.id = id;
+  t.innerHTML = `<div class="mk ${cls}">${MOCK}</div>` + (id === 'fig-spot' ? '' : `<div class="layers">${LAYERS[lay].map(([c, s]) => `<span><i style="background:${c}"></i>${s}</span>`).join('')}</div>`);
+  document.body.append(t);
+}
+
+/* ===== 内容（改内容只改这一块；怎么摆、怎么存批注在 公用/说明页.js） ===== */
+const ROUND = 1;
+const SUB = '现在整页几乎都是白和浅灰，写字的框和四周分不开。拟了三套：底色压暗一层，白只留给写字的地方。示意照真页面缩小画的（第3-4段 镜头6-9）。你挑一套，我再改。';
+const FOOT = '2026-11-16 Claude 照写稿页（项目管理_写稿试用.html、公用/写稿编辑.css）现在的颜色拟的。';
+const SECTIONS = [
+  { h: '现在的样子', note: '顶栏、卡片、写字框、右栏都是白的，底只比白深一点点，看不出哪里是写字的地方。', fig: 'fig-now' },
+  { h: '甲　暖灰台面，白只给写字的地方（推荐）', note: '整页底压成暖灰，像一张桌面；右栏、底栏比桌面浅一层；镜头卡浮在桌面上带一点影子，写字框最白。和现在的米色、宋体最搭。', fig: 'fig-a' },
+  { h: '乙　中间一整张白纸', note: '中间那一栏整条变成一张白纸，两边灰下去。镜头之间不再是一张张卡片，用虚线隔开，像在一页稿纸上往下写。', fig: 'fig-b' },
+  { h: '丙　青灰台面', note: '和甲一样分层，底色换成带一点青的冷灰，跟青色的镜头号、按钮一个调子。看着冷静，和其他页面的暖米色不太一样。', fig: 'fig-c' },
+  { h: '要你定的', cards: [
+    { id: 'd1', no: '一', t: '用哪一套', p: [ '甲层次最清楚，也最像现在的样子。' ],
+      opts: [ { v: '甲', t: '暖灰台面', rec: true }, { v: '乙', t: '中间一整张白纸' }, { v: '丙', t: '青灰台面' } ] },
+  ] },
+  { h: '另外一个小问题：正在写的那一镜要不要「聚光」', note: '光标在哪一镜，那一镜带青边浮起来，别的镜淡下去；不打字时都一样亮。下面是甲加聚光的样子：', fig: 'fig-spot', cards: [
+    { id: 'd2', no: '二', t: '聚光', p: [ '镜头多的时候一眼找到在写哪一镜；不好的是别的镜看着发灰，对照着写的时候要多看一眼。' ],
+      opts: [ { v: 'A', t: '要' }, { v: 'B', t: '不要，只是写字框亮一圈青边（现在就有）', rec: true } ] },
+  ] },
+  { h: '不用你定', cards: [
+    { id: 'c1', no: '1', t: '只动颜色', p: [ '字体、字号、位置、按钮都不动。' ] },
+    { id: 'c2', no: '2', t: '外面流水线那两条顶栏这回不动', p: [ '「回到流水线」那一条和最上面的页头在流水线的页面里，另一个会话正在改那几个文件。你要它们也跟着配，另说。' ] },
+  ] },
+];
+window.DOC = { 名: '写稿页配色_设计稿', 题: '写稿页配色设计稿', 存: 'antou:write-colors', 轮: ROUND, 副题: SUB, 脚注: FOOT, 先选: { d1: '甲', d2: 'B' }, 段: SECTIONS };
+</script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="../公用/说明页.js"></script>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>写稿页带镜头表 · 设计稿</title>
+<style>
+:root {
+  --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --line: #d6cab6; --zhu: #a83a2c; --dai: #3e5c5e; --huang: #fff4c9;
+  /* 写稿页自己的颜色（示意照它画） */
+  --w-paper: #f5f3ef; --w-paper-2: #ebe8e2; --w-ink: #1f1c19; --w-ink-2: #4d4842; --w-ink-3: #736c64; --w-ink-4: #a39d95; --w-line: #e6e2db; --w-line-2: #d4cfc6;
+  --qing: #1f6b69; --qing-soft: rgba(31, 107, 105, .08); --qing-line: rgba(31, 107, 105, .32);
+  --serif: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  --sans: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --kai: 'KaiTi', 'STKaiti', 'Kaiti SC', 'BiauKai', 'Noto Serif SC', serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.85 var(--sans); }
+main { max-width: 1040px; margin: 0 auto; padding: 32px 22px 120px; }
+h1 { margin: 0 0 4px; font: 600 26px/1.4 var(--serif); letter-spacing: .08em; }
+.sub { margin: 0 0 16px; font-size: 14.5px; color: var(--ink-2); }
+h2 { margin: 38px 0 6px; font: 600 19px/1.5 var(--serif); letter-spacing: .1em; }
+.card { margin: 12px 0; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+.card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 600; }
+.card h3 .no { display: inline-block; min-width: 1.7em; color: var(--dai); }
+.card p { margin: 3px 0; color: var(--ink-2); }
+.opts { margin: 8px 0 2px; }
+.opts label { display: block; margin: 5px 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opts label:hover { background: #faf5ea; }
+.opts input { margin-right: 8px; }
+.opts .rec { color: var(--dai); font-size: 13px; margin-left: 4px; }
+textarea { display: block; width: 100%; margin-top: 8px; min-height: 2.6em; padding: 7px 10px; border: 1px dashed #c8b99f; border-radius: 8px; background: #fffef9; font: 15px/1.7 var(--sans); color: var(--ink); resize: vertical; }
+textarea:focus { outline: none; border-style: solid; border-color: var(--dai); background: #fff; }
+textarea.has { border-style: solid; border-color: #b9822f; background: var(--huang); }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; background: rgba(255,253,249,.96); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; justify-content: center; font-size: 14px; z-index: 5; }
+.bar button { padding: 6px 14px; border: 1px solid var(--dai); border-radius: 8px; background: #fff; color: var(--dai); font: inherit; cursor: pointer; }
+.bar button:hover { background: #eef5f3; }
+#st { color: var(--ink-2); }
+.foot { margin-top: 26px; font-size: 13px; color: var(--ink-3); }
+.pc { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0 0; font-size: 14px; }
+.pc > div { padding: 8px 12px; border-radius: 8px; background: var(--sheet); border: 1px solid var(--line); color: var(--ink-2); }
+.pc b { display: block; font-size: 13.5px; }
+.pc .good b { color: var(--dai); } .pc .bad b { color: var(--zhu); }
+
+/* ---- 作用标签的颜色（和流水线、提炼页同一套） ---- */
+.sw-t { display: inline-block; margin-right: 6px; padding: 0 5px; border-radius: 4px; font: 600 11.5px/1.65 var(--sans); white-space: nowrap; vertical-align: 1px; }
+.jd { background: #e3eeed; color: #2f5355; } .pd { background: #f4e7cb; color: #7a5a1e; } .zz { background: #fbe3dc; color: #9a3326; }
+.gc { background: #a83a2c; color: #fff; } .fy { background: #e5edd9; color: #46622f; } .sw { background: #e9e3da; color: #4d453d; }
+
+/* ---- 示意：写稿页的样子 ---- */
+.mock { display: grid; gap: 0; border: 1px solid var(--w-line-2); border-radius: 10px; overflow: hidden; background: var(--w-paper); color: var(--w-ink); font: 14px/1.7 var(--sans); box-shadow: 0 10px 30px -18px rgba(30,28,24,.35); }
+.mock.a { grid-template-columns: 170px 1fr; }
+.mock.b { grid-template-columns: 1fr; }
+.mock.c { grid-template-columns: 1fr 300px; }
+.m-nav { padding: 16px 12px; border-right: 1px solid var(--w-line); background: var(--w-paper); font-size: 13.5px; color: var(--w-ink-2); }
+.m-nav .t { margin: 0 0 10px; font: 600 16px/1.4 var(--serif); color: var(--w-ink); }
+.m-nav .k { margin: 10px 0 4px; font-size: 12px; color: var(--w-ink-3); }
+.m-nav .i { padding: 3px 10px; border-radius: 6px; }
+.m-nav .i.on { background: var(--w-paper-2); color: var(--w-ink); }
+.m-nav .s { display: flex; gap: 6px; align-items: baseline; padding: 2px 10px 2px 18px; font-size: 12.5px; }
+.m-nav .s .n { color: var(--qing); font-family: var(--kai); }
+.m-nav .s .x { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.m-nav .s .sec { color: var(--w-ink-4); font-size: 11.5px; }
+.m-mid { min-width: 0; padding: 16px 20px 20px; }
+.m-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.m-head b { font: 600 21px/1.4 var(--serif); letter-spacing: .06em; }
+.m-head span { font: 15px/1.4 var(--serif); color: var(--w-ink-3); }
+.m-head .chip { padding: 1px 8px; border: 1px solid var(--w-line-2); border-radius: 5px; background: #fff; font: 12px/1.6 var(--sans); color: var(--w-ink-2); }
+.m-lab { display: flex; align-items: center; gap: 10px; margin: 4px 0 8px; font: 13px/1.5 var(--kai); letter-spacing: .3em; color: var(--w-ink-2); }
+.m-lab::after { content: ''; flex: 1; border-top: 1px solid var(--w-line); }
+.m-lab em { font: normal 11.5px/1.6 var(--sans); letter-spacing: 0; padding: 0 9px; border: 1px solid var(--qing-line); border-radius: 999px; color: var(--qing); background: var(--qing-soft); }
+
+/* 色带：一块一镜，宽窄照秒数；这一条拍的几镜实色，别的淡 */
+.strip { display: flex; height: 22px; margin: 0 0 3px; border-radius: 5px; overflow: hidden; }
+.strip i { display: grid; place-items: center; border-right: 1.5px solid var(--w-paper); font: normal 10.5px/1 var(--sans); opacity: .45; }
+.strip i:last-child { border-right: 0; }
+.strip i.me { opacity: 1; box-shadow: inset 0 0 0 1.5px var(--qing); font-weight: 700; }
+.strip-cap { display: flex; justify-content: space-between; margin: 0 0 10px; font-size: 12px; color: var(--w-ink-3); }
+.strip-cap b { color: var(--qing); font-weight: 600; }
+
+/* 镜头卡 */
+.p-shot { padding: 10px 16px 14px; border: 1px solid var(--w-line); border-radius: 10px; background: linear-gradient(to bottom, rgba(245,243,239,.6), #fff 70px); }
+.shot-h { display: flex; align-items: center; gap: 10px; padding: 0 0 8px; border-bottom: 1px solid var(--w-line); }
+.handle { color: var(--w-ink-4); letter-spacing: -2px; }
+.shot-no { flex: none; padding: 1px 10px; border-radius: 4px; background: var(--qing); color: #fff; font: 13px/1.6 var(--kai); letter-spacing: .15em; }
+.shot-t { flex: 1; min-width: 0; font: 600 16px/1.5 var(--serif); letter-spacing: .05em; }
+.shot-t.empty { color: var(--w-ink-4); font-weight: 400; border-bottom: 1px dashed var(--w-line-2); }
+.sec-pill { flex: none; padding: 0 8px; border-radius: 999px; background: var(--qing-soft); color: var(--qing); font: 600 12px/1.7 var(--sans); }
+.ops { flex: none; display: flex; gap: 12px; font-size: 12px; color: var(--w-ink-3); }
+.why { display: flex; align-items: baseline; gap: 2px; margin: 8px 0 2px; font-size: 13.5px; color: var(--w-ink-2); }
+.why .from { margin-left: auto; padding-left: 10px; font-size: 11.5px; color: var(--w-ink-4); white-space: nowrap; }
+.lk { position: relative; color: var(--qing); border-bottom: 1px dotted var(--qing); cursor: help; }
+.lk:hover::after { content: attr(data-tip); position: absolute; left: 0; top: 130%; z-index: 3; padding: 5px 10px; border-radius: 6px; background: var(--w-ink); color: #fff; font: 12.5px/1.6 var(--sans); white-space: nowrap; }
+.purpose { display: flex; align-items: center; gap: 10px; margin: 10px 0 2px; font-size: 12.5px; color: var(--w-ink-3); }
+.purpose span:last-child { flex: 1; padding: 4px 10px; border: 1px solid var(--w-line-2); border-radius: 6px; background: #fff; color: var(--w-ink-4); }
+.cap2 { display: flex; justify-content: space-between; margin: 10px 0 4px; font-size: 12.5px; color: var(--w-ink-3); }
+.ta { padding: 10px 14px; border: 1px solid var(--w-line-2); border-radius: 8px; background: #fff; font: 15px/1.95 var(--serif); color: var(--w-ink); }
+.ta .r { padding: 0 2px; border-radius: 3px; background: var(--w-paper-2); }
+.ta .s { color: #9a6b1f; }
+.folded { margin-top: 8px; }
+.folded .p-shot { padding-bottom: 8px; }
+.folded .shot-h { border-bottom: 0; padding-bottom: 0; }
+.folded .why { margin: 4px 0 0; }
+.note-ex { margin: 14px 0 4px; font-size: 12.5px; color: var(--w-ink-3); }
+
+/* 乙：分镜上面的小表 */
+.mini { margin: 0 0 12px; border: 1px solid var(--qing-line); border-radius: 10px; background: #fff; overflow: hidden; }
+.mini-h { display: flex; justify-content: space-between; padding: 6px 12px; background: var(--qing-soft); font-size: 12.5px; color: var(--qing); }
+.mini-h b { font-weight: 600; }
+.row { display: grid; grid-template-columns: 34px 150px 1fr 44px; gap: 8px; align-items: baseline; padding: 6px 12px; border-top: 1px solid var(--w-line); font-size: 13.5px; }
+.row:first-of-type { border-top: 0; }
+.row .n { font: 600 13px/1.6 var(--serif); color: var(--qing); }
+.row .w { font-weight: 600; }
+.row .y { color: var(--w-ink-2); }
+.row .sc { text-align: right; color: var(--w-ink-3); font-size: 12.5px; }
+.row.dim { opacity: .45; }
+.row.dim .w { font-weight: 400; }
+.row.dim .sc::before { content: ''; }
+.row .side { grid-column: 2 / -1; margin-top: -4px; font-size: 11.5px; color: var(--w-ink-4); }
+
+/* 丙：右栏页签 */
+.m-rail { border-left: 1px solid var(--w-line); background: #fff; font-size: 13px; }
+.tabs { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--w-line); text-align: center; color: var(--w-ink-2); }
+.tabs span { padding: 9px 0 7px; }
+.tabs span.on { color: var(--qing); font-weight: 600; box-shadow: inset 0 -2px 0 var(--qing); }
+.r-body { padding: 10px 12px; }
+.r-body .strip { height: 16px; }
+.r-body .strip-cap { margin-bottom: 8px; }
+.rr { display: grid; grid-template-columns: 24px 1fr 34px; gap: 4px; padding: 4px 6px; border-radius: 6px; }
+.rr .n { font: 600 12px/1.8 var(--serif); color: var(--qing); }
+.rr b { display: block; font-weight: 500; font-size: 13px; line-height: 1.5; }
+.rr small { display: block; font-size: 12px; line-height: 1.6; color: var(--w-ink-3); }
+.rr .sc { text-align: right; font-size: 12px; color: var(--w-ink-4); }
+.rr.me { background: #fff6dc; box-shadow: inset 2px 0 0 var(--qing); }
+.rr.more { display: block; padding: 4px 6px 0; color: var(--w-ink-4); font-size: 12px; }
+.m-mid.narrow .ta { font-size: 14px; }
+@media (max-width: 760px) { .mock.a, .mock.c, .pc { grid-template-columns: 1fr; } .m-nav, .m-rail { display: none; } }
+</style>
+</head>
+<body>
+<main>
+<h1>写稿页带镜头表 · 设计稿</h1>
+<p class="sub" id="sub"></p>
+
+<!-- ===== 甲：镜头卡头上直接带 ===== -->
+<template id="fig-a">
+<div class="mock a">
+  <div class="m-nav">
+    <p class="t">分镜提示词</p>
+    <p class="k">本条提示词</p>
+    <div class="i">生成目标</div><div class="i">素材</div><div class="i">基础设定</div><div class="i">主体与关系</div><div class="i">保持一致</div>
+    <div class="i on">分镜</div>
+    <div class="s"><span class="n">1</span><span class="x">炮兵打出末弹</span><span class="sec">4秒</span></div>
+  </div>
+  <div class="m-mid">
+    <div class="m-head"><b>第3-4段</b><span>镜头1</span><span class="chip">生成目标 ▾</span><span class="chip">素材 ▾</span><span class="chip">基础设定 ▾</span></div>
+    <div class="m-lab">事件脚本 <em>一镜一行 · 自由增删 · 拖动排序</em></div>
+    <div class="strip" title="一块一镜，宽窄照秒数，颜色照作用标签">
+      <i class="pd me" style="flex:4">1</i><i class="pd" style="flex:3">2</i><i class="pd" style="flex:2">3</i><i class="zz" style="flex:5">4</i><i class="fy" style="flex:4">5</i><i class="pd" style="flex:5">6</i><i class="pd" style="flex:4">7</i><i class="zz" style="flex:5">8</i><i class="fy" style="flex:3">9</i><i class="zz" style="flex:3">11</i><i class="pd" style="flex:4">12</i><i class="zz" style="flex:3">13</i><i class="gc" style="flex:4">14</i><i class="fy" style="flex:4">15</i><i class="zz" style="flex:2">16</i><i class="fy" style="flex:3">17</i><i class="fy" style="flex:4">18</i><i class="sw" style="flex:4">19</i>
+    </div>
+    <div class="strip-cap"><span>这一条拍 <b>镜1</b>，约 <b>4 秒</b></span><span>全段 18 镜，约 66 秒</span></div>
+    <div class="p-shot">
+      <div class="shot-h"><span class="handle">⋮⋮</span><span class="shot-no">镜头 1</span><span class="shot-t">炮兵打出末弹</span><span class="sec-pill">4 秒</span><span class="ops"><span>↑</span><span>↓</span><span>复制</span><span>收起</span><span>删除</span></span></div>
+      <div class="why"><span class="sw-t pd">铺垫</span>炮兵已在掏箱底，<span class="lk" data-tip="镜4　炮兵弹箱见底　转折　5 秒　（在别的那条里拍）">为镜4</span>弹尽<span class="from">镜头表 · 在「提炼」改</span></div>
+      <div class="cap2"><span>镜头正文</span><span>自由写 · 输入 @ 引用素材</span></div>
+      <div class="ta">画面从<span class="r">@图片3</span>定义的首帧开始，中景。第一帧起装填手就弯腰吃劲，把炮弹一把推进炮膛到底；闩手猛地合上炮闩<span class="s">&lt;哐&gt;</span>，一把攥住火绳。第2秒硬切到<span class="r">@图片4</span>定义的第二个关键帧：主角那门炮的正侧面……</div>
+    </div>
+    <p class="note-ex">一条拍几镜时（举例：拍 4、5 两镜），每张卡各带各的；收起时只剩这两行：</p>
+    <div class="folded">
+      <div class="p-shot">
+        <div class="shot-h"><span class="handle">⋮⋮</span><span class="shot-no">镜头 4</span><span class="shot-t">炮兵弹箱见底</span><span class="sec-pill">5 秒</span><span class="ops"><span>展开</span></span></div>
+        <div class="why"><span class="sw-t zz">转折</span>炮弹打光，阵地少了重火力，<span class="lk" data-tip="镜1　炮兵打出末弹　铺垫　4 秒">接镜1</span></div>
+      </div>
+    </div>
+    <div class="folded">
+      <div class="p-shot">
+        <div class="shot-h"><span class="handle">⋮⋮</span><span class="shot-no">镜头 5</span><span class="shot-t">全线炮声渐息</span><span class="sec-pill">4 秒</span><span class="ops"><span>展开</span></span></div>
+        <div class="why"><span class="sw-t fy">反应</span>炮阵一门门哑火，全线没炮，<span class="lk" data-tip="镜4　炮兵弹箱见底　转折　5 秒">接镜4</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="pc"><div class="good"><b>好</b>写哪镜看哪镜，眼睛不用挪。现在空着的「标题」「作用」两个框正好换成它，不多占地方。鼠标停在「为镜4」上，看得到镜4 是什么。</div><div class="bad"><b>不足</b>稿里的镜头号要和镜头表对上。照镜头号起名的稿（1.txt、1-5.txt）都对得上；老稿对不上的就不摆。</div></div>
+</template>
+
+<!-- ===== 乙：分镜上面一张小表 ===== -->
+<template id="fig-b">
+<div class="mock b">
+  <div class="m-mid">
+    <div class="m-head"><b>第3-4段</b><span>镜头1</span><span class="chip">生成目标 ▾</span><span class="chip">素材 ▾</span><span class="chip">基础设定 ▾</span></div>
+    <div class="m-lab">事件脚本 <em>一镜一行 · 自由增删 · 拖动排序</em></div>
+    <div class="mini">
+      <div class="mini-h"><b>镜头表 · 这一条拍 1 镜，约 4 秒</b><span>在「提炼」改</span></div>
+      <div class="row"><span class="n">1</span><span class="w">炮兵打出末弹</span><span class="y"><span class="sw-t pd">铺垫</span>炮兵已在掏箱底，为镜4弹尽</span><span class="sc">4 秒</span></div>
+      <div class="row dim"><span class="n">2</span><span class="w">末轮炮火炸翻敌群</span><span class="y"><span class="sw-t pd">铺垫</span>炮火还能压住敌人，为镜5沉寂</span><span class="sc">3 秒</span><span class="side">下一镜，别的那条拍</span></div>
+    </div>
+    <div class="p-shot">
+      <div class="shot-h"><span class="handle">⋮⋮</span><span class="shot-no">镜头 1</span><span class="shot-t empty">这一镜的标题</span><span class="ops"><span>↑</span><span>↓</span><span>复制</span><span>收起</span><span>删除</span></span></div>
+      <div class="purpose"><span>作用</span><span>这一镜想起什么作用？自由填写，也可留空</span></div>
+      <div class="cap2"><span>镜头正文</span><span>自由写 · 输入 @ 引用素材</span></div>
+      <div class="ta">画面从<span class="r">@图片3</span>定义的首帧开始，中景。第一帧起装填手就弯腰吃劲，把炮弹一把推进炮膛到底……</div>
+    </div>
+  </div>
+</div>
+<div class="pc"><div class="good"><b>好</b>这一条拍哪几镜、前后接什么，一张表看全。镜头卡不用动。</div><div class="bad"><b>不足</b>镜头多了往下写，表就滚上去看不见。卡上的「标题」「作用」还空着，和表重复。</div></div>
+</template>
+
+<!-- ===== 丙：右栏加「镜头表」页签 ===== -->
+<template id="fig-c">
+<div class="mock c">
+  <div class="m-mid narrow">
+    <div class="m-head"><b>第3-4段</b><span>镜头1</span></div>
+    <div class="m-lab">事件脚本</div>
+    <div class="p-shot">
+      <div class="shot-h"><span class="handle">⋮⋮</span><span class="shot-no">镜头 1</span><span class="shot-t empty">这一镜的标题</span></div>
+      <div class="purpose"><span>作用</span><span>这一镜想起什么作用？</span></div>
+      <div class="cap2"><span>镜头正文</span><span>输入 @ 引用素材</span></div>
+      <div class="ta">画面从<span class="r">@图片3</span>定义的首帧开始，中景。第一帧起装填手就弯腰吃劲……</div>
+    </div>
+  </div>
+  <div class="m-rail">
+    <div class="tabs"><span>资产</span><span>批注</span><span>校对</span><span>剧本</span><span class="on">镜头表</span></div>
+    <div class="r-body">
+      <div class="strip"><i class="pd me" style="flex:4"></i><i class="pd" style="flex:3"></i><i class="pd" style="flex:2"></i><i class="zz" style="flex:5"></i><i class="fy" style="flex:4"></i><i class="pd" style="flex:5"></i><i class="pd" style="flex:4"></i><i class="zz" style="flex:5"></i><i class="fy" style="flex:3"></i><i class="zz" style="flex:3"></i><i class="pd" style="flex:4"></i><i class="zz" style="flex:3"></i><i class="gc" style="flex:4"></i><i class="fy" style="flex:4"></i><i class="zz" style="flex:2"></i><i class="fy" style="flex:3"></i><i class="fy" style="flex:4"></i><i class="sw" style="flex:4"></i></div>
+      <div class="strip-cap"><span>这一条：<b>镜1</b></span><span>18 镜 · 约 66 秒</span></div>
+      <div class="rr me"><span class="n">1</span><div><b>炮兵打出末弹</b><small><span class="sw-t pd">铺垫</span>炮兵已在掏箱底，为镜4弹尽</small></div><span class="sc">4秒</span></div>
+      <div class="rr"><span class="n">2</span><div><b>末轮炮火炸翻敌群</b><small><span class="sw-t pd">铺垫</span>炮火还能压住敌人，为镜5沉寂</small></div><span class="sc">3秒</span></div>
+      <div class="rr"><span class="n">3</span><div><b>最后弹壳退膛</b><small><span class="sw-t pd">铺垫</span>一地弹壳显打得久，为镜4见底</small></div><span class="sc">2秒</span></div>
+      <div class="rr"><span class="n">4</span><div><b>炮兵弹箱见底</b><small><span class="sw-t zz">转折</span>炮弹打光，阵地少了重火力，接镜1</small></div><span class="sc">5秒</span></div>
+      <div class="rr"><span class="n">5</span><div><b>全线炮声渐息</b><small><span class="sw-t fy">反应</span>炮阵一门门哑火，全线没炮，接镜4</small></div><span class="sc">4秒</span></div>
+      <div class="rr more">…… 往下还有 13 镜，在框里滚</div>
+    </div>
+  </div>
+</div>
+<div class="pc"><div class="good"><b>好</b>整段 18 镜都看得见，前后戏怎么接最清楚。</div><div class="bad"><b>不足</b>切到这页，资产页就看不见了，@ 素材要来回切。整段的表在流水线左边小窗里已经能看。</div></div>
+</template>
+
+<div id="sections"></div>
+<h2>别的意见</h2>
+<div class="card"><textarea data-k="其他" placeholder="上面没说到的，写在这里（可以不写）"></textarea></div>
+<p class="foot" id="foot"></p>
+</main>
+<div class="bar"><span id="st">选好、写好自动存。</span><button id="copy">复制批注</button></div>
+<script>
+/* ===== 内容（改内容只改这一块；怎么摆、怎么存批注在 公用/说明页.js） ===== */
+const ROUND = 1;
+const SUB = '写提示词时，把镜头表里这一条拍的几镜摆进写稿页。拟了三种摆法，用的是第3-4段镜头1 的真数据。你挑一种，我再改页面。';
+const FOOT = '2026-11-16 Claude 照写稿页（项目管理_写稿试用.html）和第3-4段的镜头表拟的。鼠标停在带虚线的「为镜4」「接镜1」上看效果。';
+const SECTIONS = [
+  { h: '甲　镜头卡头上直接带（推荐）', note: '每张镜头卡的头上，写镜头表里这一镜：写什么、几秒、作用。现在空着的「标题」「作用」框换成这一行。分镜上面一条色带，看这一条在整段里拍到哪。左边目录也写上。', fig: 'fig-a' },
+  { h: '乙　分镜上面放一张小表', note: '列出这一条拍的几镜，后面一镜淡淡带上。镜头卡不动。', fig: 'fig-b' },
+  { h: '丙　右栏加「镜头表」页签', note: '整段的镜头表放进右栏，这一条拍的几镜标亮。', fig: 'fig-c' },
+  { h: '要你定的', cards: [
+    { id: 'd1', no: '一', t: '选哪一种', p: [ '甲最省地方，写哪镜看哪镜。' ],
+      opts: [ { v: '甲', t: '镜头卡头上直接带', rec: true }, { v: '乙', t: '分镜上面放一张小表' }, { v: '丙', t: '右栏加「镜头表」页签' } ] },
+    { id: 'd2', no: '二', t: '分镜上面那条色带', p: [ '一块一镜，宽窄照秒数，颜色照作用标签。这一条拍的几镜实色，别的淡。一眼看出这条在整段哪里。' ],
+      opts: [ { v: 'A', t: '要', rec: true }, { v: 'B', t: '不要' } ] },
+    { id: 'd3', no: '三', t: '卡上原来的「标题」「作用」框（选甲才有这个问题）', p: [ 'AI 写的稿，这两个框都空着。' ],
+      opts: [ { v: 'A', t: '换成镜头表那一行；以前自己写过字的照样显示', rec: true }, { v: 'B', t: '照旧留着，镜头表那一行另起一行' } ] },
+  ] },
+  { h: '不用你定', cards: [
+    { id: 'c1', no: '1', t: '只看不改', p: [ '镜头表还在「提炼」那一步改。写稿页里不能改，免得两处打架。' ] },
+    { id: 'c2', no: '2', t: '对不上的不摆', p: [ '稿里有镜头表没有的镜（比如自己加的 1b），卡上写一句「镜头表里没有这一镜」。老稿（视频提示词_02 这种）不摆。' ] },
+    { id: 'c3', no: '3', t: '颜色和流水线一样', p: [ '六种作用标签的颜色、秒数的算法，和提炼页、流水线左边小窗用同一套。' ] },
+  ] },
+];
+window.DOC = { 名: '写稿页带镜头表_设计稿', 题: '写稿页带镜头表设计稿', 存: 'antou:write-shotlist', 轮: ROUND, 副题: SUB, 脚注: FOOT, 先选: { d1: '甲', d2: 'A', d3: 'A' }, 段: SECTIONS };
+</script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="../公用/说明页.js"></script>
+</body>
+</html>

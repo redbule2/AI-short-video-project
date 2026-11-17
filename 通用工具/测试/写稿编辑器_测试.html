@@ -406,11 +406,11 @@ async function run() {
       await evalIn('switchMode("自由")');
       assert(textAt(promptPath) === current, '再次切回自由后标准旧自由稿改变');
     });
-    await check('右栏没有公共内容、分镜/关键词页签：四个页签是 资产、批注、校对、剧本，打开先看资产；顶上没有保存草稿、只批这一镜；切换写法不动当前页签', async () => {
+    await check('右栏没有公共内容、分镜/关键词页签：页签是 资产、批注、校对、剧本、镜头表（流水线有镜头表才摆），打开先看资产；顶上没有保存草稿、只批这一镜；切换写法不动当前页签', async () => {
       reset(); await openEditor();
       const doc = frame.contentDocument, tabs = () => [...doc.querySelectorAll('.rail-tab')].map(b => b.textContent);
       assert(!doc.querySelector('#pane-common'), '公共内容侧栏还在');
-      assert(equal(tabs(), ['资产', '批注', '校对', '剧本']), '右栏页签不对：' + tabs().join('、'));
+      assert(equal(tabs(), ['资产', '批注', '校对', '剧本', '镜头表']), '右栏页签不对：' + tabs().join('、'));
       assert(evalIn('RAIL') === 'assets' && !doc.querySelector('#pane-suggest'), '打开时右栏不在资产页签，或者分镜建议那一栏还在');
       for (const text of ['保存草稿', '只批这一镜', '查看本镜建议']) assert(![...doc.querySelectorAll('button')].some(b => b.textContent.includes(text)), '还留着按钮：' + text);
       assert(!doc.body.innerText.includes('公共内容'), '页面上还有「公共内容」几个字');
@@ -572,6 +572,18 @@ async function run() {
       assert(doc.querySelector('#pane-lint .tab-intro').textContent.includes('不用 AI'), '校对页签顶上没有说明');
       evalIn('showRail("ai")');
       assert(doc.querySelector('#pane-ai').textContent.includes('只提意见') && !doc.querySelector('#pane-ai').textContent.includes('镜头表'), '批注页签的说明不对');
+    });
+    await check('镜头表页签（11-16）：整段一镜一行，这一条拍的几镜标亮；流水线没有镜头表时页签不摆', async () => {
+      reset(); await openEditor();
+      const doc = frame.contentDocument;
+      evalIn('showRail("shots")');
+      await waitFor(() => doc.querySelector('#pane-shots .ws-list li'), '镜头表页签没有内容');
+      const pane = doc.querySelector('#pane-shots'), rows = [...pane.querySelectorAll('.ws-list li')];
+      assert(rows.length === 2 && rows[0].textContent.includes('响声') && rows[0].textContent.includes('打断日常') && rows[1].textContent.includes('抬头'), '镜头表的写什么、作用没有摆出来');
+      assert(equal(rows.filter(li => li.classList.contains('me')).map(li => li.dataset.no), ['1', '2']), '老稿 段落1-2 应该标亮镜1、镜2');
+      assert(pane.querySelectorAll('.ws-strip i').length === 2 && pane.querySelector('.ws-cap').textContent.includes('镜1-2'), '色带或合计那一句不对');
+      evalIn('FLOW.段落 = []; paintTabs()');
+      assert([...doc.querySelectorAll('.rail-tab')].find(b => b.textContent === '镜头表').hidden, '没有镜头表时页签还摆着');
     });
     $('#summary').textContent = '全部通过：' + completed + ' 项浏览器回归；真实项目写入 0 次，AI 请求 0 次。';
   } catch (error) {
