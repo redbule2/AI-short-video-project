@@ -20,7 +20,7 @@ const VoiceBind = (() => {
   }
   const reset = () => { AT = 0; };
   const table = () => Voice.tableOf(F.doc.人物, PJ === F.name ? NAMES : []);
-  const stateOf = name => table().get(name) || { path: '', how: '' };
+  const stateOf = name => Voice.stateOf(F.doc.人物, PJ === F.name ? NAMES : [], name);   // 人物表里没有这一行的（旁白）照文件名认
   /* 试听：点一下放，再点停；放着别的就先停。页面重画过，按钮是新的：照 data-f 找 */
   const mark = f => { for (const x of document.querySelectorAll('.vb-play')) x.classList.toggle('on', !!f && x.dataset.f === f); };
   function stop() { if (!PLAY) return; PLAY.a.pause(); URL.revokeObjectURL(PLAY.a.src); PLAY = null; mark(''); }
@@ -38,7 +38,8 @@ const VoiceBind = (() => {
   const playBtn = (path, label, cls) => h('button', { class: 'vb-play ' + (cls || '') + (PLAY && PLAY.f === path ? ' on' : ''), type: 'button', 'data-f': path,
     title: stem(path) + '\n点一下试听，再点停', onclick: e => { e.stopPropagation(); toggle(path); } }, label);
   function set(name, path, paint) {
-    const e = entryOf('人物', name);
+    let e = entryOf('人物', name);
+    if (!e && name === Voice.NARRATOR) { e = { 名: name, 描写: '', 资产: [] }; F.doc.人物.push(e); }   // 旁白（11-17）：挑过的音色记在人物表「旁白」那一行，没有就加一行
     if (!e) return toast('人物表里没有「' + name + '」', 'err');
     e.音色 = path; touch(); paint();
     toast(path ? name + '的音色用「' + stem(path) + '」' : name + '不用音色了');
@@ -46,7 +47,7 @@ const VoiceBind = (() => {
   /* 挑一段：人物文件夹里的录音都列上，能试听；别人用着的不能挑（一段录音只给一个人） */
   async function pick(name, paint) {
     await listNow().catch(() => null);
-    const t = table(), cur = (t.get(name) || {}).path || '';
+    const t = table(), cur = stateOf(name).path || '';
     const owner = p => { for (const [k, v] of t) if (k !== name && v.path === p) return k; return ''; };
     const rows = NAMES.map(f => {
       const p = Voice.DIR + '/' + f, who = owner(p), mine = p === cur;
@@ -57,7 +58,7 @@ const VoiceBind = (() => {
     const got = await dialog(close => {
       const body = NAMES.length ? h('div', { class: 'vb-list', onclick: e => { const b = e.target.closest('[data-use]'); if (b) close(b.dataset.use); } }, rows)
         : h('p', { class: 'fn-note' }, '人物文件夹里还没有录音：把录音（wav、mp3 都行）放进 资产 / 全局资产 / 人物，再来挑。');
-      return dlgShell('给「' + name + '」挑音色', '录音在 资产 / 全局资产 / 人物。写提示词时他有台词才挂：台词照文字写，录音只给音色、口音、语速和情绪。一段录音只给一个人。', body, [
+      return dlgShell('给「' + name + '」挑音色', '录音在 资产 / 全局资产 / 人物。写提示词时' + (name === Voice.NARRATOR ? '这一条有旁白才挂（画外音，画面里的人不开口）' : '他有台词才挂') + '：台词照文字写，录音只给音色、口音、语速和情绪。一段录音只给一个人。', body, [
         cur ? h('button', { class: 'btn ghost', type: 'button', onclick: () => close('') }, name + '不用音色') : null,
         h('button', { class: 'btn ink', type: 'button', 'data-focus': '', onclick: () => close(null) }, '关上')].filter(Boolean));
     });

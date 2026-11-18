@@ -123,6 +123,9 @@
 <script src="../公用/音色.js"></script>
 <script src="../公用/关键帧绑定.js"></script>
 <script src="../公用/镜头作用.js"></script>
+<script src="../公用/文字描写.js"></script>
+<script src="../公用/资产改过.js"></script>
+<script src="../公用/资产归类.js"></script>
 <script src="流水线.js"></script>
 <script src="资产详情.js"></script>
 <script src="电脑找图.js"></script>
@@ -134,14 +137,20 @@
    流水线 · 资产（一场的第三道工序）
    剧本定稿、提炼定了以后才开（11-16 起出场的是剧本定稿以后提炼的）：这一场出场的人物、道具、场景图各对着哪张图。
    11-16 改版（他看了 资产页改版_设计稿.html，四处都照推荐的定）：
-     顶上一条钉住：走到哪了（确认了几张、缺图、字等你批……点了跳过去）、「让 AI 写字」、这一步要按的那一个，下面四个页签：人物、场景、道具、关键帧，一次看一样，回到上回看的那一页。
+     顶上一条钉住：走到哪了（确认了几张、缺图、字等你批……点了跳过去）、「让 AI 写出图提示词」（11-17 前叫「让 AI 写字」）、这一步要按的那一个，下面四个页签：人物、场景、道具、关键帧，一次看一样，回到上回看的那一页。
      人物、场景、道具：一样一张大图卡。图下名字、走到哪了、眼下该按的钮；点卡弹出它的弹窗（资产详情.js；11-16 起不换页）。人物的音色并在卡底下一行。
        没图的卡「挑现成的图」：右边滑出一栏（挑图栏.js），顶上写明给谁挑，挑中的就挂给它，不再照图名猜。剧本里提到、还没加上的，虚线卡排在后面；最后一张「＋ 加人物」。
      关键帧：一镜一张小卡，三格（开头、中间、结尾），一格几张的角上「+1」。点一格、点「还没绑」里的一张，直接弹出它的弹窗（11-16 他要的：一下就进，不再先弹小窗）：
        弹窗里看这一镜的几张、换现用、确认、解绑、绑到哪一镜（资产详情.js）。没绑的摆在顶上「还没绑」一排，拖到哪一格就绑上；
        格子里的图拖到别的格子就改绑，拖回「还没绑」就解绑。空的格子点一下，从这一段文件夹里挑一张绑上。
    字先定，图后出（2026-11-14 他定的，流程图 文生资产_流程图.html；共用的做法在 流水线.js「文生资产」那一节）：
-     「让 AI 写字」：AI 读定稿的剧本，给这一场还没有字的写字（出图提示词，场景先写 GEO 底稿），已经有的图核一遍撑不撑得住。
+     「让 AI 写出图提示词」：AI 读定稿的剧本，给这一场还没有字的写出图提示词（场景先写 GEO 底稿），已经有的图核一遍撑不撑得住。字就是出图提示词。
+     只用文字写、不出图（2026-11-17 他要：只出现一次的用文字锁就行）：没图的人物、道具、场景，鼠标移到卡上，名字右边「只用文字」；
+       点了这一段不算缺图，AI 也不给它写出图提示词，写视频提示词时照全片设定里的描写写。记在这一场的「不出图」（公用/核心.js 的 noImg、setNoImg），点「要出图」改回来。
+     不要 GEO（2026-11-17 他要：只用一次、没有严格站位的场景用不着 GEO）：场景卡名字右边「不要GEO」，点了只写出图提示词、不写 GEO 底稿，
+       出了图不核 GEO，写视频提示词也不用 GEO；卡上那行小字带「不写 GEO」，点「要GEO」改回来。记在这一场的「不要GEO」（公用/核心.js 的 noGeo、setNoGeo）。
+     全局、用在哪几镜、删掉（2026-11-17 他要，提炼那一步标、公用/资产归类.js）：卡上小字打头写「全局 · 镜6～9」；人物、道具、只用文字的场景卡上 × 是删掉
+       （这一段不用它；别的段也没用的，全片设定里也删；AI 重新提炼不再列）。挂的图卡上的 × 照旧只是取下这张图。
      每张卡上是眼下该做的：写字 → 批字（自己改，或写批注交给 AI 改；字定了点「照这个出图」）→ 图出好了点开看 → 确认可用。
      已经有图的再出，新图先当候选（「看新图」：旧图、新图并排，挑「用旧图」或「用新图」；没挑以前卡上不摆旧图的「可用」）。
      只用文字写的场景也能写字、出图：图出好了点「用上这张图」，这一场改用图。道具能「加一种样子」（一个状态一张图）。
@@ -177,19 +186,31 @@ function switchTab(t) {
 /* ---------- 一张卡：人物、场景、道具 ---------- */
 let IMPACT = new Map();   // 影响清单上列着、还没处理的：'类别/名称' → 为什么（repaint 时算）
 const cardKey = it => [it.类别, it.名称, it.sub || '', it.文字 || it.文件 || it.at || ''].join('|');
+/* 全局、用在哪几镜（11-17 他要，提炼那一步标的，公用/资产归类.js）：卡上那行小字打头写「全局 · 镜6～9」「镜1」。
+   人物、道具那一行，只用文字写的场景，场景图；这一段文件夹里挑来当人物、道具的、AI 另外列的不写 */
+function scopeName(it) { return !it.own ? '' : KIND[it.类别] ? it.名称 : it.文字 ? it.文字 : it.类别 === '场景图' && it.文件 ? baseOf(it.文件) : ''; }
+function scopeTx(s, it) {
+  const name = scopeName(it), k = kindOf(it.类别);
+  if (!name) return '';
+  const t = Scope.say(F.doc, s, shotNos(s), k, name);
+  return [Scope.isGlobal(F.doc, k, name) ? '全局' : '', t === '哪一镜都没用上' ? '哪一镜都没有' : t].filter(Boolean).join(' · ');
+}
+/* ×：删掉（他定：这一段不用它，别的段没用它的，全片设定里也删；问一句再删） */
+const dropIt = async (s, k, name) => { if (await Scope.dropAsk(confirmDlg, F.doc, s, k, name)) { touch(); paint(); } };
 function cardEl(s, it, voice) {
-  const w = wordOf(s, it), k = kindOf(it.类别), stop = ev => ev.stopPropagation(), isRow = !!KIND[it.类别];
+  const w = wordOf(s, it), k = kindOf(it.类别), stop = ev => ev.stopPropagation(), isRow = !!KIND[it.类别], txt = !!it.只字;
+  const geoKey = k === '场景' && it.own && !txt ? (it.文字 ? sceneStem(it.文字) : it.类别 === '场景图' ? baseOf(it.文件) : '') : '', offGeo = !!geoKey && noGeo(s, geoKey);   // 不要 GEO 的场景（11-17）
   const why = IMPACT.get(k + '/' + it.名称) || (it.文字 ? IMPACT.get('场景/' + sceneStem(it.文字)) : '');
   const img = !!it.at && IMG_RE.test(it.at), ok = img && okOf(it), again = img && !ok && !!F.doc.可用[it.at], cand = !!w && w.step === 'cand';
-  const open = w ? () => openWord(s, w) : img ? () => openImage(it.at, shellActs(s, it, w)) : it.own && (isRow || it.文字) ? () => pickFor(s, it) : null;
+  const open = w ? () => openWord(s, w) : img ? () => openImage(it.at, shellActs(s, it, w)) : it.own && !txt && (isRow || it.文字) ? () => pickFor(s, it) : null;
   /* 走到哪了：一行小字 */
-  const tx = it.文字 ? (w ? (w.hasImg ? '图出好了' : wordTx(w)) : '只用文字写，不用图')
+  const tx = [scopeTx(s, it), txt ? ['只用文字', w ? wordTx(w) : ''].filter(Boolean).join(' · ') : it.文字 ? (w ? (w.hasImg ? '图出好了' : wordTx(w)) : '只用文字写，不用图')
     : !img ? [it.own ? '' : 'AI 列的', w ? chipTx(it, w) : it.状态 || '还没有图'].filter(Boolean).join(' · ')
-      : [cand || ok ? '' : again ? '图改过、描写改过，再看一眼' : '还没确认', w ? chipTx(it, w) : ''].filter(Boolean).join(' · ');
+      : [cand || ok ? '' : again ? '图改过、描写改过，再看一眼' : '还没确认', w ? chipTx(it, w) : ''].filter(Boolean).join(' · '), offGeo ? '不写 GEO' : ''].filter(Boolean).join(' · ');
   const good = ok && !(w && (checkBad(w.checkImg) || w.geoBack || cand)) && !why;
   /* 眼下该按的：挑现成的图（没图的）、写字批字看新图（wordPills）、确认可用 */
   const acts = [
-    it.own && !img && !(w && (w.hasImg || w.drawing)) && (isRow || it.文字) ? h('button', { class: 'fl-asset-ok go', type: 'button', title: isRow ? '从项目里现成的图挑一张，挂给「' + it.名称 + '」' : '从项目里现成的图挑一张，这一段改用图', onkeydown: stop, onclick: ev => { stop(ev); pickFor(s, it); } }, '挑现成的图') : null,
+    it.own && !txt && !img && !(w && (w.hasImg || w.drawing)) && (isRow || it.文字) ? h('button', { class: 'fl-asset-ok go', type: 'button', title: isRow ? '从项目里现成的图挑一张，挂给「' + it.名称 + '」' : '从项目里现成的图挑一张，这一段改用图', onkeydown: stop, onclick: ev => { stop(ev); pickFor(s, it); } }, '挑现成的图') : null,
     ...(w ? wordPills(s, it, w) : []),
     img && !cand ? h('button', { class: 'fl-asset-ok' + (ok ? ' on' : ''), type: 'button', onkeydown: stop,
       title: ok ? '确认过可用（' + F.doc.可用[it.at].slice(5, 16) + '）。点一下取消' : again ? '你确认过，可后来这张图重出过、或者它的描写改过：再看一眼，能用就再确认' : '这张图看过了、能用。确认过的图，别的段不用再确认',
@@ -198,18 +219,26 @@ function cardEl(s, it, voice) {
   const e = isRow ? entryOf(it.类别, it.名称) : null;
   const x = !it.own ? null
     : img ? ['删掉这张图：这一段不用它、只是不引用，或者图也不要了', () => removeAsset(s, it)]
-      : it.文字 ? ['这一段不用它（全片设定里这一句还在）', () => { s.场景文字 = uniq(s.场景文字).filter(t => t !== it.文字); touch(); paint(); }]
+      : it.文字 ? ['删掉：这一段不用它；别的段没用它的，全片设定里这一句也删', () => dropIt(s, '场景', it.文字)]
         : e && it.文件 ? [e.资产.includes(it.文件) ? '这张图不在了：去掉这个引用' : '这一格不要了（不出这一张）', () => { e.资产 = e.资产.filter(f => f !== it.文件); e.不用 = [...new Set([...(Array.isArray(e.不用) ? e.不用 : []), it.文件])]; touch(); paint(); }]
-          : isRow ? ['这一段不用「' + it.名称 + '」（全片的' + k + '表里还在）', () => { s[it.类别] = s[it.类别].filter(n => n !== it.名称); touch(); paint(); }]
+          : isRow ? ['删掉「' + it.名称 + '」：这一段不用它；别的段没用它的，全片的' + k + '表里也删', () => dropIt(s, it.类别, it.名称)]
             : it.文件 && Array.isArray(s[it.类别]) ? ['这张图不在了：这一段不再用它', () => { s[it.类别] = s[it.类别].filter(f => f !== it.文件); touch(); paint(); }] : null;
+  /* 只用文字写、不出图（11-17）：没图的人物、道具、只用文字写的场景；AI 在写、在出图、图出好了的不摆 */
+  const lockKey = isRow ? [it.类别, it.名称] : it.类别 === '场景文字' ? ['场景', sceneStem(it.文字)] : null;
+  const lock = lockKey && lockKey[1] && it.own && !img && (txt || !(w && (w.hasImg || w.drawing || w.writing))) ? h('button', { class: 'ac-swap', type: 'button', onkeydown: stop,
+      title: txt ? '改回来：这一样要出图，「让 AI 写出图提示词」算上它' : '这一段不出这张图：写视频提示词时照全片设定里的描写用文字写；不算缺图，AI 也不给它写出图提示词',
+      onclick: ev => { stop(ev); setNoImg(s, lockKey[0], lockKey[1], !txt); touch(); paint(); } }, txt ? '要出图' : '只用文字') : null;
+  const geo = geoKey ? h('button', { class: 'ac-swap', type: 'button', style: lock ? 'margin-left:0' : null, onkeydown: stop,
+      title: offGeo ? '改回来：要写 GEO 底稿，锁住谁站哪、朝哪看、往哪走' : '这一场没有严格站位：只写出图提示词，不写 GEO 底稿；出了图不核 GEO，写视频提示词也不用 GEO',
+      onclick: ev => { stop(ev); setNoGeo(s, geoKey, !offGeo); touch(); paint(); } }, offGeo ? '要GEO' : '不要GEO') : null;
   const swap = isRow && it.own && img && !KIND[it.类别].multi ? h('button', { class: 'ac-swap', type: 'button', title: '另挑一张现成的图挂给「' + it.名称 + '」', onkeydown: stop, onclick: ev => { stop(ev); pickFor(s, it); } }, '换图') : null;
   const el = h('div', { class: 'ac ' + kindCls(k) + (good ? ' ok' : '') + (w && checkBad(w.checkImg) || why ? ' bad' : ''), 'data-key': cardKey(it), 'data-img': w ? w.img : it.at || null, role: open ? 'button' : null, tabindex: open ? '0' : null,
-      title: [w ? '点一下弹出来：字、图、AI 做过的事' : img ? '点开看大图' : open ? '点一下挑现成的图' : '', it.at || it.文字 || it.说明 || '', w && w.checkImg ? 'AI 核图：' + w.checkImg : '', w && w.need ? '要撑住：' + w.need : '', why ? '剧本改了：' + why : ''].filter(Boolean).join('\n'),
+      title: [w ? (txt ? '点一下弹出来：文字描写（自己写，或者让 AI 写）' : '点一下弹出来：字、图、AI 做过的事') : img ? '点开看大图' : open ? '点一下挑现成的图' : '', txt ? '只用文字写，不出图' + (isRow ? '：' + String((entryOf(it.类别, it.名称) || {}).描写 || '').trim() : '') : '', it.at || it.文字 || it.说明 || '', w && w.checkImg ? 'AI 核图：' + w.checkImg : '', w && w.need ? '要撑住：' + w.need : '', why ? '剧本改了：' + why : ''].filter(Boolean).join('\n'),
       onclick: open, onkeydown: open ? ev => { if (ev.key === 'Enter' && ev.target === ev.currentTarget) open(); } : null },
-    h('div', { class: 'ac-pic' + (img ? '' : ' none') }, img ? thumbImg(it.at, 400) : it.文字 ? '只用文字写' : it.状态 === '图不在了' ? '图不在了' : '还没有图'),
+    h('div', { class: 'ac-pic' + (img ? '' : ' none') }, img ? thumbImg(it.at, 400) : txt ? '只用文字写' : it.状态 === '图不在了' ? '图不在了' : '还没有图'),
     h('div', { class: 'ac-bd' },
-      h('div', { class: 'ac-nm' }, h('span', null, it.名称), it.sub ? h('small', null, it.sub) : null, swap),
-      tx ? h('div', { class: 'ac-st' + (good ? ' ok' : !it.own ? '' : ' todo') }, tx) : null,
+      h('div', { class: 'ac-nm' }, h('span', null, it.名称), it.sub ? h('small', null, it.sub) : null, swap || lock, geo),
+      tx ? h('div', { class: 'ac-st' + (good ? ' ok' : !it.own || txt ? '' : ' todo') }, tx) : null,
       h('div', { class: 'ac-acts' }, acts),
       voice ? VoiceBind.line(it.名称, paint) : null),
     x ? h('button', { class: 'fl-asset-x', type: 'button', title: x[0], onkeydown: stop, onclick: ev => { stop(ev); x[1](); } }, icon('x')) : null);
@@ -235,16 +264,24 @@ async function addLookDlg(s) {
 }
 /* 提到了、还没选上的：镜头表的字里、定稿的剧本里提到了表里的人物、道具；全片只引用了一张场景图。
    剧本的人物表里有、全片设定里没有的（比如只在这一场出来的城管）：点一下加进人物表、这一场也选上 */
+const scriptDoc = s => { const sc = docsOf(s.段).script, doc = sc && sc.doc; return doc && Array.isArray(doc.sections) && doc.sections.length ? doc : null; };
+const scriptBody = s => { const doc = scriptDoc(s); return doc ? doc.sections.map(x => x.blocks.map(b => b.text).join('\n')).join('\n') : ''; };
 function suggest(s) {
-  const out = mentioned(s), extra = [], sc = docsOf(s.段).script, doc = sc && sc.doc;
-  if (doc && Array.isArray(doc.sections) && doc.sections.length) {
-    const body = doc.sections.map(x => x.blocks.map(b => b.text).join('\n')).join('\n');
-    for (const K of LISTS) for (const e of F.doc[K.key]) if (e.名.length >= 2 && !s[K.key].includes(e.名) && body.includes(e.名) && !out.some(x => x.key === K.key && x.id === e.名)) out.push({ key: K.key, id: e.名, name: e.名, file: e.资产[0] || '' });
+  const out = mentioned(s), extra = [], doc = scriptDoc(s);
+  if (doc) {
+    const body = scriptBody(s);
+    for (const K of LISTS) for (const e of F.doc[K.key]) if (e.名.length >= 2 && !s[K.key].includes(e.名) && body.includes(e.名) && !(K.key === '人物' && isNarr(e.名)) && !Scope.isGone(s, K.key, e.名) && !out.some(x => x.key === K.key && x.id === e.名)) out.push({ key: K.key, id: e.名, name: e.名, file: e.资产[0] || '' });   // 人删掉了的不再提（11-17）
     const head = doc.sections[0].blocks.find(b => C.labelOf(b.text) === '人物');
-    for (const c of head ? C.parseCast(C.splitLabel(head.text).value) : []) if (!/若干$/.test(c.name) && c.name.length <= 12 && !F.doc.人物.some(e => e.名 === c.name)) extra.push(c);
+    for (const c of head ? C.parseCast(C.splitLabel(head.text).value) : []) if (!/若干$/.test(c.name) && c.name.length <= 12 && !isNarr(c.name) && !Scope.isGone(s, '人物', c.name) && !F.doc.人物.some(e => e.名 === c.name)) extra.push(c);
   }
   return { out, extra };
 }
+/* 旁白（11-17 他要：剧本有旁白就自动挂）：画外音，不出镜、不出图，只有音色。剧本里有「旁白：」的台词（或人物里手加了「旁白」）就摆这一张；
+   音色照文件名「旁白_音色.wav」认，挑了别的记在人物表「旁白」那一行（音色绑定.js）；写提示词时这一条有旁白就挂（本机服务 jobs.js） */
+const hasNarr = s => typeof Voice === 'object' && (s.人物.some(isNarr) || Voice.narrates(scriptBody(s)));
+const narrCard = s => h('div', { class: 'ac ' + kindCls('人物') + ' narr', 'data-key': 'narr', title: '旁白：画外音，不出镜、不出图。写视频提示词时，这一条有旁白就挂这段录音，写明是画外音、画面里的人不开口' },
+  h('div', { class: 'ac-pic none' }, '画外音'),
+  h('div', { class: 'ac-bd' }, h('div', { class: 'ac-nm' }, h('span', null, Voice.NARRATOR)), h('div', { class: 'ac-st' }, '剧本里有旁白 · 不出图，只挂音色'), VoiceBind.line(Voice.NARRATOR, paint)));
 /* 一页后面的虚线卡：剧本、镜头表里提到了、还没加上的，点一下加上 */
 function sugCards(s, k) {
   const { out, extra } = suggest(s), take = x => { if (!s[x.key].includes(x.id)) s[x.key].push(x.id); orderCast(s); touch(); paint(); toast(kindOf(x.key) + '「' + x.name + '」这一段加上了'); };
@@ -260,14 +297,15 @@ function sugCards(s, k) {
     })) : [])];
 }
 const ADD_NOTE = { 人物: '人物表里的、全片的人物图、这一段文件夹的图、新加一个', 场景: '文字写的、全片的场景图、这一段的空镜、新加一个', 道具: '道具表里的、全片的道具图、这一段文件夹的图、新加一个（特效也算这里）' };
-const HINT = { 人物: '点卡弹出来：看字、批字、出图。音色在人物卡底下。', 场景: '点卡弹出来。只用文字写的场景也是一张卡，要图就「挑现成的图」或者「写字」让 AI 出。', 道具: '点卡弹出来。一个道具几种样子，一种一张图：最后一张「＋ 加一种样子」。' };
+const NOIMG_HINT = '只出现一次、不用图的，鼠标移到卡上，点名字右边「只用文字」：点卡写它的文字描写（自己写或让 AI 写），写视频提示词照它写。';
+const HINT = { 人物: '点卡弹出来：看字、批字、出图。' + NOIMG_HINT + '音色在人物卡底下；剧本里有旁白，多一张旁白卡，只挂音色。', 场景: '点卡弹出来。场景可以不挑图：AI 照剧本写 GEO 底稿和出图提示词，要图再出。没有严格站位的，点名字右边「不要GEO」。' + NOIMG_HINT, 道具: '点卡弹出来。一个道具几种样子，一种一张图：最后一张「＋ 加一种样子」。' + NOIMG_HINT };
 /* 人物、场景、道具一页：一样一张卡，剧本里提到的虚线卡，最后「＋ 加」 */
 function kindBody(s, k, list) {
   const mine = list.filter(it => it.类别 !== '关键帧' && kindOf(it.类别) === k);
   const cards = mine.map((it, i) => cardEl(s, it, k === '人物' && !!entryOf('人物', it.名称) && !mine.slice(i + 1).some(y => y.名称 === it.名称)));   // 音色跟在这个人最后一张卡上
   const plus = (label, note, onclick) => h('div', { class: 'ac plus ' + kindCls(k), role: 'button', tabindex: '0', onclick, onkeydown: ev => { if (ev.key === 'Enter') onclick(); } }, h('div', null, label, note ? h('small', null, note) : null));
   return [h('p', { class: 'as-hint' }, HINT[k]),
-    h('div', { class: 'ac-grid' }, ...cards, ...sugCards(s, k),
+    h('div', { class: 'ac-grid' }, ...cards, k === '人物' && hasNarr(s) ? narrCard(s) : null, ...sugCards(s, k),
       plus('＋ 加' + k, ADD_NOTE[k], () => PickBar.open({ s, mode: 'add', k })),
       k === '道具' && s.道具.length ? plus('＋ 加一种样子', '一个道具几种样子（白天、夜里），一种一张图', () => addLookDlg(s)) : null)];
 }
@@ -357,7 +395,7 @@ function kbWire(body) {
 const WORD_JOBS = ['写字', '出图', '改图', '按批注改字', '核GEO'];   // 这一步交给 AI 的几样事
 /* 这一场的图眼下怎么样 */
 function barInfo(s) {
-  const { list } = assetsOf(s), mine = list.filter(x => x.类别 !== '关键帧'), has = mine.filter(x => x.at), lacking = mine.filter(x => !x.at && !x.文字);   // 只用文字写的场景不算缺；关键帧在提示词那一步做、确认（11-14 流程图丙），不算这一步的数
+  const { list } = assetsOf(s), mine = list.filter(x => x.类别 !== '关键帧'), has = mine.filter(x => x.at), lacking = mine.filter(lacksImg);   // 只用文字写的场景、不出图的不算缺；关键帧在提示词那一步做、确认（11-14 流程图丙），不算这一步的数
   const ws = mine.map(it => wordOf(s, it)).filter(Boolean);
   return { list, has, lacking, ws, okN: has.filter(okOf).length, st: assetState(s), cast: mine.length > 0, jobs: AI.jobs.filter(j => WORD_JOBS.includes(j.事) && j.段 === s.段 && jobLive(j)) };
 }
@@ -376,7 +414,7 @@ function goTo(s, pred) {
 function openFirst(s, pred) { const x = adOrder(s, {}).find(y => pred(y.w)); if (x) openWord(s, x.w); else goTo(s, (it, w) => !!w && pred(w)); }
 function headEls(s) {
   const { has, lacking, ws, okN, st, cast, jobs } = barInfo(s);
-  const n = k => ws.filter(w => w.step === k).length, none = n('none'), word = n('word'), cand = n('cand'), geo = ws.filter(w => w.geoBack).length, bad = ws.filter(w => w.hasImg && checkBad(w.checkImg)).length;
+  const n = k => ws.filter(w => w.step === k).length, none = n('none'), noneT = ws.filter(w => w.step === 'none' && w.txtOnly).length, noneI = none - noneT, word = n('word'), cand = n('cand'), geo = ws.filter(w => w.geoBack).length, bad = ws.filter(w => w.hasImg && checkBad(w.checkImg)).length;
   const batch = jobs.some(j => j.事 === '写字' && !(Array.isArray(j.只) && j.只.length));
   const warns = [
     word ? h('button', { class: 'as-warn', type: 'button', title: '字写好了，等你批：自己改，或者写批注交给 AI 改；字定了点「批准出图」。点一下打开头一样，看完点「下一样要你看的」', onclick: () => openFirst(s, w => w.step === 'word') }, '字等你批 ' + word + ' 样') : null,
@@ -388,11 +426,12 @@ function headEls(s) {
       : [has.length ? h('button', { class: 'as-prog', type: 'button', title: okN < has.length ? '点一下跳到还没确认的那一张。确认过的图，别的段不用再确认' : '有图的都确认过了',
           onclick: () => goTo(s, it => !!it.at && !okOf(it)) },
           h('span', { class: 'as-meter' }, h('i', { style: 'width:' + Math.round(okN / has.length * 100) + '%' })), '确认了 ', h('b', null, String(okN)), ' / ' + has.length + ' 张') : null,
-        lacking.length ? h('button', { class: 'as-warn', type: 'button', title: '还没有图：' + lacking.map(x => x.名称).join('、') + '。点一下跳过去；卡上「挑现成的图」，或者「写字」让 AI 出。用文字锁的不用出', onclick: () => goTo(s, it => !it.at && !it.文字) }, '缺图 ' + lacking.length + ' 样') : null,
+        lacking.length ? h('button', { class: 'as-warn', type: 'button', title: '还没有图：' + lacking.map(x => x.名称).join('、') + '。点一下跳过去；卡上「挑现成的图」，或者「写出图提示词」让 AI 写；只出现一次、不用图的点名字右边「只用文字」', onclick: () => goTo(s, lacksImg) }, '缺图 ' + lacking.length + ' 样') : null,
         st.tx === '待核对' && st.impact ? h('button', { class: 'as-warn', type: 'button', title: '剧本重新定稿以后，AI 对了一遍新旧剧本，列了这几样。点一下跳过去', onclick: () => goTo(s, it => IMPACT.has(kindOf(it.类别) + '/' + it.名称)) }, '待核对：' + st.why)
           : st.tx === '待核对' ? h('span', { class: 'as-warn', title: '看一遍这些图还合不合适：合适就点右边「还能用，确认」，不合适的点 × 删掉重出' }, '待核对：' + st.why) : null];
   const sty = styleName(s) ? null : h('button', { class: 'as-warn', type: 'button', title: '出资产图照拍摄风格写画面质感、颜色和光。不定也能出。点一下挑', onclick: () => styleDlg(s) }, '还没定拍摄风格');   // 只提醒，不拦着（11-14）
-  const ai = !batch && ws.length ? h('button', { class: 'btn sm' + (none ? '' : ' ghost'), type: 'button', title: 'AI 读定稿的剧本：给这一段还没有字的人物、道具、场景写字（出图提示词，场景先写 GEO 底稿），已经有的图核一遍撑不撑得住。写好了点那一样弹出来批，点「批准出图」才出图', onclick: async () => { if (await askWords(s)) paint(); } }, none ? '让 AI 写字（' + none + ' 样）' : '让 AI 再核一遍') : null;   // 要给提示词自己交的：顶栏「AI 用」选「给我提示词」
+  const ai = !batch && ws.some(w => !w.txtOnly || w.step === 'none') ? h('button', { class: 'btn sm' + (none ? '' : ' ghost'), type: 'button', title: 'AI 读定稿的剧本：给这一段还没写的人物、道具、场景写出图提示词（场景先写 GEO 底稿），已经有的图核一遍撑不撑得住；只用文字写、不出图的写文字描写（写好了的不重写）。写好了点那一样弹出来看，出图的点「批准出图」才出图', onclick: async () => { if (await askWords(s)) paint(); } },
+    noneI && noneT ? '让 AI 写字（出图提示词 ' + noneI + ' 样、文字描写 ' + noneT + ' 样）' : noneT ? '让 AI 写文字描写（' + noneT + ' 样）' : noneI ? '让 AI 写出图提示词（' + noneI + ' 样）' : '让 AI 照剧本再核一遍') : null;   // 要给提示词自己交的：顶栏「AI 用」选「给我提示词」
   /* 这一步要按的那一个（深色），旁边「去写提示词」（提示词不等资产，什么时候写你自己定） */
   const next = ink => h('button', { class: 'btn sm' + (ink ? ' ink' : ' ghost'), type: 'button', title: '提示词那一步不等资产：什么时候写你自己定，没图的写的时候用文字锁', onclick: () => go('提示词', { s: s.段 }) }, ink ? '下一步：提示词 →' : '去写提示词 →');
   const main = st.st === 'ok' ? [next(true)]
@@ -411,7 +450,7 @@ function tabMarks(s, list) {
   const out = {};
   for (const k of KINDS) {
     const mine = list.filter(it => it.类别 !== '关键帧' && kindOf(it.类别) === k), ws = mine.map(it => wordOf(s, it)).filter(Boolean);
-    const lack = mine.filter(it => !it.at && !it.文字).length, un = mine.filter(it => it.at && !okOf(it)).length;
+    const lack = mine.filter(lacksImg).length, un = mine.filter(it => it.at && !okOf(it)).length;
     const need = ws.filter(w => w.step === 'word' || w.step === 'cand' || (w.hasImg && checkBad(w.checkImg)) || w.geoBack).length, imp = mine.filter(it => IMPACT.has(k + '/' + it.名称)).length;
     out[k] = { n: mine.length, dot: [lack ? lack + ' 样没图' : '', un ? un + ' 张没确认' : '', need ? need + ' 样等你看' : '', imp ? imp + ' 样剧本改了' : ''].filter(Boolean).join('，') };
   }
@@ -433,7 +472,7 @@ function repaint() {
   document.getElementById('as-tabs').replaceChildren(...TABS.map(t => h('button', { class: 'pz-tab ' + kindCls(t) + (t === cur ? ' on' : ''), type: 'button', role: 'tab', 'aria-selected': String(t === cur), onclick: () => switchTab(t) },
       t, h('em', null, String(marks[t].n)), marks[t].dot ? h('i', { class: 'dot', title: marks[t].dot }) : null)),
     h('span', { class: 'sp' }),
-    F.dirs.has(segName(s.段)) ? h('button', { class: 'fl-link', type: 'button', title: '看这一段文件夹里的图，框出来写批注', onclick: () => openShell(at([F.name, '资产', segName(s.段)]), '第' + s.段 + '段的图') }, '看这一段文件夹的图') : null);
+    F.dirs.has(segName(s.段)) ? h('button', { class: 'fl-link', type: 'button', title: '看这一段文件夹里的图，框出来写批注', onclick: () => openShell(at([F.name, '资产', segName(s.段)]), '第' + s.段 + '段的图') }, '看这一段文件夹的图') : '');   // 没有这一段的文件夹：空着（null 会被写成字）
   document.getElementById('as-more').replaceChildren(...flat([
     jobs.length ? h('div', { class: 'wf-jobs' }, jobs.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题)))) : null,
     bad ? h('p', { style: 'margin-top:10px' }, bad) : null,

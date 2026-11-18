@@ -148,6 +148,20 @@
 .pz-c.ro { cursor: default; padding-right: 9px; }
 .pz-c.ro.pic { cursor: pointer; }
 .pz-c.ro .ds { -webkit-line-clamp: 4; }
+/* 全局、只这一段用（11-17）：一组里分两块，卡上名字后面写用在哪几镜；点开的卡里点镜头号改、点全局改 */
+.pz-bin { display: flex; align-items: baseline; gap: 8px; margin: 12px 0 6px; font: 13.5px var(--kai); letter-spacing: .1em; color: var(--ink-2); }
+.pz-gh + .pz-bin { margin-top: 0; }
+.pz-bin.gl { color: var(--k); }
+.pz-bin small { font: 12px var(--sans); letter-spacing: 0; color: var(--ink-3); }
+.pz-bin em { font: normal 12px var(--sans); letter-spacing: 0; color: var(--ink-4); }
+.pz-sc { margin-left: 7px; font: normal 12px var(--sans); color: var(--k, var(--dai)); white-space: nowrap; }
+.pz-sc.none { color: var(--zhu); }
+.pz-shots, .pz-glb { display: flex; flex-wrap: wrap; gap: 5px; }
+.pz-shots button, .pz-glb button { min-width: 32px; padding: 2px 8px; border: 1px solid var(--line-2); border-radius: 6px; background: #fff; cursor: pointer; font: 13px/1.5 var(--sans); color: var(--ink-3); }
+.pz-shots button:hover, .pz-glb button:hover { border-color: var(--ink-4); color: var(--ink); }
+.pz-shots button.on, .pz-glb button.on { border-color: var(--k, var(--dai)); background: var(--k-soft, var(--dai-soft)); color: var(--k, var(--dai)); font-weight: 600; }
+.pz-glb-say { margin: 0; font-size: 13px; color: var(--ink-2); }
+.pz-tagai { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 14px; padding: 9px 14px; border: 1px dashed var(--line-2); border-radius: 9px; font-size: 13.5px; color: var(--ink-2); }
 /* 梗概 */
 .pz-syn { padding: 12px 16px; border: 1px solid var(--line); border-radius: 9px; background: var(--sheet); font: 16px/1.95 var(--serif); white-space: pre-wrap; word-break: break-word; }
 .pz-syned.chg { padding-left: 12px; box-shadow: inset 3px 0 0 var(--zhu-line); }
@@ -165,6 +179,10 @@
 <script src="../公用/界面.js"></script>
 <script src="../公用/关键帧绑定.js"></script>
 <script src="../公用/镜头作用.js"></script>
+<script src="../公用/音色.js"></script>
+<script src="../公用/文字描写.js"></script>
+<script src="../公用/资产改过.js"></script>
+<script src="../公用/资产归类.js"></script>
 <script src="流水线.js"></script>
 <script>
 /* ============================================================
@@ -294,7 +312,7 @@ function shotGrid(s, foot, ro) {
     const t = str(sh.批注).trim(), what = sh.写什么.trim(), why = sh.作用.trim(), sec = Why.secOf(sh);
     el.classList.toggle('note', !!t);
     el.classList.toggle('chg', !!sh.AI改);
-    el.title = [what || '还空着', why ? '作用：' + why : '没写作用', secTip(sh), t ? '批注：' + t : '', sh.AI改 ? (/^（新加的/.test(sh.AI改) ? 'AI 新加的' : 'AI 改过，原来是：' + sh.AI改) : '', ro ? '点一下看全文' : '点一下改'].filter(Boolean).join('\n');
+    el.title = [what || '还空着', why ? '作用：' + why : '没写作用', secTip(sh), Scope.castSay(sh), t ? '批注：' + t : '', sh.AI改 ? (/^（新加的/.test(sh.AI改) ? 'AI 新加的' : 'AI 改过，原来是：' + sh.AI改) : '', ro ? '点一下看全文' : '点一下改'].filter(Boolean).join('\n');
     el.replaceChildren(...[ro ? null : grip(), h('span', { class: 'pz-no' }, noOf(sh)),
       h('span', { class: 'pz-tx' }, h('b', null, what || h('span', { class: 'miss' }, '还空着')), why ? h('small', null, ...Why.bits(why, h)) : h('small', { class: ro ? 'faint' : 'miss' }, '没写作用')),
       h('span', { class: 'pz-sec' + (sec ? sh.秒数人定 ? ' mine' : '' : ' miss') }, sec ? sec + ' 秒' : '—'),
@@ -545,10 +563,62 @@ function shotGrid(s, foot, ro) {
   return [wrap];
 }
 
-/* ---------- 出场的：人物、场景、道具三组，一样一张小卡 ---------- */
+/* ---------- 出场的：人物、场景、道具三组，一样一张小卡。
+   11-17 他要分全局和镜头（公用/资产归类.js）：每组分两块，「全局」是全片好几段都出场的，「只这一段用」；卡上写用在这一段哪几镜，按头一镜排。
+   点开一张卡：点镜头号改用在哪几镜，改全局还是只这一段用。卡上 × 是删掉（他定：别的段没用它的，全片设定里也删）。
+   这一段的文件夹里挑来当人物、道具的图，不分全局、不标镜头，× 照旧只是这一段不用 ---------- */
 const castOf = (s, k) => k === '人物' ? [...s.人物.map(n => ['人物', n]), ...s.人物图.map(f => ['人物图', f])]
   : k === '场景' ? [...s.场景图.map(f => ['场景图', f]), ...uniq(s.场景文字).map(t => ['场景文字', t])]
   : [...s.道具.map(n => ['道具', n]), ...s.道具图.map(f => ['道具图', f])];
+/* 一张卡在归类里认什么：人物、道具是名字，只用文字写的场景是那一句，场景图是图；这一段文件夹里的图不归类（name 空着） */
+const scopeOf = (key, id) => ({ k: kindOf(key), name: key === '人物图' || key === '道具图' ? '' : key === '场景图' ? baseOf(id) : id, file: key === '场景图' ? id : '' });
+const isGl = (key, id) => { const o = scopeOf(key, id); return !!o.name && Scope.isGlobal(F.doc, o.k, o.name); };
+/* 这一段分过没有：标过用在哪几镜，或者有算全局的 */
+const scoped = s => Scope.marked(s) || KINDS.some(k => castOf(s, k).some(([key, id]) => isGl(key, id)));
+/* 卡上名字后面那一行：「镜1～5」「哪一镜都没有」；还没标的不写 */
+function scTag(s, key, id) {
+  const o = scopeOf(key, id), t = o.name ? Scope.say(F.doc, s, shotNos(s), o.k, o.name) : '';
+  return t ? h('em', { class: 'pz-sc' + (t.startsWith('镜') ? '' : ' none'), title: t.startsWith('镜') ? '这一段用在' + t : '镜头表里哪一镜都没写它：用不着的点 × 删掉' }, t === '哪一镜都没用上' ? '哪一镜都没有' : t) : null;
+}
+/* 一组里的卡分两块：全局的、只这一段用的；各自照头一次出现在哪一镜排（没标的在后面），挑来的图跟在最后 */
+function binsOf(s, list) {
+  const nos = shotNos(s), first = ([key, id]) => { const o = scopeOf(key, id); if (!o.name) return 1e9; const a = Scope.shotsOf(s, nos, o.k, o.name); return a.length ? nos.indexOf(a[0]) : 1e8; };
+  const sorted = list.map((x, i) => [x, i]).sort((A, B) => first(A[0]) - first(B[0]) || A[1] - B[1]).map(([x]) => x);
+  return [['全局', '全片好几段都出场', sorted.filter(([key, id]) => isGl(key, id))], ['只这一段用', '', sorted.filter(([key, id]) => !isGl(key, id))]].filter(b => b[2].length);
+}
+const binHead = ([name, note, l]) => h('div', { class: 'pz-bin' + (name === '全局' ? ' gl' : ''), title: name === '全局' ? '全片好几段都出场的。好几段都选了它的自动算；只写了一段时 AI 照梗概估，点开卡能改' : '只这一段出场的。卡上写用在这一段哪几镜' }, name, note ? h('small', null, note) : null, h('em', null, String(l.length)));
+/* 还没分的（老的提炼）：让 AI 照批注改的路子标上，只标这两样，别的一个字不改；剧本、提炼都不用重新定 */
+const TAG_NOTE = '只标两样，别的一个字都不改：镜头表每个镜头写上「人物」「场景」「道具」（这个镜头里出场的）；再写「全局」（全片好几段都会出场的）。';
+async function tagByAI(s) {
+  s.提炼总批 = [str(s.提炼总批).trim(), TAG_NOTE].filter(Boolean).join('\n');
+  touch();
+  await fixByNotes(s);
+}
+function tagHint(s, can) {
+  if (Scope.marked(s) || !s.段落.length || !pickCount(s)) return null;
+  return h('div', { class: 'pz-tagai' }, h('span', null, '还没分：哪些是全局的（全片好几段都出场）、每样用在这一段哪几镜。'),
+    can ? h('button', { class: 'btn sm', type: 'button', title: '交给 AI 照定稿的剧本标：只标这两样，别的一个字不改。定下来了的不用再定', onclick: () => tagByAI(s) }, '让 AI 标上') : null);
+}
+/* 删掉一样（卡上的 ×、点开的卡里「删掉」）：问一句，说清全片设定里删不删。这一段文件夹里的图照旧只是这一段不用 */
+async function dropCast(s, key, id) {
+  if (key === '人物图' || key === '道具图') { s[key] = s[key].filter(x => x !== id); return true; }
+  const o = scopeOf(key, id);
+  return Scope.dropAsk(confirmDlg, F.doc, s, o.k, o.name, o.file);
+}
+/* 点开的卡里：用在哪几镜（点镜头号换），全局还是只这一段用 */
+function scopeFields(s, key, ref, redo) {
+  const o = () => scopeOf(key, ref.id), nos = shotNos(s);
+  const shots = s.段落.length ? h('div', { class: 'pz-f' }, h('span', null, '用在哪几镜'), h('div', { class: 'pz-shots' }, s.段落.map((x, i) => {
+    const on = Scope.inRow(x, o().k, o().name);
+    return h('button', { class: on ? 'on' : '', type: 'button', title: '镜头' + nos[i] + '：' + (x.写什么.trim() || '还空着') + (on ? '（点一下去掉）' : '（点一下加上）'),
+      onclick: () => { Scope.setShot(x, o().k, o().name, !on); touch(); redo(); } }, String(nos[i]));
+  }))) : null;
+  const segs = Scope.segsOf(F.doc, o().k, o().name), many = segs.length > 1, gl = Scope.isGlobal(F.doc, o().k, o().name);
+  const pick = on => () => { if (Scope.setGlobal(F.doc, o().k, o().name, on)) { touch(); redo(); } };
+  const glb = h('div', { class: 'pz-f' }, h('span', null, '全局还是只这一段用'), many ? h('p', { class: 'pz-glb-say' }, '第' + segs.join('、') + '段都用着，算全局')
+    : h('div', { class: 'pz-glb' }, h('button', { class: gl ? 'on' : '', type: 'button', title: '全片好几段都会出场', onclick: pick(true) }, '全局 · 好几段都出场'), h('button', { class: gl ? '' : 'on', type: 'button', title: '只这一段出场', onclick: pick(false) }, '只这一段用')));
+  return [shots, glb];
+}
 /* 一张卡上摆什么：名字、头一张图、描写、别的段也用、不在了 */
 function cardInfo(s, key, id) {
   const k = kindOf(key);
@@ -571,8 +641,8 @@ function picBox(x) {
 }
 function castTab(s, foot) {
   const wrap = h('div');
-  const paint = () => { wrap.replaceChildren(...KINDS.map(groupOf)); foot(); fitAll(); };
-  const drop = (key, ref) => { s[key] = key === '场景文字' ? uniq(s.场景文字).filter(x => x !== ref.id) : s[key].filter(x => x !== ref.id); OPEN.cast = ''; touch(); paint(); };
+  const paint = () => { wrap.replaceChildren(tagHint(s, true) || '', ...KINDS.map(groupOf)); foot(); fitAll(); };
+  const drop = async (key, ref) => { if (!(await dropCast(s, key, ref.id))) return; OPEN.cast = ''; touch(); paint(); };
   const openCard = ik => { OPEN.cast = ik; paint(); const c = wrap.querySelector('.pz-c.open'); if (c) { c.scrollIntoView({ block: 'nearest' }); const t = c.querySelector('[data-f="文"]'); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } } };
   const close = () => { OPEN.cast = ''; paint(); };
   function card(key, id) {
@@ -580,46 +650,57 @@ function castTab(s, foot) {
     const note = x.edit ? str(batOf(s)[x.ik]).trim() : '', was = x.edit ? markOf(s)[x.ik] : '';
     const cls = 'pz-c ' + kindCls(key) + (note ? ' note' : '') + (was ? ' chg' : '') + (x.lost ? ' lost' : '');
     const also = x.shared.length ? '第' + x.shared.join('、') + '段也用' : '';
-    if (x.edit && OPEN.cast === x.ik) return h('div', { class: cls + ' open', onkeydown: e => { if (e.key === 'Escape' && !isComposing(e)) { e.preventDefault(); close(); } } },
-      picBox(x), h('div', { class: 'pz-ct' }, h('b', null, x.name, also ? h('small', { title: '描写是全片通用的，在这里改了，这几段也跟着变' }, also) : null),
-        ...itemFields(s, x.k, ref, foot),
-        h('div', { class: 'pz-ops' }, h('button', { class: 'fl-link danger', type: 'button', title: '全片设定里还在，别的段照用', onclick: () => drop(key, ref) }, '这一段不用它'), h('span', { class: 'sp' }), h('button', { class: 'btn sm', type: 'button', title: 'Esc', onclick: close }, '收起'))));
+    const dropTip = scopeOf(key, id).name ? '删掉：这一段不用它，镜头表里也去掉；别的段没用它的，全片设定里也删' : '这一段不用这张图（图还在原处）';
+    if (x.edit && OPEN.cast === x.ik) {
+      const el = h('div', { class: cls + ' open', onkeydown: e => { if (e.key === 'Escape' && !isComposing(e)) { e.preventDefault(); close(); } } });
+      const tag = h('span'), sc = h('div');
+      const redo = () => { tag.replaceChildren(scTag(s, key, ref.id) || ''); sc.replaceChildren(...scopeFields(s, key, ref, redo).filter(Boolean)); };   // 点了镜头号、全局：只换这两块，正在写的字不动
+      redo();
+      el.append(picBox(x), h('div', { class: 'pz-ct' }, h('b', null, x.name, tag, also ? h('small', { title: '描写是全片通用的，在这里改了，这几段也跟着变' }, also) : null),
+        ...itemFields(s, x.k, ref, foot), sc,
+        h('div', { class: 'pz-ops' }, h('button', { class: 'fl-link danger', type: 'button', title: dropTip, onclick: () => drop(key, ref) }, '删掉'), h('span', { class: 'sp' }), h('button', { class: 'btn sm', type: 'button', title: 'Esc', onclick: close }, '收起'))));
+      return el;
+    }
     const go = () => x.edit ? openCard(x.ik) : x.pic ? openImage(x.file) : null;
-    return h('div', { class: cls, role: 'button', tabindex: '0', title: x.edit ? '点一下改描写、写批注' : x.pic ? '点开看大图' : x.lost,
+    return h('div', { class: cls, role: 'button', tabindex: '0', title: x.edit ? '点一下改描写、用在哪几镜、写批注' : x.pic ? '点开看大图' : x.lost,
         onclick: e => { if (!e.target.closest('.pz-x')) go(); }, onkeydown: e => { if (e.key === 'Enter' && e.target === e.currentTarget) { e.preventDefault(); go(); } } },
-      picBox(x), h('span', { class: 'pz-ct' }, h('b', null, x.name),
+      picBox(x), h('span', { class: 'pz-ct' }, h('b', null, x.name, scTag(s, key, id)),
         x.lost ? h('span', { class: 'ds miss' }, x.lost) : x.desc ? h('span', { class: 'ds' }, x.desc) : h('span', { class: 'ds miss' }, x.text ? '只写了地方名' : '还没写描写'),
         also ? h('small', null, also) : null, note ? h('span', { class: 'pz-nt' }, '批注：' + note) : null, was ? h('small', { class: 'zhu' }, 'AI 改过') : null),
-      h('button', { class: 'pz-x', type: 'button', tabindex: '-1', title: '这一段不用它（全片设定里还在）', onclick: () => drop(key, ref) }, icon('x')));
+      h('button', { class: 'pz-x', type: 'button', tabindex: '-1', title: dropTip, onclick: () => drop(key, ref) }, icon('x')));
   }
   const sugCard = x => h('button', { class: 'pz-c sug ' + kindCls(x.key), type: 'button', title: '这一段的字里提到了，点一下选上', onclick: () => { s[x.key].push(x.id); orderCast(s); touch(); paint(); } },
     picBox({ file: x.file && !F.gone.has(x.file) ? x.file : '', name: x.name, k: kindOf(x.key) }), h('span', { class: 'pz-ct' }, h('b', null, x.name), h('span', { class: 'ds' }, (x.only ? '用它？' : '剧本里提到了，') + '点一下加上')));
   function groupOf(k) {
     const list = castOf(s, k), sug = mentioned(s).filter(x => kindOf(x.key) === k);
     const blank = list.filter(([key, id]) => KIND[key] && entryOf(key, id) && !entryOf(key, id).描写.trim()).length;
+    const tail = [...sug.map(sugCard), h('button', { class: 'pz-c plus', type: 'button', title: '从全片设定里选，或者新加一个' + k, onclick: e => openPickPop(e.currentTarget, s, paint, k) }, '＋ 加' + k)];
+    const bins = scoped(s) ? binsOf(s, list) : [];   // 分过了：全局、只这一段用两块；加的、提到的跟在最后一块后面
     return h('div', { class: 'pz-grp ' + kindCls(k) },
       h('div', { class: 'pz-gh' }, k, h('em', null, String(list.length)), blank ? h('em', { class: 'miss' }, blank + ' 样没写描写') : null),
-      h('div', { class: 'pz-cards' }, ...list.map(([key, id]) => card(key, id)), ...sug.map(sugCard),
-        h('button', { class: 'pz-c plus', type: 'button', title: '从全片设定里选，或者新加一个' + k, onclick: e => openPickPop(e.currentTarget, s, paint, k) }, '＋ 加' + k)));
+      ...(bins.length ? bins.flatMap((b, i) => [binHead(b), h('div', { class: 'pz-cards' }, ...b[2].map(([key, id]) => card(key, id)), ...(i === bins.length - 1 ? tail : []))])
+        : [h('div', { class: 'pz-cards' }, ...list.map(([key, id]) => card(key, id)), ...tail)]));
   }
   paint();
-  return [h('p', { class: 'pz-hint' }, '描写是全片通用的，在这里改了，别的段跟着变。点一张卡在原地改；卡上 × 是这一段不用它。'), wrap];
+  return [h('p', { class: 'pz-hint' }, '描写是全片通用的，在这里改了，别的段跟着变。点一张卡在原地改，用在哪几镜也在里面改；卡上 × 是删掉。'), wrap];
 }
 
 /* ---------- 梗概：全片的，各段共用 ---------- */
 const synTab = (s, foot) => [h('p', { class: 'pz-hint' }, '全片的，各段共用。在这里改了，总览和别的段跟着变。'),
   h('div', { class: 'pz-syned' + (markOf(s).梗概 ? ' chg' : '') }, ...itemFields(s, '梗概', { id: '' }, foot))];
 
-/* ---------- 只看（AI 在做、定下来了、剧本没定稿）：还是这三页 ---------- */
+/* ---------- 只看（AI 在做、定下来了、剧本没定稿）：还是这三页。MODE：这一页现在是哪种（定下来了的，「让 AI 标上」照样能点） ---------- */
+const MODE = { now: '' };
+const roCard = (s, key, id) => { const x = cardInfo(s, key, id);
+  return h('div', { class: 'pz-c ro ' + kindCls(key) + (x.pic ? ' pic' : '') + (x.lost ? ' lost' : ''), onclick: x.pic ? () => openImage(x.file) : null }, picBox(x),
+    h('span', { class: 'pz-ct' }, h('b', null, x.name, scTag(s, key, id)), x.lost ? h('span', { class: 'ds miss' }, x.lost) : h('span', { class: 'ds', title: x.desc || null }, x.desc || h('span', { class: 'faint' }, '没写描写')))); };
 const SHOW = {
   镜头表: s => shotGrid(s, null, true),
-  出场的: s => KINDS.map(k => {
-    const list = castOf(s, k);
+  出场的: s => [tagHint(s, MODE.now === 'done'), ...KINDS.map(k => {
+    const list = castOf(s, k), bins = scoped(s) ? binsOf(s, list) : [], cards = l => h('div', { class: 'pz-cards' }, l.map(([key, id]) => roCard(s, key, id)));
     return h('div', { class: 'pz-grp ' + kindCls(k) }, h('div', { class: 'pz-gh' }, k, h('em', null, String(list.length))),
-      list.length ? h('div', { class: 'pz-cards' }, list.map(([key, id]) => { const x = cardInfo(s, key, id);
-        return h('div', { class: 'pz-c ro ' + kindCls(key) + (x.pic ? ' pic' : '') + (x.lost ? ' lost' : ''), onclick: x.pic ? () => openImage(x.file) : null }, picBox(x),
-          h('span', { class: 'pz-ct' }, h('b', null, x.name), x.lost ? h('span', { class: 'ds miss' }, x.lost) : h('span', { class: 'ds', title: x.desc || null }, x.desc || h('span', { class: 'faint' }, '没写描写')))); })) : h('p', { class: 'faint' }, '没选'));
-  }),
+      ...(!list.length ? [h('p', { class: 'faint' }, '没选')] : bins.length ? bins.flatMap(b => [binHead(b), cards(b[2])]) : [cards(list)]));
+  })],
   梗概: () => h('div', { class: 'pz-syn' }, F.doc.梗概.trim() || h('span', { class: 'faint' }, '没写')),
 };
 const EDIT = { 镜头表: shotGrid, 出场的: castTab, 梗概: synTab };
@@ -673,7 +754,7 @@ function pzPage(s, mode) {
     allBtn.title = all || '对这一段提炼的整体意见，写给 AI';
     allBtn.classList.toggle('on', !!all);
   }
-  const paintBody = () => { const t = tabNow(); body.replaceChildren(...[(edit ? EDIT : SHOW)[t](s, paintHead)].flat(Infinity).filter(Boolean)); fitAll(); };
+  const paintBody = () => { const t = tabNow(); MODE.now = mode; body.replaceChildren(...[(edit ? EDIT : SHOW)[t](s, paintHead)].flat(Infinity).filter(Boolean)); fitAll(); };
   function switchTo(t) {
     if (t === tabNow()) return;
     setTab(t); paintHead(); paintBody();

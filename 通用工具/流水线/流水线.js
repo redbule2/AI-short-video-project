@@ -28,11 +28,11 @@ if (!window.Wait && document.currentScript) document.head.append(Object.assign(d
 /* 提示词的名字（2026-11-16 他定）：就是这一条拍的镜头表镜头号，1-5.txt、4-9.txt（写的时候勾镜头）。
    老稿还有 视频提示词.txt、视频提示词_02.txt、段落a-b_视频提示词.txt、镜头a-b_视频提示词.txt，照旧认。
    审片以后改的另存一份，名字后面加 _改1、_改2……（2026-11-14 他定）：原稿、前几版留在原处；一条只摆最新那一版，出片也用它 */
-const { RE_VP, vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, nameOk, sceneStem } = window.Core;   // 视频提示词怎么起名、文件名能不能用：和审片台、本机服务共用 公用/核心.js 那一份
+const { RE_VP, vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, nameOk, sceneStem, noImg, setNoImg, noGeo, setNoGeo } = window.Core;   // 视频提示词怎么起名、文件名能不能用：和审片台、本机服务共用 公用/核心.js 那一份
 const VID_RE = /\.(mp4|m4v|mov|webm)$/i;
 const SHOTS_TAIL = '_批注截图';
 const FILE = '流水线.json';
-const NOTE_LINE = '项目管理「流水线」页存的。梗概：全片讲什么。人物、道具：全片的，一行一个，「资产」是它引用的那张图（引用了就是对上了）；道具有几个状态、引用了几张图时，「资产」是一个列表，一张图一个状态；「描写改」是这一行的描写最后改动的时间。场景：全片的场景描写，一行写一处地方；场景图：引用的场景图。可用：哪张图人看过、确认能用（图 → 确认的时间），确认过的图各场通用；图重出过、它那一行的描写改过，就要再确认。场：一场一场的，各场的「人物」「道具」写的是上面表里的名字，「场景图」是这一场用的场景图，「场景文字」是这一场用的、只用文字写的地方（全片「场景」里的原句，没有图也算），「段落」是这一场的镜头表（一个镜头写什么、起什么作用；字段名照旧叫「段落」；作用写成「标签｜目的，关系」，「秒数」是这一镜预估几秒，「秒数人定」是人改过的，AI 照批注改时照抄）。先写剧本（11-16 起），剧本定稿以后 AI 照剧本一次提炼出梗概、这一场的人物道具场景和镜头表（定稿的剧本/第N段/第N段_提炼.json），页面并进全片设定和这一场，人再改；「提炼取」是并进来的那一版的时间，「提炼改」记着 AI 改了哪几样、原来是什么，「提炼批」是人写的还没交出去的批注。写提示词时分镜照剧情需要设计，不必和镜头表一一对应，写在提示词的「分镜」里。「剧本定稿」是人看过剧本以后点的时间，有它、而且不早于剧本最后改动的时间，才许提炼；「定稿」是这一场的提炼（出场的、镜头表）定下来的时间，定了才出这一场的资产图；这一场要的图都确认可用了，才写提示词。风格：全片的拍摄风格，「名」是 通用工具/AI短片风格库 里的一种，或者「本项目自己的」（照 提示词/全局资产/全片_光影总基调.txt），「定」是定下来的时间，「换」是从别的风格换过来的时间；一场另选的写在那一场的「风格」里（「风格换」是这一场换风格的时间），没写就照全片的；出资产图、写提示词照它写。「先写提示词」是 true 的场倒着走：人先选出场的人物、写提示词里人写的两块（生成目标、事件脚本），AI 照提示词反推剧本，镜头表、表达、出场的列在 定稿的剧本/第N段/第N段_反推.json，人点「采用」才写进这一场（「反推采用」是采用的那一份的时间）；剧本定稿以后 AI 再把提示词里它写的几块铺进正文。人在页面上写，AI 只读；一场就是一个「第N段」。';
+const NOTE_LINE = '项目管理「流水线」页存的。梗概：全片讲什么。人物、道具：全片的，一行一个，「资产」是它引用的那张图（引用了就是对上了）；道具有几个状态、引用了几张图时，「资产」是一个列表，一张图一个状态；「描写改」是这一行的描写最后改动的时间。场景：全片的场景描写，一行写一处地方；场景图：引用的场景图。可用：哪张图人看过、确认能用（图 → 确认的时间），确认过的图各场通用；图重出过、它那一行的描写改过，就要再确认。场：一场一场的，各场的「人物」「道具」写的是上面表里的名字，「场景图」是这一场用的场景图，「场景文字」是这一场用的、只用文字写的地方（全片「场景」里的原句，没有图也算），「不出图」是这一场只用文字写、不出图的几样（人物、道具写名字，场景写地方名：不算缺图，不写出图提示词，写视频提示词时照全片设定里的描写写；挂上了图的照图），「不要GEO」是这一场没有严格站位、不用 GEO 底稿的场景（写地方名：不写、不核 GEO 底稿，写视频提示词也不用），「段落」是这一场的镜头表（一个镜头写什么、起什么作用；字段名照旧叫「段落」；作用写成「标签｜目的，关系」，「秒数」是这一镜预估几秒，「秒数人定」是人改过的，AI 照批注改时照抄；每一镜的「人物」「场景」「道具」是这一镜出场的，场景写地方名）。顶上的「全局」是全片好几段都出场的人物、场景、道具（AI 提炼时估，人能改；好几段都选了的不记也算）；各场的「删掉」是人删掉的、这一段用不着的（类别|名字），AI 重新提炼也不再列。先写剧本（11-16 起），剧本定稿以后 AI 照剧本一次提炼出梗概、这一场的人物道具场景和镜头表（定稿的剧本/第N段/第N段_提炼.json），页面并进全片设定和这一场，人再改；「提炼取」是并进来的那一版的时间，「提炼改」记着 AI 改了哪几样、原来是什么，「提炼批」是人写的还没交出去的批注。写提示词时分镜照剧情需要设计，不必和镜头表一一对应，写在提示词的「分镜」里。「剧本定稿」是人看过剧本以后点的时间，有它、而且不早于剧本最后改动的时间，才许提炼；「定稿」是这一场的提炼（出场的、镜头表）定下来的时间，定了才出这一场的资产图；这一场要的图都确认可用了，才写提示词。风格：全片的拍摄风格，「名」是 通用工具/AI短片风格库 里的一种，或者「本项目自己的」（照 提示词/全局资产/全片_光影总基调.txt），「定」是定下来的时间，「换」是从别的风格换过来的时间；一场另选的写在那一场的「风格」里（「风格换」是这一场换风格的时间），没写就照全片的；出资产图、写提示词照它写。「先写提示词」是 true 的场倒着走：人先选出场的人物、写提示词里人写的两块（生成目标、事件脚本），AI 照提示词反推剧本，镜头表、表达、出场的列在 定稿的剧本/第N段/第N段_反推.json，人点「采用」才写进这一场（「反推采用」是采用的那一份的时间）；剧本定稿以后 AI 再把提示词里它写的几块铺进正文。人在页面上写，AI 只读；一场就是一个「第N段」。';
 const IMG_RE = /\.(png|jpe?g|webp|gif|avif)$/i;
 const CAT_ORDER = ['人物', '场景', '道具', '特效'];
 const AI_FILE = '流水线_AI扩写.json';   // 定稿的剧本/流水线_AI扩写.json：AI 补的人物、道具描写，照 GEO 写的场景段（AI 写，页面只读；你点「采用」才换进流水线）
@@ -58,6 +58,8 @@ const FRAME_RE = /首帧|尾帧|关键帧/;
 const SB = window.ShotBind;
 /* 镜头表每一镜的作用（「标签｜目的，关系」）和预估秒数（2026-11-16 他定）：公用/镜头作用.js */
 const Why = window.ShotWhy;
+/* 出场的人物、场景、道具：全局的（好几段都用）、用在这一段哪几镜，删掉用不着的（2026-11-17 他要）：公用/资产归类.js */
+const Scope = window.AssetScope;
 const shotNos = s => SB.nosOf(s.段落);   // 这一场镜头表各镜的号
 const arrOf = v => Array.isArray(v) ? v : [];
 const frameNo = f => { const m = /(?:镜头|段落)\s*0*([0-9]+)/.exec(String(f).split('/').pop()); return m ? +m[1] : null; };   // 镜头3_首帧.png → 3
@@ -261,9 +263,9 @@ async function load(name, keep) {
 }
 
 /* 存盘：边写边存。只有动过才写；没有这个文件的项目，不写字就不建 */
-/* 人物、道具哪一行的描写、图动过，哪一场换了出场的：各记一个时间。用到它的各场，资产那一步会标「待核对」 */
-const rowSig = e => e.描写.trim() + '｜' + e.资产.join('、');
-const castSig = s => LISTS.map(K => s[K.key].join('、')).join('｜') + '｜' + s.场景图.join('、') + '｜' + s.人物图.join('、') + '｜' + s.道具图.join('、') + '｜' + uniq(s.场景文字).join('、');
+/* 人物、道具哪一行的描写、图、音色动过，哪一场换了出场的（含只用文字、不要 GEO 的切换，11-17）：各记一个时间。用到它的各场，资产那一步会标「待核对」，写好的提示词标「资产改了」 */
+const rowSig = e => e.描写.trim() + '｜' + e.资产.join('、') + (typeof e.音色 === 'string' ? '｜音色' + e.音色 : '');
+const castSig = s => LISTS.map(K => s[K.key].join('、')).join('｜') + '｜' + s.场景图.join('、') + '｜' + s.人物图.join('、') + '｜' + s.道具图.join('、') + '｜' + uniq(s.场景文字).join('、') + '｜' + JSON.stringify(s.不出图 || null) + JSON.stringify(s.不要GEO || null);
 function markBase() {
   F.base = new Map();
   if (!F.doc) return;
@@ -618,8 +620,8 @@ function normAi(j) {
 /* AI 提炼的（第N段_提炼.json）：{ 时间, 梗概, 人物: [{ 名, 描写 }], 道具: [同上], 场景: ['地方名：……'], 镜头表: [{ 号（照批注改的才有）, 写什么, 作用, 秒数 }] }（11-16 以前叫「段落」，两个都认，读进来照旧放在「段落」）。一个镜头都没有就当没有 */
 function normDistill(j, mtime) {
   const rows = a => { const seen = new Set(); return (Array.isArray(a) ? a : []).filter(x => x && typeof x === 'object').map(x => ({ 名: oneLine(x.名), 描写: str(x.描写).trim() })).filter(x => x.名 && !seen.has(x.名) && seen.add(x.名)); };
-  const list = (j && Array.isArray(j.镜头表) ? j.镜头表 : j && Array.isArray(j.段落) ? j.段落 : []).filter(x => x && typeof x === 'object').map(x => ({ ...(SB.normNo(x.号) ? { 号: SB.normNo(x.号) } : {}), 写什么: oneLine(x.写什么), 作用: str(x.作用).trim(), ...(Why.secOf(x) ? { 秒数: Why.secOf(x) } : {}) })).filter(x => x.写什么 || x.作用);
-  return list.length ? { 时间: str(j.时间).trim() || '文件 ' + mtime, 梗概: str(j.梗概).trim(), 人物: rows(j.人物), 道具: rows(j.道具), 场景: uniq((Array.isArray(j.场景) ? j.场景 : []).map(oneLine)), 段落: list } : null;
+  const list = (j && Array.isArray(j.镜头表) ? j.镜头表 : j && Array.isArray(j.段落) ? j.段落 : []).filter(x => x && typeof x === 'object').map(x => ({ ...(SB.normNo(x.号) ? { 号: SB.normNo(x.号) } : {}), 写什么: oneLine(x.写什么), 作用: str(x.作用).trim(), ...(Why.secOf(x) ? { 秒数: Why.secOf(x) } : {}), ...Scope.rowCast(x) })).filter(x => x.写什么 || x.作用);   // 每一镜出场的（11-17）
+  return list.length ? { 时间: str(j.时间).trim() || '文件 ' + mtime, 梗概: str(j.梗概).trim(), 人物: rows(j.人物), 道具: rows(j.道具), 场景: uniq((Array.isArray(j.场景) ? j.场景 : []).map(oneLine)), 段落: list, 全局: Scope.globalIn(j), 照批注: !!j.照批注改 } : null;
 }
 /* AI 提炼好、照批注改好的，并进全片设定和这一场（11-16 他定：先写剧本，定稿以后再提炼）：
    梗概照 AI 的换；人物、道具表里没有的加一行，有的描写不一样就换成 AI 的（AI 被要求表里有的照抄，不一样多半是批注要改）；
@@ -629,7 +631,8 @@ function normDistill(j, mtime) {
    原来有东西的：流水线先留一版进历史记录 */
 const distillKey = (k, n) => k === '梗概' ? '梗概' : k + '|' + n;
 function takeDistill(s, v) {
-  const D = F.doc, mark = {};
+  const D = F.doc, mark = {}, was = s.定稿 ? Scope.sig(D, s) : '';   // was：AI 只标了全局、用在哪几镜，别的一个字没动，定下来的照旧算数（11-17）
+  if (!v.照批注) Scope.skipGone(s, v);   // 人删掉了的，AI 重新提炼又列上了：不要（照批注改又列回来的，是批注要加回来）
   const key = x => (x.写什么.trim() + '　' + x.作用.trim()).trim(), old = s.段落.filter(x => key(x)), had = new Set(old.map(key)), redo = !!(old.length || s.提炼取);
   const oldNos = shotNos(s), byNo = new Map(s.段落.map((x, i) => [oldNos[i], x]));
   if ((redo || D.梗概.trim() || D.人物.length) && F.text) FS.write(at([F.name, '历史记录', '定稿的剧本', '流水线__' + stampNow() + '.json']), C.encodeText(F.text)).catch(() => {});
@@ -653,7 +656,8 @@ function takeDistill(s, v) {
   orderCast(s);
   const fresh = Why.merge(v.段落.map(x => ({ ...x })), s.段落, SB, s.提炼总批);   // 原来的号尽量留着：关键帧绑在号上
   s.段落 = fresh.map(x => { const o = byNo.get(x.号); return { ...x, ...(redo && !had.has(key(x)) ? { AI改: o && key(o) ? Why.was(o, x) : '（新加的一个镜头）' } : {}) }; });
-  s.提炼改 = redo || Object.keys(mark).length ? mark : {}; s.提炼批 = {}; s.提炼取 = v.时间; s.提炼总批 = ''; s.定稿 = '';
+  Scope.fitRows(s); Scope.takeMarks(D, s, v.全局);   // 每一镜出场的只留这一段选上的；AI 说哪些是全局的
+  s.提炼改 = redo || Object.keys(mark).length ? mark : {}; s.提炼批 = {}; s.提炼取 = v.时间; s.提炼总批 = ''; s.定稿 = was && was === Scope.sig(D, s) ? s.定稿 : '';
   touch();
 }
 /* AI 补的你说过「不要」的，记在这台电脑的浏览器里，不再摆出来 */
@@ -830,18 +834,30 @@ const clipsOf = seg => (F.clips.get(seg) || { vids: [], all: new Set(), time: ne
    记在这一场的「沿用」里：{ '提示词/文件名': 时间, '样片/视频名': 时间 } ---------- */
 const keptOf = s => (s.沿用 && typeof s.沿用 === 'object' && !Array.isArray(s.沿用) ? s.沿用 : (s.沿用 = {}));
 function keepAsIs(s, key) { keptOf(s)[key] = nowText(); touch(); }
-/* 这一场前面几道最后一次确认是什么时候：剧本定稿、这一场的图最后一次确认、换出场的 */
+/* 这一场前面几道最后一次确认是什么时候：剧本定稿、这一场的图最后一次确认、拍摄风格，和资产最后一回改（assetEdits） */
 function upTime(s, name) {   // name：哪一条提示词。剧本重新定稿、影响清单没列上这一条的：剧本照上回定稿的时间算（没受影响，不用你再看）
   const v = name ? impactOf(s) : null, fin = v && !v.提示词.some(x => vpBase(x.文件) === vpBase(name)) ? timeOf(v.上回) : timeOf(s.剧本定稿);
-  let t = Math.max(fin, assetCheckTime(s), timeOf(s.出场改), styleChangedAt(s));   // 换了拍摄风格也算
-  for (const K of LISTS) for (const n of s[K.key]) { const e = entryOf(K.key, n); if (e) t = Math.max(t, timeOf(e.改)); }   // 出场的人物、道具那一行动过：描写、换了图、去掉一张图
+  let t = Math.max(fin, assetCheckTime(s), styleChangedAt(s));   // 换了拍摄风格也算
+  for (const p of assetEdits(s)) t = Math.max(t, p.时间);
   return t;
+}
+/* 资产改过（11-17，公用/资产改过.js）：这一场用到的资产各是什么时候改的。出场的人物、道具那一行（描写、图、音色），换了出场的，
+   只用文字的文字描写、场景的 GEO 底稿、图文件换过（还没确认的也算）。关键帧不在这里：它只管挂了它的那一条 */
+function assetEdits(s) {
+  const rows = LISTS.flatMap(K => s[K.key].map(n => { const e = entryOf(K.key, n); return e ? { 类别: K.key, 名称: n, 改: timeOf(e.改), 描写改: timeOf(e.描写改), 描写: e.描写 } : null; }));
+  const cast = s.出场改 ? [{ 类别: '', 名称: '', 改了: '出场', 时间: timeOf(s.出场改) }] : [];
+  if (typeof AssetEdit !== 'object') return [...rows.filter(Boolean).map(r => ({ 类别: r.类别, 名称: r.名称, 改了: '图或音色', 时间: r.改 })), ...cast];   // 没引 公用/资产改过.js 的页面：照以前只看那一行和换出场的
+  return [...AssetEdit.rowEdits(rows), ...cast, ...AssetEdit.editsOf(assetsOf(s).list, it => wordOf(s, it), fileTimeOf)];
+}
+/* 这条提示词什么时候写好的，你点过「沿用」就从那时算；不知道（老版本的服务）给 0 */
+function promptSince(s, name) {
+  const rec = F.names.get(s.段), t = rec && rec.time ? rec.time.get(name) || 0 : 0;
+  return t ? Math.max(t, timeOf(keptOf(s)['提示词/' + name])) : 0;
 }
 /* 这条提示词是不是前面又动过以前写的 */
 function promptStale(s, name) {
-  const rec = F.names.get(s.段), t = rec && rec.time ? rec.time.get(name) || 0 : 0;
-  if (!t) return false;   // 不知道它什么时候写的（老版本的服务）：不乱标
-  return Math.max(t, timeOf(keptOf(s)['提示词/' + name])) + 999 < upTime(s, name);
+  const t = promptSince(s, name);
+  return !!t && t + 999 < upTime(s, name);   // 不知道它什么时候写的：不乱标
 }
 /* 选定的这条样片：它出了以后，那条提示词又改过（审片以后改出了新的一版也算），或者前面几道又动过。pname：这一条的原稿名（哪一版的名字都行） */
 function clipStale(s, pname, vid) {
@@ -917,7 +933,7 @@ function assetState(s) {
   if (jobLive(jobOf('出图', s.段))) return { st: 'ai', tx: 'AI 在出图' };
   if (jobLive(jobOf('写字', s.段))) return { st: 'ai', tx: 'AI 在写字' };
   if (jobLive(jobOf('影响清单', s.段))) return { st: 'ai', tx: 'AI 在对剧本' };
-  const list = assetsOf(s).list.filter(x => x.类别 !== '关键帧'), has = list.filter(x => x.at), lack = list.filter(x => !x.at && !x.文字).length, ok = has.filter(okOf).length;   // 只用文字写的场景不算缺；关键帧在提示词那一步做、在那一步确认，不算这一步的（11-14 流程图丙）
+  const list = assetsOf(s).list.filter(x => x.类别 !== '关键帧'), has = list.filter(x => x.at), lack = list.filter(lacksImg).length, ok = has.filter(okOf).length;   // 只用文字写的场景不算缺；关键帧在提示词那一步做、在那一步确认，不算这一步的（11-14 流程图丙）
   if (!list.length) return { st: 'you', tx: '没选出场的' };   // 光有关键帧（文件夹里自动列上的）不算选了出场的
   if (lack) return { st: 'you', tx: '缺 ' + lack + ' 张', ok, n: has.length };
   if (ok < has.length) return { st: 'you', tx: '确认 ' + ok + '/' + has.length, ok, n: has.length };
@@ -1250,6 +1266,7 @@ async function entryDlg(K, it) {
   else {
     if (it.名 !== r.name) {
       for (const s of F.doc.场) s[K.key] = s[K.key].map(n => n === it.名 ? r.name : n);   // 改了叫法：各场里选的跟着改
+      Scope.rename(F.doc, K.key, it.名, r.name);   // 各镜头里记的、全局、删掉 也跟着改
       for (const suf of ['', '/描写']) { const k0 = K.key + '/' + it.名 + suf; if (F.base && F.base.has(k0)) { F.base.set(K.key + '/' + r.name + suf, F.base.get(k0)); F.base.delete(k0); } }   // 存盘时比「上一回的样子」也跟着换名字，不然同时改了描写记不上
     }
     const dropped = it.资产.filter(f => !picks.includes(f));   // 这回去掉的图
@@ -1267,6 +1284,7 @@ async function delEntry(K, it) {
   const i = F.doc[K.key].indexOf(it);
   if (i >= 0) F.doc[K.key].splice(i, 1);
   for (const s of F.doc.场) s[K.key] = s[K.key].filter(n => n !== it.名);
+  Scope.forget(F.doc, K.key, it.名);   // 各镜头里记的、全局里的也去掉
   touch(); repaintRefs();
 }
 
@@ -1284,12 +1302,12 @@ const sceneText = s => [s.名, s.表达, ...s.段落.flatMap(x => [x.写什么, 
 /* 这一场的字里提到了、还没选上的：人物、道具按叫法认，场景图按图名认 */
 function mentioned(s) {
   const text = sceneText(s), out = [];
-  for (const K of LISTS) for (const e of F.doc[K.key]) if (e.名.length >= 2 && !s[K.key].includes(e.名) && text.includes(e.名)) out.push({ key: K.key, id: e.名, name: e.名, file: e.资产[0] || '' });
+  for (const K of LISTS) for (const e of F.doc[K.key]) if (e.名.length >= 2 && !s[K.key].includes(e.名) && text.includes(e.名) && !(K.key === '人物' && isNarr(e.名))) out.push({ key: K.key, id: e.名, name: e.名, file: e.资产[0] || '' });
   for (const f of F.doc.场景图) { const t = baseOf(f).split('_')[0]; if (t.length >= 2 && !s.场景图.includes(f) && text.includes(t)) out.push({ key: '场景图', id: f, name: baseOf(f), file: f }); }
   if (F.doc.场景图.length === 1 && !s.场景图.length && !out.some(x => x.key === '场景图')) out.push({ key: '场景图', id: F.doc.场景图[0], name: baseOf(F.doc.场景图[0]), file: F.doc.场景图[0], only: true });   // 全片只引用了一张场景图：多半就是它
   const L = sceneLines();
   if (L.length === 1 && !uniq(s.场景文字).length && !s.场景图.length && !out.some(x => x.key === '场景图')) out.push({ key: '场景文字', id: L[0], name: sceneLabel(L[0]), file: '', only: true });   // 全片的场景只写了一处、这一场还没选场景：多半就是它
-  return out;
+  return out.filter(x => !Scope.isGone(s, kindOf(x.key), x.key === '场景图' ? baseOf(x.id) : x.id));   // 人删掉了的不再提（11-17）
 }
 const pickCount = s => s.人物.length + s.道具.length + s.场景图.length + uniq(s.场景文字).length + s.人物图.length + s.道具图.length;
 /* 资产那一步还不能开：剧本没定稿，或者提炼还没定（资产页、资产详情页都用） */
@@ -1386,6 +1404,7 @@ function setScene(text) {
     if (!now.length) SCENE_GONE.list.push(s);
     put(s, cur.map(t => { const i = was.indexOf(t); return i < 0 ? t : now.length ? now[Math.min(i, now.length - 1)] : ''; }));
   }
+  Scope.renameScenes(F.doc, was, now, a, b);   // 地方名改了：各镜头里记的、全局、删掉 跟着换
 }
 /* 新加一处场景：一句话，记进全片的「场景」（加一行），这一场也选上 */
 async function addSceneLine(s) {
@@ -1469,26 +1488,30 @@ function openPickPop(anchor, s, after, only) {   // only：只摆人物、场景
 
 /* ---------- 资产：这一场出场的人物、道具、场景图各对着哪张图；还没有图的让 AI 出 ---------- */
 /* 认资产和提示词那边是一个路子：图放在 资产/全局资产/类别/名字.png；哪个人物、道具对哪张图，记在 流水线.json 的表里（那一行的「资产」） */
+const lacksImg = x => !x.at && !x.文字 && !x.只字;   // 缺图：没图，也不是只用文字写的（场景文字、不出图的）
+const isNarr = n => typeof Voice === 'object' && !!Voice && n === Voice.NARRATOR;   // 旁白（11-17）：画外音，不算出场的人物；资产页人物那一页另有一张旁白卡（音色绑定.js）
 function assetsOf(s) {
   const out = [], seen = new Set(), rec = F.assets.get(s.段), ai = rec && !rec.bad ? rec.items : [];
   for (const K of LISTS) for (const n of s[K.key]) {
-    const e = entryOf(K.key, n), imgs = e ? e.资产 : [];
+    if (K.key === '人物' && isNarr(n)) continue;
+    const e = entryOf(K.key, n), imgs = e ? e.资产 : [], txt = !imgs.length && noImg(s, K.key, n);   // 只用文字写、不出图的（11-17）：没图也不缺
     for (const file of imgs) { seen.add(file.toLowerCase()); out.push({ 类别: K.key, 名称: n, sub: imgs.length > 1 ? stateOf(n, file) : '', at: F.gone.has(file) ? '' : file, 状态: F.gone.has(file) ? '图不在了' : '', 说明: baseOf(file), 文件: file, own: true }); }
     const no = e && Array.isArray(e.不用) ? e.不用 : [];
-    const todo = K.multi ? ai.filter(x => aiKey(x) === K.key && x.名称 === n && !x.at && !no.includes(x.文件)) : [];   // 道具：AI 清单里对着这一行、图还没出好的，一个状态一格（那一格点过 × 的不算）
+    const todo = K.multi && !txt ? ai.filter(x => aiKey(x) === K.key && x.名称 === n && !x.at && !no.includes(x.文件)) : [];   // 道具：AI 清单里对着这一行、图还没出好的，一个状态一格（那一格点过 × 的不算）
     const wait = a => a && a.状态 && a.状态 !== '有了' && a.状态 !== '待过目' ? a.状态 : '';   // 清单上写着「有了」「待过目」、文件却不在（删掉了、挪走了）：当它还没出
     for (const a of todo) out.push({ 类别: K.key, 名称: n, sub: a.文件 ? stateOf(n, a.文件) : '', at: '', 状态: wait(a) || '还没出', 说明: a.说明, 文件: a.文件, own: true });
-    if (!imgs.length && !todo.length) { const a = ai.find(x => aiKey(x) === K.key && x.名称 === n); out.push({ 类别: K.key, 名称: n, at: '', 状态: !e ? '表里没有这一行' : wait(a) || '还没有图', 说明: a ? a.说明 : '', own: true }); }
+    if (!imgs.length && !todo.length) { const a = ai.find(x => aiKey(x) === K.key && x.名称 === n); out.push({ 类别: K.key, 名称: n, at: '', 状态: !e ? '表里没有这一行' : txt ? '' : wait(a) || '还没有图', 说明: a ? a.说明 : '', own: true, ...(txt ? { 只字: true } : {}) }); }
   }
   for (const k of ['人物', '道具']) for (const f of s[SEG_FIELD[k]]) { seen.add(f.toLowerCase()); out.push({ 类别: SEG_FIELD[k], 名称: baseOf(f), sub: '这一段的', at: F.gone.has(f) ? '' : f, 状态: F.gone.has(f) ? '图不在了' : '', 说明: '', 文件: f, own: true }); }   // 这一段的图当人物、道具用的：不挂表里哪一行
   for (const f of s.场景图) { seen.add(f.toLowerCase()); out.push({ 类别: '场景图', 名称: baseOf(f), sub: segImg(s, f) && !F.doc.场景图.includes(f) ? '这一段的' : '', at: F.gone.has(f) ? '' : f, 状态: F.gone.has(f) ? '图不在了' : '', 说明: '', 文件: f, own: true }); }
-  for (const t of uniq(s.场景文字)) out.push({ 类别: '场景文字', 名称: sceneLabel(t), sub: '', at: '', 状态: '', 说明: t, 文字: t, own: true });   // 只用文字写的场景：不要图，不算缺图，也不用确认
+  for (const t of uniq(s.场景文字)) out.push({ 类别: '场景文字', 名称: sceneLabel(t), sub: '', at: '', 状态: '', 说明: t, 文字: t, own: true, ...(noImg(s, '场景', sceneStem(t)) ? { 只字: true } : {}) });   // 只用文字写的场景：不要图，不算缺图，也不用确认
   for (const f of framesOf(s)) { seen.add(f.toLowerCase()); const dir = f.split('/').slice(2, -1).join('/'); out.push({ 类别: '关键帧', 名称: baseOf(f), sub: dir, at: F.gone.has(f) ? '' : f, 状态: F.gone.has(f) ? '图不在了' : '', 说明: '', 文件: f, own: true }); }   // 关键帧：只这一场用
   const named = new Set(out.map(x => x.类别 + '/' + x.名称));
   const inTable = new Set([...LISTS.flatMap(K => F.doc[K.key].flatMap(e => e.资产)), ...F.doc.场景图].map(f => f.toLowerCase()));
   const textStems = new Set(uniq(s.场景文字).map(sceneStem).filter(Boolean));
   for (const x of ai) {   // AI 另外列的：表里没有的东西
     if (x.类别 === '关键帧' || (x.类别 === '场景' && textStems.has(x.名称))) continue;   // 写字记的关键帧、只用文字写的场景：格子里已经有了
+    if (Scope.isGone(s, aiKey(x), x.名称)) continue;   // 人在提炼那一步删掉了的（11-17）：AI 以前列过也不摆
     if ((x.at && seen.has(x.at.toLowerCase())) || named.has(aiKey(x) + '/' + x.名称)) continue;
     if (KIND[aiKey(x)] && entryOf(aiKey(x), x.名称)) continue;   // 表里有这一行：这一场用不用它，看「选出场的」
     if (x.at && inTable.has(x.at.toLowerCase())) continue;       // 这张图表里哪一行引用着：同上
@@ -1503,6 +1526,8 @@ function assetChip(it, opener) {   // opener：点开这一格时另有做法（
     return h('div', { class: 'fl-asset txt ' + kindCls(it.类别) + (gone ? ' todo' : ''), title: (gone ? '全片设定的「场景」里已经没有这一句了：' : '场景，只用文字写的，不用图：') + it.文字 },
       h('span', { class: 'ph' }, '文字'), h('span', { class: 'nm' }, it.名称, h('small', null, h('b', { class: 'k-w' }, '场景'), gone ? ' · 全片里已经没有这一句' : ' · 文字写的，不用图')));
   }
+  if (it.只字) return h('div', { class: 'fl-asset txt ' + kindCls(it.类别), title: kindOf(it.类别) + '「' + it.名称 + '」只用文字写，不出图' },
+    h('span', { class: 'ph' }, '文字'), h('span', { class: 'nm' }, it.名称, h('small', null, h('b', { class: 'k-w' }, kindOf(it.类别)), ' · 只用文字写，不出图')));
   const has = !!it.at, img = has && IMG_RE.test(it.at);
   const open = opener || (() => img ? openImage(it.at) : showText(at([F.name, ...it.at.split('/')])));
   const rest = [it.sub, it.own ? '' : 'AI 列的', has ? (it.状态 && it.状态 !== '有了' ? it.状态 : '') : (it.状态 || '还没出')].filter(Boolean).join(' · ');
@@ -1527,9 +1552,9 @@ const inCatDir = (cat, f) => { const q = String(f).split('/'); return q.length =
 const fileTimeOf = f => (F.imgTime && F.imgTime.get(String(f).toLowerCase())) || (F.pool.find(p => p.文件 === f) || {}).mtime || F.words.get(f) || 0;
 const nearTime = (a, b) => !!a && !!b && Math.abs(a - b) < 3000;
 const checkBad = t => !!t && !(/没看出问题|撑得住/.test(t) && !/撑不住/.test(t));   // AI 核图说的是有问题
-const WORD_TX = { 'ai-img': 'AI 在出图', 'ai-word': 'AI 在写字', cand: '新图等你看', ok: '可用', img: '图等你看', word: '字等你批', none: '还没写字' };
+const WORD_TX = { 'ai-img': 'AI 在出图', 'ai-word': 'AI 在写字', cand: '新图等你看', ok: '可用', img: '图等你看', word: '字等你批', none: '还没写字', txt: '文字写好了' };   // txt：只用文字的写好了文字描写（11-17）
 /* 一格资产（assetsOf 给的）走这一套用的几个文件、眼下走到哪了。不走这一套的（这一段文件夹里当人物、道具、场景用的图，全局资产别的文件夹里的图）回 null */
-function wordOf(s, it) {
+function wordOf(s, it) {   // 只用文字写、不出图的（it.只字）也走这一套：写的是文字描写（公用/文字描写.js），不出图（11-17）
   let cat = '', stem = '', img = '';
   if (KIND[it.类别] && it.own) {
     cat = it.类别;
@@ -1546,13 +1571,14 @@ function wordFor(s, cat, stem, img, it) {
   const seg = s.段, frame = cat === '关键帧';
   const pdir = frame ? '提示词/' + segName(seg) : '提示词/全局资产/' + cat, adir = frame ? '资产/' + segName(seg) : '资产/全局资产/' + cat;
   img = img || adir + '/' + stem + '.png';
-  const w = { s, seg, cat, stem, img, it: it || null, frame,
+  const txtOnly = !frame && !!(it && it.只字);   // 只用文字的：只有一份文字描写，没有图、候选、GEO 底稿
+  const w = { s, seg, cat, stem, img, it: it || null, frame, txtOnly,
     name: it && KIND[it.类别] ? it.名称 : stem, state: it && KIND[it.类别] && it.sub ? it.sub : '', text: it && it.文字 || '',
-    txt: pdir + '/' + stem + '_提示词.txt', note: pdir + '/' + stem + '_提示词_批注.md', geo: cat === '场景' ? pdir + '/' + stem + '_GEO底稿.md' : '',
+    txt: pdir + '/' + stem + '_提示词.txt', note: pdir + '/' + stem + '_提示词_批注.md', geo: cat === '场景' && !txtOnly && !noGeo(s, stem) ? pdir + '/' + stem + '_GEO底稿.md' : '',   // 不要 GEO 的场景（11-17）：没有底稿这一块
     cand: adir + '/' + stem + '_候选.png', imgNote: adir + '/' + stem + '_批注.md', shots: adir + '/' + stem + SHOTS_TAIL };
   const has = p => F.words.has(p);
-  Object.assign(w, { hasTxt: has(w.txt), hasNote: has(w.note), hasGeo: !!w.geo && has(w.geo), hasCand: has(w.cand), hasImgNote: has(w.imgNote) });
-  w.hasImg = frame ? has(img) : !!(it && it.at && it.at === img) || F.pool.some(p => p.文件 === img);
+  Object.assign(w, { hasTxt: has(w.txt), hasNote: has(w.note), hasGeo: !!w.geo && has(w.geo), hasCand: !txtOnly && has(w.cand), hasImgNote: !txtOnly && has(w.imgNote) });
+  w.hasImg = txtOnly ? false : frame ? has(img) : !!(it && it.at && it.at === img) || F.pool.some(p => p.文件 === img);
   const rec = F.assets.get(seg), list = rec && !rec.bad ? rec.items : [];
   w.rec = list.find(x => x.文件 && x.文件.toLowerCase() === img.toLowerCase()) || null;
   const r = w.rec || {}, ct = r.核图时间 || 0;
@@ -1560,20 +1586,20 @@ function wordFor(s, cat, stem, img, it) {
   w.checkCand = r.核图 && w.hasCand && nearTime(ct, F.words.get(w.cand)) ? r.核图 : '';
   w.checkImg = r.核图 && w.hasImg && !w.checkCand && (!ct || nearTime(ct, fileTimeOf(img))) ? r.核图 : '';
   const gt = timeOf(r.核GEO时间), gok = !!gt && gt + 999 >= fileTimeOf(img);   // 照图核 GEO：核的是现在这张图才算
-  w.geoNote = gok ? r.核GEO || '' : ''; w.geoBack = gok ? r.拿回去批图 || '' : '';
+  w.geoNote = gok && w.geo ? r.核GEO || '' : ''; w.geoBack = gok && w.geo ? r.拿回去批图 || '' : '';
   const live = (k, pred) => AI.jobs.some(j => j.事 === k && jobLive(j) && pred(j)), key = cat + '/' + stem;
   w.drawing = live('出图', j => j.类别 === cat && j.文件名 === stem) || live('改图', j => j.类别 === cat && j.文件名 === stem);
   w.writing = live('写字', j => j.段 === seg && (Array.isArray(j.只) && j.只.length ? j.只.includes(key) : !frame && !w.hasTxt && !w.hasImg)) || live('按批注改字', j => j.名 === stem && (!frame || j.段 === seg));
   w.geoing = cat === '场景' && live('核GEO', j => j.名 === stem);
   w.ok = w.hasImg && (it && it.at === img ? okOf(it) : markOk(img, 0));
-  w.step = w.drawing ? 'ai-img' : w.writing ? 'ai-word' : w.hasCand ? 'cand' : w.hasImg ? (w.ok ? 'ok' : 'img') : w.hasTxt ? 'word' : 'none';
+  w.step = w.drawing ? 'ai-img' : w.writing ? 'ai-word' : w.hasCand ? 'cand' : w.hasImg ? (w.ok ? 'ok' : 'img') : w.hasTxt ? (txtOnly ? 'txt' : 'word') : 'none';
   return w;
 }
-const wordTx = w => w.step === 'word' && w.hasNote ? '批注还没交给 AI' : w.step === 'img' && checkBad(w.checkImg) ? 'AI 核图说有问题' : WORD_TX[w.step];
+const wordTx = w => (w.step === 'word' || w.step === 'txt') && w.hasNote ? '批注还没交给 AI' : w.txtOnly && w.step === 'none' ? '还没写文字描写' : w.step === 'img' && checkBad(w.checkImg) ? 'AI 核图说有问题' : WORD_TX[w.step];
 /* 交给 AI 写字。ws：wordOf 给的几样，空着就是这一场全部（没字没图的写字，有图的核一遍撑不撑得住）。req：人写的要求 */
 async function askWords(s, ws, req, self) {   // self：自己交给 AI（复制任务贴进自己开的对话）
   if (scriptState(s).st !== 'final') { toast('剧本定稿以后才能写字', 'err'); return null; }
-  if (!AI.ok) { toast('本机服务是旧的，重开一次才能让 AI 写字', 'err'); return null; }
+  if (!AI.ok) { toast('本机服务是旧的，重开一次才能让 AI 写出图提示词', 'err'); return null; }
   const only = (ws || []).map(w => ({ 类别: w.cat, 名称: w.name, 状态名: w.state, 图: w.img, 文字: w.text, 要求: req || w.req || '', 参考: w.refs || [], ...(w.forPrompt ? { 提示词: w.forPrompt } : {}) }));
   return (self ? startSelf : startJob)({ 事: '写字', 段: s.段, ...(only.length ? { 参数: { 只: only } } : {}) });
 }
@@ -1602,7 +1628,7 @@ function headRefs(head) {
   return out;
 }
 const unconfirmedRefs = head => headRefs(head).filter(r => !BMF_RE.test(r.file) && !markOk(r.file, 0));
-const purposeOf = w => w.frame ? '第' + w.seg + '段' + (w.forPrompt ? '「' + w.forPrompt + '」' : '') + '的关键帧' : w.cat + '「' + w.name + '」' + (w.state ? '（' + w.state + '）' : '') + '的定妆图，各段照它的样子';
+const purposeOf = w => w.txtOnly && typeof TxtWord === 'object' ? TxtWord.purpose(w.cat, w.name, w.state) : w.frame ? '第' + w.seg + '段' + (w.forPrompt ? '「' + w.forPrompt + '」' : '') + '的关键帧' : w.cat + '「' + w.name + '」' + (w.state ? '（' + w.state + '）' : '') + '的定妆图，各段照它的样子';
 const readText = async rel => { try { return unbom(C.decodeText((await FS.read(at([F.name, ...rel.split('/')]))).buf).text); } catch (e) { return e && e.message === '没有这个文件' ? '' : null; } };
 const noteBody = t => { const m = /^##\s*整体\s*$/m.exec(t || ''); return (m ? t.slice(m.index + m[0].length) : t || '').trim(); };
 /* 改一份文字以前：原来的移进 历史记录（同样的路径，名字加 __时间），再写新的（AGENTS.md：改版前先把原文件移进历史记录） */
@@ -1712,10 +1738,12 @@ function wordPills(s, it, w) {
   const stop = ev => ev.stopPropagation();
   const b = (label, title, fn) => h('button', { class: 'fl-asset-ok go', type: 'button', title, onkeydown: stop, onclick: ev => { stop(ev); fn(); } }, label);
   if (w.step === 'ai-img' || w.step === 'ai-word') return [h('span', { class: 'fl-asset-ok busy', title: '做完这里自动换' }, h('i', { class: 'wt-ring' }), WORD_TX[w.step])];
+  if (w.txtOnly) return w.step === 'txt' ? [b(w.hasNote ? '批注没交' : '看字', '弹出来看文字描写：自己改，或者写批注交给 AI 改', () => openWord(s, w))]   // 只用文字的（11-17）：写文字描写，不出图
+    : w.step === 'none' ? [b('写文字描写', '交给 AI 写这一样的文字描写：读定稿的剧本，只写样子，写视频提示词时照它写。也可以点开自己写', async () => { if (await askWords(s, [w])) pageNow(); })] : [];
   if (it && it.文字 && w.hasImg) return [b('用上这张图', '图出好了：这一段改用这张图（全片设定里那一句还在）', () => { useSceneImg(s, it.文字, w.img); pageNow(); })];
   if (w.step === 'cand') return [b('看新图', w.hasImg ? '出了一张新图：点开和旧图并排比，挑「用旧图」或「用新图」' : '出了一张新图：点开看，用不用', () => openWord(s, w))];
   if (w.step === 'word') return [b(w.hasNote ? '批注没交' : '批字', '弹出来看字：自己改，或者写批注交给 AI 改；字定了点「批准出图」', () => openWord(s, w))];
-  if (w.step === 'none') return [b('写字', '交给 AI 写这一样的字（出图提示词' + (w.cat === '场景' ? '，先写 GEO 底稿' : '') + '）：读定稿的剧本，写清要撑住什么戏。写好你批，点「照这个出图」才出图', async () => { if (await askWords(s, [w])) pageNow(); })];
+  if (w.step === 'none') return [b('写出图提示词', '交给 AI 写这一样的出图提示词' + (w.geo ? '（先写 GEO 底稿）' : '') + '：读定稿的剧本，写清要撑住什么戏。写好你批，点「批准出图」才出图', async () => { if (await askWords(s, [w])) pageNow(); })];
   return [];
 }
 /* 格子底下那一行小字：这一样走到哪了 */

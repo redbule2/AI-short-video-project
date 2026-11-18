@@ -58,3 +58,31 @@ test('素材里那一句', () => {
   assert.equal(V.line('童爸爸', '@音频1'), '@音频1用于童爸爸的音色、口音、语速和情绪，台词以事件脚本为准。');
   assert.equal(V.line('', '@音频2'), '@音频2用于〔称谓〕的音色、口音、语速和情绪，台词以事件脚本为准。');
 });
+
+/* 旁白（11-17）：剧本有旁白就自动挂；画外音，不出镜、不出图 */
+test('旁白：剧本里有一行「旁白：」开头的台词才算', () => {
+  assert.equal(V.narrates('△ 雪山。\n旁白：江湖传闻……'), true);
+  assert.equal(V.narrates('旁白（画外）：他十三岁便天下无敌'), true);
+  assert.equal(V.narrates('　旁白:后来'), true);
+  assert.equal(V.narrates('老李：旁白：不算'), false);   // 不在一行开头
+  assert.equal(V.narrates('旁白是画外音'), false);
+  assert.equal(V.narrates(''), false);
+  assert.equal(V.narrates(null), false);
+});
+
+test('旁白的音色：人物表里没有这一行也照文件名认；别人挑走了、说了不用就没有', () => {
+  const D = '资产/全局资产/人物/', names = ['旁白_音色.wav', '童爸爸_音色.wav'];
+  assert.deepEqual(V.stateOf([], names, '旁白'), { path: D + '旁白_音色.wav', how: '文件名' });
+  assert.deepEqual(V.stateOf([{ 名: '童爸爸', 音色: D + '旁白_音色.wav' }], names, '旁白'), { path: '', how: '' });
+  assert.deepEqual(V.stateOf([{ 名: '旁白', 音色: '' }], names, '旁白'), { path: '', how: '不用' });
+  assert.deepEqual(V.stateOf([{ 名: '旁白', 音色: D + '童爸爸_音色.wav' }], names, '旁白'), { path: D + '童爸爸_音色.wav', how: '挑的' });
+  assert.deepEqual(V.ofPeople(['旁白'], names), [{ 名: '旁白', path: D + '旁白_音色.wav' }]);
+  assert.deepEqual(V.ofPeople(['旁白'], names, [{ 名: '童爸爸', 音色: D + '旁白_音色.wav' }]), []);
+});
+
+test('旁白那一句、写提示词时交代的几句', () => {
+  assert.equal(V.line('旁白', '@音频2'), '@音频2用于画外旁白的音色、口音、语速和情绪，台词以事件脚本为准。');
+  const a = V.narrRule('资产\\全局资产\\人物\\旁白_音色.wav', false), b = V.narrRule('资产/全局资产/人物/旁白_音色.wav', true);
+  assert.ok(a.includes('挂成 @音频1') && a.includes('"ref": "@音频1"') && a.includes('"path": "资产/全局资产/人物/旁白_音色.wav"') && a.includes('「旁白：{台词}」') && a.includes('画面里的人自然闭口'), a);
+  assert.ok(b.includes('和人物的音色接着编号') && b.includes('"ref": "@音频N"') && b.includes('@音频N用于画外旁白'), b);
+});

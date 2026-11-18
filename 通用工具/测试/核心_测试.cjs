@@ -142,3 +142,12 @@ test('剧本可以没有段头（11-16 晚：直接从正文写）：没写场�
   head.sections[1].blocks = [{ id: 'b0', text: '△ 门开了。' }];
   assert.deepEqual(Core.lintScript(head).map(x => x.msg), ['场景按「时间｜内/外｜地点」三项写']);   // 写了场景还照旧查
 });
+
+test('镜头里的他、她要报，台词旁白 {} 里的不报（11-17：旁白「{他发现天地间…}」被误报）', () => {
+  const text = ['【事件脚本】', '镜头1：洪七公推出一掌；旁白：{他发现天地间，藏有至宝，}', '镜头2：童大圣捧着食方，他低头看。'].join('\r\n');
+  const doc = Core.parsePrompt(text);
+  assert.equal(doc.fmt, 'pe');
+  const hits = Core.lintPrompt(doc, '1-7.txt').filter(x => x.msg.includes('称谓指人'));
+  assert.equal(hits.length, 1);
+  assert.ok(hits[0].loc && JSON.stringify(hits[0].loc).length);
+});

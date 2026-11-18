@@ -74,6 +74,20 @@ const sideData = () => ({ 写法: '分镜', 分镜稿: structured, 自由稿: '�
     assert.ok(s.raw().includes('\r\n镜头1：甲把书递过去，标价 $& 元。\r\n'));
     assert.ok(s.raw().includes('\r\n镜头2：乙接过。\r\n'));
   });
+  await check('照新资产改（11-17）：AI 回 []，稿子一字不动、只更新时间，批注收走；人写的批注回 [] 照旧算没改成', async () => {
+    const AssetEdit = require('../公用/资产改过.js'), Core = require('../公用/核心.js');
+    const notePath = path.join(root, '项目', '测试', '提示词', '第1段', '视频提示词_批注.md'), j = { ...job(), rel: ['提示词', '第1段', '视频提示词_批注.md'] };
+    const s = setup(pe, peSide());
+    s.files.set(notePath, Buffer.from(AssetEdit.noteMd(Core, { title: 't', file: 'f', list: [{ 类别: '道具', 名称: '书', 改了: '文字描写', 字: '一本蓝皮线装书' }], old: '' })));
+    const r = await s.K.按批注改提示词.apply(j, '都对得上。\n[]');
+    assert.equal(s.raw(), pe); assert.ok(s.writes.includes(promptPath));   // 写回原样：时间新了
+    assert.equal(s.files.has(notePath), false);   // 批注收进历史记录
+    assert.match(r.结果, /一字没动/);
+    const t = setup(pe, peSide());
+    t.files.set(notePath, Buffer.from(Core.notesToMd({ title: 't', file: 'f', general: '', items: [{ where: '分镜', text: '甲递书', n: 1, note: '改成双手递' }] })));
+    await assert.rejects(t.K.按批注改提示词.apply(j, '[]'), /没有要改的地方/);
+    assert.equal(t.writes.length, 0); assert.equal(t.files.has(notePath), true);
+  });
   await check('PE 稿：AI 批注的原文抄了「镜头N：」也能对上，段名行不当原文', async () => {
     const s = setup(pe, peSide()), j = { ...job(), 渠道: 'claude' };
     const book = await s.K.批注提示词.book(j);

@@ -75,3 +75,48 @@ test('网址、登录位不对：不调命令行就拦下', async () => {
   await assert.rejects(check(URL, 'a b'), /登录位/);
   assert.equal(f.calls.length, 0);
 });
+
+/* 11-17：项目还没写画布就新建一张 */
+function fakeCreate({ ms = 30, ok = true, reply } = {}) {
+  const calls = [];
+  const jm = async args => { calls.push(args.join(' ')); await sleep(ms); return ok ? { ok: true, data: reply || { ok: true, data: {} } } : { ok: false, raw: '权限不够' }; };
+  return { jm, calls };
+}
+
+test('新建画布：名字写项目名、自己给编号；网址照即梦画布的样子', async () => {
+  const f = fakeCreate();
+  const check = make({ jm: f.jm, fail, str, uuid: () => ID2 });
+  const r = await check.create('药膳鸡配方--倚天屠龙记', '');
+  assert.deepEqual(r, { id: ID2, url: URL2, name: '药膳鸡配方--倚天屠龙记' });
+  assert.deepEqual(f.calls, ['canvas create 药膳鸡配方--倚天屠龙记 --project-id ' + ID2 + ' --format json']);
+});
+
+test('新建画布：命令行回了编号就用它的；带登录位', async () => {
+  const f = fakeCreate({ reply: { ok: true, data: { projectId: ID, name: '甲' } } });
+  const r = await make({ jm: f.jm, fail, str, uuid: () => ID2 }).create('甲', 'benpao');
+  assert.equal(r.url, URL);
+  assert.ok(f.calls[0].startsWith('--profile benpao canvas create 甲 '));
+});
+
+test('新建画布：同一个项目一起点两回、建好以后再点，都只建一张；没建成的下回再试', async () => {
+  const f = fakeCreate();
+  let n = 0;
+  const check = make({ jm: f.jm, fail, str, uuid: () => (n++ ? ID : ID2) });
+  const [a, b] = await Promise.all([check.create('甲', ''), check.create('甲', '')]);
+  assert.equal(a.url, b.url);
+  assert.equal((await check.create('甲', '')).url, a.url);
+  assert.equal(f.calls.length, 1);
+  const g = fakeCreate({ ok: false });
+  const c2 = make({ jm: g.jm, fail, str });
+  await assert.rejects(c2.create('乙', ''), e => e.plain && /新建画布没成：权限不够/.test(e.message));
+  await assert.rejects(c2.create('乙', ''), /没成/);
+  assert.equal(g.calls.length, 2);
+});
+
+test('新建画布：没名字、登录位不对，不调命令行', async () => {
+  const f = fakeCreate();
+  const check = make({ jm: f.jm, fail, str });
+  await assert.rejects(check.create('  ', ''), /要有名字/);
+  await assert.rejects(check.create('甲', 'a b'), /登录位/);
+  assert.equal(f.calls.length, 0);
+});

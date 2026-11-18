@@ -827,7 +827,7 @@ function lintPe(doc) {
       if (/首帧参考|参考首帧|首帧构图参考|尾帧参考|参考尾帧/.test(t)) out.push(issue('warn', '固定首帧、尾帧单独写一句「@图片N作为首帧。」「@图片N作为尾帧。」', loc));
       if (s.key !== 'script') return;
       if (/^镜头\s*[0０][0-9０-９]/.test(t.trim())) out.push(issue('info', '镜头号写「镜头1：」，不补 0', loc));
-      if (/^镜头\s*[0-9０-９]+/.test(t.trim()) && /(?<!其)[她他](?!们)/.test(t.replace(/吉他/g, ''))) out.push(issue('info', '镜头里用称谓指人，不用她、他', loc));
+      if (/^镜头\s*[0-9０-９]+/.test(t.trim()) && /(?<!其)[她他](?!们)/.test(t.replace(/吉他/g, '').replace(/\{[^{}]*\}/g, ''))) out.push(issue('info', '镜头里用称谓指人，不用她、他', loc));
       if (/^最终画面/.test(t.trim())) out.push(issue('info', '风格写进【基础设定】，放在事件脚本前面；事件脚本最后一行只写「声音包括……」', loc));
     });
     if (s.key === 'script') {
@@ -879,7 +879,7 @@ function lintPrompt(doc, fileName) {
     if (bad) out.push(issue('warn', '避开「' + [...new Set(bad)].join('、') + '」这类写法', loc));
     if (!merged && sh && /^环境音[：:]/.test(t) && /安静/.test(t)) out.push(issue('warn', '环境音里写声源，不写「安静」', loc));
     if (!merged && sh && /^台词[：:]/.test(t) && !/^台词[：:]\s*无\s*$/.test(t) && !/\{[^}]*\}/.test(t)) out.push(issue('warn', '台词原文要放在 {} 里', loc));
-    if (sh && /(?<!其)[她他](?!们)/.test(t.replace(/吉他/g, ''))) out.push(issue('info', '分镜里用称谓指人，不用她、他', loc));
+    if (sh && /(?<!其)[她他](?!们)/.test(t.replace(/吉他/g, '').replace(/\{[^{}]*\}/g, ''))) out.push(issue('info', '分镜里用称谓指人，不用她、他', loc));
   });
   if (ph > 6) out.push(issue('warn', '另外还有 ' + (ph - 6) + ' 处没填的〔 〕'));
   const rows = k => doc.sections.filter(s => s.key === k).flatMap(s => s.blocks).filter(b => b.text.trim());
@@ -1102,6 +1102,33 @@ function sceneStem(t) {
   const a = (c >= 1 && c <= 12 && (p < 0 || c < p) ? x.slice(0, c) : p >= 2 && p <= 14 ? x.slice(0, p) : x.slice(0, 12)).replace(/[<>:"\\/|?*\u0000-\u001f]/g, '').trim().replace(/[. ]+$/, '');
   return nameOk(a) ? a : '';
 }
+/* 只用文字写、不出图（2026-11-17 他要：只出现一次的人物、道具、场景，用文字锁就行）。记在这一场的「不出图」：{ 人物: [名字], 道具: [名字], 场景: [地方名] }。
+   资产那一步不算缺图、不写出图提示词；写视频提示词时照全片设定里的描写写。挂上了图的照图，这一条不管。页面和本机服务共用这一份 */
+const NO_IMG_KINDS = ['人物', '道具', '场景'];
+const strList = a => Array.isArray(a) ? [...new Set(a.filter(x => typeof x === 'string').map(x => x.trim()).filter(Boolean))] : [];
+function noImgList(s, k) { const m = s && s.不出图; return strList(m && typeof m === 'object' && !Array.isArray(m) ? m[k] : null); }
+const noImg = (s, k, name) => NO_IMG_KINDS.includes(k) && typeof name === 'string' && !!name.trim() && noImgList(s, k).includes(name.trim());
+function setNoImg(s, k, name, on) {   // 改了回 true；一样都不剩就把「不出图」整个去掉
+  const n = typeof name === 'string' ? name.trim() : '';
+  if (!s || typeof s !== 'object' || !NO_IMG_KINDS.includes(k) || !n) return false;
+  const cur = noImgList(s, k), next = on ? [...new Set([...cur, n])] : cur.filter(x => x !== n);
+  if (next.length === cur.length) return false;
+  const m = {};
+  for (const x of NO_IMG_KINDS) { const a = x === k ? next : noImgList(s, x); if (a.length) m[x] = a; }
+  if (Object.keys(m).length) s.不出图 = m; else delete s.不出图;
+  return true;
+}
+/* 不要 GEO（2026-11-17 他要：只用一次、没有严格站位的场景用不着 GEO）。记在这一场的「不要GEO」：[地方名]（场景图写图名，只用文字写的写冒号前的地方名）。
+   写出图提示词不写 GEO 底稿，出了图不核 GEO，写视频提示词不用 GEO。只用文字写、不出图的场景也算不要 */
+const noGeo = (s, stem) => typeof stem === 'string' && !!stem.trim() && (strList(s && s.不要GEO).includes(stem.trim()) || noImg(s, '场景', stem));
+function setNoGeo(s, stem, on) {   // 改了回 true；一个不剩就把「不要GEO」去掉
+  const n = typeof stem === 'string' ? stem.trim() : '';
+  if (!s || typeof s !== 'object' || !n) return false;
+  const cur = strList(s.不要GEO), next = on ? [...new Set([...cur, n])] : cur.filter(x => x !== n);
+  if (next.length === cur.length) return false;
+  if (next.length) s.不要GEO = next; else delete s.不要GEO;
+  return true;
+}
 /* 视频提示词（2026-11-16 他定）：名字就是这一条拍的镜头表镜头号，1-5.txt、4-9.txt；只拍一个镜头 3.txt；勾的不连着 1-3、5.txt。
    审片以后照修改方案另存的 _改1、_改2 也算。老稿照旧认：视频提示词.txt 第 1 条、视频提示词_02.txt 第 2 条，名字前面带别的（镜头1-5_视频提示词.txt） */
 const SHOT_CODE = '[0-9]+[a-z]?(?:-[0-9]+[a-z]?)?(?:、[0-9]+[a-z]?(?:-[0-9]+[a-z]?)?)*';   // 镜头表的固定号：中间加的镜头是 3b（公用/关键帧绑定.js）
@@ -1151,7 +1178,7 @@ const Core = {
   parsePrompt, serializePrompt, splitWithEol, joinLines, wrapPara, isBlank, edgeRange, ensureTrailingBlank, promptTemplate, promptSectionKey, promptShotTitle, renumberPromptShots, newPromptShot, PROMPT_SKELETON,
   lintPrompt, lintScript, lintShots, decodeText, hasBom, encodeText, cloneDoc,
   units, redline, diffChars, notesToMd, parseNotes,
-  nameOk, sceneStem, SHOT_CODE, RE_VP, vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, RE_VP_PATCH, vpPatchOf, RE_TASK, vpTask, taskVp, patchOut,
+  nameOk, sceneStem, NO_IMG_KINDS, noImgList, noImg, setNoImg, noGeo, setNoGeo, SHOT_CODE, RE_VP, vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, RE_VP_PATCH, vpPatchOf, RE_TASK, vpTask, taskVp, patchOut,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;
 G.Core = Core;

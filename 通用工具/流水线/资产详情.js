@@ -23,6 +23,9 @@ const adBind = w => w.frame ? SB.bindsOf(w.s)[w.img] || null : null;   // 关键
 const adLabel = w => { const b = adBind(w); return b ? '镜头' + b.镜 + ' ' + SB.SAY[b.刻] + (b.备选 ? '（备选）' : '') : (w.frame ? '关键帧' : w.cat) + '「' + (w.frame ? w.stem : w.name + (w.state ? '（' + w.state + '）' : '')) + '」'; };
 const adStamp = w => [F.words.get(w.txt) || 0, w.geo ? F.words.get(w.geo) || 0 : 0, F.words.get(w.note) || 0].join('/');
 const adNeedsYou = w => w.step === 'word' || w.step === 'cand' || w.step === 'img';
+/* 只用文字的（11-17）：这一份字是不是文字描写（「用途：」写着只用文字，公用/文字描写.js）。和眼下的做法对不上（只用文字的还是以前的出图提示词、改回要出图的还是文字描写）：让 AI 改过来 */
+const adIsTxt = () => !!AD.base && typeof TxtWord === 'object' && TxtWord.isTxt(AD.base.head);
+const adMismatch = w => !!AD.base && w.hasTxt && !w.frame && adIsTxt() !== !!w.txtOnly;
 const relDir = r => { const p = '项目/' + F.name + '/'; return r && r.startsWith(p) ? r.slice(p.length) : ''; };   // 任务记录（从总文件夹算起）→ 项目里的路径
 /* 网址里记着开着的是哪一样：#a=图的路径|哪一条提示词（整段编码，和 pageUrl 的 hash 一个做法；路径、文件名里不会有 |） */
 const adHash = q => 'a=' + q.a + (q.v ? '|' + q.v : '');
@@ -206,7 +209,7 @@ async function adSave(s, w, quiet) {
   const ch = { body: v.body !== b.body, geo: !!AD.els.gta && v.geo !== b.geo, note: v.note !== b.note };
   const fail = m => { AD.saveErr = m; if (quiet !== 'ask') toast(m, 'err'); adPaintActs(); return false; };
   if (!ch.body && !ch.geo && !ch.note) { AD.dirty = false; AD.saveErr = ''; adPaintActs(); return true; }
-  if (ch.body && !v.body) return fail('出图提示词空着，没存。不要这一样：关掉弹窗，点那一格的 ×');
+  if (ch.body && !v.body) return fail((w.txtOnly ? '文字描写' : '出图提示词') + '空着，没存。不要这一样：关掉弹窗，点那一格的 ×');
   if (ch.geo && !v.geo) return fail('GEO 底稿空着，没存');
   try {
     if (ch.body) await putText(w.txt, adText(w, b.head, v.body), stamp);
@@ -243,7 +246,14 @@ async function adAskFix(s, w, self) {   // 有字：照批注改，只改说到�
   if (!(await adSave(s, w, true))) return;
   if (await (self ? startSelf : startJob)({ 事: '按批注改字', 段: s.段, 参数: { 字: w.txt } })) await pageRepaint();
 }
+async function adConvert(s, w, self) {   // 字和眼下的做法对不上：AI 照原来的字改写（改之前的那一版收进历史记录）；批注框里写的一起交过去
+  if (!(await adSave(s, w, true))) return;
+  const add = AD.els ? AD.els.nta.value.trim() : '';
+  const req = (w.txtOnly ? '把原来的出图提示词改写成文字描写：样子照原来的，只写样子；定妆照、画幅、背景这些出图的话去掉' : '把原来的文字描写改写成出图提示词：样子照原来的，照出图规矩写') + (add ? '。另外：' + add : '');
+  if (await askWords(s, [w], req, self)) await pageRepaint();
+}
 async function adDraw(s, w) {   // 批准出图：照现在的字交给 Codex，一次一张；已经有图的，新图先当候选
+  if (w.txtOnly || adIsTxt()) { toast('这一份是只用文字时写的文字描写，不能直接出图' + (w.txtOnly ? '' : '：先点「让 ' + chName() + ' 改成出图提示词」'), 'err'); return; }
   const v = adVals();
   if (!w.hasTxt && !v.body) { toast('还没有字：先让 AI 写，或者自己写好点「存」', 'err'); return; }
   const bad = w.frame && AD.base ? unconfirmedRefs(AD.base.head) : [];   // 关键帧：用到的人物、场景、道具图都确认可用了再出
@@ -400,12 +410,12 @@ async function adScan(s, w) {
 }
 
 /* ---------- 摆出来 ---------- */
-const AD_TRACK = ['AI 写字', '你批字', 'AI 出图', '你看图', '确认可用'];
+const AD_TRACK = ['AI 写字', '你批字', 'AI 出图', '你看图', '确认可用'], AD_TRACK_TXT = ['写文字描写', '写视频提示词照它写'];   // 只用文字的（11-17）：写好了就算完
 function adTrackEl(w) {   // 五步缩成五个小点，后面写现在是哪一步
-  const at0 = { none: 0, 'ai-word': 0, word: 1, 'ai-img': 2, cand: 3, img: 3, ok: 5 }[w.step], ai = w.step === 'ai-word' || w.step === 'ai-img', done = at0 >= AD_TRACK.length;
-  return h('div', { class: 'adm-trk', title: AD_TRACK.map((t, i) => (i < at0 ? '✓ ' : i === at0 ? '● ' : '　 ') + t).join('\n') },
-    AD_TRACK.map((t, i) => [i ? h('em') : null, h('i', { class: i < at0 ? 'ok' : i === at0 ? (ai ? 'ai' : 'you') : '' })]),
-    h('b', { class: done ? 'ok' : ai ? 'ai' : '' }, done ? '确认可用了' : '第 ' + (at0 + 1) + ' 步 · ' + AD_TRACK[at0]));
+  const T = w.txtOnly ? AD_TRACK_TXT : AD_TRACK, at0 = (w.txtOnly ? { none: 0, 'ai-word': 0, txt: 2 } : { none: 0, 'ai-word': 0, word: 1, 'ai-img': 2, cand: 3, img: 3, ok: 5 })[w.step], ai = w.step === 'ai-word' || w.step === 'ai-img', done = at0 >= T.length;
+  return h('div', { class: 'adm-trk', title: T.map((t, i) => (i < at0 ? '✓ ' : i === at0 ? '● ' : '　 ') + t).join('\n') },
+    T.map((t, i) => [i ? h('em') : null, h('i', { class: i < at0 ? 'ok' : i === at0 ? (ai ? 'ai' : 'you') : '' })]),
+    h('b', { class: done ? 'ok' : ai ? 'ai' : '' }, done ? (w.txtOnly ? '文字写好了' : '确认可用了') : '第 ' + (at0 + 1) + ' 步 · ' + T[at0]));
 }
 const adX = () => h('button', { class: 'adm-rb x', type: 'button', title: '关掉（Esc）', 'aria-label': '关掉', onclick: () => adClose() }, icon('x'));
 function adHeadEls(s, it, w) {
@@ -478,13 +488,16 @@ function adShotEls(s, w, sh) {
 }
 function adNowEls(s, it, w, jobs) {
   const txtScene = !!(it && it.文字 && w.hasImg);
-  let t = { none: '还没写字。点「让 ' + chName() + ' 写字」，AI 读定稿的剧本，写清它要撑住什么戏，再写出图提示词' + (w.cat === '场景' ? '（场景先写 GEO 底稿）' : '') + '。也可以自己写字，点「存」。',
+  let t = { none: '还没写字（字就是出图提示词）。点「让 ' + chName() + ' 写出图提示词」，AI 读定稿的剧本，写清它要撑住什么戏，再写出图提示词' + (w.geo ? '（场景先写 GEO 底稿）' : '') + '。也可以自己写字，点「存」。',
     'ai-word': 'AI 在写字，写好了自动换上。',
     word: '字写好了，等你批。看一遍「要撑住」「AI 替你定的」和出图提示词：行就点「批准出图」；不行就写批注，点「交给 AI 改」，或者自己改了点「存」。',
     'ai-img': 'Codex 在出图，一次一张。出好了 AI 照字核一遍。',
     cand: w.hasImg ? '出了一张新图。和旧图比一比，在图下面挑：「用旧图」还是「用新图」。' : '出了一张新图。能用就点图下面「用新图」，不能用点「不要新图」。',
     img: '图出好了，等你看。能用就点「确认可用」；要改，点图框出来写批注，再点「照批注改图」，或者改字后点「批准出图」重出。',
     ok: '这张图确认可用了。要改：改字后点「批准出图」，新图出来和这张并排，你挑用哪张。' }[w.step];
+  if (w.txtOnly) t = { none: '只用文字写、不出图：这一样只要一份文字描写，只写样子，写视频提示词时照它写。点「让 ' + chName() + ' 写文字描写」，AI 读定稿的剧本写；也可以自己写好点「存」。',
+    'ai-word': 'AI 在写文字描写，写好了自动换上。', txt: '文字描写写好了，写视频提示词时照它写。要改：自己改了点「存」，或者写批注点「交给 ' + chName() + ' 改」。' }[w.step] || t;
+  if (adMismatch(w)) t = w.txtOnly ? '这一份是以前写的出图提示词，这一样现在只用文字写：点「让 ' + chName() + ' 改成文字描写」，AI 照它改成只写样子的一段。' : '这一份是只用文字时写的文字描写，不能直接出图：点「让 ' + chName() + ' 改成出图提示词」，AI 照它改写。';
   if (txtScene && w.step !== 'cand') t = '图出好了：点「用上这张图」，这一段改用图（全片设定里那一句还在）。不满意就照批注改图，或者改字重出。';
   if (w.step === 'img' && checkBad(w.checkImg)) t += 'AI 核图说有问题，看图下面它怎么说。';
   if (w.step === 'ok' && !txtScene && w.cat === '场景' && w.hasGeo) t += '图和 GEO 底稿对不上，点图下面「照图核 GEO」：AI 先判断要不要改，对不上才改。';
@@ -494,7 +507,7 @@ function adNowEls(s, it, w, jobs) {
     claude: hj.交给.等 === '发送' ? '在 Claude 桌面版开了一个新对话，任务填好了：到 Claude 窗口里按发送。没看到就点下面「再开一次」。' : 'Claude 在做，在 Claude 窗口里看。它做完，这里自动接着做。',
     deepseek: 'DeepSeek 在它自己的窗口里做，做完这里自动接着做。' }[hj.交给.方式] || t;
   const bad = jobs.length ? null : adFailed(s, w), codex = jobs.some(j => j.渠道 === 'codex' || j.事 === '出图' || j.事 === '改图');
-  const cls = jobs.length || w.step === 'ai-word' || w.step === 'ai-img' ? 'ai' : w.step === 'ok' && !txtScene ? 'ok' : 'you';
+  const cls = jobs.length || w.step === 'ai-word' || w.step === 'ai-img' ? 'ai' : (w.step === 'ok' && !txtScene) || (w.step === 'txt' && !adMismatch(w)) ? 'ok' : 'you';
   return { cls, kids: [adTrackEl(w), h('span', null, t),
     ...jobs.map(j => h('div', { class: 'ad-job' }, jobLine(j), h('span', { class: 'fn-note' }, j.标题))),
     codex ? h('span', { class: 'fn-note' }, 'Codex 会开一个看得见的对话，在 Codex 里能看它这会儿在做什么。') : null,
@@ -536,9 +549,12 @@ function adMain(s, it, w) {
   if (adBusy(s, w)) return null;
   const e = AD.els, typed = k => !!e && !!e[k].value.trim();
   const b = (key, label, fn, title) => ({ key, el: h('button', { class: 'btn ink', type: 'button', title, onclick: fn }, label) });
+  if (adMismatch(w)) return b('conv', '让 ' + chName() + ' 改成' + (w.txtOnly ? '文字描写' : '出图提示词'), () => adConvert(s, w), 'AI 照这一份改写，改之前的那一版收进历史记录；批注框里写的一起交过去');
+  if (w.txtOnly) return w.step === 'none' ? (typed('ta') ? b('save', '存', () => adSave(s, w), '存上你写的文字描写') : b('write', '让 ' + chName() + ' 写文字描写', () => adWrite(s, w), 'AI 读定稿的剧本写这一样的文字描写；批注框里写的当要求'))
+    : typed('nta') ? b('fix', '交给 ' + chName() + ' 改', () => adAskFix(s, w), '照批注改：只改你说到的地方，改之前的那一版收进历史记录') : null;
   if (it && it.文字 && w.hasImg && w.step !== 'cand') return b('scene', '用上这张图', () => adUseScene(s, it, w), '这一段改用这张图（全片设定里那一句还在）');
   if (w.step === 'none') return typed('ta') ? b('draw', '批准出图', () => adDraw(s, w), '字定了：先存上，再交给 Codex 照这份字出图，一次一张')
-    : b('write', '让 ' + chName() + ' 写字', () => adWrite(s, w), 'AI 读定稿的剧本写这一样的字；批注框里写的当要求');
+    : b('write', '让 ' + chName() + ' 写出图提示词', () => adWrite(s, w), 'AI 读定稿的剧本写这一样的出图提示词；批注框里写的当要求');
   if (w.step === 'word') return typed('nta') ? b('fix', '交给 ' + chName() + ' 改', () => adAskFix(s, w), '照批注改：只改你说到的地方，改之前的那一版收进历史记录')
     : b('draw', '批准出图', () => adDraw(s, w), '字定了：交给 Codex 照这份字出图，一次一张' + (w.hasImg ? '；已经有图，新图先当候选' : ''));
   if (w.step === 'img') return w.hasImgNote ? b('edit', '照批注改图', () => adEditImg(s, w), 'Codex 以这张为底，只改你在图上批注的地方，改出来的先当候选')
@@ -550,11 +566,12 @@ function adPaintActs() {
   const c = AD.cur, e = AD.els;
   if (!c || !e || !AD.ui) return;
   const { s, it, w } = c, busy = adBusy(s, w), has = w.hasTxt || !!e.ta.value.trim(), main = adMain(s, it, w), skip = main ? main.key : '';
+  const noun = w.txtOnly ? '文字描写' : '出图提示词', noDraw = w.txtOnly || adIsTxt();   // 文字描写不出图（11-17）
   e.acts.replaceChildren(...[
-    h('button', { class: 'btn', type: 'button', disabled: busy || !AD.dirty, title: '存上你改的（改之前的那一版收进历史记录）。Ctrl+S 也行', onclick: () => adSave(s, w) }, '存'),
+    skip === 'save' ? null : h('button', { class: 'btn', type: 'button', disabled: busy || !AD.dirty, title: '存上你改的（改之前的那一版收进历史记录）。Ctrl+S 也行', onclick: () => adSave(s, w) }, '存'),
     w.hasTxt ? (skip === 'fix' ? null : h('button', { class: 'btn', type: 'button', disabled: busy, title: '照批注改：只改你说到的地方', onclick: () => adAskFix(s, w) }, '交给 ' + chName() + ' 改'))
-      : skip === 'write' ? null : h('button', { class: 'btn', type: 'button', disabled: busy, title: 'AI 读定稿的剧本写这一样的字；批注框里写的当要求', onclick: () => adWrite(s, w) }, '让 ' + chName() + ' 写字'),
-    skip === 'draw' ? null : h('button', { class: 'btn', type: 'button', disabled: busy || !has, title: '字定了：交给 Codex 照这份字出图，一次一张' + (w.hasImg ? '；已经有图，新图先当候选' : ''), onclick: () => adDraw(s, w) }, '批准出图')].filter(Boolean));
+      : skip === 'write' ? null : h('button', { class: 'btn', type: 'button', disabled: busy, title: 'AI 读定稿的剧本写这一样的' + noun + '；批注框里写的当要求', onclick: () => adWrite(s, w) }, '让 ' + chName() + ' 写' + noun),
+    skip === 'draw' || noDraw ? null : h('button', { class: 'btn', type: 'button', disabled: busy || !has, title: '字定了：交给 Codex 照这份字出图，一次一张' + (w.hasImg ? '；已经有图，新图先当候选' : ''), onclick: () => adDraw(s, w) }, '批准出图')].filter(Boolean));
   /* 底边：左边存没存、键盘；右边下一样要你看的、这一步要按的那一个 */
   const { list, todo } = AD.nav, u = adUnit(w);
   const st = busy ? ['AI 在做这一样，做完这里自动换', ''] : AD.saveErr ? ['没存上：' + AD.saveErr, 'bad'] : AD.dirty ? ['改了还没存：关掉、换一' + u + '时自动存', 'dirty'] : AD.base ? ['都存上了', ''] : ['在读…', ''];
@@ -575,9 +592,10 @@ function adPaintWord(s, it, w) {
   e.ban.replaceChildren(...(AD.outside ? [h('div', { class: 'ad-ban' }, '这一样的字在外面改过了（AI 改好了新的一版？）。你这边改的还没存。',
     h('button', { class: 'btn sm', type: 'button', onclick: () => { AD.dirty = false; AD.outside = false; adReload(w); } }, '换成新的（丢掉我没存的）'),
     h('button', { class: 'btn sm ghost', type: 'button', onclick: () => { AD.outside = false; AD.mt = adStamp(w); adRepaint(); } }, '留着我的'))] : []));
-  e.labTa.replaceChildren(h('b', null, '出图提示词'), h('span', null, w.hasTxt ? '批准出图时一字不改交给 Codex' : b ? '还没写：点「让 ' + chName() + ' 写字」，或者自己写了点「存」' : '在读…'));
+  e.ta.placeholder = w.txtOnly ? '文字描写：只写样子（人物的年纪、长相、穿着；道具的样子、大小；场景有什么、光从哪来），不写画幅、背景。' : '出图提示词：画面里有什么、什么样、光从哪来。';
+  e.labTa.replaceChildren(h('b', null, w.txtOnly ? '文字描写' : '出图提示词'), h('span', null, w.txtOnly && w.hasTxt ? '只写样子，写视频提示词时照它写进【主体与关系】' : w.txtOnly && b ? '还没写：点「让 ' + chName() + ' 写文字描写」，或者自己写了点「存」' : adMismatch(w) ? '这一份还是文字描写：先让 AI 改成出图提示词' : w.hasTxt ? '批准出图时一字不改交给 Codex' : b ? '还没写：点「让 ' + chName() + ' 写字」，或者自己写了点「存」' : '在读…'));
   e.labNote.replaceChildren(h('b', null, w.hasTxt ? '批注' : '给 AI 的要求'), h('span', null, w.hasTxt ? '哪里不对写这里，点「交给 ' + chName() + ' 改」：只改你说到的地方，改之前的那一版收进历史记录' : '可以不写，AI 照定稿的剧本写'));
-  e.nta.placeholder = w.hasTxt ? '比如：衣服换成旧的蓝色工装；桌上再乱一点' : '比如：四十岁，瘦，熬夜熬出来的黑眼圈';
+  e.nta.placeholder = w.txtOnly ? (w.hasTxt ? '比如：胡子再白一点；衣服打满补丁' : '比如：七十来岁，精瘦，白发蓬乱') : w.hasTxt ? '比如：衣服换成旧的蓝色工装；桌上再乱一点' : '比如：四十岁，瘦，熬夜熬出来的黑眼圈';
   const ro = !b || adBusy(s, w);
   for (const x of [e.ta, e.gta, e.nta]) if (x) x.readOnly = ro;
   adPaintActs();
@@ -588,6 +606,8 @@ function adImgEls(s, it, w, skip) {
   const fig = (file, cap, acts) => h('figure', { class: 'ad-fig' }, h('button', { class: 'ad-pic', type: 'button', title: file + '\n点开看大图' + (acts ? '，能框出来写批注' : ''), onclick: () => openImage(file, acts) }, thumbImg(file, 900)), h('figcaption', null, cap));
   const note = (lab, t, warn) => h('p', { class: 'ad-note' + (warn ? ' warn' : '') }, h('b', null, lab + '：'), t);
   const busy = adBusy(s, w);
+  if (w.txtOnly) return [h('div', { class: 'ad-ph' }, '只用文字写，不出图'),   // 11-17
+    h('p', { class: 'fn-note' }, '写视频提示词时，照右边的文字描写写进【主体与关系】。要出图：', h('button', { class: 'fl-link', type: 'button', title: '这一样改回要出图：「让 AI 写出图提示词」算上它；右边的文字描写可以让 AI 改成出图提示词', onclick: () => { setNoImg(s, w.cat, w.name, false); touch(); pageNow(); } }, '改成要出图'))];
   if (w.hasCand) {   // 出了新图：旧图、新图并排，各自下面一个钮，用哪张点哪张下面的（11-15 他说「用这张」分不清是哪张）
     const users = w.frame ? [] : usersOf(w.img), old = w.hasImg;
     const noBtn = h('button', { class: 'btn', type: 'button', disabled: busy, title: old ? '用旧图：新图收进历史记录' : '不要新图：收进历史记录', onclick: () => adNoCand(s, w) }, old ? '用旧图' : '不要新图');
@@ -610,7 +630,7 @@ function adImgEls(s, it, w, skip) {
         : skip === 'confirm' ? null : h('button', { class: 'btn', type: 'button', disabled: busy, title: '这张图看过了、能用。确认过的图，别的段不用再确认', onclick: () => adConfirm(s, it, w, true) }, icon('check'), '确认可用'),
       ok && !txtScene && w.cat === '场景' && w.hasGeo ? h('button', { class: 'btn', type: 'button', disabled: busy, title: '图你满意了：让 AI 先判断 GEO 底稿和图对不对得上，对不上才照图改（改之前的那一版收进历史记录）。字框里改了没存的，先存上再核', onclick: () => adGeoCheck(s, w) }, '照图核 GEO') : null].filter(Boolean)));
   } else {
-    out.push(h('div', { class: 'ad-ph' }, w.drawing ? [h('i', { class: 'wt-ring' }), h('span', { class: 'wt-t' }, 'Codex 在出图，出好了在这里')] : w.hasTxt || w.step === 'word' ? '还没出图：字批好了点「批准出图」，Codex 一次出一张' : '还没出图：先有字，你批过点「批准出图」'));
+    out.push(h('div', { class: 'ad-ph' }, w.drawing ? [h('i', { class: 'wt-ring' }), h('span', { class: 'wt-t' }, 'Codex 在出图，出好了在这里')] : adIsTxt() ? '还没出图：这一份还是文字描写，先让 AI 改成出图提示词' : w.hasTxt || w.step === 'word' ? '还没出图：字批好了点「批准出图」，Codex 一次出一张' : '还没出图：先有字，你批过点「批准出图」'));
     if (it && KIND[it.类别] && it.own && !w.hasTxt && !w.writing && typeof pickFor === 'function') out.push(h('p', { class: 'fn-note' }, '已经有现成的图？', h('button', { class: 'fl-link', type: 'button', title: '关掉弹窗，在右边的挑图栏里挑', onclick: () => adPick(s, it) }, '挑现成的图')));
   }
   return out;
@@ -662,7 +682,7 @@ function adRepaint() {
   u.now.replaceChildren(...now.kids.filter(Boolean));
   adPaintWord(s, it, w);   // 字，连底边（adPaintActs）
   const main = adMain(s, it, w), skip = main ? main.key : '';
-  const isig = [skip, w.step, w.hasImg, w.hasCand, w.checkImg, w.checkCand, w.geoNote, w.geoBack, w.hasImgNote, imgOk(it, w), adBusy(s, w), pt, F.doc.可用[w.img] || ''].join('|');
+  const isig = [skip, w.step, !!w.txtOnly, adIsTxt(), w.hasImg, w.hasCand, w.checkImg, w.checkCand, w.geoNote, w.geoBack, w.hasImgNote, imgOk(it, w), adBusy(s, w), pt, F.doc.可用[w.img] || ''].join('|');
   if (isig !== AD.imgSig) { AD.imgSig = isig; u.img.replaceChildren(...adImgEls(s, it, w, skip).filter(Boolean)); }
   const lsig = JSON.stringify([w.rec && w.rec.过程, AD.scan, AD.hist && [AD.hist.txt, AD.hist.geo]]);
   if (lsig !== AD.logSig) {

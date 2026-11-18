@@ -151,6 +151,44 @@ const REPLY = '好的\n' + JSON.stringify({ 梗概: ' 老李开面摊，嘴硬�
     assert.deepEqual(s2.json(outPath).镜头表.map(x => x.号), [undefined, undefined]);
   });
 
+  await check('全局、每一镜出场的（11-17）：要求里多 7、8 两条，回复的样子带「全局」和每一镜的人物场景道具；全片设定列出全局；人删掉的叫 AI 别再列', async () => {
+    const s = setup(scene({ 人物: ['老李'], 道具: ['面碗'], 删掉: ['人物|小孩', '道具|面碗'] }), script);
+    const book = await s.K.提炼.book(job());
+    assert.ok(book.includes('\n7. 镜头表每个镜头再写三个列表：「人物」「场景」「道具」') && book.includes('\n8. 「全局」：'));
+    assert.ok(book.includes('"全局": {"人物": ["……"], "场景": [], "道具": []}, "镜头表": [') && book.includes('"秒数": 3, "人物": ["……"], "场景": ["……"], "道具": []}'));
+    assert.ok(book.includes('全局（全片好几段都出场的）：人物：（没有）；场景：（没有）；道具：（没有）'));
+    assert.ok(book.includes('\n9. 人删掉了、这一段用不着的，别再列，镜头里也别写：人物「小孩」\n'));   // 面碗还在出场的里头：又加回来了，不算删掉
+    const plain = await setup(scene(), script).K.提炼.book(job());
+    assert.ok(!plain.includes('人删掉了') && !plain.includes('\n9. '));
+  });
+
+  await check('提炼回的（11-17）：每一镜出场的、全局照写进 第N段_提炼.json（场景记地方名、去重）；没回全局就不写', async () => {
+    const s = setup(scene(), script);
+    await s.K.提炼.apply(job(), JSON.stringify({ 梗概: '有', 人物: [{ 名: '老李', 描写: '五十岁' }], 场景: ['面摊：路边'], 全局: { 人物: ['老李'], 场景: ['面摊：路边'] },
+      镜头表: [{ 写什么: '端碗', 作用: '', 人物: ['老李', '老李'], 场景: ['面摊：路边'], 道具: [] }, { 写什么: '烫着', 作用: '' }] }));
+    const got = s.json(outPath);
+    assert.deepEqual(got.全局, { 人物: ['老李'], 场景: ['面摊'], 道具: [] });
+    assert.deepEqual(got.镜头表, [{ 写什么: '端碗', 作用: '', 人物: ['老李'], 场景: ['面摊'] }, { 写什么: '烫着', 作用: '' }]);
+    assert.equal(got.照批注改, undefined);
+    await s.K.提炼.apply(job(), '{"梗概": "有", "镜头表": [{"写什么": "端碗", "作用": ""}]}');
+    assert.equal(s.json(outPath).全局, undefined);
+  });
+
+  await check('提炼按批注改（11-17）：现在的提炼带全局、每一镜出场的；要求原有的照抄、还没标的补上；回的记一笔「照批注改」（人删掉的又列回来，页面就认）', async () => {
+    const paras = [{ 号: '1', 写什么: '老李端碗', 作用: '', 人物: ['老李'], 场景: ['面摊'] }, { 号: '2', 写什么: '烫着了', 作用: '' }];
+    const s = setup(scene({ 段落: paras, 人物: ['老李'], 道具: ['面碗'], 场景文字: ['面摊：路边一个小面摊'] }), { ...script, [notePath]: { text: '## 整体\n批注：只标两样' } });
+    const j = job(); await s.K.提炼按批注改.prep(j);
+    const book = await s.K.提炼按批注改.book(j);
+    const now = JSON.parse(book.split('## 现在的提炼\n')[1].split('\n\n## 批注')[0]);
+    assert.deepEqual(now.全局, { 人物: [], 场景: [], 道具: [] });
+    assert.deepEqual(now.镜头表.map(x => [x.人物, x.场景, x.道具]), [[['老李'], ['面摊'], undefined], [undefined, undefined, undefined]]);
+    assert.ok(book.includes('\n8. 镜头的「人物」「场景」「道具」和「全局」：原有的照抄，批注说到的照改；还没标的、新加的照这个标：'));
+    assert.ok(book.includes('全局（全片好几段都出场的）：'));
+    await s.K.提炼按批注改.apply(j, JSON.stringify({ 梗概: '有', 镜头表: [{ 号: '1', 写什么: '老李端碗', 作用: '', 人物: ['老李'] }] }));
+    assert.equal(s.json(outPath).照批注改, true);
+    assert.deepEqual(s.json(outPath).镜头表, [{ 号: '1', 写什么: '老李端碗', 作用: '', 人物: ['老李'] }]);
+  });
+
   await check('提炼按批注改：这一段还没提炼过就不改', async () => {
     const s = setup(scene({ 段落: [] }), { ...script, [notePath]: { text: '批注' } });
     const j = job(); await s.K.提炼按批注改.prep(j);
