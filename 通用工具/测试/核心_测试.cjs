@@ -84,76 +84,54 @@ test('视频提示词照镜头号起名（11-16）：1-5.txt、3.txt、1-3、5.t
   assert.deepEqual(t('4-9_改2.txt'), [true, 0, 2, '镜头4-9 改2', '4-9改2']);
   assert.deepEqual(t('3.txt'), [true, 0, 0, '镜头3', '3']);
   assert.deepEqual(t('1-3、5.txt'), [true, 0, 0, '镜头1-3、5', '1-3、5']);
-  for (const bad of ['1-5_写稿.json', '1-5_批注.md', '1-5_出片任务.txt', '1-5_补1.txt', 'a1-5.txt', '1-.txt', '1-5_02.txt']) assert.equal(Core.RE_VP.test(bad), false, bad);
+  for (const bad of ['1-5_写稿.json', '1-5_批注.md', '1-5_出片任务.txt', '1-5_补1_写稿.json', '1-5_改1_改2.txt', '1-5_补1_补2.txt', 'a1-5.txt', '1-.txt', '1-5_02.txt']) assert.equal(Core.RE_VP.test(bad), false, bad);
   assert.equal(Core.vpBase('4-9_改2.txt'), '4-9.txt');
   assert.deepEqual(t('3-3b.txt'), [true, 0, 0, '镜头3-3b', '3-3b']);   // 中间加的镜头号 3b（拍哪几镜照镜头表算，见 关键帧绑定_测试.cjs）
-  assert.deepEqual(Core.vpPatchOf('1-5_改2_补1.txt'), { of: '1-5_改2.txt', no: 1 });
-  assert.equal(Core.vpLabel('1-5_补3.txt'), '镜头1-5 补3');
-  assert.equal(Core.vpTok('1-5_改2_补1.txt'), '1-5改2补1');
-  const pairs = [['1-5.txt', '1-5_出片任务.txt'], ['1-5_改1.txt', '1-5_出片任务_改1.txt'], ['1-3、5_改2_补1.txt', '1-3、5_出片任务_改2_补1.txt']];
+  const pairs = [['1-5.txt', '1-5_出片任务.txt'], ['1-5_改1.txt', '1-5_出片任务_改1.txt'], ['1-3、5_改2_补1.txt', '1-3、5_出片任务_改2_补1.txt'], ['4-6_补1_改1.txt', '4-6_出片任务_补1_改1.txt']];
   for (const [vp, tf] of pairs) { assert.equal(Core.vpTask(vp), tf, vp); assert.equal(Core.taskVp(tf), vp, tf); assert.ok(Core.RE_TASK.test(tf), tf); }
-  assert.equal(Core.patchOut('第3-5段', '1-5_补1.txt', ['第3-5段_第2条_1-5_样片480p.mp4', '第3-5段_第3条_1-5改1_样片480p.mp4']).no, 2);
 });
 
-test('补片稿：原名_补N.txt 不算一版，补的是原名那一版出的样片', () => {
-  assert.equal(Core.RE_VP.test('视频提示词_改2_补1.txt'), false);   // 流水线、审片台、vpLatest 都不把它当新的一版
-  assert.deepEqual(Core.vpPatchOf('视频提示词_改2_补1.txt'), { of: '视频提示词_改2.txt', no: 1 });
-  assert.deepEqual(Core.vpPatchOf('视频提示词_02_补3.txt'), { of: '视频提示词_02.txt', no: 3 });
-  assert.deepEqual(Core.vpPatchOf('镜头1-5_视频提示词_补1.txt'), { of: '镜头1-5_视频提示词.txt', no: 1 });
-  assert.equal(Core.vpPatchOf('视频提示词_改2.txt'), null);
-  assert.equal(Core.vpPatchOf('视频提示词_改2_补1_写稿.json'), null);
-  assert.equal(Core.vpLabel('视频提示词_改2_补1.txt'), '第1条 改2 补1');
-  assert.equal(Core.vpTok('视频提示词_改2_补1.txt'), '提示词01改2补1');
-  assert.equal(Core.vpTok('视频提示词_02_补2.txt'), '提示词02补2');
-  assert.equal(Core.vpLabel('视频提示词_改2.txt'), '第1条 改2');   // 不是补片的照旧
+test('以前的补片稿（11-18 他定：都是正片提示词）：名字照旧，各算单独的一条，改了另存 _补1_改1', () => {
+  const t = n => [Core.RE_VP.test(n), Core.vpBase(n), Core.vpVer(n), Core.vpCode(n), Core.vpLabel(n), Core.vpTok(n)];
+  assert.deepEqual(t('4-6_补1.txt'), [true, '4-6_补1.txt', 0, '4-6', '镜头4-6 补1', '4-6补1']);
+  assert.deepEqual(t('4-6_补1_改1.txt'), [true, '4-6_补1.txt', 1, '4-6', '镜头4-6 补1 改1', '4-6补1改1']);
+  assert.deepEqual(t('1-5_改2_补1.txt'), [true, '1-5_改2_补1.txt', 0, '1-5', '镜头1-5 改2 补1', '1-5改2补1']);
+  assert.deepEqual(t('视频提示词_改2_补1.txt'), [true, '视频提示词_改2_补1.txt', 0, '', '第1条 改2 补1', '提示词01改2补1']);
+  assert.deepEqual(t('视频提示词_02_补2.txt'), [true, '视频提示词_02_补2.txt', 0, '', '第2条 补2', '提示词02补2']);
+  assert.equal(Core.vpLabel('镜头1-5_视频提示词_补1.txt'), '镜头1-5 补1');
+  assert.equal(Core.vpLabel('视频提示词_改2.txt'), '第1条 改2');   // 不带补几的照旧
   assert.equal(Core.vpTok('镜头1-5_视频提示词_改1.txt'), '镜头1-5改1');
+  assert.equal(Core.vpBase('4-6_改1.txt'), '4-6.txt');   // 4-6 和 4-6_补1 是两条，各改各的
 });
 
-test('出片任务书和提示词一一对应，补片也是', () => {
+test('出片任务书和提示词一一对应，老名字带补几的也是', () => {
   const pairs = [['视频提示词.txt', '出片任务.txt'], ['视频提示词_02.txt', '出片任务_02.txt'], ['视频提示词_改2.txt', '出片任务_改2.txt'],
-    ['视频提示词_02_改1_补3.txt', '出片任务_02_改1_补3.txt'], ['视频提示词_改2_补1.txt', '出片任务_改2_补1.txt'], ['镜头1-5_视频提示词_改1.txt', '镜头1-5_出片任务_改1.txt']];
+    ['视频提示词_02_改1_补3.txt', '出片任务_02_改1_补3.txt'], ['视频提示词_改2_补1.txt', '出片任务_改2_补1.txt'], ['视频提示词_改2_补1_改1.txt', '出片任务_改2_补1_改1.txt'],
+    ['镜头1-5_视频提示词_改1.txt', '镜头1-5_出片任务_改1.txt'], ['4-6_补1.txt', '4-6_出片任务_补1.txt']];
   for (const [vp, tf] of pairs) { assert.equal(Core.vpTask(vp), tf, vp); assert.equal(Core.taskVp(tf), vp, tf); assert.ok(Core.RE_TASK.test(tf), tf); }
   assert.equal(Core.RE_TASK.test('出片任务_改2_补1_旧.txt'), false);
-});
-
-test('补片出到哪：那一版出的样片里第几条最大的，旁边的 样片名_补片/补N.mp4', () => {
-  const names = ['第1-1段_第2条_提示词01改1_720p.mp4', '第1-1段_第3条_提示词01改2_样片480p.mp4', '第1-1段_第3条_提示词01改2_样片480p_批注.md',
-    '第1-1段_第3条_提示词01改2_样片480p_批注截图', '第1-1段_第4条_第3条补片_720p.mp4', '第1-1段_第5条_提示词01改21_样片480p.mp4', '第1-1段_第6条_提示词01_样片480p.mp4'];
-  assert.deepEqual(Core.patchOut('第1-1段', '视频提示词_改2_补1.txt', names),
-    { no: 3, sample: '第1-1段_第3条_提示词01改2_样片480p.mp4', dir: '第1-1段_第3条_提示词01改2_样片480p_补片', file: '补1.mp4', patch: 1 });
-  assert.equal(Core.patchOut('第1-1段', '视频提示词_改2_补1.txt', names.concat('第1-1段_第7条_提示词01改2_720p.mp4')).no, 7);   // 那一版出过几条：取最后一条
-  assert.equal(Core.patchOut('第1-1段', '视频提示词_改3_补1.txt', names), null);   // 改3 还没出过样片
-  assert.equal(Core.patchOut('第1-2段', '视频提示词_改2_补1.txt', names), null);   // 别的段的不算
-  assert.equal(Core.patchOut('第1-1段', '视频提示词_改2.txt', names), null);   // 不是补片稿
 });
 
 test('样片和提示词同名（11-18 他定：好找）：1_改3.txt 出的叫 1_改3.mp4，同一版再出一条 _2、_3', () => {
   assert.equal(Core.clipName('1_改3.txt', []), '1_改3.mp4');
   assert.equal(Core.clipName('1_改3.txt', ['1_改3.mp4', '1_改3_批注.md', '1_改3_批注截图', '第3-4段_第20条_1改3_720p.mp4']), '1_改3_2.mp4');
   assert.equal(Core.clipName('1_改3.txt', ['1_改3.mp4', '1_改3_3.mp4']), '1_改3_4.mp4');   // 移进历史记录的也让开
-  assert.equal(Core.clipName('1.txt', ['1_改3.mp4', '1-5.mp4', '1_补1.mp4']), '1.mp4');   // 别的版、别的条、补片拼的不算
+  assert.equal(Core.clipName('1.txt', ['1_改3.mp4', '1-5.mp4', '1_补1.mp4']), '1.mp4');   // 别的版、别的条不算（1_补1.mp4 是 1_补1.txt 出的）
   assert.equal(Core.clipName('视频提示词_02.txt', ['视频提示词.mp4']), '视频提示词_02.mp4');
+  assert.equal(Core.clipName('4-6_补1.txt', ['4-6.mp4', '4-6_补1.mp4']), '4-6_补1_2.mp4');
   assert.equal(Core.clipTake('1_改3.mp4', '1_改3.txt'), 1);
   assert.equal(Core.clipTake('1_改3_2.mp4', '1_改3.txt'), 2);
   assert.equal(Core.clipTake('1_改3_2.mp4', '1.txt'), 0);
   assert.equal(Core.clipTake('1_改3_补1.mp4', '1_改3.txt'), 0);
   assert.equal(Core.clipTake('1_改3.md', '1_改3.txt'), 0);
   assert.equal(Core.clipTake('1-5.mp4', '1.txt'), 0);
-  assert.equal(Core.clipOfVer('1_改3_补1.mp4', '1_改3.txt'), true);   // 补片拼好的和补片稿同名，也算这一版的
-  assert.equal(Core.clipOfVer('1_改3_补1_2.mp4', '1_改3.txt'), true);
-  assert.equal(Core.clipOfVer('1_改3_补片.mp4', '1_改3.txt'), false);
-  assert.equal(Core.clipOfVer('1_改3.mp4', '1.txt'), false);
-  assert.equal(Core.clipOfVer('第3-4段_第20条_1改3_720p.mp4', '1_改3.txt'), false);   // 老名字照记号认（公用/样片归属.js）
+  assert.equal(Core.clipTake('4-6_补1.mp4', '4-6_补1.txt'), 1);
+  assert.equal(Core.clipTake('4-6_补1_2.mp4', '4-6_补1.txt'), 2);
+  assert.equal(Core.clipTake('4-6_补1.mp4', '4-6.txt'), 0);   // 不算 4-6 那一条的
+  assert.equal(Core.clipTake('第3-4段_第20条_1改3_720p.mp4', '1_改3.txt'), 0);   // 老名字照记号认（公用/样片归属.js）
   assert.equal(Core.clipOld('第3-4段_第20条_1改3_720p.mp4'), true);
   assert.equal(Core.clipOld('1_改3.mp4'), false);
-});
-
-test('补片出到哪（新名字）：那一版最后出的那条，1_改3_2.mp4 比 1_改3.mp4 新，也比老名字的新', () => {
-  const names = ['第3-4段_第20条_1改3_720p.mp4', '1_改3.mp4', '1_改3_2.mp4', '1_改3_批注.md', '1_改3_补1.mp4', '1-5.mp4'];
-  assert.deepEqual(Core.patchOut('第3-4段', '1_改3_补1.txt', names), { no: 0, sample: '1_改3_2.mp4', dir: '1_改3_2_补片', file: '补1.mp4', patch: 1 });
-  assert.deepEqual(Core.patchOut('第3-4段', '1_改3_补2.txt', ['1_改3.mp4']), { no: 0, sample: '1_改3.mp4', dir: '1_改3_补片', file: '补2.mp4', patch: 2 });
-  assert.equal(Core.patchOut('第3-4段', '1_改3_补1.txt', ['第3-4段_第20条_1改3_720p.mp4']).no, 20);   // 只有老名字的：照旧
-  assert.equal(Core.patchOut('第3-4段', '1_补1.txt', ['1_改3.mp4', '1-5.mp4']), null);   // 1.txt 那一版没出过
+  for (const gone of ['RE_VP_PATCH', 'vpPatchOf', 'patchOut', 'clipOfVer']) assert.equal(Core[gone], undefined, gone);   // 补片那一套已经拿掉
 });
 
 test('审片锁不锁（11-18：3-4 镜头1 改3 出了片，别的几条提示词待核对，审片整页锁住看不了）：有样片就能审', () => {

@@ -2041,8 +2041,7 @@ async function boot() {
   paintSteps(); setGuide(null); paintTabs();
   let open = [];
   try { open = decodeURIComponent((/[#&]open=([^&]*)/.exec(location.hash) || [])[1] || '').split('/').filter(Boolean); } catch (e) { /* 网址不对 */ }
-  const vpOk = n => Core.RE_VP.test(n) || !!Core.vpPatchOf(n);   // 视频提示词，和补片稿 原名_补1.txt（11-18 起补片稿也进来改，和别的提示词同一个写稿页）
-  if (open.length < 3 || !vpOk(open[open.length - 1])) {   // 网址里没写开哪一份：自己去找铺好底的稿，只有一份就直接开
+  if (open.length < 3 || !Core.RE_VP.test(open[open.length - 1])) {   // 网址里没写开哪一份：自己去找铺好底的稿，只有一份就直接开
     let list;
     try { list = await findDrafts(); } catch (e) { return fail('本机服务连不上：' + e.message); }
     if (list.length === 1) { location.hash = 'open=' + list[0].map(encodeURIComponent).join('/'); return; }   // 网址一变，页面自己重开

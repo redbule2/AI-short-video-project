@@ -1084,10 +1084,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       title: j => '生成出片任务书 · 第' + j.段 + '段 ' + vpLabel(j), need: ['段'], key: j => j.段 + '/' + j.名, local: true,
       async run(j) {
         const rel = ['提示词', segDir(j.段), str(j.名)], p = pj(j.项目, ...rel);
-        if (!nameOk(str(j.名)) || !(RE_VP.test(j.名) || vpPatchOf(j.名)) || !(await exists(p))) throw fail('没有这份提示词');
+        if (!nameOk(str(j.名)) || !RE_VP.test(j.名) || !(await exists(p))) throw fail('没有这份提示词');
         const buf = await fsp.readFile(p), text = unbom(buf.toString('utf8')), label = str(j.名).replace(/\.txt$/i, '');   // 任务书、节点名里写的：提示词的名字（11-18 起样片也和它同名：公用/核心.js clipName）
-        const pt = vpPatchOf(j.名) ? core('patchOut')(segDir(j.段), j.名, await fsp.readdir(pj(j.项目, '成片', segDir(j.段))).catch(() => [])) : null;   // 补片：补的是哪条样片、片子放哪（11-16 加）
-        if (vpPatchOf(j.名) && !pt) throw fail('成片 / ' + segDir(j.段) + ' 里没找到「' + vpPatchOf(j.名).of.replace(/\.txt$/i, '') + '」出的样片：补片要剪进它出的那一条');
         let set = {}, map = {};
         try { set = JSON.parse(unbom(await fsp.readFile(pj(j.项目, '资产', '出片设置.json'), 'utf8'))); } catch (e) { /* 没有就空着 */ }
         const prof = str(set.登录位).trim();   // 用哪个即梦账号：和画布一起记在出片设置里，空着是默认号（11-14 起页面不再另选，免得和画布对不上）
@@ -1138,7 +1136,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         const done = [];   // 这一段出过的样片：成片和历史记录里的都算（移进历史记录名字不改），同一版再出一条接着排 _2、_3
         for (const d of [pj(j.项目, '成片', segDir(j.段)), pj(j.项目, '历史记录', '成片', segDir(j.段))]) { try { done.push(...await fsp.readdir(d)); } catch (e) { /* 没有这个文件夹 */ } }
         const clipFile = core('clipName')(j.名, done), P = Object.assign({ 模型: 'Seedance 2.5 样片', 清晰度: '480p', 秒数: 15, 积分上限: 0 }, j.参数 || {});   // 样片和提示词同名（11-18 他定）：1_改3.txt 出的叫 1_改3.mp4
-        const nth = pt ? (pt.no ? '第' + pt.no + '条补' + pt.patch + '｜' + vpTok(j.名) : pt.sample.replace(/\.mp4$/i, '') + '_补' + pt.patch) : clipFile.replace(/\.mp4$/i, '');   // 画布节点名里认它：补老样片的照旧写第几条
+        const nth = clipFile.replace(/\.mp4$/i, '');   // 画布节点名里认它
         if (!/^(480p|720p|1080p)$/.test(str(P.清晰度)) || !(P.秒数 >= 4 && P.秒数 <= 30)) throw fail('清晰度或者时长不对');
         if (!str(set.画布).trim()) {   // 项目还没写画布：新建一张、记进出片设置（11-17 他要；jm-check.js 的 create）
           j.步骤 = '项目还没有即梦画布，在新建';
@@ -1155,9 +1153,9 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         const JMOK = await jmCheck(set.画布, prof);   // 这个号登着、画布在它名下才写任务书
         if (seenP) { j.步骤 = '在认画布上同名的节点是哪一版'; (await seenP || []).forEach((v, i) => { swapped[i].节点 = v; }); }
         const tag = (/样片/.test(P.模型) ? '样片' : '') + P.清晰度;
-        const out = pt ? ['成片', segDir(j.段), pt.dir, pt.file] : ['成片', segDir(j.段), clipFile], abs = (...x) => pj(j.项目, ...x).replace(/\\/g, '/');
+        const out = ['成片', segDir(j.段), clipFile], abs = (...x) => pj(j.项目, ...x).replace(/\\/g, '/');
         const per = /样片/.test(P.模型) && P.清晰度 === '480p' ? (vrefs.length ? 18 : 9) : /^Seedance 2\.5$/.test(P.模型) && P.清晰度 === '720p' ? (vrefs.length ? 26 : 13) : /2\.0 mini/.test(P.模型) && P.清晰度 === '720p' && vrefs.length ? 12 : /2\.0 VIP/.test(P.模型) && P.清晰度 === '720p' && vrefs.length ? 28 : 0;   // 以往实扣的价（2026-11-11～13；2.5 720p 照 11-17 的四回）；提示词.html 的 priceOf 是同一张表，改要两处一起改
-        const lines = ['任务：在即梦画布上为《' + j.项目 + '》第' + j.段 + '段' + (pt ? '补出一段（补' + pt.patch + '，剪进样片 ' + pt.sample + '）：' : '出一条视频：') + label + '，' + P.模型 + '，' + P.清晰度 + '，' + P.秒数 + ' 秒。',
+        const lines = ['任务：在即梦画布上为《' + j.项目 + '》第' + j.段 + '段出一条视频：' + label + '，' + P.模型 + '，' + P.清晰度 + '，' + P.秒数 + ' 秒。',
           '这份任务书是项目管理的流水线在 ' + nowText() + ' 生成的。用户在页面上点了「批准出片」才会交到你手上；这一条由你从头做到尾：建草稿、核对、报价、提交生成、等出片、下载。不要手改这份任务书。',
           '', '〇、本次可以用的工具', '用本项目的即梦快线 ' + path.join(SKILLS, 'dreamina-video-fastlane').replace(/\\/g, '/') + ' 和它要用的 dreamina-canvas-cli，只限这一次。不要运行任何更新、安装技能的命令。',
           '新素材明确用 CLI 传，每样只传一次；回了状态不明，就用原编号只读核查，查不到就停下告诉我。不要用桌面 Computer Use 去点 Windows 的文件选择对话框。网页要求登录、付费开通，或弹出权限、授权窗口时就停下告诉我，不要代点。',
@@ -1176,14 +1174,14 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           '', '五、核对、报价、提交', P.积分上限 > 0 ? '用户批准的积分上限是 ' + P.积分上限 + '：报价不超过它，就直接完成服务端确认、提交，不用再问我；超过就停在草稿，告诉我报价多少。'
             : '用户点了「批准出片」，就是同意按即梦报价出这一条：存好草稿、拿到报价，不用再问我，把这次的报价当作批准的积分上限，直接完成服务端确认、提交（照即梦快线第 4 节「已获明确金额上限」办；服务端要确认，不算要停下问我的情况）。',   // 11-18 他嫌每回都要在 Codex 里再点头：没填上限也直接提交
           '只提交节点A 这一次、生成 1 条。提交返回状态不明时先查节点状态，不重复提交。被版权限制或别的原因拦下就停下告诉我，不改提示词、不换参考、不重试。',
-          '', '六、等待与下载', '提交后等它出完。等待查询超时不算失败，用同一个提交编号接着查，不重新提交。生成失败就停下把原因告诉我，不重试。', '成功后用 CLI 下载到 ' + abs(...out) + (pt ? '（文件夹 ' + pt.dir + ' 没有就新建这一个）' : '') + '。这个文件已经存在就停下告诉我，不覆盖。',
+          '', '六、等待与下载', '提交后等它出完。等待查询超时不算失败，用同一个提交编号接着查，不重新提交。生成失败就停下把原因告诉我，不重试。', '成功后用 CLI 下载到 ' + abs(...out) + '。这个文件已经存在就停下告诉我，不覆盖。',
           '', '七、做完回复', '节点A 的编号、实际扣了多少积分、下载到的完整路径。'];
         const tf = ['提示词', segDir(j.段), taskOfVp(j.名)];
         await archive(j.项目, tf);
         await writeFile(pj(j.项目, ...tf), lines.join('\n') + '\n');
         const ren = swapped.reduce((n, r) => n + (r.节点 || []).filter(x => x.版 && x.版 !== 'cur').length, 0), odd = swapped.filter(r => (r.节点 || []).some(x => !x.版)).map(r => nodeName(r.path));
         const seen = (ren ? '。画布上 ' + ren + ' 个旧节点要改名，已认好是哪一版' : '') + (odd.length ? '。注意：画布上「' + odd.join('」「') + '」认不出是哪一版，Codex 会停下问你' : '') + (swapped.some(r => !r.节点) ? '。画布上的旧节点这回没认成，照旧叫 Codex 去认' : '');
-        return { 结果: '任务书写好了（' + (pt ? '补' + pt.patch + '，剪进 ' + pt.sample : '出 ' + clipFile) + '，挂 ' + refs.length + ' 个参考' + (vrefs.length ? '，含 ' + vrefs.length + ' 段白模' : '') + '；即梦用' + (prof ? '「' + prof + '」号' : '默认号') + '「' + JMOK.nick + '」，画布「' + JMOK.name + '」）' + seen + (prof ? '。注意：Codex 那边也要登着这个号，没登它会停下' : ''), 产出: [tf.join('/')] };
+        return { 结果: '任务书写好了（出 ' + clipFile + '，挂 ' + refs.length + ' 个参考' + (vrefs.length ? '，含 ' + vrefs.length + ' 段白模' : '') + '；即梦用' + (prof ? '「' + prof + '」号' : '默认号') + '「' + JMOK.nick + '」，画布「' + JMOK.name + '」）' + seen + (prof ? '。注意：Codex 那边也要登着这个号，没登它会停下' : ''), 产出: [tf.join('/')] };
       },
     },
     /* 出片：把任务书交给 Codex 真去做（要花积分；只在用户点了「批准出片」时才开） */
@@ -1291,13 +1289,13 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const RE_VP = Core ? Core.RE_VP : { test: core('RE_VP') };
   const vpPath = j => pj(j.项目, '提示词', segDir(j.段), str(j.名));
   const viaStr = f => n => f(str(n));   // 不是字的当空字
-  const vpVer = viaStr(core('vpVer')), vpBase = viaStr(core('vpBase')), vpNo = viaStr(core('vpNo')), vpCode = viaStr(core('vpCode')), vpLabelOf = viaStr(core('vpLabel')), vpTok = viaStr(core('vpTok'));   // vpTok：老样片名里的记号（11-18 起样片和提示词同名）；补老样片的画布节点名还写它
+  const vpVer = viaStr(core('vpVer')), vpBase = viaStr(core('vpBase')), vpNo = viaStr(core('vpNo')), vpCode = viaStr(core('vpCode')), vpLabelOf = viaStr(core('vpLabel'));
   const vpLabel = j => vpLabelOf(j.名);
-  const taskOfVp = viaStr(core('vpTask')), vpOfTask = viaStr(core('taskVp')), vpPatchOf = viaStr(core('vpPatchOf'));   // 视频提示词_改1.txt ↔ 出片任务_改1.txt；补片稿 视频提示词_改2_补1.txt ↔ 出片任务_改2_补1.txt
+  const taskOfVp = viaStr(core('vpTask')), vpOfTask = viaStr(core('taskVp'));   // 视频提示词_改1.txt ↔ 出片任务_改1.txt；老名字 4-6_补1.txt ↔ 4-6_出片任务_补1.txt
   const RE_TASK = Core ? Core.RE_TASK : { test: core('RE_TASK') };
   const vpLatest = names => { const by = new Map(); for (const n of names) if (RE_VP.test(n)) { const b = vpBase(n), o = by.get(b); if (!o || vpVer(n) > vpVer(o)) by.set(b, n); } return [...by.values()]; };   // 一条只留最新那一版
   const byNo = (a, b) => (a.no || 1e9) - (b.no || 1e9) || a.f.localeCompare(b.f, 'zh', { numeric: true });   // 几条提示词照第几条排，老稿排后面
-  async function vpNeed(j) { if (!nameOk(str(j.名)) || !(RE_VP.test(j.名) || vpPatchOf(j.名)) || !(await exists(vpPath(j)))) throw fail('没有这份提示词'); }   // 补片稿 原名_补1.txt 也能请 AI 批（11-18 起补片稿和别的提示词同一个写稿页）
+  async function vpNeed(j) { if (!nameOk(str(j.名)) || !RE_VP.test(j.名) || !(await exists(vpPath(j)))) throw fail('没有这份提示词'); }
   /* 改之前留一版（复制，不挪走：他可能正开着页面写）：历史记录/同样的路径/原名__时间.后缀 */
   async function keepCopy(name, relParts) {
     const src = pj(name, ...relParts);

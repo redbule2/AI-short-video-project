@@ -95,5 +95,15 @@ const priceOf = vm.runInNewContext(priceCode + '\npriceOf;', {});
     assert.match(again, /下载到 \S*\/成片\/第1-1段\/4-6_3\.mp4。/);   // 移进历史记录的名字不改，也让开
     assert.match(again, /名字写：第1-1段｜4-6_3｜/);
   });
+  await check('以前的补片稿照正片出（11-18 他定）：4-6_补1.txt 出的下载成 4-6_补1.mp4，任务书 4-6_出片任务_补1.txt，不剪进样片', async () => {
+    const s = setup({ [pjt('成片', '第1-1段')]: ['4-6.mp4', '第1-1段_第4条_4-6_720p.mp4'] });
+    s.files.set(pjt('提示词', '第1-1段', '4-6_补1.txt'), s.files.get(promptPath));
+    await s.K.出片任务书.run({ 项目: '测试', 段: '1-1', 名: '4-6_补1.txt', 参数: { 模型: 'Seedance 2.5 样片', 清晰度: '480p', 秒数: 10, 积分上限: 0 } });
+    const book = s.files.get(pjt('提示词', '第1-1段', '4-6_出片任务_补1.txt')).toString('utf8');
+    assert.match(book, /第1-1段出一条视频：4-6_补1，/);
+    assert.match(book, /下载到 \S*\/成片\/第1-1段\/4-6_补1\.mp4。/);
+    assert.match(book, /名字写：第1-1段｜4-6_补1｜样片480p｜10秒/);
+    assert.doesNotMatch(book, /补片|剪进/);
+  });
   console.log(tested + ' 项检查通过；真实项目数据未读写。');
 })().catch(e => { console.error(e); process.exitCode = 1; });

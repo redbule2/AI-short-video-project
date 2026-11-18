@@ -32,7 +32,7 @@ module.exports = function makeDraftStore({ ROOT, io = fs.promises, now = () => n
   function pathsFor(abs) {
     const parts = path.relative(ROOT, abs).split(path.sep);
     if (parts.length !== 5 || parts[0] !== '项目' || !parts[1] || parts[2] !== '提示词' || !/^第[0-9]+(?:-[0-9]+)*段$/.test(parts[3]) || !RE_VP.test(parts[4])) {
-      throw error(400, '草稿保存只支持 项目/项目名/提示词/第N段/ 里的视频提示词（照镜头号起名的 1-5.txt，照修改方案改出来的 1-5_改1.txt；老稿 视频提示词.txt、视频提示词_02.txt……）');
+      throw error(400, '草稿保存只支持 项目/项目名/提示词/第N段/ 里的视频提示词（照镜头号起名的 1-5.txt，照修改方案改出来的 1-5_改1.txt；老稿 视频提示词.txt、视频提示词_02.txt，老名字 4-6_补1.txt……）');
     }
     return { side: abs.replace(/\.txt$/i, '_写稿.json'), hist: path.join(ROOT, '项目', parts[1], '历史记录', ...parts.slice(2, -1)) };
   }

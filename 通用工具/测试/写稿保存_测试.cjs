@@ -103,6 +103,14 @@ test('请求不能改写 AI 字段或越界文件', async () => {
   await assert.rejects(s.save(TARGET, body({ sidePatch: { ...base, 关键词: {} } })), { status: 400 });
   await assert.rejects(s.save(path.join(ROOT, 'AGENTS.md'), body()), { status: 400 }); io.unchanged(before);
 });
+test('以前的补片稿 4-6_补1.txt 照正片提示词保存（11-18 他定：没有补片稿了）', async () => {
+  const dir = path.join(ROOT, '项目', '测试', '提示词', '第1-1段'), p = path.join(dir, '4-6_补1.txt');
+  const io = new MemoryFS('原文', null); io.put(p, '原文'); const s = store(io);   // 不另给 RE_VP：和本机服务一样用 公用/核心.js 那一份
+  await s.save(p, body({ baseEditor: {} }));
+  assert.equal(io.text(p), '新文'); assert.equal(JSON.parse(io.text(path.join(dir, '4-6_补1_写稿.json'))).分镜稿, '新文'); io.noTemps();
+  io.put(path.join(dir, '4-6_出片任务_补1.txt'), '原文');
+  await assert.rejects(s.save(path.join(dir, '4-6_出片任务_补1.txt'), body({ baseEditor: {} })), { status: 400 });   // 任务书不是提示词
+});
 test('并发请求串行化，过期第二次保存冲突而非覆盖', async () => {
   const io = new MemoryFS(), s = store(io);
   const result = await Promise.allSettled([s.save(TARGET, body({ text: '第一文' })), s.save(TARGET, body({ text: '第二文' }))]);

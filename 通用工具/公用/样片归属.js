@@ -1,5 +1,5 @@
 /* 样片是哪一条提示词出的、照哪一版出的（2026-11-16 从 审片.html 挪出来：审片、提示词两页共用一套；提示词那一步筛「已出片 / 没出片」就照它）。
-   样片名是本机服务起的：11-18 起和出它的提示词同名（1_改3.txt 出的叫 1_改3.mp4，同一版再出一条 1_改3_2.mp4），认法在 Core.clipOfVer；
+   样片名是本机服务起的：11-18 起和出它的提示词同名（1_改3.txt 出的叫 1_改3.mp4，同一版再出一条 1_改3_2.mp4），认法在 Core.clipTake；
    以前的叫 第N段_第M条_<记号>_480p.mp4，记号是 Core.vpTok（提示词01、提示词02改1、老稿 镜头1-5改1），名字不改，照记号认。
    一条提示词 e：{ key: 原稿名, name: 最新那一版, vers: [几版] }（流水线.js 的 promptsOf 给的）。
    ClipOf.scene(s) 在网页里用（要先引 流水线.js）：照这一场的选定、成片文件夹、出片记录认。别的在 node 里也能跑。
@@ -8,9 +8,9 @@
 'use strict';
 const Core = G.Core || (typeof require === 'function' ? require('./核心.js') : null);
 const stem = n => String(n).replace(/\.[^.]+$/, '');
-/* 样片是不是 name 这一版出的：新名字照 Core.clipOfVer；老名字看带没带这一版的记号（两头是下划线，「镜头6-9拼接」不算「镜头6-9」） */
+/* 样片是不是 name 这一版出的：新名字照 Core.clipTake；老名字看带没带这一版的记号（两头是下划线，「镜头6-9拼接」不算「镜头6-9」） */
 const tokIn = (vid, name) => { const t = Core.vpTok(name); return t !== '整场' && ('_' + stem(vid) + '_').includes('_' + t + '_'); };
-const carries = (vid, name) => Core.clipOld(vid) ? tokIn(vid, name) : Core.clipOfVer(vid, name);
+const carries = (vid, name) => Core.clipOld(vid) ? tokIn(vid, name) : !!Core.clipTake(vid, name);
 /* 哪一条：给这一条的原稿名 e.key；认不出给 ''。sel：这一场的选定（原稿名 → 样片名）。
    选定过的照选定的；没选过，和哪一版同名就是哪一条（视频提示词_02.mp4 是 视频提示词_02.txt 出的，不算 视频提示词.txt 再出的第 2 条），再看是哪一版出的；这一场只有一条提示词就是它 */
 function promptOf(vid, list, sel) {

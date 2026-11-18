@@ -112,9 +112,7 @@ def check_manifest(project, prompt_relative):
         require(isinstance(item.get("name"), str) and item["name"].strip(), f"{ref} 缺少名称")
         kind, number = match.groups()
         numbers[kind].append(int(number))
-        # 审片补片（11-15）：剪下的原片放在样片旁的「视频名_补片」文件夹，只有视频能从 成片/ 挂
-        root = "成片" if kind == "视频" and str(item.get("path", "")).replace("\\", "/").startswith("成片/") else "资产"
-        source, _ = checked_path(project, item.get("path"), root)
+        source, _ = checked_path(project, item.get("path"), "资产")
         require(source.suffix.lower() in EXTENSIONS[kind], f"{ref} 文件扩展名与媒体类型不符")
         expected_hash = item.get("sha256")
         require(isinstance(expected_hash, str) and SHA256.fullmatch(expected_hash),

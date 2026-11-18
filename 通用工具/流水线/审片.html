@@ -33,7 +33,7 @@
      不满意：写批注 → 点「复制批注」贴给你自己的 AI，商量怎么改 → 回前面那一道重新走（多半是「提示词」那一步改稿、再批准出片）。
      审片只批注，不出方案（2026-11-15 他定）。
      选定、这一段定稿、写完批注回来：项目自己调 AI 和剧本对一对，对不上的写成剧本批注（2026-11-16 他定，对剧本.js）。
-   没选上的样片及时移进 历史记录/成片/第N段（批注、截图、补片文件夹跟着一起移，名字不改）。
+   没选上的样片及时移进 历史记录/成片/第N段（批注、截图跟着一起移，名字不改；以前补片留下的 _补片 文件夹也跟着移）。
    共用的东西（读写流水线.json、顶栏、步骤条、AI 任务）在 流水线.js。
    ============================================================ */
 'use strict';
@@ -83,10 +83,10 @@ function openDesk(s, vid, list) {
   document.body.append(SHELL); document.body.classList.add('wf-covered');
   frame.addEventListener('load', () => { try { frame.contentWindow.focus(); } catch (e) { /* 不要紧 */ } });
 }
-/* 没选上的样片：移进 历史记录/成片/第N段。旁边带它名字的批注、截图、补片文件夹（还有以前的 AI 建议、修改方案）跟着一起移，名字不改 */
+/* 没选上的样片：移进 历史记录/成片/第N段。旁边带它名字的批注、截图（还有以前的 AI 建议、修改方案、补片文件夹）跟着一起移，名字不改 */
 async function retire(s, vid) {
   if (AI.jobs.some(j => jobLive(j) && j.段 === s.段 && j.视频 === vid)) { toast('AI 正在照这条样片做事，做完再移', 'err'); return; }
-  if (!(await confirmDlg({ title: '这条不要了', body: vid + ' 移进这个项目的「历史记录 / 成片 / ' + segName(s.段) + '」，它的批注、截图、补片文件夹跟着一起移，名字不改。改出来的提示词留在原处。', ok: '移进历史记录' }))) return;
+  if (!(await confirmDlg({ title: '这条不要了', body: vid + ' 移进这个项目的「历史记录 / 成片 / ' + segName(s.段) + '」，它的批注、截图跟着一起移，名字不改。改出来的提示词留在原处。', ok: '移进历史记录' }))) return;
   const stem = stemOf2(vid), dest = [F.name, '历史记录', '成片', segName(s.段)];
   const all = clipsOf(s.段).all, names = [vid, ...['_批注.md', '_修改方案.md', '_修改方案_批注.md', '_AI建议.md', '_剪辑单.md'].map(x => stem + x).filter(n => all.has(n))];   // 只认这几样：11-18 起样片和提示词同名，1.mp4 旁边还有 1_改3_批注.md（别的样片的）
   try {

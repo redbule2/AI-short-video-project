@@ -73,7 +73,7 @@
 'use strict';
 const X = { tasks: new Set(), notes: new Map(), open: new Set(), vids: [], side: new Map(), map: new Map(), secs: new Map(), dur: new Map(), fw: new Map() };   // 出片任务书、AI 批注、展开着的批注；这一段的视频、写稿过程文件、参考素材映射里的登记、视频多长
 const PROMPT_BTN = true;   // 「写一条提示词」的入口。2026-11-12 他先说「先收起」，当晚资产确认完想在网页上写，问「为什么没有办法在网页上写」，就放回来了。改成 false 就又收起（已经有的稿照样列）
-const taskOf = window.Core.vpTask;   // 视频提示词_02.txt → 出片任务_02.txt；视频提示词_改1.txt → 出片任务_改1.txt；补片稿 _改2_补1 → 出片任务_改2_补1（公用/核心.js，和本机服务那头同一份）
+const taskOf = window.Core.vpTask;   // 视频提示词_02.txt → 出片任务_02.txt；视频提示词_改1.txt → 出片任务_改1.txt；老名字 4-6_补1.txt → 4-6_出片任务_补1.txt（公用/核心.js，和本机服务那头同一份）
 const sideOf = name => name.replace(/\.txt$/i, '') + '_写稿.json';
 const dirOf = s => [F.name, '提示词', segName(s.段)];
 const timeOfFile = (s, name) => { const rec = F.names.get(s.段); return rec && rec.time ? rec.time.get(name) || 0 : 0; };
@@ -93,7 +93,7 @@ async function loadExtra() {
   const s = sceneNow();
   if (!s) return;
   const rec = F.names.get(s.段), names = rec ? [...rec.set] : [];
-  X.tasks = new Set(names.filter(n => window.Core.RE_TASK.test(n)));   // 出片任务_改1.txt、补片的 出片任务_改2_补1.txt（和 taskOf 一样）
+  X.tasks = new Set(names.filter(n => window.Core.RE_TASK.test(n)));   // 出片任务_改1.txt、老名字的 4-6_出片任务_补1.txt（和 taskOf 一样）
   const notes = new Map();
   for (const n of names) if (/_AI批注\.md$/.test(n)) {
     try { notes.set(n.replace(/_AI批注\.md$/, '.txt'), parseNotes(C.decodeText((await FS.read(at([...dirOf(s), n]))).buf).text)); } catch (e) { /* 读不了就当没有 */ }
@@ -505,8 +505,8 @@ async function approve(s, e) {
   }
   const model = h('select', { class: 'inp' }, ['Seedance 2.5 样片', 'Seedance 2.5', 'Seedance 2.0 mini', 'Seedance 2.0 VIP'].map(v => h('option', { value: v }, v)));
   const res = h('select', { class: 'inp' }, ['480p', '720p', '1080p'].map(v => h('option', { value: v }, v))), resHint = h('span');
-  const def = e.patch ? 4 : ai ? Secs.fit(ai) : end >= 4 && end <= 30 ? end : dur ? Math.min(30, Math.max(4, Math.round(dur))) : 15;
-  const aiSay = e.patch ? '补片：按最短的 4 秒出，剪的时候留要的那几秒。' : ai ? 'AI 估的：' + Secs.say(est) + '。' + (ai < Secs.MIN ? '不到 4 秒，按 4 秒出，剪的时候剪短。' : ai > Secs.MAX ? '超过 30 秒，这一条装不下，要分条。' : '')
+  const def = ai ? Secs.fit(ai) : end >= 4 && end <= 30 ? end : dur ? Math.min(30, Math.max(4, Math.round(dur))) : 15;
+  const aiSay = ai ? 'AI 估的：' + Secs.say(est) + '。' + (ai < Secs.MIN ? '不到 4 秒，按 4 秒出，剪的时候剪短。' : ai > Secs.MAX ? '超过 30 秒，这一条装不下，要分条。' : '')
     + (es.st === 'changed' ? '估完以后稿子又改过，秒数可能不准。' : es.st === 'missing' ? '镜头' + es.lack.join('、') + ' 没估。' : '') : '这份稿没估过秒数（AI 写稿、改稿时才估）。';
   const sec = h('input', { class: 'inp', type: 'number', min: '4', max: '30', value: String(def) }), cap = h('input', { class: 'inp', type: 'number', min: '0', value: '', placeholder: '比如 300' });
   const err = h('div', { class: 'fld-err' }), price = h('div', { class: 'fn-note' }), warn = h('div', { class: 'fn-note warn' });
@@ -828,29 +828,6 @@ function frameWordLine(s, e, ws, edit) {   // edit：上面那一行没摆（挂
       edit && e.draft && hung.size ? h('button', { class: 'fl-link mute', type: 'button', title: '多挂几张、去掉几张：素材里的关键帧句子跟着重排', onclick: () => framesDlg(s, e) }, '改…') : null),
     h('div', { class: 'wf-grid' }, ws.map(w => kfChip(s, e, w, hung.get(w.img) || ''))));
 }
-/* 补片稿（审片后只换有毛病的几秒，AGENTS.md：原名_补1.txt、_补2）：不算一版，摆在它补的那一版这一条下面，能进去改、批准出片。
-   补片稿是你和你的 AI 写的；片子出到样片旁边的 样片名_补片/补N.mp4，剪进样片在剪映里做（2026-11-16 加）。
-   11-18 他要：「看稿」换成「进去改」，进去和别的提示词是同一个写稿页 */
-function patchesOf(s, e) {
-  const rec = F.names.get(s.段);
-  return rec ? [...rec.set].filter(n => { const p = window.Core.vpPatchOf(n); return p && e.vers.includes(p.of); }).sort((a, b) => a.localeCompare(b, 'zh', { numeric: true })) : [];
-}
-function patchRow(s, name) {
-  const p = window.Core.vpPatchOf(name), pt = window.Core.patchOut(segName(s.段), name, clipsOf(s.段).vids), tf = taskOf(name);
-  const rec = F.names.get(s.段), draft = !!rec && rec.set.has(name.replace(/\.txt$/i, '') + '_写稿.json');   // 进去改过：和普通的一条一样算「你来写的稿」（挂图记在写稿过程文件里）
-  const pe = { name, key: name, label: vpLabel(name), vers: [name], draft, patch: true };   // 批准出片照普通的一条走：稿子、参考素材映射里这份稿的登记
-  const jobs = AI.jobs.filter(j => j.段 === s.段 && jobLive(j) && (j.名 === name || j.名 === tf)), busy = jobs.length > 0;
-  return [h('div', { class: 'wf-item-task', 'data-name': name },
-    h('b', null, '补' + p.no), h('span', { class: 'faint small' }, name),
-    h('span', { class: 'fn-note' + (pt ? '' : ' warn'), title: pt ? '补的样片：' + pt.sample + '\n片子出到：成片 / ' + segName(s.段) + ' / ' + pt.dir + ' / ' + pt.file : null },
-      pt ? (pt.no ? '补第' + pt.no + '条样片' : '补样片 ' + pt.sample) : '成片里没找到「' + vpLabel(p.of) + '」出的样片'),
-    h('span', { class: 'sp' }),
-    h('button', { class: 'btn sm ink', type: 'button', title: '在写稿页里打开，自己改字；右栏看资产、AI 批注、校对和剧本', onclick: () => openWrite(s.段, name) }, '进去改'),
-    h('button', { class: 'btn sm zhu', type: 'button', disabled: busy || !AI.ok || !pt, title: pt ? '选好怎么出，页面排好任务书，就交给 Codex 去即梦出这一段。要花积分' : '先要有这一版出的样片', onclick: () => approve(s, pe) }, '批准出片'),
-    X.tasks.has(tf) ? h('button', { class: 'fl-link', type: 'button', title: '上回批准出片时排的任务书：' + tf, onclick: () => showText(at([...dirOf(s), tf])) }, '看任务书') : null),
-    jobs.length ? h('div', { class: 'wf-jobs' }, jobs.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题.replace(/ · .*/, ''))))) : null,
-    busy ? null : jobFailed('出片任务书', s.段, j => j.名 === name) || jobFailed('出片', s.段, j => j.名 === tf)];
-}
 /* 出过片的那一条标出来：哪几条样片（悬停看名字） */
 function madeTag(made) {
   if (!made.length) return null;
@@ -907,7 +884,6 @@ function rowOf(s, e, made) {
     imp ? h('p', { class: 'fn-note warn', style: 'margin:8px 0 0' }, '剧本改了：' + imp.为什么) : null,
     ed.length ? assetLine(s, e, ed, busy) : null,
     verLine(s, e),
-    patchesOf(s, e).map(n => patchRow(s, n)),
     bmLine(s, e),
     frameLine(s, e, inStrip),
     frameWordLine(s, e, kws, !restFr.length),
@@ -933,7 +909,8 @@ function filterBar(list, made, pf) {
 }
 function render() {
   const s = sceneNow(), seg = s.段;   // 不等资产：什么时候写你自己定（没图的写的时候用文字锁）
-  const list = promptsOf(seg).sort((a, b) => ((vpNo(a.name) || 1e9) - (vpNo(b.name) || 1e9)) || a.name.localeCompare(b.name, 'zh', { numeric: true })), stale = list.filter(e => promptStale(s, e.name));   // 第1条、第2条……在前，老稿按名字排
+  const stem = e => e.key.replace(/\.txt$/i, '');   // 按原稿名排：4-6 在 4-6_补1 前面
+  const list = promptsOf(seg).sort((a, b) => ((vpNo(a.name) || 1e9) - (vpNo(b.name) || 1e9)) || stem(a).localeCompare(stem(b), 'zh', { numeric: true })), stale = list.filter(e => promptStale(s, e.name));   // 第1条、第2条……在前，老稿按名字排
   const writing = AI.jobs.filter(j => j.事 === '写提示词' && j.段 === seg && jobLive(j) && !list.some(e => e.name === j.名));
   const cl = ClipOf.scene(s), made = new Map(list.map(e => [e.name, cl.made(e, list)])), pf = list.length > 1 ? pfNow() : '全部';   // 只有一条不摆筛选
   const shown = pf === '全部' ? list : list.filter(e => (made.get(e.name).length > 0) === (pf === '已出片'));

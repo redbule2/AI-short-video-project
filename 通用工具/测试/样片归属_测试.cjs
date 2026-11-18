@@ -65,8 +65,12 @@ test('11-18 起样片和提示词同名：1_改3.mp4 是 1.txt 那一条的改3 
   assert.equal(C.promptOf('1_改3_2.mp4', all, {}), n1.key);   // 同一版再出的一条
   assert.equal(C.verOf('1_改3_2.mp4', n1), '1_改3.txt');
   assert.equal(C.verOf('1_2.mp4', n1), '1.txt');
-  assert.equal(C.promptOf('1_改3_补1.mp4', all, {}), n1.key);   // 补片拼好的
-  assert.equal(C.verOf('1_改3_补1.mp4', n1), '1_改3.txt');
+  assert.equal(C.promptOf('1_改3_补1.mp4', all, {}), '');   // 11-18 起没有补片：它是 1_改3_补1.txt 出的，不算这一条的
+  const b46 = P('4-6.txt'), b461 = P('4-6_补1.txt'), b462 = P('4-6_补2.txt'), bu = [b46, b461, b462];
+  assert.equal(C.promptOf('4-6_补1.mp4', bu, {}), b461.key);   // 以前的补片稿是单独的一条
+  assert.equal(C.promptOf('4-6_补2_2.mp4', bu, {}), b462.key);
+  assert.equal(C.promptOf('4-6.mp4', bu, {}), b46.key);
+  assert.equal(C.promptOf('第1-1段_第4条_4-6_720p.mp4', bu, {}), b46.key);   // 老名字照记号认：记号 4-6补1 不算 4-6
   assert.equal(C.promptOf('1-5.mp4', all, {}), n15.key);   // 「1-5」不算「1」
   assert.equal(C.promptOf('3_2.mp4', all, {}), n3.key);   // 3.txt 再出的一条，不是 2.txt 出的（老名字的认法会认成 2）
   assert.equal(C.promptOf('4.mp4', all, {}), '');
