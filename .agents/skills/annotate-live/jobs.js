@@ -1774,6 +1774,11 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const Gone = require('./done-elsewhere.js')({ fsp, pj, vpPath });   // 等回复时看要做的事是不是在别处做完了（11-17）
   const PORT = Number(process.env.ANTOU_PORT) || 8766;   // 和 server.js 一样算：DeepSeek 的窗口做完照它告诉这边
   const tellLines = j => ['写完跑下面这一句，告诉项目做完了（跑不了也没关系，项目自己会看到这个文件）：', 'node "' + SERVER_JS + '" reply ' + j.id];
+  /* 对话名（11-18 他嫌 Codex 侧栏的对话名太长：默认取第一句话前 60 个字）：话的头一行写短名，叫 Codex 先用自带的 set_thread_title 改成它（实测不用给对话号）。
+     短名＝项目简称 · 任务标题（和后台任务抽屉里一样），一个任务交几回的带上 tag。项目简称：「--」前面那截，四个字以内照写，再长取前三个字（李云龙、药膳鸡） */
+  const shortProject = name => { const a = [...str(name).split('--')[0]]; return (a.length > 4 ? a.slice(0, 3) : a).join(''); };
+  const chatName = (j, tag) => [shortProject(j.项目), j.标题, tag].filter(Boolean).join(' · ');
+  const nameLine = (j, tag) => '【' + chatName(j, tag) + '】先给这个对话改名，改成【】里的字：调 mcp__codex_app__set_thread_title，参数只填 title（不在 Codex 里就跳过这一步）。';
   const seeLines = imgs => imgs.length ? ['动笔前先把这几张图各看一遍：', ...imgs] : [];
   function selfMsg(j, files, imgs) {   // 给我提示词、Claude 桌面版：读任务书、写回复文件、跑一句告诉项目
     if (KINDS[j.事].selfMsg) return KINDS[j.事].selfMsg(j, files, tellLines(j));   // 要先和人商量的（与AI沟通剧本）：这段话它自己说
@@ -1814,7 +1819,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           }
         } finally { j.等Claude = false; }
       }
-      const text = files.codex ? codexMsg(j, files) : how === 'deepseek' ? dsMsg(j, files, imgs) : selfMsg(j, files, imgs);
+      const said = files.codex ? codexMsg(j, files) : how === 'deepseek' ? dsMsg(j, files, imgs) : selfMsg(j, files, imgs);
+      const text = how === 'deepseek' ? said : nameLine(j, files.tag) + '\n' + said;   // DeepSeek 的窗口标题本来就是任务标题，不用改名
       const 开 = j.续 ? (j.开0 || j.开始 || Date.now()) : Date.now();
       Object.assign(j, { 交代: text, 读过: '', 格式错: '', 格式错时: 0 });
       j.交给 = { 方式: how, 等: how === 'self' ? '你' : how === 'claude' ? '发送' : '做', 回复: files.reply, 开, 要Codex: !!files.codex };   // 先占上（同步）：别的任务看得到这一个在等发送

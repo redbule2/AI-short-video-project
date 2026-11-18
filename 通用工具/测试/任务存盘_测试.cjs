@@ -144,7 +144,7 @@ function boot(F) {
 
 /* ---------- 二、本机服务重开：出片接着等，清单里别的摆回去 ---------- */
 async function restartTests() {
-  const F = memFs(), P = '测试';
+  const F = memFs(), P = '药膳鸡配方--测试';   // 名字长、带「--」：交给 AI 的话头一行的对话名用简称（11-18）
   const now = new Date(), stamp = stampOf(new Date(now.getTime() - 5 * 60e3));
   const cutDir = pj(P, '历史记录', 'AI任务', stamp + '_出片_第1-1段'), imgDir = pj(P, '历史记录', 'AI任务', stamp + '_出图_第1-1段');
   const task = pj(P, '提示词', '第1-1段', '4-6_出片任务.txt');
@@ -184,6 +184,7 @@ async function restartTests() {
   assert.ok(!F.files.has(pj(P, '资产', '第1-1段_出片记录.json')), '接着等的出片不再记一笔出片记录');
   assert.ok(!F.json(path.join(cutDir, '自己交.json')).结束);
   assert.match(F.files.get(path.join(cutDir, '交给AI的话.txt')).toString(), /请照 .*4-6_出片任务\.txt 执行。/);
+  assert.equal(F.files.get(path.join(cutDir, '交给AI的话.txt')).toString().split('\n')[0], '【药膳鸡 · 出片 · 第1-1段 镜头4-6】先给这个对话改名，改成【】里的字：调 mcp__codex_app__set_thread_title，参数只填 title（不在 Codex 里就跳过这一步）。', 'Codex 对话名：项目简称 · 任务标题');
   const one = await call('GET', '/api/job/tl1');
   assert.equal(one.状态, '没成', '摆回去的按号也查得到');
   await call('POST', '/api/job/tl1?cancel');
@@ -214,6 +215,7 @@ async function imageTests() {
   let j = null;
   for (let i = 0; i < 100 && !(j && j.交给); i++) { await sleep(30); j = (await call('GET', '/api/job')).jobs.find(x => x.id === 'im1'); }
   assert.ok(j && j.状态 === '在做' && j.交给 && j.交给.等 === '你', '记着有没有图的出图：重开后接着等');
+  assert.ok(F.files.get(path.join(dir, '交给AI的话.txt')).toString().startsWith('【测试 · 出图 · 砂锅】先给这个对话改名'), '名字短的项目照写');
   assert.equal(F.files.get(pj(P, '资产', '全局资产', '道具', '砂锅_候选.png')).toString(), '重开前 Codex 刚存上的新图', '候选没被收进历史记录');
   assert.ok(![...F.files.keys()].some(p => p.includes(path.join('历史记录', '资产'))), '什么都没收走');
   assert.deepEqual(F.json(path.join(dir, '自己交.json')).接着, { 有图: true }, '接着等时照旧记着');

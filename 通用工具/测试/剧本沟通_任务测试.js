@@ -103,7 +103,9 @@ const talk = extra => ({ 事: '与AI沟通剧本', 项目: '测试', 批注: NOT
     const s = setup();
     const j = await s.call('POST', '/api/job', talk());
     const m = await s.msgOf(j.id);
-    assert.ok(m.话.startsWith('我写好了第1段的剧本，想先和你商量着改。'));
+    const [head, ...rest] = m.话.split('\n');   // 头一行是对话名（11-18）
+    assert.equal(head, '【测试 · 与AI沟通 · 第1段_剧本】先给这个对话改名，改成【】里的字：调 mcp__codex_app__set_thread_title，参数只填 title（不在 Codex 里就跳过这一步）。');
+    assert.ok(rest.join('\n').startsWith('我写好了第1段的剧本，想先和你商量着改。'));
     assert.ok(m.话.includes('等我说「定稿」，再把改好的整份剧本') && m.话.includes('我没说「定稿」之前别写它') && m.话.includes('只写「不改」两个字'));
     assert.ok(m.话.includes(m.回复) && m.话.includes('server.js" reply ' + j.id));   // 写哪个文件、写完怎么告诉项目
     assert.equal(m.说, s.K.与AI沟通剧本.handSay);
@@ -168,7 +170,7 @@ const talk = extra => ({ 事: '与AI沟通剧本', 项目: '测试', 批注: NOT
     const s = setup({ [notePath]: '批注：先吹一口' });
     const j = await s.call('POST', '/api/job', { 事: '按批注改', 项目: '测试', 批注: NOTE, 渠道: SELF });
     const m = await s.msgOf(j.id);
-    assert.ok(m.话.startsWith('请读这份任务书，照里面的要求做：'));
+    assert.ok(m.话.startsWith('【测试 · 按批注改 · 第1段_剧本】先给这个对话改名') && m.话.split('\n')[1] === '请读这份任务书，照里面的要求做：');
     assert.equal(m.说, '');
     await s.call('POST', '/api/job/' + j.id + '?cancel');
   });
