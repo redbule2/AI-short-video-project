@@ -1009,6 +1009,7 @@ function renderTop() {
       PAGE.name === '设定' ? h('span', { class: 'crumb-seg' }, '全片设定') : PAGE.crumb ? h('span', { class: 'crumb-seg' }, PAGE.crumb) : null,
       s ? h('span', { class: 'crumb-seg' }, '第' + s.段 + '段' + (s.名.trim() ? ' ' + s.名.trim() : '')) : null),
     h('div', { class: 'top-right' },
+      window.BgTasks ? BgTasks.topBtn() : null,   // 后台任务（11-17 加；在 后台任务.js）：各项目在做的事都在一个抽屉里，点一行去那一页
       PAGE.name === '风格' ? null : h('a', { class: 'btn ghost sm wf-styles', href: pageUrl('风格', { p: F.name }), title: '风格库：每种风格现存的几条样片，都能在这里放', onclick: e => { e.preventDefault(); go('风格'); } }, icon('film'), '风格'),   // 11-14 加：风格.html
       PAGE.name === '网盘' ? null : h('a', { class: 'btn ghost sm wf-cloud', href: pageUrl('网盘', { p: F.name }), title: '这个项目在网盘上的那一份：传上去、拿下来、删网盘上的', onclick: e => { e.preventDefault(); go('网盘'); } }, icon('cloud'), '网盘'),
       window.ScriptCheck ? ScriptCheck.topBtn() : null,   // 内置 AI（对剧本用的，11-16 加；在 对剧本.js）
@@ -1888,3 +1889,6 @@ async function styleDlg(s, opt) {
 
 /* 对剧本（2026-11-16 加）：审片、剧本两页自动对剧本，顶栏「内置 AI」各页都有。功能在 对剧本.js，这里替各页引上，各页的 html 不用一个个加 */
 if (!document.querySelector('script[src$="对剧本.js"]')) document.head.append(Object.assign(document.createElement('script'), { src: new URL('对剧本.js', document.currentScript ? document.currentScript.src : location.href).href }));
+
+/* 后台任务（2026-11-17 加）：顶栏「后台任务」，各项目在做的事都在一个抽屉里，点一行去那一页。功能在 后台任务.js，这里替各页引上 */
+if (!window.BgTasks) document.head.append(Object.assign(document.createElement('script'), { src: new URL('后台任务.js', document.currentScript ? document.currentScript.src : location.href).href }));
