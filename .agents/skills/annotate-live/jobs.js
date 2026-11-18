@@ -1067,7 +1067,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
             const re = new RegExp('^' + name.slice(0, dot).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '__(\\d{8}-\\d{6})' + name.slice(dot).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i');
             const hd = pj(j.项目, '历史记录', ...q.slice(0, -1));
             const olds = (await fsp.readdir(hd).catch(() => [])).map(n => [n, (re.exec(n) || [])[1]]).filter(x => x[1]).sort((a, b) => b[1].localeCompare(a[1]));   // 新的在前
-            if (olds.length) r.换 = await Promise.all(olds.map(async ([n, t]) => ({ t, sha: sha256(await fsp.readFile(path.join(hd, n))) })));   // 历史记录里有同名的旧版：这个名字的文件换过
+            if (olds.length) r.换 = await Promise.all(olds.map(async ([n, t]) => ({ t, f: path.join(hd, n), sha: sha256(await fsp.readFile(path.join(hd, n))) })));   // 历史记录里有同名的旧版：这个名字的文件换过（f：认画布节点时比画面用）
           }
           r.sha256 = now;
         }
@@ -1081,10 +1081,14 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         const no = n + 1, nth = pt ? pt.no + '条补' + pt.patch : no + '条', P = Object.assign({ 模型: 'Seedance 2.5 样片', 清晰度: '480p', 秒数: 15, 积分上限: 0 }, j.参数 || {});
         if (!/^(480p|720p|1080p)$/.test(str(P.清晰度)) || !(P.秒数 >= 4 && P.秒数 <= 30)) throw fail('清晰度或者时长不对');
         j.步骤 = '在核对即梦账号和画布';
+        const nodeName = f => { const q = f.split('/'); const base = q[q.length - 1].replace(/\.[^.]+$/, ''); return q[1] === '全局资产' ? q[2] + '_' + base : /^第.+段$/.test(q[1]) ? q[1] + '_' + base : base; };
+        const swapped = refs.filter(r => r.换), cid = (/ai-canvas\/([0-9a-f-]{36})/i.exec(str(set.画布)) || [])[1];   // 换过新的：画布上同名的节点各是哪一版，先认好写进任务书，和核对账号一起查（11-17：原来叫 Codex 去生成记录里查，没记的它就停下问人）
+        const seenP = swapped.length && cid ? canvas.versions({ name: j.项目, canvas: cid.toLowerCase(), profile: prof, items: swapped.map(r => ({ title: nodeName(r.path), cur: pj(j.项目, ...r.path.split('/')), sha: r.sha256, olds: r.换 })) })
+          .catch(e => { log('画布上同名的节点没认成，任务书照旧叫 Codex 去认：' + e.message); return null; }) : null;
         const JMOK = await jmCheck(set.画布, prof);   // 这个号登着、画布在它名下才写任务书
+        if (seenP) { j.步骤 = '在认画布上同名的节点是哪一版'; (await seenP || []).forEach((v, i) => { swapped[i].节点 = v; }); }
         const tag = (/样片/.test(P.模型) ? '样片' : '') + P.清晰度;
         const out = pt ? ['成片', segDir(j.段), pt.dir, pt.file] : ['成片', segDir(j.段), segDir(j.段) + '_第' + no + '条_' + label + '_' + tag + '.mp4'], abs = (...x) => pj(j.项目, ...x).replace(/\\/g, '/');
-        const nodeName = f => { const q = f.split('/'); const base = q[q.length - 1].replace(/\.[^.]+$/, ''); return q[1] === '全局资产' ? q[2] + '_' + base : /^第.+段$/.test(q[1]) ? q[1] + '_' + base : base; };
         const per = /样片/.test(P.模型) && P.清晰度 === '480p' ? (vrefs.length ? 18 : 9) : /2\.0 mini/.test(P.模型) && P.清晰度 === '720p' && vrefs.length ? 12 : /2\.0 VIP/.test(P.模型) && P.清晰度 === '720p' && vrefs.length ? 28 : 0;   // 以往实扣的价（2026-11-11～13）
         const lines = ['任务：在即梦画布上为《' + j.项目 + '》第' + j.段 + '段' + (pt ? '第' + pt.no + '条补出一段（补' + pt.patch + '，剪进样片 ' + pt.sample + '）：' : '第' + no + '条出一条视频：') + label + '，' + P.模型 + '，' + P.清晰度 + '，' + P.秒数 + ' 秒。',
           '这份任务书是项目管理的流水线在 ' + nowText() + ' 生成的。用户在页面上点了「批准出片」才会交到你手上；这一条由你从头做到尾：建草稿、核对、报价、提交生成、等出片、下载。不要手改这份任务书。',
@@ -1099,7 +1103,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           ...(vrefs.length && vtotal && Math.abs(vtotal - P.秒数) > 1 ? ['白模合计 ' + vtotal.toFixed(1) + ' 秒，这一条照用户填的出 ' + P.秒数 + ' 秒，不要改。'] : []),
           '', '三、参考：' + refs.length + ' 个，按顺序挂，编号要对上', refs.length ? '画布上已经有同名素材节点的（节点名写在括号里），回读确认还在、类型对，就直接引用，不重传；没有的才用 CLI 传：图片传成独立图片节点' + (vrefs.length ? '，视频传成独立视频素材节点（resource upload --type video，再 node create video）' : '') + (refs.some(r => /^@音频\d+$/.test(r.ref)) ? '，音频传成独立音频素材节点（resource upload --type audio，再 node create audio，不带 --run）' : '') + '，节点名照括号里的写。节点A 里用「从画布选择」引用素材节点，不要直接上传进视频节点。' : '这一条没有登记参考素材（纯文字出片）。',
           ...refs.map(r => r.ref + ' ' + r.name + '：' + abs(...r.path.split('/')) + (r.secs ? '，' + r.secs.toFixed(1) + ' 秒' : '') + '，SHA-256 ' + r.sha256 + '（素材节点名：' + nodeName(r.path) + '）。'
-            + (r.换 ? '这个文件换过新的，旧版收在历史记录。画布上的同名节点照生成记录里的 SHA-256 认：是下面哪一版旧的，就先把它改成那一版的名字（照 AGENTS.md，只改名，不删）：' + r.换.map(o => '「' + nodeName(r.path) + '__' + o.t + '」（SHA-256 ' + o.sha + '）').join('、') + '；改好再照这个文件传一个新节点，名字写「' + nodeName(r.path) + '」。是现在这个文件的，直接引用；哪一版都对不上、查不到，就停下问我。' : '')),
+            + (r.节点 ? canvas.plan(nodeName(r.path), r.节点) : r.换 ? '这个文件换过新的，旧版收在历史记录。画布上的同名节点照生成记录里的 SHA-256 认：是下面哪一版旧的，就先把它改成那一版的名字（照 AGENTS.md，只改名，不删）：' + r.换.map(o => '「' + nodeName(r.path) + '__' + o.t + '」（SHA-256 ' + o.sha + '）').join('、') + '；改好再照这个文件传一个新节点，名字写「' + nodeName(r.path) + '」。是现在这个文件的，直接引用；哪一版都对不上、查不到，就停下问我。' : '')),
           ...(refs.some(r => r.换) ? ['给上面写着「换过新的」的旧节点改名，是「别的节点一律不改」唯一的例外。'] : []),
           '', '四、提示词', '文件：' + abs(...rel), '核对：非空行 ' + text.split(/\r?\n/).filter(l => l.trim()).length + ' 行，SHA-256 ' + sha256(buf) + '。', '全文原样填进节点A 的提示词，保留换行，不增删、不改字；存草稿后回读，和文件逐字比对一遍。装不下、被截断就停下告诉我，不要删减。',
           '', '五、核对、报价、提交', P.积分上限 > 0 ? '报价不超过 ' + P.积分上限 + ' 积分才提交；超过就停在草稿，告诉我报价多少。' : '用户没有给积分上限：存好草稿、报出价钱以后停下，等用户点头，不要提交。',
@@ -1109,7 +1113,9 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         const tf = ['提示词', segDir(j.段), taskOfVp(j.名)];
         await archive(j.项目, tf);
         await writeFile(pj(j.项目, ...tf), lines.join('\n') + '\n');
-        return { 结果: '任务书写好了（第' + nth + '，挂 ' + refs.length + ' 个参考' + (vrefs.length ? '，含 ' + vrefs.length + ' 段白模' : '') + '；即梦用' + (prof ? '「' + prof + '」号' : '默认号') + '「' + JMOK.nick + '」，画布「' + JMOK.name + '」）' + (prof ? '。注意：Codex 那边也要登着这个号，没登它会停下' : ''), 产出: [tf.join('/')] };
+        const ren = swapped.reduce((n, r) => n + (r.节点 || []).filter(x => x.版 && x.版 !== 'cur').length, 0), odd = swapped.filter(r => (r.节点 || []).some(x => !x.版)).map(r => nodeName(r.path));
+        const seen = (ren ? '。画布上 ' + ren + ' 个旧节点要改名，已认好是哪一版' : '') + (odd.length ? '。注意：画布上「' + odd.join('」「') + '」认不出是哪一版，Codex 会停下问你' : '') + (swapped.some(r => !r.节点) ? '。画布上的旧节点这回没认成，照旧叫 Codex 去认' : '');
+        return { 结果: '任务书写好了（第' + nth + '，挂 ' + refs.length + ' 个参考' + (vrefs.length ? '，含 ' + vrefs.length + ' 段白模' : '') + '；即梦用' + (prof ? '「' + prof + '」号' : '默认号') + '「' + JMOK.nick + '」，画布「' + JMOK.name + '」）' + seen + (prof ? '。注意：Codex 那边也要登着这个号，没登它会停下' : ''), 产出: [tf.join('/')] };
       },
     },
     /* 出片：把任务书交给 Codex 真去做（要花积分；只在用户点了「批准出片」时才开） */

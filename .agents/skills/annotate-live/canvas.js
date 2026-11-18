@@ -9,8 +9,9 @@
      /api/jimeng?img=<素材编号>&p=项目[&jm=…]           一张画布上的图（先下到缓存）
    画布：项目 资产/出片设置.json 的「画布」网址。登录位：出片设置里写了「登录位」就用它；没写先试默认的，再试页面给的
      （总览「即梦授权」里加过的），谁读得了这张画布就用谁。
-   缓存在系统临时文件夹 antou-canvas/<画布编号>/：<素材编号>.img，和 比对.json（各图的像素校验值，本地图按 路径|大小|修改时间 记）。
-     删了也不要紧，再下一遍。
+   缓存在系统临时文件夹 antou-canvas/<画布编号>/：<素材编号>.img，和 比对.json（各图的像素校验值，本地图按 路径|大小|修改时间 记；
+     画布视频：素材编号 → 文件的 SHA-256）。删了也不要紧，再下一遍。
+   出片任务书也用（jobs.js 直接调，11-17 加）：versions 认画布上和本地文件同名的节点是哪一版，plan 照认的结果写任务书里那一句。
    ============================================================ */
 const fs = require('fs');
 const fsp = fs.promises;
@@ -30,7 +31,8 @@ module.exports = function makeCanvas({ HOME, JM, run, log }) {
   const fail = m => Object.assign(new Error(m), { plain: true });
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  /* ---------- 即梦命令行：一次最多开三个。low：下图排在读节点后面（页面在下小图时点「再读一遍」，不用等图下完） ---------- */
+  /* ---------- 即梦命令行：一次最多开三个。low：下图排在读节点后面（页面在下小图时点「再读一遍」，不用等图下完）。
+     call 不排队：出片任务书认节点时，几个名字一起查（一条要三秒上下，一起查和查一条一样快），只查节点不下图 ---------- */
   let busy = 0;
   const queue = [];
   async function slot(fn, low) {
@@ -38,7 +40,7 @@ module.exports = function makeCanvas({ HOME, JM, run, log }) {
     else busy++;   // 等着的那个是接前一个的班，不另加
     try { return await fn(); } finally { const next = queue.shift(); if (next) next.r(); else busy--; }
   }
-  const cli = (profile, args, timeout, low) => slot(async () => {
+  async function call(profile, args, timeout) {
     if (!fs.existsSync(JM)) throw fail('这台电脑上没找到即梦命令行（' + JM + '）');
     const r = await run(JM, ['--non-interactive', ...(profile ? ['--profile', profile] : []), ...args], { timeout: timeout || 90e3 });
     let j = null;
@@ -48,7 +50,8 @@ module.exports = function makeCanvas({ HOME, JM, run, log }) {
       throw fail((er && (er.message || er.reason || er.code)) || (r.err || r.out || '').trim().slice(0, 300) || '即梦命令行出错（退出码 ' + r.code + '）');
     }
     return j.data || {};
-  }, low);
+  }
+  const cli = (profile, args, timeout, low) => slot(() => call(profile, args, timeout), low);
 
   /* ---------- 哪张画布、用哪个登录位 ---------- */
   async function settings(name) {
@@ -60,8 +63,8 @@ module.exports = function makeCanvas({ HOME, JM, run, log }) {
   }
   const dirOf = canvas => path.join(CACHE, canvas);
   async function loadCmp(canvas) {
-    try { const j = JSON.parse(await fsp.readFile(path.join(dirOf(canvas), '比对.json'), 'utf8')); return { 画布图: j.画布图 || {}, 本地图: j.本地图 || {}, 登录位: j.登录位 }; }
-    catch (e) { return { 画布图: {}, 本地图: {} }; }
+    try { const j = JSON.parse(await fsp.readFile(path.join(dirOf(canvas), '比对.json'), 'utf8')); return { 画布图: j.画布图 || {}, 本地图: j.本地图 || {}, 画布视频: j.画布视频 || {}, 登录位: j.登录位 }; }
+    catch (e) { return { 画布图: {}, 本地图: {}, 画布视频: {} }; }
   }
   async function saveCmp(canvas, cmp) {
     await fsp.mkdir(dirOf(canvas), { recursive: true });
@@ -275,6 +278,99 @@ module.exports = function makeCanvas({ HOME, JM, run, log }) {
     return { 画布: canvas, 登录位: profile || 'default', 共: items.length, 一样: same, 只在画布: only.map(x => ({ node: x.node, title: x.title, rid: x.rid, w: x.w, h: x.h, 第几张: x.第几张, 类别: x.类别, 段: x.段, 名称: x.名称, 注: x.注 || '' })) };
   }
 
+  /* ---------- 画布上和本地文件同名的节点，是本地哪一版（出片任务书用，11-17 加） ----------
+     本地文件换了新的，旧版进历史记录（名字带 __时间），画布上同名的节点可能还是旧版。原来叫 Codex 去生成记录里查节点对哪个
+     SHA-256，没记的就停下问人（3-4 第20条）。现在写任务书时这里先认好：
+       视频：下下来算 SHA-256（即梦原样存，和上传时一样）；图：各版都是 PNG 就比像素（即梦会重压，文件不一样、像素一样）；
+       比不了的（下不来、有不是 PNG 的）照上传时间认：历史记录的 __时间 是那一版被换下来的时候，上传以后头一回换下来的那一版就是它，
+       那一版（没换过的就是现在的文件）要在上传前就写好了，不然认不出。
+     items：[{ title 节点名, cur 现在的文件（绝对路径）, sha 它的 SHA-256, olds: [{ t __时间, f 那一版的文件, sha }] }]
+     回：和 items 一一对应，每样是画布上一字不差同名的节点 [{ node, 版: 'cur'｜那一版的 __时间｜''（认不出）, 凭: 文件｜画面｜时间｜对不上｜没有素材｜'' }] */
+  async function versions({ name, canvas, profile, items }) {
+    const cmp = await loadCmp(canvas), base = path.join(HOME, name);
+    const found = await Promise.all(items.map(async it => {   // 按名字查出来的还有 名字__时间、名字_上层 这些，只留一字不差的
+      const out = [];
+      for (let off = 0; off <= 1000;) {
+        const d = await call(profile, ['node', 'find', '--project-id', canvas, '--name', it.title, '--type', 'image', '--type', 'video', '--limit', '50', '--offset', String(off)]);
+        const page = d.items || d.nodes || [];
+        out.push(...page.filter(n => n && n.nodeId && String(n.title || '').trim() === it.title).map(n => n.nodeId));
+        if (!d.hasMore || !page.length) break;
+        off += page.length;
+      }
+      return [...new Set(out)];
+    }));
+    const ids = [...new Set(found.flat())], res = new Map();   // 节点上的素材：编号、是不是视频、上传时间
+    for (let i = 0; i < ids.length; i += 20) {
+      const d = await call(profile, ['node', 'show', '--project-id', canvas, ...ids.slice(i, i + 20).flatMap(id => ['--node-id', id])]);
+      for (const r of d.nodes || d.items || []) {
+        const n = r && (r.node || r), x = n && (n.resources || []).find(v => v && v.resourceId && v.status === 'success');
+        if (n && n.nodeId && x) res.set(n.nodeId, { rid: x.resourceId, video: x.type === 'video' || !!x.video, at: Number(x.createdAt) || 0 });
+      }
+    }
+    const fileSha = f => new Promise((ok, no) => { const h = crypto.createHash('sha256'); fs.createReadStream(f).on('error', no).on('data', c => h.update(c)).on('end', () => ok(h.digest('hex'))); });
+    const vidSha = async rid => {   // 画布上的视频：下下来算完就删（视频大，只记校验值）
+      if (cmp.画布视频[rid]) return cmp.画布视频[rid];
+      await fsp.mkdir(dirOf(canvas), { recursive: true });
+      const part = path.join(dirOf(canvas), rid + '.' + process.pid + '.part');
+      try { await cli(profile, ['resource', 'download', rid, '--project-id', canvas, '-o', part], 300e3, true); return (cmp.画布视频[rid] = await fileSha(part)); }
+      finally { await fsp.rm(part, { force: true }).catch(() => {}); }
+    };
+    const imgPx = async rid => {   // 画布上的图：像素校验值（和资产页同一份缓存）
+      if (!(cmp.画布图[rid] && cmp.画布图[rid].hash)) { const r = pixelHash(await fsp.readFile(await fetchImg(profile, canvas, rid))); cmp.画布图[rid] = r ? { hash: r.hash, w: r.w, h: r.h } : { hash: null }; }
+      return cmp.画布图[rid].hash;
+    };
+    const localPx = async f => {   // 本地的 PNG：键和资产页一样（项目里的路径|大小|修改时间）
+      let st;
+      try { st = await fsp.stat(f); } catch (e) { return null; }
+      const key = path.relative(base, f).split(path.sep).join('/') + '|' + st.size + '|' + Math.floor(st.mtimeMs);
+      if (!(key in cmp.本地图)) { let r = null; try { r = pixelHash(await fsp.readFile(f)); } catch (e) { /* 读不了 */ } cmp.本地图[key] = r && r.hash; }
+      return cmp.本地图[key];
+    };
+    const mtime = async f => { try { return (await fsp.stat(f)).mtimeMs; } catch (e) { return Infinity; } };
+    const stampMs = t => { const m = /^(\d{4})(\d\d)(\d\d)-(\d\d)(\d\d)(\d\d)$/.exec(t); return m ? new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime() : NaN; };
+    const byTime = async (it, at) => {
+      if (!at) return '';
+      const hit = it.olds.map(o => ({ ...o, ms: stampMs(o.t) })).filter(o => o.ms >= at).sort((a, b) => a.ms - b.ms)[0];
+      return (await mtime(hit ? hit.f : it.cur)) <= at + 60e3 ? (hit ? hit.t : 'cur') : '';   // 一分钟：本机和即梦的钟对不齐
+    };
+    const judge = async (it, id) => {
+      const x = res.get(id);
+      if (!x) return { node: id, 版: '', 凭: '没有素材' };
+      const all = [{ t: 'cur', f: it.cur, sha: it.sha }, ...it.olds];
+      try {
+        if (x.video) { const h = await vidSha(x.rid), v = all.find(o => o.sha === h); return { node: id, 版: v ? v.t : '', 凭: v ? '文件' : '对不上' }; }
+        if (all.every(o => /\.png$/i.test(o.f))) {
+          const h = await imgPx(x.rid);
+          if (h) {   // 照上传时间猜的那一版先比（一张大图解开要大半秒，旧版多的头一回能省好几秒），比中就停
+            const guess = await byTime(it, x.at);
+            let blind = false;
+            for (const o of [...all.filter(o => o.t === guess), ...all.filter(o => o.t !== guess)]) { const p = await localPx(o.f); if (p === h) return { node: id, 版: o.t, 凭: '画面' }; if (!p) blind = true; }
+            if (!blind) return { node: id, 版: '', 凭: '对不上' };
+          }
+        }
+      } catch (e) { log('画布上的 ' + id + ' 没下下来，照上传时间认：' + e.message); }
+      const t = await byTime(it, x.at);
+      return { node: id, 版: t, 凭: t ? '时间' : '' };
+    };
+    const out = [];
+    for (let i = 0; i < items.length; i++) out.push(await Promise.all(found[i].map(id => judge(items[i], id))));
+    await saveCmp(canvas, cmp).catch(e => log('画布比对结果没存上：' + e.message));
+    return out;
+  }
+  /* 出片任务书里「换过新的」那一样：画布上叫 nm 的节点各怎么办（照 versions 认的结果写给 Codex） */
+  function plan(nm, nodes) {
+    const why = { 文件: '下载下来比过文件', 画面: '下载下来比过画面', 时间: '照上传时间认的' };
+    const lost = { 对不上: '下载下来比过，和本地哪一版都对不上', 没有素材: '节点上没有素材' };
+    const head = '这个文件换过新的，旧版收在历史记录。', tail = '开工时画布上要是多出这里没写的「' + nm + '」，也停下问我。';
+    if (!nodes.length) return head + '生成任务书时查过画布，没有叫「' + nm + '」的节点：照这个文件传一个新节点，名字写「' + nm + '」。' + tail;
+    const cur = nodes.filter(x => x.版 === 'cur'), old = nodes.filter(x => x.版 && x.版 !== 'cur'), odd = nodes.filter(x => !x.版);
+    const say = [...old.map(x => x.node + ' 是旧版（' + why[x.凭] + '），先把它改名成「' + nm + '__' + x.版 + '」（照 AGENTS.md，只改名，不删）'),
+      ...cur.map((x, i) => x.node + ' 就是现在这个文件（' + why[x.凭] + '），' + (i ? '不用管它' : '直接引用，不重传')),
+      ...odd.map(x => x.node + ' 认不出是哪一版（' + (lost[x.凭] || '下不下来，也没法照上传时间认') + '）')];
+    return head + '生成任务书时查过画布上叫「' + nm + '」的节点：' + say.join('；') + '。'
+      + (odd.length ? '有认不出的：这一样先别改名、别传，停下问我。' : cur.length ? '' : '改好名再照这个文件传一个新节点，名字写「' + nm + '」。') + tail;
+  }
+
   const jobs = new Map();   // 项目 → { 状态: 在对|好了|出错, 进度, 结果, 错误, 时间 }
   async function handle(req, res, q, { json, httpErr }) {
     const name = String(q.get('p') || '');
@@ -307,5 +403,5 @@ module.exports = function makeCanvas({ HOME, JM, run, log }) {
     }
     return json(res, { 状态: job.状态, 进度: job.进度, 错误: job.错误 || '', 时间: job.时间, ...(job.结果 || {}) });
   }
-  return { handle };
+  return { handle, versions, plan };
 };
