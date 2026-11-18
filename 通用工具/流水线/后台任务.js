@@ -71,7 +71,9 @@
     const live = j.state === 'running', st = j.state;
     return { key: 'pan:' + j.id, src: 'pan', id: j.id, p: str(j.p), title: str(j.title).trim() || '网盘 · ' + (PAN_KIND[j.kind] || '传拿'), live, queued: false, wait: false,
       t0: +j.started || 0, t1: +j.ended || 0,
-      say: live ? (j.total ? '做了 ' + (j.done || 0) + ' / ' + j.total : '在做') : st === 'done' ? '好了' : st === 'stopped' ? '停掉了' : '没全做成' + (j.nErrors ? '（' + j.nErrors + ' 处出错）' : ''),
+      say: live ? (j.total ? '做了 ' + (j.done || 0) + ' / ' + j.total : '在做') : st === 'done' ? '好了' : st === 'stopped' ? '停掉了'
+        : j.restarted ? '本机服务重开过，没做完：点进去「再来一次」'   // 11-18：重开时那件在做，跟着断了（网盘管理.js 存盘读回来的）
+        : '没全做成' + (j.nErrors ? '（' + j.nErrors + ' 处出错）' : ''),
       ok: st === 'done', page: '网盘', s: '', hash: '', where: '网盘', job: j };
   }
   /* 抽屉里摆什么：live 在做的（这个项目的在前，同一个项目的挨着；等你的在前，排队的在后，先开的在前），done 半小时里做完的（新的在前） */
@@ -194,7 +196,7 @@
     S.sum = h('span', { class: 'bg-sum' });
     S.list = h('div', { class: 'bg-list' });
     S.box = h('aside', { class: 'bg-drawer', role: 'dialog', 'aria-label': '后台任务', hidden: true },
-      h('div', { class: 'bg-h' }, h('b', { title: '本机服务在做的事：各项目的 AI 任务、网盘传拿。本机服务重开过，之前的任务就不在了' }, '后台任务'), S.sum, h('span', { class: 'sp' }),
+      h('div', { class: 'bg-h' }, h('b', { title: '本机服务在做的事：各项目的 AI 任务、网盘传拿。AI 任务重开本机服务也还在：在等回复的接着等，接不上的写明要重点一次' }, '后台任务'), S.sum, h('span', { class: 'sp' }),
         h('button', { class: 'bg-x', type: 'button', title: '收起（Esc）', onclick: () => close() }, icon('x'))),
       S.list);
     document.body.append(S.box);

@@ -105,6 +105,9 @@ test('网盘的活：做到几个、好了、出错几处，点了去网盘那�
   assert.equal(live[0].page, '网盘');
   assert.equal(live[0].where, '网盘');
   assert.deepEqual(done.map(r => [r.title, r.say, r.ok]), [['网盘 · 拿下来', '没全做成（3 处出错）', false], ['删掉网盘上的 1 个', '好了', true]]);
+  // 11-18：本机服务重开时那件在做，跟着断了：说清楚，别只说出错几处
+  const cut = B.rowsOf([], [{ id: 4, kind: 'up', p: '甲', title: '上传 9 个文件', state: 'failed', restarted: true, started: NOW - 9e4, ended: NOW - 1e3, nErrors: 1 }], '甲', NOW).done;
+  assert.deepEqual(cut.map(r => r.say), ['本机服务重开过，没做完：点进去「再来一次」']);
 });
 
 test('做了多久、几分钟前', () => {

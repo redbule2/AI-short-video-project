@@ -294,6 +294,7 @@ body.dk { display: block; height: 100vh; overflow: hidden; background: var(--nig
 <div id="layer"></div>
 <div id="toasts" aria-live="polite"></div>
 <script src="../公用/核心.js"></script>
+<script src="../公用/样片归属.js"></script>
 <script src="../公用/底座.js"></script>
 <script src="../公用/界面.js"></script>
 <script src="../公用/审片.js"></script>
@@ -325,7 +326,7 @@ const pjAt = rel => at([PJ, ...String(rel).split('/').filter(Boolean)]);   // �
 
 const NOTES_TAIL = '_批注.md', SHOTS_TAIL = '_批注截图';
 const VIDEO_RE = /\.(mp4|m4v|mov|webm)$/i;
-const { RE_VP, vpVer, vpBase, vpNo, vpLabel, vpTok } = window.Core;   // 视频提示词的名字：和流水线、本机服务共用 公用/核心.js 那一份
+const { RE_VP, vpVer, vpBase, vpNo, vpLabel } = window.Core;   // 视频提示词的名字：和流水线、本机服务共用 公用/核心.js 那一份
 const RATES = [0.5, 1, 2];
 const BOM = String.fromCharCode(0xFEFF);
 const unbom = t => t.startsWith(BOM) ? t.slice(1) : t;
@@ -382,13 +383,19 @@ async function loadMap() {
 }
 async function loadPromptList() {
   const ents = await listRel('提示词/' + SEGD);
-  D.prompts = ents.filter(e => e.kind === 'file' && RE_VP.test(e.name)).map(e => ({ name: e.name, label: vpLabel(e.name), tok: vpTok(e.name) }))
+  D.prompts = ents.filter(e => e.kind === 'file' && RE_VP.test(e.name)).map(e => ({ name: e.name, label: vpLabel(e.name) }))
     .sort((a, b) => (vpNo(a.name) || 999) - (vpNo(b.name) || 999) || byZh(vpBase(a.name), vpBase(b.name)) || vpVer(a.name) - vpVer(b.name));   // 改过几版的：原稿、改1、改2……挨着
 }
-/* 名字里带着「提示词02」「镜头1-5」的照它猜；只有一条提示词就是它 */
+/* 这一段的提示词，一条一组：{ key: 原稿名, name: 最新一版, vers: [几版] }（D.prompts 里原稿、改1、改2 挨着） */
+function promptFams() {
+  const m = new Map();
+  for (const p of D.prompts) { const k = vpBase(p.name), e = m.get(k) || { key: k, name: p.name, vers: [] }; e.vers.push(p.name); e.name = p.name; m.set(k, e); }
+  return [...m.values()];
+}
+/* 照名字猜是哪一版出的：和流水线同一套（公用/样片归属.js：和提示词同名的、老名字里带着「提示词02」「镜头1-5」的）；只有一条提示词就是它 */
 function guessPrompt() {
-  const parts = '_' + stem(VID) + '_', by = D.prompts.find(e => e.tok !== '整场' && parts.includes('_' + e.tok + '_'));
-  return by ? by.name : D.prompts.length === 1 ? D.prompts[0].name : '';
+  const fams = promptFams(), e = fams.find(f => f.key === ClipOf.promptOf(VID, fams, null));
+  return e ? ClipOf.verOf(VID, e, null) : '';
 }
 const KIND_CLS = { 人物: 'k-ren', 场景: 'k-jing', 道具: 'k-dao', 特效: 'k-dao', 关键帧: 'k-zhen' };
 function kindOfRef(r) {
@@ -731,8 +738,8 @@ function pickVideo(anchor, list) {
     h('span', { class: 'ph' }, icon('film')), h('span', { class: 'pn' }, h('b', null, r.ref + ' · ' + r.label), h('small', null, r.rel)))))]);
 }
 function pickClip(anchor) {
-  const tok = D.prompt ? vpTok(vpBase(D.prompt)) : '', re = tok ? new RegExp('_' + tok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(改[0-9]+)?_') : null;   // 同一条：原稿出的、改1 出的都算
-  const same = c => !!re && re.test('_' + stem(c.name) + '_');
+  const fam = D.prompt ? promptFams().find(f => f.key === vpBase(D.prompt)) : null;   // 同一条：原稿出的、改1 出的都算（公用/样片归属.js）
+  const same = c => !!fam && fam.vers.some(n => ClipOf.carries(c.name, n));
   const list = [...D.clips].sort((a, b) => same(b) - same(a));
   popover(anchor, close => [h('div', { class: 'fl-pop-h' }, '和哪一条样片比'),
     h('div', { class: 'fl-pl' }, list.map(c => h('button', { type: 'button', class: 'fl-pi' + (CMP.src === 'clip' && CMP.rel === c.rel ? ' on' : ''), onclick: () => { close(); setCmp('clip', c.rel); } },

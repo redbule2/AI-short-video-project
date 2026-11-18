@@ -59,8 +59,8 @@ test('照新资产改的批注：MARK 开头，一样一段（缩进，底稿里
   assert.ok(md.includes('1. 道具「竹棍」的文字描写（现在的）：\n  一根四尺来长的青竹棍。'));
   assert.ok(md.includes('2. 场景「破庙」的 GEO 底稿（现在的）：\n  ## 1｜空间\n  门朝南'));
   assert.ok(!md.includes('洪七公') && !md.includes('童大圣'));   // 页面没给「字」（图在哪、新描写）的不写
-  assert.ok(!md.includes('换过的图') && !md.includes('换了出场的'));   // 没有这两种，就不说怎么对
-  assert.ok(md.includes('都对得上，就回一个空列表 []') && md.includes('@图片、@视频、@音频的编号和挂的文件不动'));
+  assert.ok(!md.includes('换过的图') && !md.includes('换了出场的') && !md.includes('挂图照 sd25-pe'));   // 没有这几种，就不说怎么对
+  assert.ok(md.includes('都对得上，就回一个空列表 []') && md.includes('已经挂的 @图片、@视频、@音频，编号和文件不动'));
   assert.ok(md.includes('不写他、她') && md.includes('只改它在【主体与关系】里的那一行') && !md.includes('各镜头写成一样'));   // 11-17 第二版：长相不抄进镜头、写名字
   const back = Core.parseNotes(md);
   assert.equal(back.items.length, 0);
@@ -122,6 +122,8 @@ test('换图、换音色、换出场的也写进批注：先打开新图看，�
   assert.ok(md.includes('2. 人物「我军士兵」那一行的图或音色（换过了，现在的）：\n  图：项目/测试/资产/全局资产/人物/我军士兵.png'));
   assert.ok(md.includes('3. 这一场出场的（换过了，现在的）：\n  人物：我军士兵（图 …）\n  道具：榴弹炮（图 …）'));
   assert.ok(md.includes('- 换过的图：先打开下面写的那张图看') && md.includes('- 换了出场的：只看这一条已经写到的人物、道具、场景') && md.includes('这一条没写到的不加'));
+  // 11-18：换了图，看得见它还没挂的照 sd25-pe 挂上、登记；挂图那句写清图里要照的东西（药膳鸡 2-3 砂锅只写外形，锅里出成空的）
+  assert.ok(md.includes('- 挂图照 sd25-pe：这一条镜头里看得见它、还没挂它的图的，挂上，编号接着往后编，登记进【素材登记】') && md.includes('装着东西的写上里面的') && md.includes('已经挂了的，那一句没写全的补上'));
   const back = Core.parseNotes(md);
   assert.equal(back.items.length, 0);   // 缩进的几行不会被当成人写的逐条批注
   assert.ok(back.general.includes('道具：榴弹炮'));

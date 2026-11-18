@@ -485,9 +485,9 @@ async function newPrompt(s) {
   await (r.self ? startSelf : startJob)({ 事: '写提示词', 段: s.段, 名: r.name, ...(r.what ? { 写什么: r.what } : {}), ...(r.bm ? { 白模: r.bm } : {}), ...(r.frames.length ? { 关键帧: r.frames } : {}) });
   rerender();
 }
-/* 估个价：照以往实扣的（2026-11-11～13）。没实扣过的出法不瞎估 */
+/* 估个价：照以往实扣的（2026-11-11～13；2.5 720p 照 11-17 的四回）。没实扣过的出法不瞎估。jobs.js 出片任务书里有同一张表，改要两处一起改 */
 function priceOf(model, res, secs, vid) {
-  const per = /2\.5 样片/.test(model) && res === '480p' ? (vid ? 18 : 9) : /2\.0 mini/.test(model) && res === '720p' && vid ? 12 : /2\.0 VIP/.test(model) && res === '720p' && vid ? 28 : 0;
+  const per = /2\.5 样片/.test(model) && res === '480p' ? (vid ? 18 : 9) : model === 'Seedance 2.5' && res === '720p' ? (vid ? 26 : 13) : /2\.0 mini/.test(model) && res === '720p' && vid ? 12 : /2\.0 VIP/.test(model) && res === '720p' && vid ? 28 : 0;
   return per ? { per, total: per * secs } : null;
 }
 /* 批准出片（11-15 他定：「生成任务书」「批准出片」两个按钮合成这一个）：先问这一条怎么出（哪个模型、多清楚、几秒、最多花多少积分），
@@ -528,7 +528,7 @@ async function approve(s, e) {
   paint();
   const r = await dialog(close => dlgShell('批准出片 · ' + e.label, '点「批准出片」：页面先排好任务书（用哪份提示词、挂哪几个素材、怎么出、存到哪），再把出片的话给你，复制贴进你自己的 Codex，它照任务书去即梦出一条样片。要花积分。',
     [gapNote, kbNote, field('模型', model), field('清晰度', res, resHint), field('时长（秒）', sec, aiSay + (end ? '事件脚本写到第 ' + end + ' 秒；' : '') + (vids.length && dur ? '白模' + (vids.length > 1 ? '合计' : '') + ' ' + dur.toFixed(1) + ' 秒；' : '') + '可填 4 到 30'), price, warn,
-      field('最多花多少积分', cap, '报价超过这个数，Codex 会停下来问你；不填就是存好草稿、报完价就停'),
+      field('最多花多少积分', cap, '不填：Codex 报完价直接提交，不再停下问你。填了：报价超过这个数，它才停下问你'),
       h('div', { class: 'fn-note' }, '即梦账号和画布照这个项目的 资产/出片设置.json。排任务书时先核对这个号能不能改这张画布，对不上就停下，不出片。'), err],
     [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'),
       h('button', { class: 'btn zhu', onclick: () => {
@@ -828,22 +828,24 @@ function frameWordLine(s, e, ws, edit) {   // edit：上面那一行没摆（挂
       edit && e.draft && hung.size ? h('button', { class: 'fl-link mute', type: 'button', title: '多挂几张、去掉几张：素材里的关键帧句子跟着重排', onclick: () => framesDlg(s, e) }, '改…') : null),
     h('div', { class: 'wf-grid' }, ws.map(w => kfChip(s, e, w, hung.get(w.img) || ''))));
 }
-/* 补片稿（审片后只换有毛病的几秒，AGENTS.md：原名_补1.txt、_补2）：不算一版，摆在它补的那一版这一条下面，能看稿、批准出片。
-   页面不写补片稿，是你和你的 AI 写的；片子出到样片旁边的 样片名_补片/补N.mp4，剪进样片在剪映里做（2026-11-16 加） */
+/* 补片稿（审片后只换有毛病的几秒，AGENTS.md：原名_补1.txt、_补2）：不算一版，摆在它补的那一版这一条下面，能进去改、批准出片。
+   补片稿是你和你的 AI 写的；片子出到样片旁边的 样片名_补片/补N.mp4，剪进样片在剪映里做（2026-11-16 加）。
+   11-18 他要：「看稿」换成「进去改」，进去和别的提示词是同一个写稿页 */
 function patchesOf(s, e) {
   const rec = F.names.get(s.段);
   return rec ? [...rec.set].filter(n => { const p = window.Core.vpPatchOf(n); return p && e.vers.includes(p.of); }).sort((a, b) => a.localeCompare(b, 'zh', { numeric: true })) : [];
 }
 function patchRow(s, name) {
   const p = window.Core.vpPatchOf(name), pt = window.Core.patchOut(segName(s.段), name, clipsOf(s.段).vids), tf = taskOf(name);
-  const pe = { name, key: name, label: vpLabel(name), vers: [name], draft: false, patch: true };   // 批准出片照普通的一条走：稿子、参考素材映射里这份稿的登记
+  const rec = F.names.get(s.段), draft = !!rec && rec.set.has(name.replace(/\.txt$/i, '') + '_写稿.json');   // 进去改过：和普通的一条一样算「你来写的稿」（挂图记在写稿过程文件里）
+  const pe = { name, key: name, label: vpLabel(name), vers: [name], draft, patch: true };   // 批准出片照普通的一条走：稿子、参考素材映射里这份稿的登记
   const jobs = AI.jobs.filter(j => j.段 === s.段 && jobLive(j) && (j.名 === name || j.名 === tf)), busy = jobs.length > 0;
   return [h('div', { class: 'wf-item-task', 'data-name': name },
     h('b', null, '补' + p.no), h('span', { class: 'faint small' }, name),
     h('span', { class: 'fn-note' + (pt ? '' : ' warn'), title: pt ? '补的样片：' + pt.sample + '\n片子出到：成片 / ' + segName(s.段) + ' / ' + pt.dir + ' / ' + pt.file : null },
-      pt ? '补第' + pt.no + '条样片' : '成片里没找到「' + vpLabel(p.of) + '」出的样片'),
+      pt ? (pt.no ? '补第' + pt.no + '条样片' : '补样片 ' + pt.sample) : '成片里没找到「' + vpLabel(p.of) + '」出的样片'),
     h('span', { class: 'sp' }),
-    h('button', { class: 'fl-link', type: 'button', title: '看补片稿；@图片 点一下能看图', onclick: () => openShell(at([...dirOf(s), name]), '第' + s.段 + '段 · ' + pe.label) }, '看稿'),
+    h('button', { class: 'btn sm ink', type: 'button', title: '在写稿页里打开，自己改字；右栏看资产、AI 批注、校对和剧本', onclick: () => openWrite(s.段, name) }, '进去改'),
     h('button', { class: 'btn sm zhu', type: 'button', disabled: busy || !AI.ok || !pt, title: pt ? '选好怎么出，页面排好任务书，就交给 Codex 去即梦出这一段。要花积分' : '先要有这一版出的样片', onclick: () => approve(s, pe) }, '批准出片'),
     X.tasks.has(tf) ? h('button', { class: 'fl-link', type: 'button', title: '上回批准出片时排的任务书：' + tf, onclick: () => showText(at([...dirOf(s), tf])) }, '看任务书') : null),
     jobs.length ? h('div', { class: 'wf-jobs' }, jobs.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题.replace(/ · .*/, ''))))) : null,
@@ -944,7 +946,7 @@ function render() {
       h('span', { class: 'sp' }),
       stale.length > 1 ? h('button', { class: 'btn sm', title: '都看过了，都还对得上', onclick: () => { for (const e of stale) keptOf(s)['提示词/' + e.name] = nowText(); touch(); rerender(); } }, '都沿用') : null,
       PROMPT_BTN ? h('button', { class: 'btn sm' + (list.length ? '' : ' ink'), onclick: () => newPrompt(s) }, icon('plus'), list.length ? '再写一条提示词' : '写提示词') : null,
-      list.length && !stale.length ? h('button', { class: 'btn ink', onclick: () => go('审片', { s: seg }) }, '下一步：审片 →') : null),
+      reviewState(s).st !== 'lock' ? h('button', { class: stale.length ? 'btn sm' : 'btn ink', onclick: () => go('审片', { s: seg }) }, '下一步：审片 →') : null),   // 审片进得去就摆：有样片时别的提示词待核对也能去审（11-18）
     writing.length ? h('div', { class: 'wf-jobs' }, writing.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题)))) : null,
     jobFailed('写提示词', seg, j => !list.some(e => e.name === j.名)),
     list.length > 1 ? filterBar(list, made, pf) : null,

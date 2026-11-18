@@ -127,6 +127,45 @@ test('补片出到哪：那一版出的样片里第几条最大的，旁边的 �
   assert.equal(Core.patchOut('第1-1段', '视频提示词_改2.txt', names), null);   // 不是补片稿
 });
 
+test('样片和提示词同名（11-18 他定：好找）：1_改3.txt 出的叫 1_改3.mp4，同一版再出一条 _2、_3', () => {
+  assert.equal(Core.clipName('1_改3.txt', []), '1_改3.mp4');
+  assert.equal(Core.clipName('1_改3.txt', ['1_改3.mp4', '1_改3_批注.md', '1_改3_批注截图', '第3-4段_第20条_1改3_720p.mp4']), '1_改3_2.mp4');
+  assert.equal(Core.clipName('1_改3.txt', ['1_改3.mp4', '1_改3_3.mp4']), '1_改3_4.mp4');   // 移进历史记录的也让开
+  assert.equal(Core.clipName('1.txt', ['1_改3.mp4', '1-5.mp4', '1_补1.mp4']), '1.mp4');   // 别的版、别的条、补片拼的不算
+  assert.equal(Core.clipName('视频提示词_02.txt', ['视频提示词.mp4']), '视频提示词_02.mp4');
+  assert.equal(Core.clipTake('1_改3.mp4', '1_改3.txt'), 1);
+  assert.equal(Core.clipTake('1_改3_2.mp4', '1_改3.txt'), 2);
+  assert.equal(Core.clipTake('1_改3_2.mp4', '1.txt'), 0);
+  assert.equal(Core.clipTake('1_改3_补1.mp4', '1_改3.txt'), 0);
+  assert.equal(Core.clipTake('1_改3.md', '1_改3.txt'), 0);
+  assert.equal(Core.clipTake('1-5.mp4', '1.txt'), 0);
+  assert.equal(Core.clipOfVer('1_改3_补1.mp4', '1_改3.txt'), true);   // 补片拼好的和补片稿同名，也算这一版的
+  assert.equal(Core.clipOfVer('1_改3_补1_2.mp4', '1_改3.txt'), true);
+  assert.equal(Core.clipOfVer('1_改3_补片.mp4', '1_改3.txt'), false);
+  assert.equal(Core.clipOfVer('1_改3.mp4', '1.txt'), false);
+  assert.equal(Core.clipOfVer('第3-4段_第20条_1改3_720p.mp4', '1_改3.txt'), false);   // 老名字照记号认（公用/样片归属.js）
+  assert.equal(Core.clipOld('第3-4段_第20条_1改3_720p.mp4'), true);
+  assert.equal(Core.clipOld('1_改3.mp4'), false);
+});
+
+test('补片出到哪（新名字）：那一版最后出的那条，1_改3_2.mp4 比 1_改3.mp4 新，也比老名字的新', () => {
+  const names = ['第3-4段_第20条_1改3_720p.mp4', '1_改3.mp4', '1_改3_2.mp4', '1_改3_批注.md', '1_改3_补1.mp4', '1-5.mp4'];
+  assert.deepEqual(Core.patchOut('第3-4段', '1_改3_补1.txt', names), { no: 0, sample: '1_改3_2.mp4', dir: '1_改3_2_补片', file: '补1.mp4', patch: 1 });
+  assert.deepEqual(Core.patchOut('第3-4段', '1_改3_补2.txt', ['1_改3.mp4']), { no: 0, sample: '1_改3.mp4', dir: '1_改3_补片', file: '补2.mp4', patch: 2 });
+  assert.equal(Core.patchOut('第3-4段', '1_改3_补1.txt', ['第3-4段_第20条_1改3_720p.mp4']).no, 20);   // 只有老名字的：照旧
+  assert.equal(Core.patchOut('第3-4段', '1_补1.txt', ['1_改3.mp4', '1-5.mp4']), null);   // 1.txt 那一版没出过
+});
+
+test('审片锁不锁（11-18：3-4 镜头1 改3 出了片，别的几条提示词待核对，审片整页锁住看不了）：有样片就能审', () => {
+  assert.equal(Core.reviewLock(5, 7, 'you'), '');   // 提示词待核对：不挡已经出好的样片
+  assert.equal(Core.reviewLock(5, 7, 'ai'), '');    // AI 在写提示词：也不挡
+  assert.equal(Core.reviewLock(5, 7, 'ok'), '');
+  assert.equal(Core.reviewLock(5, 0, 'ok'), '');    // 没样片、提示词都好了：照旧进得去（页面说「还没有样片」）
+  assert.equal(Core.reviewLock(5, 0, 'you'), 'stale');   // 没样片：照旧先回提示词那一步
+  assert.equal(Core.reviewLock(5, 0, 'ai'), 'ai');
+  assert.equal(Core.reviewLock(0, 3, 'you'), 'none');    // 还没有提示词：锁
+});
+
 test('剧本可以没有段头（11-16 晚：直接从正文写）：没写场景、人物不算毛病；写回去再读出来，正文、备注照旧', async () => {
   const doc = Core.newScriptDoc('1-1', '吃白食');
   doc.sections[1].blocks = [{ id: 'b0', text: '△ 老李端上一碗面。' }, { id: 'b1', text: '老李（小声）：吃吧。' }];

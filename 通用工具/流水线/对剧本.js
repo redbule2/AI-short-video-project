@@ -4,6 +4,7 @@
    这一份是页面那头（各页引在 流水线.js 后面）：
      审片页  点「满意，选定」「这一段定稿」、从审片台写完批注回来：自动开；这一段在对的、对出问题的，摆在样片上面
      剧本页  AI 写了几条批注，说一句；你重新定稿时，跟着片子改的那几条样片和提示词不标「待核对」（剧本改成了片子的样子）
+             照定稿样片写的那几条：点「照片子改剧本」，项目自己照着改，镜头表跟着删、不用重新定稿（11-18，本机服务第 15 版起）
      顶栏    「内置 AI」：Codex 在不在、DeepSeek 的 key（每台电脑自己填，存在这台电脑的用户目录里，不进项目）
    记录在 定稿的剧本/第N段/第N段_对剧本.json（AI 写，页面只读）
    ============================================================ */
@@ -52,24 +53,45 @@
     v.sig = v.list.length + '｜' + notes;
     return v;
   }
+  /* ---------- 照片子改剧本（11-18 他定）：照定稿样片写的剧本批注带着「改成」，项目自己照着改，不再交给 AI、不用重新定稿 ----------
+     服务那头（script-check.js）改完剧本，在对剧本记录里记一笔；这头照它记进这一场的「回填」（剧本定稿照旧算数，公用/核心.js 的 scriptFinal），
+     写提示词时整镜删掉、对剧本认出来的镜头，从镜头表拿掉（号不再用） */
+  const BACK = '照片子改剧本';
+  function syncBack(seg, list) {
+    const s = F.doc && Array.isArray(F.doc.场) ? F.doc.场.find(x => x.段 === seg) : null;
+    if (!s || !C.applyBack || !C.applyBack(s, list, shotNos(s))) return false;   // 记「回填」、拿掉删掉的镜头：公用/核心.js
+    touch();
+    return true;
+  }
+  async function backfill(s) {
+    if (!(await confirmDlg({ title: '照片子改剧本', ok: '照着改',
+      body: 'AI 照定稿的样片写的那几条剧本批注，项目直接照着改剧本，原来的剧本收进历史记录；写提示词时整镜删掉的镜头，镜头表跟着删。剧本定稿照旧算数，不用重新定稿。你写的、照审片批注写的留着，照老办法交给 AI 改。' }))) return;
+    const j = await startJob({ 事: BACK, 段: s.段 }, true);
+    if (j) toast(j.状态 === '没成' ? '没改成：' + j.错误 : '在照片子改剧本，几秒就好', j.状态 === '没成' ? 'err' : undefined);
+    rerender();
+  }
+
   /* 剧本上方那一条：这回定稿以后 AI 写了几条批注、还在 */
   function scriptNote(s) {
     if (!ready()) return null;
-    const c = CACHE.get(s.段), ended = AI.jobs.some(j => KINDS.includes(j.事) && j.段 === s.段 && !jobLive(j) && (j.结束 || 0) > (c ? c.at : 0));
+    const c = CACHE.get(s.段), ended = AI.jobs.some(j => (KINDS.includes(j.事) || j.事 === BACK) && j.段 === s.段 && !jobLive(j) && (j.结束 || 0) > (c ? c.at : 0));
     if (!c || ended || Date.now() - c.at > 15e3) {
       if (!c || !c.loading) {
         if (c) c.loading = true; else CACHE.set(s.段, { at: 0, sig: '', list: [], notes: false, loading: true });
-        load(s.段).then(v => { const was = CACHE.get(s.段); CACHE.set(s.段, v); if (!was || was.sig !== v.sig) { if (!typing()) rerender(); else F.later = true; } })
+        load(s.段).then(v => { const was = CACHE.get(s.段); CACHE.set(s.段, v); if (syncBack(s.段, v.list) || !was || was.sig !== v.sig) { if (!typing()) rerender(); else F.later = true; } })
           .catch(() => { const x = CACHE.get(s.段); if (x) { x.loading = false; x.at = Date.now(); } });
       }
       if (!c || !c.at) return null;
     }
     if (!c.notes) return null;
-    const since = timeOf(s.剧本定稿), mine = c.list.filter(r => (r.写了 || []).length && timeOf(r.时间) > since);
+    const since = Math.max(timeOf(s.剧本定稿), timeOf(s.回填)), mine = c.list.filter(r => (r.写了 || []).length && timeOf(r.时间) > since);
     if (!mine.length) return null;
     const n = k => mine.filter(r => r.事 === k).reduce((a, r) => a + r.写了.length, 0), a = n('定稿对剧本'), b = n('审片对剧本');
+    const auto = LINK.v >= 15 && mine.some(r => r.事 === '定稿对剧本' && r.写了.some(x => typeof x.改成 === 'string')), run = AI.jobs.find(j => j.事 === BACK && j.段 === s.段 && jobLive(j));
     return h('span', { class: 'fn-note warn', title: '对剧本的记录在 ' + ledgerAt(s.段).slice(1).join('/') },
-      'AI 对剧本写了 ' + (a + b) + ' 条批注（' + [a ? '照定稿的样片 ' + a + ' 条' : '', b ? '照审片批注 ' + b + ' 条' : ''].filter(Boolean).join('、') + '），标着「AI 照……写」。在下面看：不同意的删掉，同意就交给 AI 改，改完重新定稿。');
+      'AI 对剧本写了 ' + (a + b) + ' 条批注（' + [a ? '照定稿的样片 ' + a + ' 条' : '', b ? '照审片批注 ' + b + ' 条' : ''].filter(Boolean).join('、') + '），标着「AI 照……写」。在下面看：不同意的删掉，'
+      + (auto ? '同意就点「照片子改剧本」：照定稿样片写的那几条项目自己改，镜头表跟着改，不用重新定稿' + (b ? '；照审片批注写的照老办法交给 AI 改' : '') + '。' : '同意就交给 AI 改，改完重新定稿。'),
+      auto ? (run ? jobLine(run) : h('button', { class: 'btn sm', type: 'button', title: '不调 AI：照对剧本时 AI 写好的「改成」直接改剧本', onclick: () => backfill(s) }, '照片子改剧本')) : null);
   }
   /* 重新定稿时（剧本.html 的 finalScript）：上回定稿以后照定稿的样片写过批注的，那几条样片还选定着，就记「沿用」。返回记了几条 */
   async function keepClips(s, prev) {
@@ -148,8 +170,9 @@
   let tries = 0;
   const tick = setInterval(() => {
     if (++tries > 40) { clearInterval(tick); return; }
-    if (!ready()) return;
+    if (!ready() || !F.doc || !Array.isArray(F.doc.场)) return;
     clearInterval(tick);
+    for (const x of F.doc.场) if (x && x.剧本定稿) load(x.段).then(v => { if (syncBack(x.段, v.list) && !typing()) rerender(); }).catch(() => {});   // 别的页面照片子改过剧本、这一页还没记上的：补记（11-18）
     const top = document.querySelector('.wf-top .top-right');
     if (!top || top.querySelector('.wf-builtin')) return;
     const b = topBtn();

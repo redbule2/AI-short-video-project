@@ -58,7 +58,7 @@ const sideData = () => ({ 写法: '分镜', 分镜稿: structured, 自由稿: '�
     assert.ok(reviewBook.includes('用户只把分镜写成自由文本'));
     assert.ok(reviewBook.includes('公共区仍然共用'));
     assert.ok(reviewBook.includes(raw.slice(1)));   // 整份稿（连公共区）都给 AI 看
-    assert.doesNotMatch(reviewBook, /## 分镜写法/);   // 旧格式稿照原格式批，不附 sd25-pe 分镜写法
+    assert.doesNotMatch(reviewBook, /## sd25-pe 地图/); assert.ok(reviewBook.includes('## 技能：sd25-pe\n测试技能'));   // 旧格式稿照原格式批：不带 sd25-pe 地图，照旧附整份技能
     assert.equal(s.raw(), raw); assert.equal(s.writes.length, 0);
   });
   await check('AI 初稿禁止覆盖已有提示词（含排队后的新建）', async () => {
@@ -109,8 +109,9 @@ const sideData = () => ({ 写法: '分镜', 分镜稿: structured, 自由稿: '�
     const s = setup(pe, peSide()), j = { ...job(), 渠道: 'claude' };
     const book = await s.K.批注提示词.book(j);
     assert.ok(book.includes('生成目标和事件脚本多半是人自己写的')); assert.doesNotMatch(book, /seedance-prompt-format/);
-    const shots = book.indexOf('## 分镜写法（摘自 sd25-pe');   // 11-15：分镜那几节现摘，放在稿子前面；测试里的假技能摘不到，写明
-    assert.ok(shots > 0 && shots < book.indexOf('## 提示词（文件：')); assert.match(book, /没摘到/);
+    const map = book.indexOf('## sd25-pe 地图'), raw = book.indexOf('## 提示词（文件：');   // 11-18：地图放在稿子前面，照地图现摘的几节放在最后；测试里的假技能对不上地图，写明并附整份
+    assert.ok(map > 0 && map < raw && book.indexOf('## sd25-pe 摘录') > raw);
+    assert.match(book, /这回对不上：.*升级过/); assert.ok(book.includes('## 技能：sd25-pe（整份，因为上面有对不上的）\n测试技能'));
     await s.K.批注提示词.apply(j, '总评：还行\n## 1\n- 位置：镜头1\n- 级别：提醒\n- 原文：镜头1：甲递书。\n- 批注：写清怎么递\n- 改成：镜头1：甲双手把书递过去。\n## 2\n- 位置：保持一致\n- 原文：【保持一致】\n- 批注：再加一条');
     const md = [...s.files.entries()].find(([p]) => p.endsWith('_AI批注.md'))[1].toString();
     assert.ok(md.includes('- 原文：甲递书。')); assert.ok(md.includes('- 改成：甲双手把书递过去。'));
@@ -197,6 +198,63 @@ const sideData = () => ({ 写法: '分镜', 分镜稿: structured, 自由稿: '�
     await s.K.写提示词.apply({ ...job(), assets: [kf] }, '【提示词】\n【生成目标】\n' + '甲给乙递书。'.repeat(20) + '\n\n【事件脚本】\n镜头1：甲递书。\n【素材登记】\n[{"ref": "@图片1", "name": "关键帧", "path": "' + kf + '"}]');
     const refs = JSON.parse(s.files.get(mapPath).toString()).prompts['提示词/第1段/视频提示词.txt'].references;
     assert.equal(refs.length, 1); assert.equal(refs[0].name, '关键帧｜镜头4｜开头');
+  });
+  /* 2026-11-18：按批注改也能新挂图（药膳鸡 2-3：换了砂锅图，自动对稿不许动挂图，只好手补，补成只照外形，锅里出成空的） */
+  const bookImg = '资产/全局资产/道具/书.png', manImg = '资产/全局资产/人物/甲.png', otherImg = '资产/全局资产/道具/别的.png', key18 = '提示词/第1段/视频提示词.txt';
+  const flow18 = () => JSON.stringify({ 人物: [{ 名: '甲', 资产: manImg }], 道具: [{ 名: '书', 资产: bookImg }, { 名: '别的', 资产: otherImg }], 场: [{ 段: '1', 人物: ['甲'], 道具: ['书'] }] });
+  const setup18 = () => {
+    const s = setup(pe, peSide()), at = f => path.join(root, '项目', '测试', ...f.split('/'));
+    s.files.set(flowPath, Buffer.from(flow18()));
+    for (const f of [bookImg, manImg, otherImg]) s.files.set(at(f), Buffer.from('png:' + f));
+    s.files.set(mapPath, Buffer.from(JSON.stringify({ schema_version: 1, prompts: { [key18]: { prompt_sha256: 'x', references: [{ ref: '@图片1', name: '甲', path: manImg, sha256: 'y' }] } } })));
+    s.files.set(path.join(root, '项目', '测试', '提示词', '第1段', '视频提示词_批注.md'), Buffer.from('# 批注\n\n## 整体\n批注：书的图挂上\n'));
+    return s;
+  };
+  const j18 = () => ({ ...job(), rel: ['提示词', '第1段', '视频提示词_批注.md'] });
+  const line1 = '@图片1用于甲的五官、发型和服装，不采用图片背景。', line2 = '@图片2用于书的蓝色封皮、线装书脊和夹在书里的红色书签，不采用图片背景。';
+  const addOp = JSON.stringify([{ 原文: line1, 第几处: 1, 改成: line1 + '\n' + line2 }]);
+  await check('按批注改（11-18）：任务书列出这一场能挂的图，讲明新挂图照 sd25-pe 写、在【素材登记】里登记', async () => {
+    const s = setup18(), book = await s.K.按批注改提示词.book(j18());
+    assert.ok(book.includes('## 能挂的图（这一场的）\n人物「甲」：' + manImg + '\n道具「书」：' + bookImg + '\n'));
+    assert.ok(!book.includes(otherImg));   // 不在这一场的不列
+    assert.ok(book.includes('5. 要新挂图的') && book.includes('写法照 sd25-pe，写清图里要照的东西，装着东西的写上里面的') && book.includes('【素材登记】\n[{"ref": "@图片2"'));
+    assert.ok(book.includes('6. JSON 后面另起一块【秒数】'));
+  });
+  await check('按批注改（11-18）：新挂的图登记了就记进参考素材映射，接在原来的后面；抄了整条 E:\\ 路径也认', async () => {
+    const s = setup18();
+    const r = await s.K.按批注改提示词.apply(j18(), addOp + '\n【素材登记】\n[{"ref": "@图片2", "name": "书", "path": "' + bookImg + '"}]\n【秒数】\n镜头1：2\n镜头2：3');
+    assert.ok(s.raw().includes('\r\n' + line1 + '\r\n' + line2 + '\r\n'));
+    const m = JSON.parse(s.files.get(mapPath).toString()).prompts[key18];
+    assert.deepEqual(m.references.map(x => x.ref + ' ' + x.path), ['@图片1 ' + manImg, '@图片2 ' + bookImg]);
+    assert.equal(m.references[1].name, '书'); assert.equal(m.references[1].sha256.length, 64);
+    assert.deepEqual(m.秒数.镜头, { 1: 2, 2: 3 });
+    assert.match(r.结果, /新挂了 @图片2（书）/);
+    const t = setup18(), abs = path.join(root, '项目', '测试', ...bookImg.split('/'));
+    await t.K.按批注改提示词.apply(j18(), addOp + '\n【素材登记】\n' + JSON.stringify([{ ref: '@图片2', name: '书', path: abs }]));
+    assert.equal(JSON.parse(t.files.get(mapPath).toString()).prompts[key18].references[1].path, bookImg);
+  });
+  await check('按批注改（11-18）：新挂的图没登记、登记的不是这一场的图、把已有的编号换成别的图，都不改', async () => {
+    for (const [reply, why] of [[addOp, /新挂了 @图片2.*没在【素材登记】里写/], [addOp + '\n【素材登记】\n[{"ref": "@图片2", "name": "别的", "path": "' + otherImg + '"}]', /新挂了 @图片2/],
+      [addOp + '\n【素材登记】\n[{"ref": "@图片1", "name": "书", "path": "' + bookImg + '"}, {"ref": "@图片2", "name": "书", "path": "' + bookImg + '"}]', /@图片1 已经是/]]) {
+      const s = setup18(), before = s.raw();
+      await assert.rejects(s.K.按批注改提示词.apply(j18(), reply), why);
+      assert.equal(s.raw(), before); assert.equal(s.writes.length, 0);
+    }
+  });
+  /* 2026-11-18：sd25-pe 地图（pe-map.js，专门的测试在 sd25-pe地图_测试.cjs）：带哪几行看稿里挂了什么、批注说到什么 */
+  await check('sd25-pe 地图（11-18）：PE 稿按批注改带地图和摘录；批注说到首帧才带关键帧那行；旧格式稿照旧附整份', async () => {
+    const notePath = path.join(root, '项目', '测试', '提示词', '第1段', '视频提示词_批注.md');
+    const s = setup18(), j = j18(), book = await s.K.按批注改提示词.book(j), at = t => book.indexOf(t);
+    assert.ok(at('## sd25-pe 地图') > 0 && at('## sd25-pe 地图') < at('## 原文（文件：') && at('## sd25-pe 摘录') > at('## 批注'));
+    assert.ok(book.includes('| 素材·道具') && !book.includes('| 素材·关键帧') && !book.includes('| 宫格分镜'));   // 「用到再看」流水线不带
+    assert.match(book, /这回对不上：/); assert.ok(book.includes('## 技能：sd25-pe（整份，因为上面有对不上的）\n测试技能'));
+    assert.match(j.摘不到, /sd25-pe 地图对不上/);   // work() 把它接在任务结果后面
+    s.files.set(notePath, Buffer.from('# 批注\n\n## 整体\n批注：开头加一张首帧\n'));
+    assert.ok((await s.K.按批注改提示词.book(j18())).includes('| 素材·关键帧'));
+    const t = setup(structured, sideData());
+    t.files.set(notePath, Buffer.from('# 批注\n\n## 整体\n批注：慢一点\n'));
+    const old = await t.K.按批注改提示词.book(j18());
+    assert.ok(!old.includes('## sd25-pe 地图') && old.includes('## 技能：sd25-pe\n测试技能'));
   });
   console.log(tested + ' 项回归检查通过；真实项目数据未读写。');
 })().catch(e => { console.error(e); process.exitCode = 1; });

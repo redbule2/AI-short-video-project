@@ -57,6 +57,33 @@ test('这一版出过的样片：只算现在这一版，前几版的不算', ()
   assert.deepEqual(C.madeOf(old, vids, [old], {}), ['第3-4段_第5条_镜头1-5改1_样片480p.mp4']);
 });
 
+test('11-18 起样片和提示词同名：1_改3.mp4 是 1.txt 那一条的改3 出的', () => {
+  const n1 = P('1.txt', '1_改1.txt', '1_改3.txt'), n15 = P('1-5.txt'), n3 = P('3.txt'), n2 = P('2.txt');
+  const all = [n1, n15, n3, n2];
+  assert.equal(C.promptOf('1_改3.mp4', all, {}), n1.key);
+  assert.equal(C.verOf('1_改3.mp4', n1), '1_改3.txt');
+  assert.equal(C.promptOf('1_改3_2.mp4', all, {}), n1.key);   // 同一版再出的一条
+  assert.equal(C.verOf('1_改3_2.mp4', n1), '1_改3.txt');
+  assert.equal(C.verOf('1_2.mp4', n1), '1.txt');
+  assert.equal(C.promptOf('1_改3_补1.mp4', all, {}), n1.key);   // 补片拼好的
+  assert.equal(C.verOf('1_改3_补1.mp4', n1), '1_改3.txt');
+  assert.equal(C.promptOf('1-5.mp4', all, {}), n15.key);   // 「1-5」不算「1」
+  assert.equal(C.promptOf('3_2.mp4', all, {}), n3.key);   // 3.txt 再出的一条，不是 2.txt 出的（老名字的认法会认成 2）
+  assert.equal(C.promptOf('4.mp4', all, {}), '');
+  assert.deepEqual(C.madeOf(n1, ['1.mp4', '1_改3.mp4', '1_改3_2.mp4', '1-5.mp4', '第3-4段_第20条_1改3_720p.mp4'], all, {}),
+    ['1_改3.mp4', '1_改3_2.mp4', '第3-4段_第20条_1改3_720p.mp4']);   // 老名字的照旧认
+  assert.equal(C.carries('3_2.mp4', '2.txt'), false);
+  assert.equal(C.noOf('1_改3.mp4'), 0);
+});
+
+test('和哪一版同名先算：视频提示词_02.mp4 是第 2 条出的，不算第 1 条再出的', () => {
+  const a = P('视频提示词.txt'), b = P('视频提示词_02.txt');
+  assert.equal(C.promptOf('视频提示词_02.mp4', [a, b], {}), b.key);
+  assert.equal(C.promptOf('视频提示词_02.mp4', [b, a], {}), b.key);
+  assert.equal(C.promptOf('视频提示词_2.mp4', [a, b], {}), a.key);
+  assert.equal(C.promptOf('视频提示词.mp4', [a, b], {}), a.key);
+});
+
 test('样片自己是第几条', () => {
   assert.equal(C.noOf('第3-4段_第14条_镜头1-5改6_样片480p.mp4'), 14);
   assert.equal(C.noOf('没有条号.mp4'), 0);

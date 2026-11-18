@@ -44,11 +44,21 @@
     (paras || []).forEach((x, i) => { if (x && typeof x === 'object') x.号 = nos[i]; });
     return paras;
   }
-  /* 名字里的镜头号（1-5、1-3、5、9-11、3b）→ 这一条拍哪几镜：照表里的先后，a-b 是表里 a 到 b 那几行。给 { nos, missing（表里没有的号） } */
+  /* 号的先后：先比数，再比字母（3 < 3b < 4） */
+  const cmpNo = (x, y) => { const p = parseNo(x), q = parseNo(y); return p && q ? p.n - q.n || (p.l < q.l ? -1 : p.l > q.l ? 1 : 0) : 0; };
+  /* 名字里的镜头号（1-5、1-3、5、9-11、3b）→ 这一条拍哪几镜：照表里的先后，a-b 是表里 a 到 b 那几行。给 { nos, missing（表里没有的号） }。
+     a-b 有一头的镜头删掉了：照号往里收到还在的那一镜（镜头2 删了，2-3 拍镜头3），a 到 b 之间一镜都不剩才算没有（11-18：删了镜头，名字里带着它的稿照旧能用） */
   function expand(code, nos) {
     const out = [], missing = [];
+    const inward = (lo, hi, first) => { const ok = nos.filter(n => cmpNo(n, lo) >= 0 && cmpNo(n, hi) <= 0).sort(cmpNo); return ok.length ? ok[first ? 0 : ok.length - 1] : ''; };
     for (const part of String(code || '').replace(/\.txt$/i, '').split('、').map(x => x.trim()).filter(Boolean)) {
-      const ends = part.split('-'), a = normNo(ends[0]), b = ends.length > 1 ? normNo(ends[1]) : a, i = nos.indexOf(a), j = nos.indexOf(b);
+      const ends = part.split('-'), a = normNo(ends[0]), b = ends.length > 1 ? normNo(ends[1]) : a;
+      let i = nos.indexOf(a), j = nos.indexOf(b);
+      if (a && b && a !== b && (i < 0 || j < 0)) {
+        const up = cmpNo(a, b) <= 0, lo = up ? a : b, hi = up ? b : a;
+        if (i < 0) i = nos.indexOf(inward(lo, hi, up));
+        if (j < 0) j = nos.indexOf(inward(lo, hi, !up));
+      }
       if (i < 0 || j < 0) { for (const [x, k] of [[a || ends[0], i], [b || ends[1], j]]) if (k < 0 && !missing.includes(x)) missing.push(x); continue; }
       for (let k = Math.min(i, j); k <= Math.max(i, j); k++) if (!out.includes(nos[k])) out.push(nos[k]);
     }
@@ -68,16 +78,56 @@
     for (const i of idx) { const r = runs[runs.length - 1]; if (r && i === r[1] + 1) r[1] = i; else runs.push([i, i]); }
     return runs.length ? runs.map(([a, b]) => a === b ? nos[a] : nos[a] + '-' + nos[b]).join('、') + '.txt' : '';
   }
-  /* AI 重新提炼、照批注改的镜头表并进来：原来的号尽量留着。字一样的拿原来那一镜的号；只改了作用、写什么一样的也是；剩下的，同一个位置上原来那一镜的号没被拿走就接着用（当它是改了字）；
-     再剩下的不写号，存的时候补（中间的 3b、最后的接着排）。fresh：新的表（[{ 写什么, 作用 }]），old：原来的表 */
+  /* 两镜的字像不像（0～1）：写什么、作用里挨着的两个字重了多少。标点、镜N 不算（重新提炼的镜N 按排第几写，和号对不上） */
+  const LIKE = 0.3;
+  function grams(x) {
+    const m = new Map();
+    for (const t of [str(x && x.写什么), str(x && x.作用)]) {
+      const c = [...t.replace(/镜(?:头)?\s*[0-9]+[a-z]?/gi, ' ').replace(/[\s\p{P}\p{S}]+/gu, ' ')];
+      for (let i = 0; i + 1 < c.length; i++) if (c[i] !== ' ' && c[i + 1] !== ' ') m.set(c[i] + c[i + 1], (m.get(c[i] + c[i + 1]) || 0) + 1);
+    }
+    return m;
+  }
+  function alike(a, b) {
+    const x = grams(a), y = grams(b);
+    let same = 0, n = 0;
+    for (const [g, v] of x) { n += v; same += Math.min(v, y.get(g) || 0); }
+    for (const v of y.values()) n += v;
+    return n ? 2 * same / n : 0;
+  }
+  /* AI 重新提炼、照批注改的镜头表并进来：原来的号尽量留着（提示词的名字、关键帧都认号）。先认字：字一样的拿原来那一镜的号；只改了作用、写什么一样的也是。
+     剩下的照夹在哪两镜中间认：前后认出来的两镜之间，新的、原来的一样多，挨个对上（当它改了字）；不一样多（中间还删了、加了镜头），挑字最像的对上，不像的不对
+     （11-18：删了一镜、又改了另一镜的字，改字的那一镜也留原号）。再剩下的不写号，存的时候补（中间的 3b、最后的接着排）。fresh：新的表（[{ 写什么, 作用 }]），old：原来的表 */
   function keepNos(fresh, old) {
-    const oldNos = nosOf(old), key = x => str(x && x.写什么) + '　' + str(x && x.作用), taken = new Set();
-    const res = fresh.map(() => '');
-    fresh.forEach((x, i) => { const k = (old || []).findIndex((o, j) => !taken.has(oldNos[j]) && key(o) === key(x)); if (k >= 0) { res[i] = oldNos[k]; taken.add(oldNos[k]); } });
-    fresh.forEach((x, i) => { if (res[i] || !str(x && x.写什么)) return; const k = (old || []).findIndex((o, j) => !taken.has(oldNos[j]) && str(o && o.写什么) === str(x.写什么)); if (k >= 0) { res[i] = oldNos[k]; taken.add(oldNos[k]); } });   // 写什么一样、只改了作用（11-16 起作用改写法）：也是原来那一镜
-    if (fresh.length === (old || []).length) fresh.forEach((x, i) => { if (!res[i] && !taken.has(oldNos[i])) { res[i] = oldNos[i]; taken.add(oldNos[i]); } });
+    const olds = old || [], oldNos = nosOf(olds), key = x => str(x && x.写什么) + '　' + str(x && x.作用), taken = new Set();
+    const res = fresh.map(() => ''), at = fresh.map(() => -1);   // at：对上的是原来的第几镜
+    const take = (i, k) => { res[i] = oldNos[k]; at[i] = k; taken.add(k); };
+    fresh.forEach((x, i) => { const k = olds.findIndex((o, j) => !taken.has(j) && key(o) === key(x)); if (k >= 0) take(i, k); });
+    fresh.forEach((x, i) => { if (res[i] || !str(x && x.写什么)) return; const k = olds.findIndex((o, j) => !taken.has(j) && str(o && o.写什么) === str(x.写什么)); if (k >= 0) take(i, k); });   // 写什么一样、只改了作用（11-16 起作用改写法）：也是原来那一镜
+    for (let i = 0; i < fresh.length; i++) {
+      if (res[i]) continue;
+      let e = i;
+      while (e + 1 < fresh.length && !res[e + 1]) e++;
+      const lo = i > 0 ? at[i - 1] : -1, hi = e + 1 < fresh.length ? at[e + 1] : olds.length, mine = [];
+      for (let k = i; k <= e; k++) mine.push(k);
+      const left = olds.map((o, j) => j).filter(j => !taken.has(j) && (lo >= hi || (j > lo && j < hi)));   // 前后两镜的先后翻过来了（AI 挪了镜头）：没对上的都算
+      if (lo < hi && left.length === mine.length) mine.forEach((k, n) => take(k, left[n]));
+      else {
+        const pairs = [];
+        for (const k of mine) for (const j of left) { const v = alike(fresh[k], olds[j]); if (v >= LIKE) pairs.push([v, k, j]); }
+        pairs.sort((p, q) => q[0] - p[0] || p[1] - q[1] || p[2] - q[2]);
+        for (const [, k, j] of pairs) if (!res[k] && !taken.has(j)) take(k, j);
+      }
+      i = e;
+    }
     fresh.forEach((x, i) => { if (res[i]) x.号 = res[i]; else delete x.号; });
     return fillNos(fresh);
+  }
+  /* AI 照抄来的号能不能直接用：都认得、不重；原来没有的得是照规矩新起的（带字母的 3b、比原来的都大、最前面的 0），删掉的号不许拿回来用。got：AI 写的号，oldNos：原来的表的号 */
+  function nosOk(got, oldNos) {
+    const max = Math.max(0, ...oldNos.map(n => (parseNo(n) || { n: 0 }).n));
+    return got.length > 0 && got.every(Boolean) && new Set(got).size === got.length
+      && got.every(n => { const p = parseNo(n); return oldNos.includes(n) || (!!p && (!!p.l || p.n > max || p.n === 0)); });
   }
 
   /* ---------- 关键帧绑定 ---------- */
@@ -194,5 +244,5 @@
     }
     return out;
   }
-  return Object.freeze({ normNo, nosOf, fillNos, expand, shotsOf, codeOf, keepNos, MOMENTS, SAY, bindsOf, guess, currentOf, isCurrent, staleOf, table, slots, seq, forShots, order, say, regName, bind, setCurrent, keep, unbind, check });
+  return Object.freeze({ normNo, nosOf, fillNos, expand, shotsOf, codeOf, keepNos, nosOk, MOMENTS, SAY, bindsOf, guess, currentOf, isCurrent, staleOf, table, slots, seq, forShots, order, say, regName, bind, setCurrent, keep, unbind, check });
 });

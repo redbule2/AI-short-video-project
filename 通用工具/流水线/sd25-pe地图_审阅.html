@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sd25-pe 地图 · 审阅</title>
+<style>
+:root { --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --line: #d6cab6; --zhu: #a83a2c; --dai: #3e5c5e; --huang: #fff4c9; --lv: #2f6b3a; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.85 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif; }
+main { max-width: 780px; margin: 0 auto; padding: 32px 22px 120px; }
+h1 { margin: 0 0 4px; font: 600 26px/1.4 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .08em; }
+.sub { margin: 0 0 20px; font-size: 14.5px; color: var(--ink-2); }
+h2 { margin: 34px 0 10px; font: 600 19px/1.5 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .1em; }
+.card { margin: 12px 0; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+.card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 600; }
+.card h3 .no { display: inline-block; min-width: 1.9em; color: var(--dai); }
+.card p { margin: 3px 0; color: var(--ink-2); }
+.opts { margin: 8px 0 2px; }
+.opts label { display: block; margin: 5px 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opts label:hover { background: #faf5ea; }
+.opts input { margin-right: 8px; }
+.opts .rec { color: var(--dai); font-size: 13px; margin-left: 4px; }
+textarea { display: block; width: 100%; margin-top: 8px; min-height: 2.6em; padding: 7px 10px; border: 1px dashed #c8b99f; border-radius: 8px; background: #fffef9; font: 15px/1.7 'Noto Sans SC', 'Microsoft YaHei', sans-serif; color: var(--ink); resize: vertical; }
+textarea:focus { outline: none; border-style: solid; border-color: var(--dai); background: #fff; }
+textarea.has { border-style: solid; border-color: #b9822f; background: var(--huang); }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; background: rgba(255,253,249,.96); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; justify-content: center; }
+.bar button { padding: 6px 14px; border: 1px solid var(--dai); border-radius: 8px; background: #fff; color: var(--dai); font: inherit; cursor: pointer; }
+.bar button:hover { background: #eef5f3; }
+#st { color: var(--ink-2); }
+.foot { margin-top: 26px; font-size: 13px; color: var(--ink-3); }
+.fig { margin: 10px 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff; font-size: 14.5px; color: var(--ink-2); line-height: 1.75; }
+.fig p { margin: 4px 0; }
+.fig b { color: var(--ink); }
+.del { color: var(--zhu); background: #fbeeee; text-decoration: line-through; padding: 1px 4px; border-radius: 4px; }
+.add { color: var(--lv); background: #eaf5ec; padding: 1px 4px; border-radius: 4px; }
+.keep { color: var(--ink-3); }
+.row { padding: 5px 0; border-top: 1px solid #ece3d3; }
+.row:first-child { border-top: 0; }
+.who { display: inline-block; min-width: 5.2em; font-weight: 600; color: var(--ink); }
+details summary { cursor: pointer; color: var(--dai); }
+</style>
+</head>
+<body>
+<main>
+<h1>sd25-pe 地图 · 审阅</h1>
+<p class="sub" id="sub"></p>
+<div id="sections"></div>
+<h2>其他意见</h2>
+<textarea data-k="其他" placeholder="还有什么想说的（可以不写）"></textarea>
+<p class="foot" id="foot"></p>
+</main>
+<div class="bar"><span id="st">选一选、写批注会自动存好</span><button id="copy" type="button">复制批注</button></div>
+
+<template id="why"><div class="fig">
+  <p><b>现在：</b>写、批、改提示词的任务书，每回整份塞进 sd25-pe（约 2.7 万字），还另摘了 7 节分镜，重了一遍。一份任务书约 10 万字节，八成是它。</p>
+  <p><b>出过错：</b>药膳鸡 2-3 砂锅那句只写了「外形、颜色和材质」，出片里锅是空的。</p>
+  <p><b>以后：</b>任务书里先放一张地图（写哪一块，看哪几节），再照地图从 sd25-pe 原文现摘那几节。</p>
+  <p class="keep">sd25-pe 本身一个字不改：它会自动升级，改了会被冲掉。地图只认小标题，不记行号。</p>
+</div></template>
+
+<template id="exam"><div class="fig">
+  <p class="keep">考题：照地图写挂砂锅图的那一句。只是考地图，不改 2-3 的稿子。</p>
+  <div class="row"><span class="who">原来的</span><span class="del">@图片1用于砂锅的外形、颜色和材质，不采用图片背景。</span></div>
+  <div class="row"><span class="who">DeepSeek</span><span class="add">@图片1用于砂锅的粗陶双耳结构、斑驳的深褐色陶面，以及锅内翻滚的鸡汤和汤中的一只整鸡、红枣、枸杞和切片药材，不采用图片背景。</span></div>
+  <div class="row"><span class="who">GPT</span><span class="add">@图片1用于砂锅的圆口厚沿、两侧环耳和熏黑斑驳的粗陶锅身，以及锅内的一只金黄整鸡、红枣、枸杞、带环纹的浅色药材切片和泛着油花与气泡的金褐色鸡汤，不采用图片背景和机位。</span></div>
+  <p>两位都照地图找到「素材·道具」那一行，看了那三节和旧木椅的例子，都把锅里的东西写进去了。</p>
+</div></template>
+
+<template id="took"><div class="fig">
+  <p>已照着改进地图（上面卡片里写着「审后改」的就是）：</p>
+  <p>· 总则加「输入状态」：流水线不给 AI 看道具图，这一节管「看不到图就只照文字写」。（两位都提）</p>
+  <p>· 交稿前加「默认交付」「素材引用保真」：只交正文，已有的 @编号不改。（两位都提）</p>
+  <p>· 加一行「素材·别的视频、音频」，放在「用到再看」。（两位都提）</p>
+  <p>· 地图记下核对过的 sd25-pe：一升级，任务书自动附整份、报出来，等重核地图。（两位都提）</p>
+  <p>· 表头加三句：「素材·」几行管哪一块；写法一、二只照一个；批注改稿照批注说的那块找。</p>
+  <p>· 基础生成、解析用户目标、完整示例、音色看「盘点素材」、小标题重名也算摘不到。</p>
+</div></template>
+
+<template id="book"><div class="fig">
+  <p class="keep">写提示词、AI 批注、按批注改：三种任务书一样改。</p>
+  <div class="row">要求、资产图、剧本、提示词格式 10 条、写戏规矩 17 条 <span class="keep">（不动）</span></div>
+  <div class="row"><span class="del">分镜写法（从 sd25-pe 摘的 7 节）</span> → <span class="add">sd25-pe 地图（这一条用得上的十几行）</span></div>
+  <div class="row"><span class="del">技能：sd25-pe（整份，约 2.7 万字）</span> → <span class="add">sd25-pe 摘录（照地图摘的，约 1.4 万字；挂满音色、白模、关键帧约 1.8 万字）</span></div>
+  <div class="row"><span class="add">对不上时（摘不到、sd25-pe 升级过）：摘录后面附整份，任务结果里报一句</span></div>
+  <div class="row keep">旧格式的稿（「本段事件」开头的）批注、改稿：照旧带整份，不动。</div>
+</div></template>
+
+<template id="agents"><div class="fig">
+  <p class="keep">AGENTS.md 技能那一节，sd25-pe 那一行：</p>
+  <div class="row"><span class="del">- `sd25-pe`：处理 Seedance 2.5 提示词，视频提示词的格式也照它。挂的素材记进 `资产\参考素材映射.json`，交稿前跑 `通用工具\核对参考素材.py`。</span></div>
+  <div class="row"><span class="add">- `sd25-pe`：处理 Seedance 2.5 提示词，视频提示词的格式也照它；写哪一块，先查 `.agents\skills\annotate-live\sd25-pe地图.md`，照它看那几节。挂的素材记进 `资产\参考素材映射.json`，交稿前跑 `通用工具\核对参考素材.py`。</span></div>
+</div></template>
+
+<template id="todo"><div class="fig"><details><summary>要改的东西（不用批，点开看）</summary>
+  <p>1. 地图：<b>.agents\skills\annotate-live\sd25-pe地图.md</b>（已放好，流水线还没用）。</p>
+  <p>2. 摘节的代码：现在的 pe-shots.js 换成 pe-map.js，照地图摘；旧的删掉。</p>
+  <p>3. 本机服务 jobs.js：三种任务书照上面「任务书怎么变」改，只做精确替换，别的对话的改动不碰。</p>
+  <p>4. 测试：新写「sd25-pe地图_测试」，改「分镜提示词_任务测试」里两处，全跑一遍。</p>
+  <p>5. 改完直接重开 8766，告诉你。</p>
+</details></div></template>
+
+<script>
+/* ===== 内容（改内容只改这一块；怎么摆、怎么存批注在 公用/说明页.js）。地图那几张卡照 sd25-pe地图.md 生成 ===== */
+const ROUND = 1;
+const SUB = '给 sd25-pe 做了一张地图：写提示词的 AI 写哪一块，就看哪几节，不用通读。DeepSeek 和 GPT 审过一轮，已照着改了一版。每张卡都能写批注；要你定的在最后。你点头了我再改流水线。';
+const FOOT = '2026-11-18 Claude 做的。地图在 .agents\\skills\\annotate-live\\sd25-pe地图.md；两位的原话在 .agents\\skills\\deepseek\\runs\\sd25-pe地图_20261118 里（GPT 是在 Codex 里看得见的那个对话答的，用的 GPT-6.2 Astra）。sd25-pe 一个字没动，流水线也还没改。';
+const MAP1 = [
+ {
+  "id": "m1",
+  "no": "",
+  "t": "总则",
+  "p": [
+   "看：「不可违反的原则」「输入状态」「8. 套用模板并净化」",
+   "要点：模板里尖括号占位的，都换成具体内容；看不到图就只照文字写",
+   "审后改：加了「输入状态」（看不到图就只照文字写）"
+  ]
+ },
+ {
+  "id": "m2",
+  "no": "",
+  "t": "写法一（素材五份以内）",
+  "p": [
+   "看：「带参考素材的生成」「完整输入到输出示例」",
+   "要点：一份素材一句，再写主体与关系",
+   "审后改：加了「完整输入到输出示例」"
+  ]
+ },
+ {
+  "id": "m3",
+  "no": "",
+  "t": "写法二（素材多于五份）",
+  "p": [
+   "看：「多素材组织」",
+   "要点：按人物、道具、场景、动作与声音分组"
+  ]
+ },
+ {
+  "id": "m4",
+  "no": "",
+  "t": "【生成目标】",
+  "p": [
+   "看：「1. 解析用户目标」「带参考素材的生成」",
+   "要点：一两句：谁做什么，最后怎样",
+   "审后改：加了「1. 解析用户目标」"
+  ]
+ },
+ {
+  "id": "m5",
+  "no": "",
+  "t": "素材·人物",
+  "p": [
+   "看：「3. 盘点和理解素材」「4. 建立素材职责和主体映射」「带参考素材的生成」",
+   "要点：只写看得见的五官、发型、服装"
+  ]
+ },
+ {
+  "id": "m6",
+  "no": "",
+  "t": "素材·道具",
+  "p": [
+   "看：「3. 盘点和理解素材」「4. 建立素材职责和主体映射」「带参考素材的生成」",
+   "要点：照旧木椅那句写具体样子，装着东西的写上里面的",
+   "审后改：要点点名旧木椅那句"
+  ]
+ },
+ {
+  "id": "m7",
+  "no": "",
+  "t": "素材·场景",
+  "p": [
+   "看：「3. 盘点和理解素材」「4. 建立素材职责和主体映射」「空间与站位」「完整输入到输出示例」",
+   "要点：只采用空间、布局和光线，不采用图中人物；另照 scene-geo 第七节",
+   "审后改：加了「完整输入到输出示例」"
+  ]
+ },
+ {
+  "id": "m8",
+  "no": "",
+  "t": "【未采用素材】",
+  "p": [
+   "看：「4. 建立素材职责和主体映射」「多素材组织」开头",
+   "要点：挂了没用上的，逐个写编号"
+  ]
+ },
+ {
+  "id": "m9",
+  "no": "",
+  "t": "【基础设定】",
+  "p": [
+   "看：「基础生成」「专业摄影表达」",
+   "要点：风格、拍法、光色写成看得见的样子",
+   "审后改：加了「基础生成」"
+  ]
+ },
+ {
+  "id": "m10",
+  "no": "",
+  "t": "【主体与关系】",
+  "p": [
+   "看：「带参考素材的生成」「4. 建立素材职责和主体映射」「空间与站位」",
+   "要点：谁在哪、朝着谁；道具几个、归谁；写法二没有这块",
+   "审后改：要点加了「写法二没有这块」"
+  ]
+ },
+ {
+  "id": "m11",
+  "no": "",
+  "t": "【事件脚本】",
+  "p": [
+   "看：「1. 解析用户目标」「声音、台词和文字」「空间与站位」「长视频与时间段」「情绪与可观察表现」「专业摄影表达」",
+   "要点：先拍原因再拍反应；台词只用原文",
+   "审后改：「声音、台词和文字」挪到前面；不再带「宫格分镜与故事板」（看下面「要你定的」丙）"
+  ]
+ },
+ {
+  "id": "m12",
+  "no": "",
+  "t": "【保持一致】",
+  "p": [
+   "看：「带参考素材的生成」",
+   "要点：只写最怕错的两三样"
+  ]
+ },
+ {
+  "id": "m13",
+  "no": "",
+  "t": "交稿前",
+  "p": [
+   "看：「最终自检」「默认交付」「素材引用保真」",
+   "要点：逐条过一遍；已有的 @编号不改",
+   "审后改：加了「默认交付」「素材引用保真」"
+  ]
+ }
+];
+const MAP2 = [
+ {
+  "id": "m14",
+  "no": "",
+  "t": "素材·音色",
+  "p": [
+   "看：「3. 盘点和理解素材」「4. 建立素材职责和主体映射」「声音、台词和文字」",
+   "要点：一个说话人一段录音；台词照文字，录音只给音色和语气",
+   "审后改：加了「3. 盘点和理解素材」"
+  ]
+ },
+ {
+  "id": "m15",
+  "no": "",
+  "t": "素材·白模",
+  "p": [
+   "看：「白模参考与渲染」「6. 选择唯一主任务」",
+   "要点：先分粗细粒度；几何体逐个对上人或道具",
+   "审后改：加了「6. 选择唯一主任务」（看下面「要你定的」乙）"
+  ]
+ },
+ {
+  "id": "m16",
+  "no": "",
+  "t": "素材·关键帧（首帧、尾帧）",
+  "p": [
+   "看：「关键帧锚点」开头「首帧加其他参考」「首帧、尾帧加其他参考」「多关键帧顺序控制」",
+   "要点：按几张挑一节；「@图片N作为首帧。」单独成句"
+  ]
+ }
+];
+const MAP3 = [
+ {
+  "id": "m17",
+  "no": "",
+  "t": "素材·别的视频、音频（白模、音色以外）",
+  "p": [
+   "看：「4. 建立素材职责和主体映射」「6. 选择唯一主任务」「声音、台词和文字」",
+   "要点：写明只采用动作、运镜、节奏或哪种声音",
+   "审后改：新加的一行"
+  ]
+ },
+ {
+  "id": "m18",
+  "no": "",
+  "t": "宫格分镜",
+  "p": [
+   "看：「宫格分镜与故事板」",
+   "要点：写清读图顺序；不采用线稿、标注"
+  ]
+ },
+ {
+  "id": "m19",
+  "no": "",
+  "t": "做菜、产品这类流程",
+  "p": [
+   "看：「产品与实体流程」",
+   "要点：每段一个操作，写清做完的样子"
+  ]
+ },
+ {
+  "id": "m20",
+  "no": "",
+  "t": "视频编辑",
+  "p": [
+   "看：「6. 选择唯一主任务」「7. 应用任务参数规则」「视频编辑模板」",
+   "要点：一条原视频当唯一母版"
+  ]
+ },
+ {
+  "id": "m21",
+  "no": "",
+  "t": "视频延长",
+  "p": [
+   "看：「6. 选择唯一主任务」「7. 应用任务参数规则」「视频延长模板」",
+   "要点：先定往前接还是往后接"
+  ]
+ }
+];
+const SECTIONS = [
+  { h: '为什么做', fig: 'why' },
+  { h: '地图 · 每一条都看', note: '「」里是 sd25-pe 的小标题。写哪一块，看那一行的几节。', cards: MAP1 },
+  { h: '地图 · 挂了才看', note: '这一条挂了音色、白模或关键帧，才带那一行。', cards: MAP2 },
+  { h: '地图 · 用到再看', note: '流水线不自动带；在对话里写这类提示词时看。', cards: MAP3 },
+  { h: '考题：砂锅那一句', fig: 'exam' },
+  { h: '两位的意见', fig: 'took', note: '下面几张是没采纳的。你觉得该改，就写批注。', cards: [
+    { id: 'n1', no: '✗', t: '没改名：「素材·道具」改成「【参考素材职责】·道具」', p: ['写法二里没有【参考素材职责】，改了反而对不上；表头加了一句说明。（DeepSeek）'] },
+    { id: 'n2', no: '✗', t: '没挪：人物、道具、场景挪进「挂了才看」', p: ['几乎每一条都有，留在「每一条都看」。（DeepSeek）'] },
+    { id: 'n3', no: '✗', t: '没删：场景那行「另照 scene-geo 第七节」', p: ['场景照 scene-geo 是 AGENTS.md 定的；它只是提一句，不摘进来。（DeepSeek 要删）'] },
+    { id: 'n4', no: '✗', t: '没加：「5. 处理映射置信度」', p: ['那一节教 AI 拿不准就停下来问人；流水线里 AI 不能停下来问。（GPT）'] },
+    { id: 'n5', no: '✗', t: '没加：「输入与参数提示」', p: ['那是在提示词后面另写「参数提示」，流水线不要。（GPT）'] },
+  ] },
+  { h: '任务书怎么变', fig: 'book' },
+  { h: '要你定的', fig: 'agents', note: '丁要改的就是上面这一行。', cards: [
+    { id: 'd1', no: '甲', t: '任务书里的 sd25-pe 怎么放', p: ['两位都提醒：只摘几节，地图漏指的规矩没人发现。所以地图要全，sd25-pe 升级了要重核。'], opts: [
+      { v: 'A', t: '地图＋摘录，不附整份；对不上才附整份并报出来', rec: true },
+      { v: 'B', t: '地图＋摘录，后面照旧附整份（最稳，任务书最长）' },
+      { v: 'C', t: '地图＋整份，不摘' } ] },
+    { id: 'd2', no: '乙', t: '挂白模时，也看「6. 选择唯一主任务」', p: ['那一节说：白模和成片长短、横竖对不上，生成目标后面加一句「请注意这不是视频编辑。」', '现在的稿子都没有这一句。两位都提了。'], opts: [
+      { v: 'A', t: '加，照 sd25-pe 原话', rec: true },
+      { v: 'B', t: '不加' } ] },
+    { id: 'd3', no: '丙', t: '【事件脚本】不再带「宫格分镜与故事板」', p: ['现在的分镜写法摘了它；那一节讲的是垫宫格图，没垫用不上。'], opts: [
+      { v: 'A', t: '拿掉，放进「用到再看」', rec: true },
+      { v: 'B', t: '留着' } ] },
+    { id: 'd4', no: '丁', t: 'AGENTS.md 的 sd25-pe 那一行加一句', p: ['在对话里写提示词的 AI 也能找到地图。'], opts: [
+      { v: 'A', t: '加', rec: true },
+      { v: 'B', t: '不加' } ] },
+  ] },
+  { h: '要改的东西', fig: 'todo' },
+];
+window.DOC = { 名: 'sd25-pe地图_审阅', 题: 'sd25-pe 地图', 存: 'antou:sd25pe-map', 轮: ROUND, 副题: SUB, 脚注: FOOT, 段: SECTIONS };
+</script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="../公用/说明页.js"></script>
+</body>
+</html>

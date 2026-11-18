@@ -226,11 +226,16 @@ window.addEventListener('resize', pzPin);
 /* ---------- 交给 AI：照定稿的剧本提炼；照你的批注改 ---------- */
 async function distill(s) {
   if (!AI.ok) { toast('本机服务是旧的，重开一次才能让 AI 提炼', 'err'); return; }
-  if (hasParas(s) && !(await confirmDlg({ title: '让 AI 重新提炼', body: 'AI 照定稿的剧本重新提炼。这一段出场的、镜头表' + (noteCount(s) ? '和写的批注' : '') + '都换成 AI 新提炼的；梗概和人物、道具、场景的描写，AI 会照着现在的改（换之前流水线留一版在历史记录）。', ok: '重新提炼' }))) return;
+  const n = noteCount(s), note = segName(s.段) + '_提炼_批注.md';
+  if (hasParas(s) && !(await confirmDlg({ title: '让 AI 重新提炼', body: 'AI 照定稿的剧本，在现在的提炼上面改：剧本没变的照抄，改了的只改那几镜，镜头号留着（提示词、关键帧都认号）' + (n ? '；你写的批注一起交给 AI 照改' : '') + '。换之前流水线留一版在历史记录。', ok: '重新提炼' }))) return;
   if (s.定稿) { s.定稿 = ''; touch(); }
   await flush();   // AI 照流水线里现在的全片设定提炼，先存上
   if (F.err) return;
-  await startJob({ 事: '提炼', 段: s.段 });
+  if (n) {   // 还没交的批注存成一份，跟着交（11-18：原来重新提炼不带批注，并进来时批注被清掉了）
+    try { await FS.write(at([F.name, '定稿的剧本', segName(s.段), note]), C.encodeText(notesMd(s))); }
+    catch (e) { toast('批注没存上：' + e.message, 'err'); return; }
+  }
+  await startJob({ 事: '提炼', 段: s.段, ...(n ? { 批注: note } : {}) });
   rerender();
 }
 /* 批注写成一份（哪一样、原文、批注），存在 第N段_提炼.json 旁边，AI 照着改 */

@@ -88,7 +88,7 @@ async function retire(s, vid) {
   if (AI.jobs.some(j => jobLive(j) && j.段 === s.段 && j.视频 === vid)) { toast('AI 正在照这条样片做事，做完再移', 'err'); return; }
   if (!(await confirmDlg({ title: '这条不要了', body: vid + ' 移进这个项目的「历史记录 / 成片 / ' + segName(s.段) + '」，它的批注、截图、补片文件夹跟着一起移，名字不改。改出来的提示词留在原处。', ok: '移进历史记录' }))) return;
   const stem = stemOf2(vid), dest = [F.name, '历史记录', '成片', segName(s.段)];
-  const names = [vid, ...[...clipsOf(s.段).all].filter(n => n.startsWith(stem + '_') && n.endsWith('.md'))];
+  const all = clipsOf(s.段).all, names = [vid, ...['_批注.md', '_修改方案.md', '_修改方案_批注.md', '_AI建议.md', '_剪辑单.md'].map(x => stem + x).filter(n => all.has(n))];   // 只认这几样：11-18 起样片和提示词同名，1.mp4 旁边还有 1_改3_批注.md（别的样片的）
   try {
     for (const n of names) await FS.move(at([...dirOf(s), n]), at([...dest, n]));
     for (const d of [stem + '_批注截图', stem + '_补片']) if (await FS.isDir(at([...dirOf(s), d]))) await FS.move(at([...dirOf(s), d]), at([...dest, d]));
@@ -119,8 +119,10 @@ function cardOf2(s, vid, list) {
   const sel = selOf(s), mine = Object.keys(sel).find(k => sel[k] === vid), stem = stemOf2(vid), all = clipsOf(s.段).all;
   const noted = all.has(stem + '_批注.md');
   const stale = !!mine && clipStale(s, mine, vid);   // 选定以后，它那条提示词或者前面几道又动过（改出了新的一版也算）
+  const own = mine || guess(s, vid, list), oe = list.find(e => e.key === own);
+  const pstale = !stale && !!oe && promptStale(s, oe.name);   // 出它的那条提示词（最新那一版）待核对：不挡审片，标在这条上（11-18 他定）
   const pick = h('select', { class: 'ai-ch-sel', title: '这条样片是哪一条提示词出的' }, [h('option', { value: '' }, '是哪一条的？'), ...list.map(e => h('option', { value: e.key }, labelOf2(e.key)))]);
-  pick.value = guess(s, vid, list);
+  pick.value = own;
   const choose = () => {
     if (!pick.value) { toast('先选它是哪一条提示词的成品', 'err'); return; }
     sel[pick.value] = vid; s.成片定稿 = ''; touch(); rerender();
@@ -132,6 +134,7 @@ function cardOf2(s, vid, list) {
     h('div', { class: 'wf-item-h' }, h('b', null, stem), mine ? h('span', { class: 'fs-state ok' }, icon('check'), '选定：' + labelOf2(mine)) : null, noted ? h('span', { class: 'fs-state', title: '这条写过批注' }, '有批注') : null,
       stale ? [h('span', { class: 'fs-state', style: 'color:var(--zhu);border-color:var(--zhu-line)', title: '这条样片出了以后，它那条提示词改过，或者前面（剧本、资产、拍摄风格）又动过。再看一遍还能不能用' }, '待核对'),
         h('button', { class: 'fl-link', type: 'button', title: '看过了，这条还能用', onclick: () => { keepAsIs(s, '样片/' + vid); rerender(); } }, '还能用，沿用')] : null,
+      pstale ? h('span', { class: 'fs-state', style: 'color:var(--zhu);border-color:var(--zhu-line)', title: '出它的那条提示词（' + labelOf2(oe.name) + '）写好以后，前面（剧本、资产、拍摄风格）又动过。照样能审；要重出这一条，先到「提示词」那一步看一眼，点「沿用」或者改好' }, '提示词待核对') : null,
       h('span', { class: 'sp' }),
       h('button', { class: 'btn sm ink', type: 'button', title: '看样片，旁边随时对照提示词、白模、关键帧和资产图；停在哪一帧就在哪一帧写批注', onclick: () => openDesk(s, vid, list) }, icon('play'), '对照看片、写批注'),
       mine ? h('button', { class: 'btn sm ghost', type: 'button', onclick: drop }, '不选它了') : [pick, h('button', { class: 'btn sm', type: 'button', title: '满意：这一条提示词就用这条样片', onclick: choose }, '满意，选定')]),
@@ -178,10 +181,10 @@ async function playAll(s, list) {
 }
 function render() {
   const s = sceneNow(), seg = s.段;
-  const ps = promptState(s);
-  if (ps.st !== 'ok') {   // 提示词那一步不等资产了，这里只看提示词本身：还没有、AI 在写、待核对
-    const msg = !promptsOf(seg).length ? '这一段还没有提示词。有了提示词、出了样片，再来审。'
-      : ps.st === 'ai' ? 'AI 在写提示词，写好了再来审。'
+  const lock = reviewLock(promptsOf(seg).length, clipsOf(seg).vids.length, promptState(s).st);
+  if (lock) {   // 有样片就能审（11-18 他定）；没样片时只看提示词本身：还没有、AI 在写、待核对
+    const msg = lock === 'none' ? '这一段还没有提示词。有了提示词、出了样片，再来审。'
+      : lock === 'ai' ? 'AI 在写提示词，写好了再来审。'
         : '有提示词待核对：它们写好以后，前面（剧本、资产、拍摄风格）又动过。先到「提示词」那一步看一眼，点「沿用」或者改好，再来审。';
     return h('div', { class: 'wf-lock' }, msg, h('button', { class: 'btn ink', onclick: () => go('提示词', { s: seg }) }, '← 去提示词那一步'));
   }

@@ -69,16 +69,16 @@
     }
     return fresh;
   }
-  /* AI 提炼的镜头表并进这一场，定下每一镜的号。照批注改的，AI 照抄了原来的号（新加的照规矩起，3b）：号都对、不重就用；
-     重新提炼的没有号（或者号不对）：照 关键帧绑定.js 的 keepNos 留原来的号，作用里按排第几写的镜N 换成号。最后人改过的秒数照抄。SB：关键帧绑定.js */
+  /* AI 提炼的镜头表并进这一场，定下每一镜的号。照批注改、重新提炼（有镜头表了）的，AI 照抄了原来的号（新加的照规矩起，3b）：号都对、不重、没拿删掉的号就用；
+     第一回提炼的没有号（或者号不对）：照 关键帧绑定.js 的 keepNos 留原来的号，作用里的镜N 换成号（AI 写了号的照它写的号认，没写号的按排第几认）。最后人改过的秒数照抄。SB：关键帧绑定.js */
   function merge(fresh, old, SB, all) {
     const oldNos = SB.nosOf(old || []), got = fresh.map(x => SB.normNo(x.号));
-    if (fresh.length && got.every(Boolean) && new Set(got).size === got.length) fresh.forEach((x, i) => { x.号 = got[i]; });
+    if (SB.nosOk(got, oldNos)) fresh.forEach((x, i) => { x.号 = got[i]; });
     else {
       fresh.forEach(x => { delete x.号; });
       SB.keepNos(fresh, old || []);
-      const nos = fresh.map(x => x.号);
-      fresh.forEach(x => { x.作用 = renum(x.作用, k => /^[0-9]+$/.test(k) ? nos[+k - 1] || '' : ''); });
+      const nos = fresh.map(x => x.号), byAi = got.some(Boolean);
+      fresh.forEach(x => { x.作用 = renum(x.作用, k => byAi ? nos[got.indexOf(k)] || '' : /^[0-9]+$/.test(k) ? nos[+k - 1] || '' : ''); });
     }
     return keepSecs(fresh, old, oldNos, all);
   }

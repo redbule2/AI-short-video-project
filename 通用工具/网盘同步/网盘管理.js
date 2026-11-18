@@ -217,6 +217,7 @@ module.exports = function mount(opt = {}) {
     const j = { id: ++seq, state: 'running', started: Date.now(), bytes: 0, totalBytes: 0, done: 0, total: 0, speed: 0, eta: null, errors: [], nErrors: 0, notes: [], ...o };
     jobs.push(j);
     while (jobs.length > 30) { const k = jobs.findIndex(x => x.state !== 'running'); if (k < 0) break; jobs.splice(k, 1); }
+    saveJobs(true);
     return j;
   }
   const pub = j => { const { proc, bytes0, ...o } = j; return o; };
@@ -225,7 +226,40 @@ module.exports = function mount(opt = {}) {
     job.ended = Date.now();
     job.speed = 0;
     job.eta = null;
+    saveJobs(true);
   }
+  // ---------- 后台的活存盘（11-18 他说：后台任务不能刷新就丢）：记进这台电脑的 网盘任务.json，本机服务重开时读回来 ----------
+  // 那会儿在做的那件跟着服务断了：记成没全做成，「再来一次」只做还没做好的。拿别的文件夹试页面时不记（和对账记录一样）；opt.jobsFile 给测试用
+  const JOBS_FILE = opt.jobsFile !== undefined ? opt.jobsFile : MAN ? path.join(S.STATE_DIR, '网盘任务.json') : '';
+  const CUT = '本机服务重开过，这件没做完：点「再来一次」只做还没做好的';
+  let savedText = '', savedAt = 0;
+  function saveJobs(now) {   // now：加了、做完了，马上记；在做的进度隔几秒记一回
+    if (!JOBS_FILE || (!now && Date.now() - savedAt < 5000)) return;
+    const text = JSON.stringify({ 说明: '项目管理「网盘」那一页做过的活，本机服务自己写、重开时读回来', jobs: jobs.map(j => { const { speed, eta, ...o } = pub(j); return o; }) }) + '\n';
+    if (text === savedText) return;
+    try {
+      fs.mkdirSync(path.dirname(JOBS_FILE), { recursive: true });
+      fs.writeFileSync(JOBS_FILE + '.tmp', text);
+      fs.renameSync(JOBS_FILE + '.tmp', JOBS_FILE);
+      savedText = text; savedAt = Date.now();
+    } catch (e) { say('网盘的活没存上：' + e.message); }
+  }
+  (function loadJobs() {
+    if (!JOBS_FILE) return;
+    let list;
+    try { list = JSON.parse(fs.readFileSync(JOBS_FILE, 'utf8').replace(/^\uFEFF/, '')).jobs; }
+    catch (e) { if (e.code !== 'ENOENT') say('网盘的活没读回来：' + e.message); return; }
+    if (!Array.isArray(list)) return;
+    const t0 = Date.now();
+    for (const j of list.slice(-30)) {
+      if (!j || !Number.isInteger(j.id) || j.id < 1 || jobs.some(x => x.id === j.id)) continue;
+      if (j.state === 'running') Object.assign(j, { state: 'failed', ended: t0, restarted: true, errors: [CUT, ...(Array.isArray(j.errors) ? j.errors : [])].slice(0, 20), nErrors: (+j.nErrors || 0) + 1 });
+      jobs.push({ ...j, speed: 0, eta: null });
+    }
+    seq = jobs.reduce((m, j) => Math.max(m, j.id), 0);   // 号接着往下编：页面照号认是哪一件
+    saveJobs(true);
+  })();
+  setInterval(() => saveJobs(false), 2000).unref();
   // 跑一条 rclone，进度记进 job；count(stats) = 这一步做完了几个
   function rcJob(job, args, count) {
     return new Promise(res => {

@@ -70,3 +70,10 @@ test('已有任务执行时，批准出片仍禁用', () => {
   const { buttons } = promptButtons(true, true);
   assert.equal(buttons.find(b => b.children.includes('批准出片')).attrs.disabled, true);
 });
+
+test('「下一步：审片」照审片那一步锁不锁摆（11-18：别的提示词待核对，出好的样片也要能去审）', () => {
+  const line = script.split('\n').find(l => l.includes('下一步：审片'));
+  assert.ok(line, '提示词那一步要有「下一步：审片」');
+  assert.match(line, /reviewState\(s\)\.st !== 'lock'/);
+  assert.doesNotMatch(line, /!stale\.length \?/);
+});

@@ -136,7 +136,7 @@ const REPLY = '好的\n' + JSON.stringify({ 梗概: ' 老李开面摊，嘴硬�
     assert.deepEqual(s.json(outPath).镜头表, [{ 写什么: '端碗', 作用: '铺垫｜为镜2', 秒数: 2 }, { 写什么: '烫着', 作用: '转折｜接镜1' }]);
   });
 
-  await check('提炼按批注改（11-16）：现在的镜头表带号、秒数、人定；要求照抄号、人定的秒数；回的号都对才留，重了就不留', async () => {
+  await check('提炼按批注改（11-16）：现在的镜头表带号、秒数、人定；要求照抄号、人定的秒数；回的号照写（11-18：重了也照写，页面看号不对就照字认，镜N 照 AI 写的号换）', async () => {
     const paras = [{ 号: '1', 写什么: '老李端碗', 作用: '铺垫｜为镜3', 秒数: 3, 秒数人定: true }, { 号: '3', 写什么: '烫着了', 作用: '', 秒数: 2 }];
     const s = setup(scene({ 段落: paras }), { ...script, [notePath]: { text: '## 整体\n批注：只补秒数' } });
     const j = job(); await s.K.提炼按批注改.prep(j);
@@ -148,7 +148,7 @@ const REPLY = '好的\n' + JSON.stringify({ 梗概: ' 老李开面摊，嘴硬�
     const s2 = setup(scene({ 段落: paras }), { ...script, [notePath]: { text: '批注' } });
     const j2 = job(); await s2.K.提炼按批注改.prep(j2);
     await s2.K.提炼按批注改.apply(j2, JSON.stringify({ 梗概: '有', 镜头表: [{ 号: '1', 写什么: 'a', 作用: '' }, { 号: '1', 写什么: 'b', 作用: '' }] }));
-    assert.deepEqual(s2.json(outPath).镜头表.map(x => x.号), [undefined, undefined]);
+    assert.deepEqual(s2.json(outPath).镜头表.map(x => x.号), ['1', '1']);
   });
 
   await check('全局、每一镜出场的（11-17）：要求里多 7、8 两条，回复的样子带「全局」和每一镜的人物场景道具；全片设定列出全局；人删掉的叫 AI 别再列', async () => {
@@ -206,6 +206,48 @@ const REPLY = '好的\n' + JSON.stringify({ 梗概: ' 老李开面摊，嘴硬�
     const s = setup(scene({ 段落: [] }), { ...script, [notePath]: { text: '批注' } });
     const j = job(); await s.K.提炼按批注改.prep(j);
     await assert.rejects(s.K.提炼按批注改.book(j), /还没有提炼/);
+  });
+
+  const had = [{ 号: '1', 写什么: '老李端碗', 作用: '铺垫｜为镜3', 秒数: 3, 秒数人定: true }, { 号: '3', 写什么: '烫着了', 作用: '转折｜接镜1', 秒数: 2 }];
+  const redoReply = JSON.stringify({ 梗概: '有', 镜头表: [{ 号: '1', 写什么: '老李端碗', 作用: '铺垫｜为镜3', 秒数: 3 }, { 号: '3', 写什么: '烫着了', 作用: '转折｜接镜1', 秒数: 2 }, { 号: '3b', 写什么: '老李吹碗', 作用: '反应｜接镜3', 秒数: 1 }] });
+  await check('重新提炼（11-18）：已经有镜头表的，在现在的上面改：任务书带现在的提炼（号、人定的秒数），要求没变的照抄、号照抄、删掉的号不再用；回的号照写', async () => {
+    const s = setup(scene({ 段落: had, 人物: ['老李'] }), script);
+    const j = job(); await s.K.提炼.prep(j);
+    const book = await s.K.提炼.book(j);
+    assert.ok(book.includes('照定稿的剧本重新对一遍') && book.includes('"号": "3"') && book.includes('"秒数人定": true') && book.includes('"写什么": "老李端碗"'));
+    assert.ok(book.includes('剧本里没变的戏：现在的提炼照抄') && book.includes('删掉的号不再用') && book.includes('0、0b') && book.includes('镜N 的 N 是镜头的「号」') && book.includes('"号": "1", "写什么"'));
+    assert.ok(book.includes(SCRIPT) && !book.includes('## 批注'));
+    const r = await s.K.提炼.apply(j, redoReply);
+    assert.match(r.结果, /^重新提炼好了/);
+    assert.deepEqual(s.json(outPath).镜头表.map(x => x.号), ['1', '3', '3b']);
+    assert.equal(s.json(outPath).照批注改, undefined);   // 人删掉的又列回来：不是批注要加的，页面照旧不要
+  });
+
+  await check('重新提炼带批注（11-18）：页面传了批注、文件在，任务书带批注、要求一并照改，改完收进历史记录；没传批注（旧文件放着）、传了文件不在的，照没批注做', async () => {
+    const files = { ...script, [notePath]: { text: '## 镜头1\n原文：写什么：老李端碗\n批注：改成老李捧碗' } };
+    const s = setup(scene({ 段落: had }), files);
+    const j = job({ 批注: '第1段_提炼_批注.md' }); await s.K.提炼.prep(j);
+    const book = await s.K.提炼.book(j);
+    assert.ok(book.includes('\n## 批注\n## 镜头1') && book.includes('改成老李捧碗') && book.includes('一并照改') && book.includes('除非批注说到这一镜的秒数'));
+    await s.K.提炼.apply(j, redoReply);
+    assert.ok(!s.files.has(notePath));
+    assert.ok(s.hist(['定稿的剧本', '第1段']).some(p => /第1段_提炼_批注__\d{8}-\d{6}\.md$/.test(p)));
+    const old = setup(scene({ 段落: had }), files), j0 = job(); await old.K.提炼.prep(j0);
+    assert.ok(!(await old.K.提炼.book(j0)).includes('老李捧碗'));
+    await old.K.提炼.apply(j0, redoReply);
+    assert.ok(old.files.has(notePath));
+    const none = setup(scene({ 段落: had }), script), j2 = job({ 批注: '第1段_提炼_批注.md' }); await none.K.提炼.prep(j2);
+    assert.ok(!(await none.K.提炼.book(j2)).includes('## 批注'));
+  });
+
+  await check('第一回提炼带批注（11-18）：任务书带批注，要求照着办；照旧不留号', async () => {
+    const s = setup(scene(), { ...script, [notePath]: { text: '## 整体\n批注：镜头别切太碎' } });
+    const j = job({ 批注: '第1段_提炼_批注.md' }); await s.K.提炼.prep(j);
+    const book = await s.K.提炼.book(j);
+    assert.ok(book.includes('照定稿的剧本提炼梗概') && book.includes('\n9. 下面「批注」那一节是人写的要求') && book.includes('镜头别切太碎'));
+    await s.K.提炼.apply(j, JSON.stringify({ 梗概: '有', 镜头表: [{ 号: '1', 写什么: '端碗', 作用: '' }] }));
+    assert.deepEqual(s.json(outPath).镜头表, [{ 写什么: '端碗', 作用: '' }]);
+    assert.ok(!s.files.has(notePath));
   });
 
   console.log(tested + ' 项检查通过；真实项目数据未读写。');

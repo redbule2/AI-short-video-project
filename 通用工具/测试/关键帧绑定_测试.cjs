@@ -32,11 +32,41 @@ test('fillNos 把号写进表；keepNos 并进 AI 新提炼的表时留住原来
   assert.deepEqual(SB.keepNos(why, old).map(x => x.号), ['1', '1b', '2', '11']);   // 加了一镜、作用全改写了：写什么一样的还是原来那一镜
 });
 
+test('keepNos：删了一镜、又改了别的镜的字（11-18 药膳鸡 1-1），改字的那一镜认最像的，留原号', () => {
+  const r = (w, y, no) => ({ 写什么: w, 作用: y, ...(no ? { 号: no } : {}) });
+  const A = r('洪七公轻功踏雪，掠上山巅', '交代｜洪七公亮相，引出传闻，为镜2', '1'), B = r('破庙火光里，洪七公撕开烤鸡', '交代｜让人知道他最爱吃鸡，为镜3', '2'), C = r('奇花异草沉进翻滚的砂锅鸡汤', '铺垫｜至宝入汤，食方的门道，为镜4', '3');
+  const old = [A, B, C, r('竹林里洪七公一掌，竹叶漫天飞起', '交代｜鸡汤能让内力大涨，接镜3', '4')];
+  const fix1 = [r('洪七公轻功踏雪，落上坡顶山脊', '交代｜洪七公亮相，引出传闻，为镜2'), r(C.写什么, '铺垫｜至宝入汤，食方的门道，为镜3'), r(old[3].写什么, '交代｜鸡汤能让内力大涨，接镜2')];
+  assert.deepEqual(SB.keepNos(fix1, old).map(x => x.号), ['1', '3', '4']);   // 删的是镜头2，镜头1 改了字
+  const fix2 = [r('破庙火光里，洪七公撕开整只烤鸡', B.作用), r(C.写什么, C.作用)];
+  assert.deepEqual(SB.keepNos(fix2, [A, B, C]).map(x => x.号), ['2', '3']);   // 删的是镜头1，镜头2 改了字
+  assert.deepEqual(SB.keepNos([r('童大圣站在华山之巅', '铺垫｜食方之威'), r(C.写什么, C.作用)], [A, B, C]).map(x => x.号), ['0', '3']);   // 删了两镜、换上一镜不像的：算新加的
+});
+
+test('nosOk：AI 写的号能不能直接用', () => {
+  const old = ['1', '3', '9', '9b', '11'];
+  assert.equal(SB.nosOk(['1', '3', '3b', '9', '11', '12'], old), true);   // 中间加 3b、最后加 12
+  assert.equal(SB.nosOk(['0', '1', '3'], old), true);   // 最前面加的 0
+  assert.equal(SB.nosOk(['1', '2', '3'], old), false);   // 2 是删掉的号
+  assert.equal(SB.nosOk(['1', '10', '11'], old), false);   // 10 也是删掉的号
+  assert.equal(SB.nosOk(['1', '1'], old), false);
+  assert.equal(SB.nosOk(['1', ''], old), false);
+  assert.equal(SB.nosOk([], old), false);
+});
+
 test('提示词名字里的镜头号：照表里的先后展开、挨着的连起来', () => {
   const nos = ['1', '1b', '2', '3', '9', '11', '12'];
   assert.deepEqual(SB.expand('1-2.txt', nos), { nos: ['1', '1b', '2'], missing: [] });
   assert.deepEqual(SB.expand('9-11、3', nos), { nos: ['3', '9', '11'], missing: [] });
   assert.deepEqual(SB.expand('10', nos), { nos: [], missing: ['10'] });
+  const cut = ['1', '3', '4', '9', '11'];   // 镜头2、10 删了
+  assert.deepEqual(SB.expand('2-3', cut), { nos: ['3'], missing: [] });   // 一头删了：往里收（11-18）
+  assert.deepEqual(SB.expand('1-2', cut), { nos: ['1'], missing: [] });
+  assert.deepEqual(SB.expand('9-10', cut), { nos: ['9'], missing: [] });
+  assert.deepEqual(SB.expand('2-4', cut), { nos: ['3', '4'], missing: [] });
+  assert.deepEqual(SB.expand('5-8', cut), { nos: [], missing: ['5', '8'] });   // 中间一镜都不剩
+  assert.deepEqual(SB.expand('2', cut), { nos: [], missing: ['2'] });   // 单拍删掉的那一镜
+  assert.deepEqual(SB.expand('12-15', cut), { nos: [], missing: ['12', '15'] });
   assert.deepEqual(SB.shotsOf('9-11', '9-11.txt', nos), ['9', '11']);   // 名字是镜头号的照表认
   assert.deepEqual(SB.shotsOf('', '镜头1-2_视频提示词.txt', nos), ['1', '1b', '2']);   // 老稿照名字里的数认
   assert.equal(SB.shotsOf('', '视频提示词_02.txt', nos), null);
