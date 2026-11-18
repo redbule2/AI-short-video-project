@@ -51,7 +51,8 @@
 /* ============================================================
    流水线 · 剧本（一场的第一步，工序一。2026-11-16 他定：第一步直接写剧本，梗概、人物、场景、道具剧本定稿以后再提炼）
    左边给这一段起名。右边写剧本：人自己写（点「写剧本」，直接从正文写；11-16 晚他定：不让 AI 写剧本，「想写什么」和场景、人物、梗概几格都删了）；
-   写好就在这一页看、点一段写批注、交给 AI 改，也能点「自己改」直接改；看完没问题点「剧本定稿」。
+   写好就在这一页看；要改，点右上角「与AI继续沟通」，复制提示词贴进自己的 AI 对话商量着改，他说「定稿」AI 才写回来（11-17 他定，写了批注的一起带上），
+   也能点「自己改」直接改；看完没问题点「剧本定稿」。
    定稿了，下一步 AI 照剧本提炼梗概、出场的人物场景道具和镜头表（提炼那一页），提炼定了才出资产图。剧本再改，要再定一次。
    镜头表这一步 2026-11-12 取消了（他定的）：剧本定稿、资产确认以后直接写提示词，镜头在提示词的「分镜」里设计。
    看剧本、写批注用的是「项目管理」里剧本那一样，嵌在这一页下面。
@@ -60,6 +61,7 @@
 'use strict';
 let FRAME_KEY = '';   // 右边那一块现在摆的是什么：剧本的路径（嵌着的批注页）、'edit'（自己写）、'none'（还没有剧本）。一样就不重摆（AI 按批注改以后，嵌着的页面自己会换上新的）
 const swapCard = () => rerender();
+const ED_TALK = '与AI沟通剧本';   // 右边剧本里点「与AI继续沟通」开的任务（11-17 他定：先和自己的 AI 商量，他说定稿才写回来）
 /* 剧本定稿：只记一个时间。剧本以后再改，或者这一场重新定过，这个定稿就不算了，要再点一次。
    定过稿、后来剧本又改过（自己改、批注改）再定稿：AI 对一遍新旧剧本，列影响清单（哪些资产、提示词要再看、为什么；2026-11-14 文生资产流程图「中途改剧本」） */
 async function finalScript(s) {
@@ -297,12 +299,12 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && ED)
 const barNote = (t, warn) => h('span', { class: 'fn-note' + (warn ? ' warn' : '') }, t);
 function barEls(s) {
   const { d, st, again } = scriptState(s), out = [], sp = () => h('span', { class: 'sp' });
-  const bad = jobFailed('按批注改', s.段);   // 上一回没做成，说一句
-  const fixing = jobOf('按批注改', s.段);   // 你在下面点了「交给 AI 改」
+  const bad = jobFailed(ED_TALK, s.段) || jobFailed('按批注改', s.段);   // 上一回没做成，说一句
+  const fixing = [jobOf(ED_TALK, s.段), jobOf('按批注改', s.段)].find(jobLive) || null, talking = !!fixing && fixing.事 === ED_TALK;   // 你在下面点了「与AI继续沟通」（老的「按批注改」照认）
   if (ED && ED.seg === s.段) return [h('span', { class: 'fs-state' }, icon('pen'), ED.orig ? '自己改剧本' : '写剧本'), h('span', { class: 'fn-note', id: 'sw-state' }, edStateText()),
-    jobLive(fixing) ? barNote('AI 在照批注改这一段的剧本，存的时候会问你用哪一版。', true) : null, sp(),
+    fixing ? barNote(talking ? '你在和 AI 商量这一段的剧本：它写回来的时候，会问你用哪一版。' : 'AI 在照批注改这一段的剧本，存的时候会问你用哪一版。', true) : null, sp(),
     h('button', { class: 'btn sm ink', type: 'button', title: '存上，回去看剧本、写批注、定稿', onclick: edClose }, '写好了，看剧本')].filter(Boolean);
-  if (jobLive(fixing)) return [jobLine(fixing), barNote('改好以后，下面改动的地方显示成红批。')];
+  if (fixing) return [jobLine(fixing), barNote(talking ? '商量定了，跟 AI 说「定稿」，它写回来，下面改动的地方显示成红批。' : '改好以后，下面改动的地方显示成红批。')];
   if (bad) out.push(bad);
   const ck = st !== 'none' && window.ScriptCheck ? ScriptCheck.scriptNote(s) : null;   // 片子定稿、审片批注和剧本对不上：AI 写了几条批注（11-16 加）
   if (ck) out.push(ck);
@@ -312,7 +314,7 @@ function barEls(s) {
   else if (st === 'final') out.push(h('span', { class: 'fs-state ok', title: '剧本定稿的时间：' + s.剧本定稿 }, icon('check'), '剧本定稿了 ' + s.剧本定稿.slice(5, 16)), impactNote(s) || barNote('剧本再改，要重新定稿。'),
     h('button', { class: 'fl-link', type: 'button', title: '在下面直接改。改了要重新定稿', onclick: () => edOpen(s) }, '自己改'), sp(),
     h('button', { class: 'btn ink', title: 'AI 照定稿的剧本提炼梗概、人物、场景、道具和镜头表，你再改或者批注', onclick: () => go('分场', { s: s.段 }) }, '下一步：提炼 →'));
-  else out.push(barNote(again ? '定稿以后又改过。看完没问题，再定一次。' : '在下面看剧本、写批注交给 AI 改，或者点「自己改」。没问题了就定稿；定稿以后 AI 提炼人物、场景、道具和镜头表。', again), sp(), mine('自己改'), fin('剧本定稿', 'ink'));
+  else out.push(barNote(again ? '定稿以后又改过。看完没问题，再定一次。' : '要改，点下面剧本右上角的「与AI继续沟通」，或者点「自己改」。没问题了就定稿；定稿以后 AI 提炼人物、场景、道具和镜头表。', again), sp(), mine('自己改'), fin('剧本定稿', 'ink'));
   return out;
 }
 /* 重新定稿以后的影响清单：AI 在列、列好了（资产几样、提示词几条要再看）、没列成 */
@@ -365,7 +367,7 @@ function repaint() {
   const d = docsOf(s.段), box = sideBox(s);
   bar.replaceChildren(...barEls(s));
   if (side.firstChild !== box) { side.replaceChildren(box); fitAll(); }
-  document.getElementById('sb-docs').replaceChildren(h('span', { class: 'fn-note' }, !ED && (d.script || d.combined) ? '点一段写批注；写完点右上角「交给 AI 改」。' : ''));
+  document.getElementById('sb-docs').replaceChildren(h('span', { class: 'fn-note' }, !ED && (d.script || d.combined) ? '点右上角「与AI继续沟通」，复制提示词去和你的 AI 商量；也能先点一段写批注，一起带上。' : ''));
   paintDoc(s);
 }
 function render() {

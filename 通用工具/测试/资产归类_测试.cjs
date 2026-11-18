@@ -227,6 +227,22 @@ test('交给 AI 的：要求两条、回复的样子、现在的全局、每一�
   assert.equal(S.castSay({}), '');
 });
 
+test('场景图（11-17）：图名告诉 AI；标过了、场景图一镜都没标上的，提炼页提醒补标；页面收下 AI 写的图名', () => {
+  const d = film(), s = d.场[0];
+  assert.deepEqual(S.imgNames(s), ['客栈']);
+  assert.equal(S.imgLine(s), '这一段挂了场景图，图名：客栈。照图名和剧本估，哪个镜头用得上哪张，就把图名写进这个镜头的「场景」，一个字不差。');
+  assert.equal(S.imgLine(d.场[1]), '');
+  assert.equal(S.imgsUntagged(s), false);   // 镜3 写了客栈
+  S.setShot(s.段落[2], '场景', '客栈', false);
+  assert.equal(S.imgsUntagged(s), true);
+  assert.equal(S.imgsUntagged(d.场[1]), false);   // 没挂场景图
+  assert.equal(S.imgsUntagged({ 场景图: [KE], 段落: [] }), false);   // 还没有镜头表
+  const t = { 场景图: [KE], 人物: ['童大圣'], 段落: [{ 号: '1', 写什么: 'a', 人物: ['童大圣'], 场景: ['客栈'] }] };
+  S.fitRows(t);
+  assert.deepEqual(t.段落[0].场景, ['客栈']);
+  assert.equal(S.imgsUntagged(t), false);
+});
+
 test('流水线的页面：读 流水线.js 的都先读 公用/资产归类.js（不然并进 AI 提炼的会丢掉每一镜出场的）', () => {
   const dir = path.resolve(__dirname, '../流水线');
   const pages = fs.readdirSync(dir).filter(f => f.endsWith('.html')).map(f => [f, fs.readFileSync(path.join(dir, f), 'utf8')]).filter(([, t]) => t.includes('流水线.js"'));
@@ -235,4 +251,12 @@ test('流水线的页面：读 流水线.js 的都先读 公用/资产归类.js�
     const at = t.indexOf('../公用/资产归类.js"');
     assert.ok(at >= 0 && at < t.indexOf('流水线.js"'), f + ' 没先读 公用/资产归类.js');
   }
+});
+
+test('用在哪几镜的小牌子只写一套（11-17 资产页也能手动绑镜头）：流水线.js 的 shotPicks，提炼页、资产页都用它', () => {
+  const dir = path.resolve(__dirname, '../流水线'), read = f => fs.readFileSync(path.join(dir, f), 'utf8');
+  assert.match(read('流水线.js'), /function shotPicks\(s, who, done\)/);
+  for (const f of ['分场.html', '资产.html']) assert.ok(read(f).includes('shotPicks(s, '), f + ' 没用 shotPicks');
+  assert.ok(!read('分场.html').includes('pz-shots'), '分场.html 还留着自己那一套小牌子');
+  assert.match(read('流水线.css'), /\.fl-shots button\.on/);
 });

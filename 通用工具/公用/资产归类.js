@@ -1,7 +1,7 @@
 /* 提炼出来的人物、场景、道具：全局的、只这一段用的（用在哪几镜），用不着的删掉（2026-11-17 他要）。
    全局：全片好几段都出场的。好几段都选了它就算；只写了一段的时候，AI 提炼时照梗概估，人在提炼页能改。
      记在流水线.json 顶上的「全局」：{ 人物: [名], 场景: [地方名], 道具: [名] }。
-   用在哪几镜：镜头表每一镜的「人物」「场景」「道具」（名字；场景写地方名，冒号前那几个字，和「不出图」「不要GEO」记的一样）。AI 提炼时标，人能改。全局的也标。
+   用在哪几镜：镜头表每一镜的「人物」「场景」「道具」（名字；场景写地方名，冒号前那几个字，和「不出图」「不要GEO」记的一样；场景图写图名）。AI 提炼时标，人能改。全局的也标。
    删掉（他定：全片也删）：这一段不用它，镜头表里也去掉；别的段没用它的，全片设定里也删掉（人物、道具那一行，场景那一句），「全局」里也去掉。
      记在这一场的「删掉」：['人物|名', '场景|地方名', '道具|名']：不再提示「剧本里提到了」，AI 重新提炼也不再列。人又加回来的不算删掉。
    用到的：流水线 分场.html（提炼页「出场的」）、资产.html（卡上写全局、镜几，×）、流水线.js（并进 AI 提炼的、改名、提到了没选上的）、
@@ -70,6 +70,10 @@
   const castRefs = (s, k) => !s ? [] : k === '场景' ? [...new Set([...list(s.场景文字).map(place), ...list(s.场景图).map(f => place(stem(f)))])] : list(s[k]);
   const inCast = (s, k, name) => castRefs(s, k).includes(ref(k, name));
   const segsOf = (doc, k, name) => (doc && Array.isArray(doc.场) ? doc.场 : []).filter(s => s && inCast(s, k, name)).map(s => str(s.段));
+  /* 这一段挂的场景图的图名（11-17：任务书里不写图名，AI 就标不上它用在哪几镜） */
+  const imgNames = s => [...new Set(list(s && s.场景图).map(f => place(stem(f))).filter(Boolean))];
+  /* 场景图一张都还没标在哪一镜（以前标的时候 AI 不知道图名）：提炼页提醒「让 AI 标上」 */
+  const imgsUntagged = s => { const a = imgNames(s), rows = rowsOf(s); return a.length > 0 && rows.length > 0 && a.every(n => !rows.some(x => inRow(x, '场景', n))); };
 
   /* ---------- 全局：全片好几段都出场的 ---------- */
   const box = doc => doc && doc.rest && typeof doc.rest === 'object' && !Array.isArray(doc.rest) ? doc.rest : doc;   // 页面读进来的流水线，不认识的项在 rest 里；本机服务读的是原样
@@ -211,6 +215,11 @@
     const g = goneKeys(s).map(x => x.split('|')).filter(([k, n]) => KINDS.includes(k) && n && !inCast(s, k, n));
     return g.length ? '人删掉了、这一段用不着的，别再列，镜头里也别写：' + g.map(([k, n]) => k + '「' + n + '」').join('、') : '';
   }
+  /* 这一段挂了场景图的：告诉 AI 图名，镜头的「场景」也能写它 */
+  function imgLine(s) {
+    const a = imgNames(s);
+    return a.length ? '这一段挂了场景图，图名：' + a.join('、') + '。照图名和剧本估，哪个镜头用得上哪张，就把图名写进这个镜头的「场景」，一个字不差。' : '';
+  }
   /* 全片设定里写一行：哪些是全局的（标了的，和好几段都选了的） */
   function globalLine(doc) {
     const seen = Object.fromEntries(KINDS.map(k => [k, new Set(marks(doc)[k])]));
@@ -222,7 +231,7 @@
   /* 镜头表那一行后面接的：「出场：洪七公、雪山、竹棍」 */
   const castSay = x => { const c = rowCast(x), a = KINDS.flatMap(k => c[k] || []); return a.length ? '出场：' + a.join('、') : ''; };
 
-  return Object.freeze({ KINDS, place, ref, keyOf, rowCast, inRow, marked, shotsOf, nosSay, setShot, fitRows, castRefs, inCast, segsOf,
+  return Object.freeze({ KINDS, place, ref, keyOf, rowCast, inRow, marked, shotsOf, nosSay, setShot, fitRows, castRefs, inCast, segsOf, imgNames, imgsUntagged, imgLine,
     marks, marksGlobal, isGlobal, setGlobal, globalIn, takeMarks, say, goneKeys, isGone, dropSay, drop, dropAsk, skipGone, rename, renameScenes, forget, sig,
     RULE_SHOT, RULE_GLOBAL, rules, ruleFix, SHOT_JSON, GLOBAL_JSON, goneLine, globalLine, segGlobal, castSay });
 });

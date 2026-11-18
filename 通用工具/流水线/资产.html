@@ -38,6 +38,9 @@
 .ac-st { font-size: 12px; line-height: 1.55; color: var(--ink-3); }
 .ac-st.ok { color: var(--dai); }
 .ac-st.todo { color: var(--zhu); }
+.ac-sc { padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.ac-sc:hover { color: var(--ink); }
+.ac-shots { padding: 2px 16px 12px; }
 .ac-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .ac-acts:empty { display: none; }
 .ac-acts .fl-asset-ok { margin-left: 0; }
@@ -195,6 +198,18 @@ function scopeTx(s, it) {
   const t = Scope.say(F.doc, s, shotNos(s), k, name);
   return [Scope.isGlobal(F.doc, k, name) ? '全局' : '', t === '哪一镜都没用上' ? '哪一镜都没有' : t].filter(Boolean).join(' · ');
 }
+/* 卡上「镜1、3」「哪一镜都没有」那几个字：点一下弹出各镜的小牌子，点镜头号改用在哪几镜（11-17 他要在资产页手动绑镜头；小牌子和提炼页共用，流水线.js 的 shotPicks）。
+   这一段还一镜都没标的不给点：先在提炼页「让 AI 标上」，不然别的样都成了「哪一镜都没有」 */
+const scBtn = (s, it, sc) => h('button', { class: 'ac-sc', type: 'button', title: '用在这一段哪几镜：点一下改', onkeydown: ev => ev.stopPropagation(), onclick: ev => { ev.stopPropagation(); shotPop(ev.currentTarget, s, it); } }, sc);
+function shotPop(anchor, s, it) {
+  const who = () => ({ k: kindOf(it.类别), name: scopeName(it) });
+  popover(anchor, close => {
+    const box = h('div', { class: 'ac-shots' });
+    const redo = () => box.replaceChildren(shotPicks(s, who, () => { redo(); paint(); }));
+    redo();
+    return [h('div', { class: 'fl-pop-h' }, '用在哪几镜 · ' + it.名称), box, h('div', { class: 'fl-pop-f' }, h('button', { class: 'btn sm', type: 'button', onclick: close }, '好了'))];
+  });
+}
 /* ×：删掉（他定：这一段不用它，别的段没用它的，全片设定里也删；问一句再删） */
 const dropIt = async (s, k, name) => { if (await Scope.dropAsk(confirmDlg, F.doc, s, k, name)) { touch(); paint(); } };
 function cardEl(s, it, voice) {
@@ -204,7 +219,8 @@ function cardEl(s, it, voice) {
   const img = !!it.at && IMG_RE.test(it.at), ok = img && okOf(it), again = img && !ok && !!F.doc.可用[it.at], cand = !!w && w.step === 'cand';
   const open = w ? () => openWord(s, w) : img ? () => openImage(it.at, shellActs(s, it, w)) : it.own && !txt && (isRow || it.文字) ? () => pickFor(s, it) : null;
   /* 走到哪了：一行小字 */
-  const tx = [scopeTx(s, it), txt ? ['只用文字', w ? wordTx(w) : ''].filter(Boolean).join(' · ') : it.文字 ? (w ? (w.hasImg ? '图出好了' : wordTx(w)) : '只用文字写，不用图')
+  const sc = scopeTx(s, it), canSc = !!sc && Scope.marked(s);   // 用在哪几镜：标过了的能点开改
+  const tx = [txt ? ['只用文字', w ? wordTx(w) : ''].filter(Boolean).join(' · ') : it.文字 ? (w ? (w.hasImg ? '图出好了' : wordTx(w)) : '只用文字写，不用图')
     : !img ? [it.own ? '' : 'AI 列的', w ? chipTx(it, w) : it.状态 || '还没有图'].filter(Boolean).join(' · ')
       : [cand || ok ? '' : again ? '图改过、描写改过，再看一眼' : '还没确认', w ? chipTx(it, w) : ''].filter(Boolean).join(' · '), offGeo ? '不写 GEO' : ''].filter(Boolean).join(' · ');
   const good = ok && !(w && (checkBad(w.checkImg) || w.geoBack || cand)) && !why;
@@ -238,7 +254,7 @@ function cardEl(s, it, voice) {
     h('div', { class: 'ac-pic' + (img ? '' : ' none') }, img ? thumbImg(it.at, 400) : txt ? '只用文字写' : it.状态 === '图不在了' ? '图不在了' : '还没有图'),
     h('div', { class: 'ac-bd' },
       h('div', { class: 'ac-nm' }, h('span', null, it.名称), it.sub ? h('small', null, it.sub) : null, swap || lock, geo),
-      tx ? h('div', { class: 'ac-st' + (good ? ' ok' : !it.own || txt ? '' : ' todo') }, tx) : null,
+      sc || tx ? h('div', { class: 'ac-st' + (good ? ' ok' : !it.own || txt ? '' : ' todo') }, canSc ? scBtn(s, it, sc) : sc, sc && tx ? ' · ' : '', tx) : null,
       h('div', { class: 'ac-acts' }, acts),
       voice ? VoiceBind.line(it.名称, paint) : null),
     x ? h('button', { class: 'fl-asset-x', type: 'button', title: x[0], onkeydown: stop, onclick: ev => { stop(ev); x[1](); } }, icon('x')) : null);

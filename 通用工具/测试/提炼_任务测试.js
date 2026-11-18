@@ -189,6 +189,19 @@ const REPLY = '好的\n' + JSON.stringify({ 梗概: ' 老李开面摊，嘴硬�
     assert.deepEqual(s.json(outPath).镜头表, [{ 号: '1', 写什么: '老李端碗', 作用: '', 人物: ['老李'] }]);
   });
 
+  await check('挂了场景图的（11-17）：提炼、提炼按批注改的要求里告诉 AI 图名，镜头的「场景」能写图名，回的照写；没挂的不提', async () => {
+    const paras = [{ 号: '1', 写什么: '老李端碗', 作用: '', 人物: ['老李'] }, { 号: '2', 写什么: '烫着了', 作用: '' }];
+    const s = setup(scene({ 段落: paras, 人物: ['老李'], 场景图: ['资产/第1段/镜头1_空镜.png', '资产/全局资产/场景/面摊.png'] }), { ...script, [notePath]: { text: '批注' } });
+    assert.ok((await s.K.提炼.book(job())).includes('\n9. 这一段挂了场景图，图名：镜头1_空镜、面摊。'));
+    const j = job(); await s.K.提炼按批注改.prep(j);
+    assert.ok((await s.K.提炼按批注改.book(j)).includes('\n9. 这一段挂了场景图，图名：镜头1_空镜、面摊。'));
+    await s.K.提炼按批注改.apply(j, JSON.stringify({ 梗概: '有', 镜头表: [{ 号: '1', 写什么: '老李端碗', 作用: '', 人物: ['老李'], 场景: ['镜头1_空镜'] }, { 号: '2', 写什么: '烫着了', 作用: '' }] }));
+    assert.deepEqual(s.json(outPath).镜头表[0].场景, ['镜头1_空镜']);
+    const plain = setup(scene({ 段落: paras }), { ...script, [notePath]: { text: '批注' } }), j2 = job();
+    await plain.K.提炼按批注改.prep(j2);
+    assert.ok(!(await plain.K.提炼按批注改.book(j2)).includes('挂了场景图'));
+  });
+
   await check('提炼按批注改：这一段还没提炼过就不改', async () => {
     const s = setup(scene({ 段落: [] }), { ...script, [notePath]: { text: '批注' } });
     const j = job(); await s.K.提炼按批注改.prep(j);

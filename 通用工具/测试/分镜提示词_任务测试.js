@@ -88,6 +88,23 @@ const sideData = () => ({ 写法: '分镜', 分镜稿: structured, 自由稿: '�
     await assert.rejects(t.K.按批注改提示词.apply(j, '[]'), /没有要改的地方/);
     assert.equal(t.writes.length, 0); assert.equal(t.files.has(notePath), true);
   });
+  await check('照新资产改回 []：后面接的【秒数】照样记，旧记号换成现在这份稿的；没估就不动旧的', async () => {
+    const AssetEdit = require('../公用/资产改过.js'), Core = require('../公用/核心.js'), key = '提示词/第1段/视频提示词.txt';
+    const notePath = path.join(root, '项目', '测试', '提示词', '第1段', '视频提示词_批注.md'), j = { ...job(), rel: ['提示词', '第1段', '视频提示词_批注.md'] };
+    const old = () => Buffer.from(JSON.stringify({ schema_version: 1, prompts: { [key]: { prompt_sha256: 'x', references: [], 秒数: { 镜头: { 1: 9 }, 记号: 'old' } } } }));
+    const note = () => Buffer.from(AssetEdit.noteMd(Core, { title: 't', file: 'f', list: [{ 类别: '道具', 名称: '书', 改了: '文字描写', 字: '一本蓝皮线装书' }], old: '' }));
+    const s = setup(pe, peSide());
+    s.files.set(mapPath, old()); s.files.set(notePath, note());
+    const r = await s.K.按批注改提示词.apply(j, '[]\n\n【秒数】\n镜头1：2\n镜头2：3');
+    assert.equal(s.raw(), pe);   // 稿子还是一字不动
+    const m = JSON.parse(s.files.get(mapPath).toString()).prompts[key];
+    assert.deepEqual(m.秒数.镜头, { 1: 2, 2: 3 }); assert.equal(Secs.state(m.秒数, s.raw()).st, 'fresh');   // 出片弹窗不再说「估完以后改过」
+    assert.match(r.结果, /一字没动.*共 5 秒/);
+    const t = setup(pe, peSide());
+    t.files.set(mapPath, old()); t.files.set(notePath, note());
+    await t.K.按批注改提示词.apply(j, '[]');
+    assert.equal(JSON.parse(t.files.get(mapPath).toString()).prompts[key].秒数.记号, 'old');
+  });
   await check('PE 稿：AI 批注的原文抄了「镜头N：」也能对上，段名行不当原文', async () => {
     const s = setup(pe, peSide()), j = { ...job(), 渠道: 'claude' };
     const book = await s.K.批注提示词.book(j);

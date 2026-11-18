@@ -458,7 +458,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       async book(j) {
         const { flow, s, script } = await distillBase(j);
         return ['# 任务：照定稿的剧本提炼梗概、人物、道具、场景和镜头表', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面是这一段定稿的剧本，和现在已有的全片设定（前面几段定稿以后提炼的，可能还空着）。请照剧本提炼下面五样，后面照它出人物、道具、场景图，写视频提示词时照镜头表的先后拍。',
-          '', '## 要求', ...DISTILL_RULES, ...(Scope && Scope.goneLine(s) ? [(DISTILL_RULES.length + 1) + '. ' + Scope.goneLine(s)] : []), '', '## 回复一段 JSON，像这样', distillJson(false),
+          '', '## 要求', ...DISTILL_RULES, ...(Scope ? [Scope.goneLine(s), Scope.imgLine(s)].filter(Boolean).map((t, i) => (DISTILL_RULES.length + 1 + i) + '. ' + t) : []), '', '## 回复一段 JSON，像这样', distillJson(false),   // 挂了场景图的，告诉 AI 图名（11-17）
           '', '## 这一段：第' + j.段 + '段｜' + (str(s.名).trim() || '（没起名）'), ...(str(s.表达).trim() ? ['这一段想写什么：' + str(s.表达).trim()] : []),
           '', '## 定稿的剧本', script, '', '## 现在的全片设定', settingText(flow), '', '## 别的段（只为了写全片梗概）', restScenes(flow, s), TAIL].join('\n');
       },
@@ -483,7 +483,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           '3. 批注是提要求的，照要求改这一处，改动尽量小；批注把原文改写好了的，照抄批注，不要再润色。', '4. 新加的照这几条写：' + [...DISTILL_RULES.slice(1, 4), shotRule('镜N 的 N 是镜头的「号」')].map(x => x.replace(/^\d\. /, '')).join(' '),
           '5. 镜头表每个镜头带「号」：原有的照抄；新加的照规矩起：插在中间的是前一镜的号加 b、c（镜头3 后面加的是 3b），加在最后的接着最大的号往后排；删掉的号不再用。批注里的「镜头N」也是这个号。',
           '6. 秒数：标了「秒数人定」的是人定的，照抄，除非批注说到这一镜的秒数；没标的，批注说到这一镜、或者这一镜的写什么改了，就重估，别的照抄；还没有秒数的补上。回复里不写「秒数人定」。',
-          '7. 回复改好以后的全部内容（没改的照抄），格式照下面。', ...(Scope ? [Scope.ruleFix(8)] : []), '', '## 回复一段 JSON，像这样', distillJson(true),
+          '7. 回复改好以后的全部内容（没改的照抄），格式照下面。', ...(Scope ? [Scope.ruleFix(8), ...(Scope.imgLine(s) ? ['9. ' + Scope.imgLine(s)] : [])] : []), '', '## 回复一段 JSON，像这样', distillJson(true),   // 9：挂了场景图的，告诉 AI 图名（11-17）
           '', '## 现在的提炼', JSON.stringify(now, null, 2), '', '## 批注', note, '', '## 这一段：第' + j.段 + '段｜' + (str(s.名).trim() || '（没起名）'),
           '', '## 定稿的剧本', script, '', '## 全片的设定（只为了认人物、道具）', settingText(flow), TAIL].join('\n');
       },
@@ -1526,15 +1526,16 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           (await exists(sp)) ? '\n## 这一段的剧本（对照用）\n' + await docText(sp) : '', '', PE_FORMAT, '', PE_DRAMA, '', '## 技能：sd25-pe', await skill('sd25-pe'), TAIL].join('\n');
       },
       async apply(j, text) {
-        const ops = opsOf(text);
+        const ops = opsOf(text), rel = ['提示词', segDir(j.段), j.名];
         if (!ops.length) {   // 照新资产改（11-17，公用/资产改过.js）：AI 对过说都对得上。稿子一字不动，只把时间更新（不再标「资产改了」），批注照旧收走
           const note = pj(j.项目, ...j.rel), md = (await exists(note)) ? unbom(await fsp.readFile(note, 'utf8')) : '';
           if (!AssetEdit || !AssetEdit.onlyAuto(md)) throw fail('AI 说没有要改的地方');
           await writeFile(vpPath(j), await fsp.readFile(vpPath(j)));
           await archive(j.项目, j.rel);
-          return { 结果: '对过改了的资产：这一条没有要改的，提示词一字没动，不再标待核对', 产出: [['提示词', segDir(j.段), j.名].join('/')] };
+          const secs = await putSecs(j.项目, rel, text);   // 回的【秒数】照样记（11-17 晚他要）：不记的话，稿子估完以后改过的，出片弹窗一直说「估完以后改过」
+          return { 结果: '对过改了的资产：这一条没有要改的，提示词一字没动，不再标待核对' + secsSay(secs), 产出: [rel.join('/')] };
         }
-        const rel = ['提示词', segDir(j.段), j.名], raw = await fsp.readFile(vpPath(j), 'utf8'), bom = raw.charCodeAt(0) === 0xFEFF, eol = /\r\n/.test(raw) ? '\r\n' : '\n';
+        const raw = await fsp.readFile(vpPath(j), 'utf8'), bom = raw.charCodeAt(0) === 0xFEFF, eol = /\r\n/.test(raw) ? '\r\n' : '\n';
         const lines = (bom ? raw.slice(1) : raw).split(/\r\n|\n|\r/), miss = [];
         for (const o of ops) {
           const want = o.原文.trim(), nth = Math.max(1, Number(o.第几处) || 1), put = o.改成.split(/\r?\n/).map(l => l.trim()).filter((l, i, arr) => l || arr.length === 1);
@@ -1569,6 +1570,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   CHANNELS[BUILTIN] = { 名: '内置 AI', 说明: '对剧本：先本机 Codex 命令行，不行换 DeepSeek 接口', ok: () => true, 模型: [], 默认模型: () => '', 模型说明: '', 深度: [], 默认深度: () => '', 深度说明: '' };
   const Check = require('./script-check.js')({ ROOT, HOME, fsp, pj, run, writeFile, withFileLocks, Core, log, nowText, today, str, fail, segDir, scriptPath, exists, unbom });
   Object.assign(KINDS, Check.KINDS);
+  /* ---------- 与AI沟通剧本（11-17 他定）：剧本页「与AI继续沟通」，先和人商量，他说「定稿」才写回来。都在 script-talk.js ---------- */
+  Object.assign(KINDS, require('./script-talk.js')({ fsp, pj, str, fail, exists, unbom, nameOk, docText, writeDoc, archive, body, today, mmdd }).KINDS);
 
   /* ---------- 任务：排队、一个一个做 ---------- */
   const jobs = [], byId = new Map();
@@ -1624,8 +1627,9 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       Object.assign(j, { 状态: '做完', 结果: r.结果, 产出: r.产出 || [] });
       log('AI 任务做完：' + j.标题 + '（' + chLabel(j) + '，' + Math.round((Date.now() - j.开始) / 1000) + ' 秒）');
     } catch (e) {
-      j.状态 = j.停 ? '停了' : '没成'; j.错误 = j.停 ? '你点了停' : (e.plain ? e.message : '出错了：' + e.message);
-      log('AI 任务' + j.状态 + '：' + j.标题 + '　' + j.错误);
+      if (e.别处 && !j.停) Object.assign(j, { 状态: '做完', 结果: '不用做了：' + e.别处, 产出: [] });   // 要做的事在别处做完了（11-17，done-elsewhere.js）：不算没成
+      else { j.状态 = j.停 ? '停了' : '没成'; j.错误 = j.停 ? '你点了停' : (e.plain ? e.message : '出错了：' + e.message); }
+      log('AI 任务' + j.状态 + '：' + j.标题 + '　' + (j.错误 || j.结果));
     } finally { j.结束 = Date.now(); j.步骤 = ''; j.child = null; j.等Claude = false; if (j.dir && (j.交给 || j.续)) selfDone(j); pump(); }
   }
   /* resume：服务重开后接着等回复的（resumeSelf 给的，网页上来的请求没有这一样） */
@@ -1694,10 +1698,12 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
      一个任务里交几回的（核图这类）：每回带个名，文件叫 回复_<名>.md、交给AI的话_<名>.txt。
      服务重开过：三天内没了结的，开起来接着等（文件夹里的 自己交.json 记着当初的请求；出图这类不止一步的接不上，要重点一次） */
   const SERVER_JS = path.join(__dirname, 'server.js').replace(/\\/g, '/');
+  const Gone = require('./done-elsewhere.js')({ fsp, pj, vpPath });   // 等回复时看要做的事是不是在别处做完了（11-17）
   const PORT = Number(process.env.ANTOU_PORT) || 8766;   // 和 server.js 一样算：DeepSeek 的窗口做完照它告诉这边
   const tellLines = j => ['写完跑下面这一句，告诉项目做完了（跑不了也没关系，项目自己会看到这个文件）：', 'node "' + SERVER_JS + '" reply ' + j.id];
   const seeLines = imgs => imgs.length ? ['动笔前先把这几张图各看一遍：', ...imgs] : [];
   function selfMsg(j, files, imgs) {   // 给我提示词、Claude 桌面版：读任务书、写回复文件、跑一句告诉项目
+    if (KINDS[j.事].selfMsg) return KINDS[j.事].selfMsg(j, files, tellLines(j));   // 要先和人商量的（与AI沟通剧本）：这段话它自己说
     return ['请读这份任务书，照里面的要求做：', files.book, ...seeLines(imgs),
       '读文件用命令行或者读文件的工具，要用的材料任务书里都带齐了。不要用 Computer Use，不要打开别的软件、窗口。',
       '做完把回复（照任务书里「回复的格式」，只要那几块）一次写进下面这个文件，用 UTF-8。除了它，别的文件一律不改、不新建：', files.reply,
@@ -1807,7 +1813,11 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           if (t != null && t.trim()) return t;
           j.格式错 = path.basename(files.reply) + ' 读出来是乱码，要用 UTF-8 写'; j.格式错时 = Date.now(); j.步骤 = say();
         }
-      } else { j.催 = false; if (!now) j.步骤 = say(); }
+      } else {
+        j.催 = false; if (!now) j.步骤 = say();
+        const why = await Gone.check(j);   // 没有新回复：要做的事在别处做完了，就不等了
+        if (why) throw Object.assign(fail(why), { 别处: why });
+      }
       tick(j);
       await nap(j, 2000);
     }
@@ -1916,7 +1926,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         if (req.method === 'POST' && q.has('reply')) return json(res, await takeReply(j, (await readBody(req, 4e6)).toString('utf8')));   // 交给 AI 的：回复到了
         if (req.method === 'GET' && q.has('msg')) {   // 交给 AI 的话：页面弹出来给人复制（给我提示词），Claude 没开出来时也能看、能复制
           if (!j.交给 || !j.交代) throw httpErr(409, '要交代的话还没备好，等一两秒');
-          return json(res, { 话: j.交代, 方式: j.交给.方式, 等: j.交给.等, 标题: j.标题, 要Codex: !!j.交给.要Codex, 回复: j.交给.回复 });
+          return json(res, { 话: j.交代, 方式: j.交给.方式, 等: j.交给.等, 标题: j.标题, 要Codex: !!j.交给.要Codex, 回复: j.交给.回复, 说: KINDS[j.事].handSay || '' });   // 说：弹窗上那一句，这件事另有说法的（与AI沟通剧本）
         }
         if (req.method === 'POST' && q.has('reopen')) {   // Claude 里没看到新开的对话：再开一次（还没按发送的才行）
           if (!live(j) || !j.交给 || j.交给.方式 !== 'claude' || j.交给.等 !== '发送') throw fail('这一个不用再开了');

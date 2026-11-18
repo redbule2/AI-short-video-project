@@ -61,6 +61,16 @@ const Why = window.ShotWhy;
 /* 出场的人物、场景、道具：全局的（好几段都用）、用在这一段哪几镜，删掉用不着的（2026-11-17 他要）：公用/资产归类.js */
 const Scope = window.AssetScope;
 const shotNos = s => SB.nosOf(s.段落);   // 这一场镜头表各镜的号
+/* 用在哪几镜：一镜一个小牌子，点一下加上、再点去掉。提炼页点开的卡、资产页卡上那行小字共用（11-17 他要在资产页手动绑镜头）。
+   who()：现在认的 { k, name }（场景那一句改着改着会变，点的时候再认）；done：改完重画 */
+function shotPicks(s, who, done) {
+  const nos = shotNos(s);
+  return h('div', { class: 'fl-shots' }, s.段落.map((x, i) => {
+    const o = who(), on = Scope.inRow(x, o.k, o.name);
+    return h('button', { class: on ? 'on' : '', type: 'button', title: '镜头' + nos[i] + '：' + (str(x.写什么).trim() || '还空着') + (on ? '（点一下去掉）' : '（点一下加上）'),
+      onclick: () => { const c = who(); Scope.setShot(x, c.k, c.name, !on); touch(); done(); } }, String(nos[i]));
+  }));
+}
 const arrOf = v => Array.isArray(v) ? v : [];
 const frameNo = f => { const m = /(?:镜头|段落)\s*0*([0-9]+)/.exec(String(f).split('/').pop()); return m ? +m[1] : null; };   // 镜头3_首帧.png → 3
 const frameSort = (a, b) => (frameNo(a) ?? 1e9) - (frameNo(b) ?? 1e9) || a.localeCompare(b, 'zh', { numeric: true });

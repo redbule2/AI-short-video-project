@@ -202,6 +202,11 @@ body.wf-covered .wf-fab { display: none; }
 .fl-pi.on { background: var(--dai-soft); border-color: var(--dai-line); }
 .fl-pi.on i { background: var(--dai); border-color: var(--dai); color: #f3f7f6; }
 .fl-pop-f { flex: none; display: flex; justify-content: flex-end; padding: 8px 12px 10px; border-top: 1px solid var(--line); }
+/* 用在哪几镜的小牌子（流水线.js 的 shotPicks：提炼页点开的卡、资产页共用） */
+.fl-shots { display: flex; flex-wrap: wrap; gap: 5px; }
+.fl-shots button { min-width: 32px; padding: 2px 8px; border: 1px solid var(--line-2); border-radius: 6px; background: #fff; cursor: pointer; font: 13px/1.5 var(--sans); color: var(--ink-3); }
+.fl-shots button:hover { border-color: var(--ink-4); color: var(--ink); }
+.fl-shots button.on { border-color: var(--k, var(--dai)); background: var(--k-soft, var(--dai-soft)); color: var(--k, var(--dai)); font-weight: 600; }
 /* 鼠标停在小图上：旁边看大一点的 */
 .fl-hov { position: fixed; z-index: 75; width: 300px; padding: 8px; border-radius: 10px; background: var(--sheet); box-shadow: 0 0 0 1px rgba(214, 202, 182, .95), 0 22px 54px -16px rgba(40, 28, 16, .5); pointer-events: none; animation: fade .12s ease both; }
 .fl-hov img { display: block; width: 100%; min-height: 80px; max-height: 360px; object-fit: contain; border-radius: 6px; background: var(--paper-2); }

@@ -108,7 +108,7 @@
     const say = how === 'claude'
       ? (m.等 === '发送' ? '项目已经在 Claude 桌面版开了一个新对话，任务填好了：到 Claude 窗口里按发送（Claude 规定外面带进来的话要你按一下）。没看到那个对话，就点「再开一次」，或者复制下面的话，贴进 Claude 的新对话。' : 'Claude 已经在做了，在 Claude 窗口里看。它做完会告诉项目，这里自动接着做。')
       : how === 'deepseek' ? 'DeepSeek 在它自己的窗口里做，做完自动接上。'
-      : '复制下面的话，贴进你自己在 Codex、Claude 或 DeepSeek 里新开的对话' + (m.要Codex ? '（这件事要贴进 Codex：要用它的出图工具或者操作即梦）' : '') + '。它做完会把回复写进项目、告诉这边，这里自动接着做，不用回来点。';
+      : m.说 || '复制下面的话，贴进你自己在 Codex、Claude 或 DeepSeek 里新开的对话' + (m.要Codex ? '（这件事要贴进 Codex：要用它的出图工具或者操作即梦）' : '') + '。它做完会把回复写进项目、告诉这边，这里自动接着做，不用回来点。';
     return new Promise(resolve => {
       const ta = el('textarea', { placeholder: 'AI 写不了文件的话（比如 Codex 只读）：把它的回复整段贴在这里，点「交回复」', spellcheck: 'false' });
       const err = el('div', { class: 'hai-err' });

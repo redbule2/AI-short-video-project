@@ -909,6 +909,7 @@ const FS = {
 };
 /* 在 Claude 应用右边窗格里打开时，「交给 AI 改」直接交到 AI 手上 */
 const LINK = Desk.LINK;
+const CH = window.Base.CH;   // 用哪个 AI（流水线顶栏「AI 用」）：外壳那一块的 CH 这里看不到，11-15 起 aiJob 一点就报错，11-17 补上
 
 /* ---------- 路径 ---------- */
 function canonical(kind, seg) {
@@ -1558,6 +1559,16 @@ async function copyForAI(paths) {
   try { await navigator.clipboard.writeText(text); toast('复制好了，贴给 Claude 或 Codex'); }
   catch (e) { toast('复制没成功：' + e.message, 'err'); }
 }
+/* 剧本「与AI继续沟通」（11-17 他定）：人写完，复制要交代的话，贴进自己的 AI 对话商量着改；他说「定稿」，AI 才把剧本写回来，这里换上红批。
+   没写批注也能点，写了的一起带上。服务那头是「与AI沟通剧本」（annotate-live/script-talk.js，服务第 14 版起有） */
+async function talkForAI() {
+  const ed = S.ed;
+  if (!ed) return;
+  if (!LINK.on || LINK.v < 14) { toast('本机服务是旧的，重开一次才能和 AI 沟通', 'err'); return; }
+  await ed.q;   // 批注先写完
+  const p = at(ed.notesAt);
+  aiJob({ 事: '与AI沟通剧本', 项目: p[1], 批注: p.join('/') });
+}
 function findEntry(path, seg) {
   for (const s of S.pj.segs.values()) for (const k of KINDS) for (const e of s[k]) if (pathEq(e.path, path) && !e.combined && (!seg || e.seg === seg)) return e;
   return S.pj.loose.find(e => pathEq(e.path, path)) || null;
@@ -1628,7 +1639,10 @@ function renderTop() {
     right.append(h('div', { class: 'status', id: 'status' }),
       h('button', { class: 'btn ghost sm clean', id: 'clean-btn', onclick: cleanCopy, title: '红批全部收起，以现在的内容为准' }));
     if (ed.kind === 'prompt') right.append(h('button', { class: 'btn', onclick: copyPrompt, title: '复制全文，贴进生成页面' }, icon('copy'), '复制全文'));
-    right.append(h('button', { class: 'btn ink', id: 'ai-btn', onclick: () => copyForAI(), title: LINK.on ? '直接交给 AI，它照批注改，改好这里自动刷新' : '复制一句话，贴给 Claude 或 Codex，它照批注改' }, '交给 AI 改'));
+    const talk = ed.kind === 'script';   // 剧本：先和自己的 AI 商量着改（11-17 他定），没写批注也能点
+    right.append(h('button', { class: 'btn ink', id: 'ai-btn', onclick: () => talk ? talkForAI() : copyForAI(),
+      title: talk ? '复制要交代的话，贴进你自己的 AI 对话，和它商量着改。商量定了跟它说「定稿」，它把剧本写回来，这里换上红批。写了批注的一起带上'
+        : LINK.on ? '直接交给 AI，它照批注改，改好这里自动刷新' : '复制一句话，贴给 Claude 或 Codex，它照批注改' }, talk ? '与AI继续沟通' : '交给 AI 改'));
   }
   const tail = S.view !== 'editor' ? '目录' : S.seg ? '第' + S.seg + '段' : ed ? ed.entry.name : '';
   const top = h('header', { class: 'top' },
@@ -1645,7 +1659,7 @@ function paintStatus() {
   const n = noteCount(S.ed), r = marks().size;
   el.className = 'status' + (n ? ' noted' : '');
   el.replaceChildren(h('i', { class: 'dot' }), n ? `批注 ${n} 条` : '还没有批注');
-  const ab = document.getElementById('ai-btn'); if (ab) ab.disabled = !n;
+  const ab = document.getElementById('ai-btn'); if (ab) ab.disabled = !n && S.ed.kind !== 'script';   // 剧本「与AI继续沟通」：没写批注也能点
   const cb = document.getElementById('clean-btn');
   if (cb) { cb.hidden = !r; cb.replaceChildren(h('i', { class: 'red-dot' }), `红批 ${r} 处 · 清稿`); }
 }
