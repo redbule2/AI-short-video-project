@@ -180,7 +180,7 @@ const sideData = () => ({ 写法: '分镜', 分镜稿: structured, 自由稿: '�
     assert.equal(n.秒数.记号, 'old'); assert.equal(Secs.state(n.秒数, t.raw()).st, 'changed');   // 出片弹窗会说「估完以后改过」
   });
   /* 2026-11-16：镜头表固定号（删过的不挪），关键帧绑在哪一镜哪一刻要写进任务书、素材登记 */
-  const flowPath = path.join(root, '项目', '测试', '定稿的剧本', '流水线.json'), kf = '资产/第1段/镜头4_首帧.png';
+  const flowPath = path.join(root, '项目', '测试', '定稿的剧本', '流水线.json'), kf = '资产/关键帧/第1段/镜头4_首帧.png';
   const flowWith = () => JSON.stringify({ 场: [{ 段: '1', 段落: [{ 号: '1', 写什么: '甲进门' }, { 号: '2', 写什么: '乙抬头' }, { 号: '4', 写什么: '丙递书' }],
     关键帧绑定: { [kf]: { 镜: '4', 刻: '首帧', 写什么: '丙递书' } } }] });
   await check('批提示词：挂的关键帧写明绑在镜头表哪一镜哪一刻，号照镜头表的固定号', async () => {
@@ -201,7 +201,7 @@ const sideData = () => ({ 写法: '分镜', 分镜稿: structured, 自由稿: '�
     assert.equal(refs.length, 1); assert.equal(refs[0].name, '关键帧｜镜头4｜开头');
   });
   /* 2026-11-18：按批注改也能新挂图（药膳鸡 2-3：换了砂锅图，自动对稿不许动挂图，只好手补，补成只照外形，锅里出成空的） */
-  const bookImg = '资产/全局资产/道具/书.png', manImg = '资产/全局资产/人物/甲.png', otherImg = '资产/全局资产/道具/别的.png', key18 = '提示词/第1段/视频提示词.txt';
+  const bookImg = '资产/人物和道具/书.png', manImg = '资产/人物和道具/甲.png', otherImg = '资产/人物和道具/别的.png', key18 = '提示词/第1段/视频提示词.txt';
   const flow18 = () => JSON.stringify({ 人物: [{ 名: '甲', 资产: manImg }], 道具: [{ 名: '书', 资产: bookImg }, { 名: '别的', 资产: otherImg }], 场: [{ 段: '1', 人物: ['甲'], 道具: ['书'] }] });
   const setup18 = () => {
     const s = setup(pe, peSide()), at = f => path.join(root, '项目', '测试', ...f.split('/'));

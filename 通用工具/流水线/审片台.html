@@ -294,6 +294,7 @@ body.dk { display: block; height: 100vh; overflow: hidden; background: var(--nig
 <div id="layer"></div>
 <div id="toasts" aria-live="polite"></div>
 <script src="../公用/核心.js"></script>
+<script src="../公用/资产路径.js"></script>
 <script src="../公用/样片归属.js"></script>
 <script src="../公用/底座.js"></script>
 <script src="../公用/界面.js"></script>
@@ -324,7 +325,7 @@ const SEGD = '第' + SEG + '段';
 const OLD = Q.get('old') === '1';   // 历史记录里的样片（审片那一页「历史记录」里点开的，11-19 加）：批注、截图照旧存在它旁边
 const VID_DIR = (OLD ? '历史记录/' : '') + '成片/' + SEGD;
 const VID_REL = VID_DIR + '/' + VID;
-const pjAt = rel => at([PJ, ...String(rel).split('/').filter(Boolean)]);   // 项目里面的路径（资产/第3-4段/x.png）→ 从总文件夹算起
+const pjAt = rel => at([PJ, ...String(rel).split('/').filter(Boolean)]);   // 项目里面的路径（资产/关键帧/第3-4段/x.png）→ 从总文件夹算起
 
 const NOTES_TAIL = '_批注.md', SHOTS_TAIL = '_批注截图';
 const VIDEO_RE = /\.(mp4|m4v|mov|webm)$/i;
@@ -371,10 +372,13 @@ const xOf = t => Math.min(100, Math.max(0, t * D.fps / Math.max(1, D.frames - 1)
 /* ============================================================
    提示词：挂了哪些素材、一镜一镜写了什么、每一镜几秒
    ============================================================ */
+const AP = window.AssetPath;   // 资产放哪（公用/资产路径.js）
+let FLOWDOC = null;   // 流水线.json：人物和道具文件夹里的图，看人物表、道具表哪一行挂着它，分出人物、道具
 const MAP = new Map();   // 参考素材映射里这一场各条提示词的登记：文件名 → [{ ref, name, path }]
 const SECS = new Map();  // 同一份里登记的每一镜几秒（写稿时估的）：文件名 → { 镜头: { '1': 4 } }
 async function loadMap() {
   MAP.clear(); SECS.clear();
+  try { FLOWDOC = JSON.parse(await readText('定稿的剧本/流水线.json')); } catch (e) { FLOWDOC = null; }
   try {
     const j = JSON.parse(await readText('资产/参考素材映射.json')), pre = '提示词/' + SEGD + '/';
     for (const [k, v] of Object.entries(j.prompts || {})) if (k.startsWith(pre)) {
@@ -401,10 +405,11 @@ function guessPrompt() {
 }
 const KIND_CLS = { 人物: 'k-ren', 场景: 'k-jing', 道具: 'k-dao', 特效: 'k-dao', 关键帧: 'k-zhen' };
 function kindOfRef(r) {
-  const q = r.rel.split('/'), n = q[q.length - 1];
-  if (/^@视频/.test(r.ref)) return /白模/.test(n) || q[1] === SEGD ? '白模' : '视频';   // 资产/第N段 里的视频就是白模
+  const q = r.rel.split('/'), n = q[q.length - 1], at = AP.placeOf(r.rel);
+  if (/^@视频/.test(r.ref)) return /白模/.test(n) || AP.inSeg(r.rel, SEG) ? '白模' : '视频';   // 资产/关键帧/第N段 里的视频就是白模
   if (/^@音频/.test(r.ref)) return '音频';
-  if (q[0] === '资产' && q[1] === '全局资产') return ({ 人物: '人物', 场景: '场景', 道具: '道具', 特效: '特效' })[q[2]] || '其他';
+  if (at.where === AP.SC) return '场景';
+  if (at.where === AP.CP) return AP.rowKind(FLOWDOC, r.rel) || '道具';   // 人物和道具放一起：流水线人物表挂着的是人物，别的算道具
   if (/首帧|尾帧|关键帧/.test(n)) return '关键帧';
   if (/空镜/.test(r.rel)) return '场景';
   return '其他';
@@ -517,8 +522,8 @@ async function loadPrompt(name) {
   let side = null;
   try { side = JSON.parse(await readText(dir + name.replace(/\.txt$/i, '') + '_写稿.json')); } catch (e) { /* 不是网页上写的稿 */ }
   const out = new Map();   // 参考素材映射里登记的，和写稿页挂的（同一个编号以挂图为准）
-  for (const r of MAP.get(name) || []) if (r && /^@(图片|视频|音频)\d+$/.test(r.ref)) out.set(r.ref, { ref: r.ref, rel: clean(r.path), name: str(r.name).trim(), sha: str(r.sha256) });
-  for (const [ref, p] of Object.entries((side && side.挂图) || {})) if (/^@(图片|视频|音频)\d+$/.test(ref)) { const o = out.get(ref), same = !!o && o.rel === clean(p); out.set(ref, { ref, rel: clean(p), name: same ? o.name : '', sha: same ? o.sha : '' }); }
+  for (const r of MAP.get(name) || []) if (r && /^@(图片|视频|音频)\d+$/.test(r.ref)) out.set(r.ref, { ref: r.ref, rel: AP.fromOld(clean(r.path)), name: str(r.name).trim(), sha: str(r.sha256) });
+  for (const [ref, p] of Object.entries((side && side.挂图) || {})) if (/^@(图片|视频|音频)\d+$/.test(ref)) { const o = out.get(ref), same = !!o && o.rel === AP.fromOld(clean(p)); out.set(ref, { ref, rel: AP.fromOld(clean(p)), name: same ? o.name : '', sha: same ? o.sha : '' }); }
   D.refs = [...out.values()].filter(r => r.rel).map(r => ({ ...r, label: r.name || stem(fileOf(r.rel)) }));
   for (const r of D.refs) r.kind = kindOfRef(r);
   D.refs.sort((a, b) => refType(a.ref) - refType(b.ref) || refNum(a.ref) - refNum(b.ref));
@@ -1259,7 +1264,7 @@ function closeBox() { if (D.box) { D.box.el.remove(); D.box = null; } }
    怎么改由他拿着批注和自己的 AI 商量（11-15 他定审片只批注），这一页不改图
    ============================================================ */
 const KF = { st: new Map(), shell: null };   // st：图的路径 → { note 图上写了批注 }；shell：盖着的看图页
-const isKf = r => !!r && /^@图片/.test(r.ref) && r.rel.startsWith('资产/' + SEGD + '/') && (r.kind === '关键帧' || shotOfKf(r.ref) >= 0);   // 这一场文件夹里的图：名字带首帧、尾帧、关键帧，或者哪一镜开头参考它
+const isKf = r => !!r && /^@图片/.test(r.ref) && AP.inSeg(r.rel, SEG) && (r.kind === '关键帧' || shotOfKf(r.ref) >= 0);   // 这一场文件夹里的图：名字带首帧、尾帧、关键帧，或者哪一镜开头参考它
 const kfStem = r => stem(fileOf(r.rel));
 const kfSide = (r, tail) => r.rel.split('/').slice(0, -1).concat(kfStem(r) + tail).join('/');
 const kfRefOf = kf => !kf ? null : D.refs.find(r => kf.rel && r.rel === kf.rel) || D.refs.find(r => r.ref === kf.ref && (!kf.rel || fileOf(r.rel) === fileOf(kf.rel))) || null;

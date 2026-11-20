@@ -48,7 +48,7 @@ const hm = t => { const d = new Date(t); return String(d.getHours()).padStart(2,
   });
 
   await check('写字（这回的情形）：只核砂锅旧图，图在别处换过了：服务重开以后接着等的，图是早换的，马上收', async () => {
-    const img = '资产/全局资产/道具/砂锅.png', w = world({ [img]: T0 - 30 * MIN, '提示词/全局资产/道具/砂锅_提示词.txt': T0 - 30 * MIN });
+    const img = '资产/人物和道具/砂锅.png', w = world({ [img]: T0 - 30 * MIN, '提示词/全局资产/道具/砂锅_提示词.txt': T0 - 30 * MIN });
     const j = { 事: '写字', 项目: '甲', 段: '1-1', 开始: T0, items: [{ 类别: '道具', 名称: '砂锅', 状态名: '', 写: false, 有图: true, f: { txt: parts('提示词/全局资产/道具/砂锅_提示词.txt'), img: parts(img) } }] };
     assert.equal(await w.G.check(j, T0 + 5 * MIN), '', '图没动：照旧等');
     w.set('提示词/全局资产/道具/砂锅_提示词.txt', T0 + 5 * MIN);
@@ -62,14 +62,14 @@ const hm = t => { const d = new Date(t); return String(d.getHours()).padStart(2,
   });
 
   await check('写字：几样里只改了一样，照旧等；要写字的看字不看图；没图也不用写字的，看字有没有人写了', async () => {
-    const F = n => ({ txt: parts('提示词/全局资产/道具/' + n + '_提示词.txt'), img: parts('资产/全局资产/道具/' + n + '.png') });
-    const w = world({ '资产/全局资产/道具/砂锅.png': T0 + MIN, '资产/全局资产/道具/竹棍.png': T0 - MIN, '提示词/全局资产/道具/竹棍_提示词.txt': T0 - MIN, '提示词/全局资产/道具/烤鸡_提示词.txt': T0 - MIN });
+    const F = n => ({ txt: parts('提示词/全局资产/道具/' + n + '_提示词.txt'), img: parts('资产/人物和道具/' + n + '.png') });
+    const w = world({ '资产/人物和道具/砂锅.png': T0 + MIN, '资产/人物和道具/竹棍.png': T0 - MIN, '提示词/全局资产/道具/竹棍_提示词.txt': T0 - MIN, '提示词/全局资产/道具/烤鸡_提示词.txt': T0 - MIN });
     const j = { 事: '写字', 项目: '甲', 段: '1-1', 开始: T0, items: [
       { 类别: '道具', 名称: '砂锅', 写: false, 有图: true, f: F('砂锅') },
       { 类别: '道具', 名称: '竹棍', 状态名: '断了', 写: true, 有图: true, f: F('竹棍') },
       { 类别: '道具', 名称: '烤鸡', 写: false, 有图: false, f: F('烤鸡') }] };
     assert.equal(await w.G.check(j, T0 + 60 * MIN), '', '竹棍、烤鸡还没人动');
-    w.set('资产/全局资产/道具/竹棍.png', T0 + 2 * MIN);
+    w.set('资产/人物和道具/竹棍.png', T0 + 2 * MIN);
     assert.equal(await w.G.check(j, T0 + 60 * MIN), '', '竹棍要写字：只换了图不算');
     w.set('提示词/全局资产/道具/竹棍_提示词.txt', T0 + 3 * MIN);
     assert.equal(await w.G.check(j, T0 + 60 * MIN), '', '烤鸡还没人动');
@@ -79,16 +79,16 @@ const hm = t => { const d = new Date(t); return String(d.getHours()).padStart(2,
   });
 
   await check('写提示词：那一条在别处写好了才收；照图核 GEO：底稿或图开始以后改过了才收', async () => {
-    const w = world({ '提示词/全局资产/场景/破庙_GEO底稿.md': T0 - MIN, '资产/全局资产/场景/破庙.png': T0 - MIN });
+    const w = world({ '提示词/全局资产/场景/破庙_GEO底稿.md': T0 - MIN, '资产/场景/破庙.png': T0 - MIN });
     const vp = { 事: '写提示词', 项目: '甲', 段: '1-1', 名: '1-5.txt', 开始: T0 };
     assert.equal(await w.G.check(vp, T0 + 60 * MIN), '');
     w.set('提示词/第1-1段/1-5.txt', T0 + 10 * MIN);
     assert.equal(await w.G.check(vp, T0 + 60 * MIN), '1-5.txt 在别处写好了');
-    const geo = { 事: '核GEO', 项目: '甲', 段: '1-1', 名: '破庙', 开始: T0, files: { geo: parts('提示词/全局资产/场景/破庙_GEO底稿.md'), img: parts('资产/全局资产/场景/破庙.png') } };
+    const geo = { 事: '核GEO', 项目: '甲', 段: '1-1', 名: '破庙', 开始: T0, files: { geo: parts('提示词/全局资产/场景/破庙_GEO底稿.md'), img: parts('资产/场景/破庙.png') } };
     assert.equal(await w.G.check(geo, T0 + 60 * MIN), '');
     w.set('提示词/全局资产/场景/破庙_GEO底稿.md', T0 + 5 * MIN);
     assert.equal(await w.G.check(geo, T0 + 60 * MIN), '破庙的GEO 底稿 ' + hm(T0 + 5 * MIN) + ' 在别处改过了');
-    w.set('资产/全局资产/场景/破庙.png', T0 + 6 * MIN);
+    w.set('资产/场景/破庙.png', T0 + 6 * MIN);
     assert.equal(await w.G.check({ ...geo, 别处: null }, T0 + 60 * MIN), '破庙的图 ' + hm(T0 + 6 * MIN) + ' 在别处改过了');
   });
 
@@ -102,9 +102,9 @@ const hm = t => { const d = new Date(t); return String(d.getHours()).padStart(2,
   await check('jobs.js 写字备好的材料，这里认得：只核图的看图，要写字的看字', async () => {
     const backend = path.join(LIVE, 'jobs.js'), source = fs.readFileSync(backend, 'utf8'), root = path.resolve(__dirname, '__内存测试根__');
     const P = (...a) => path.join(root, '项目', '测试', ...a), FIN = '2026-11-16 10:00:00', finMs = Date.parse('2026-11-16T10:00:00');
-    const flow = { 梗概: '小面摊', 人物: [], 道具: [{ 名: '面碗', 描写: '白瓷大碗', 资产: ['资产/全局资产/道具/面碗.png'] }, { 名: '旧招牌', 描写: '木牌' }], 场景: '面摊：路边一个小面摊',
+    const flow = { 梗概: '小面摊', 人物: [], 道具: [{ 名: '面碗', 描写: '白瓷大碗', 资产: ['资产/人物和道具/面碗.png'] }, { 名: '旧招牌', 描写: '木牌' }], 场景: '面摊：路边一个小面摊',
       场: [{ 段: '1', 名: '吃面', 人物: [], 道具: ['面碗', '旧招牌'], 场景文字: [], 剧本定稿: FIN }] };
-    const img = P('资产', '全局资产', '道具', '面碗.png'), txt = P('提示词', '全局资产', '道具', '面碗_提示词.txt'), txt2 = P('提示词', '全局资产', '道具', '旧招牌_提示词.txt');
+    const img = P('资产', '人物和道具', '面碗.png'), txt = P('提示词', '全局资产', '道具', '面碗_提示词.txt'), txt2 = P('提示词', '全局资产', '道具', '旧招牌_提示词.txt');
     const files = new Map([[P('定稿的剧本', '流水线.json'), Buffer.from(JSON.stringify(flow))], [P('定稿的剧本', '第1段', '第1段_剧本.docx'), Buffer.from('docx')], [img, Buffer.from('png')], [txt, Buffer.from('用途：道具\n提示词\n白瓷大碗')]]);
     const mtimes = new Map([[P('定稿的剧本', '第1段', '第1段_剧本.docx'), finMs - 5000], [img, finMs], [txt, finMs]]);
     const fail = code => Object.assign(new Error(code), { code });

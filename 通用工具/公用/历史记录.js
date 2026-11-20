@@ -12,6 +12,7 @@
    ============================================================ */
 (function (G) {
 'use strict';
+const AP = () => G.AssetPath || require('./资产路径.js');   // 资产放哪（公用/资产路径.js）：老登记里的路径换成新的
 const RE = /^(.+)__([0-9]{8})-([0-9]{6})(?:-[0-9a-z]+)?(\.[^./\\]+)?$/i;
 const when = stamp => /^[0-9]{8}-[0-9]{6}$/.test(stamp || '') ? stamp.slice(4, 6) + '-' + stamp.slice(6, 8) + ' ' + stamp.slice(9, 11) + ':' + stamp.slice(11, 13) : '';
 function parse(name) {
@@ -57,12 +58,12 @@ async function refsFor(io, maps, it, text) {
   const hit = refsBySha(maps, key, await promptSha(text)), now = maps[0] && maps[0].prompts[key];
   const reg = hit ? hit.refs : now && Array.isArray(now.references) ? now.references : [];
   let note = !hit && it.old && reg.length ? '这一版没找到当时的登记，@图片 照现在「' + it.orig + '」的登记认，可能不是那时候挂的' : '';
-  for (const r of reg) if (ok(r)) out.set(r.ref, { ref: r.ref, path: String(r.path || '').replace(/\\/g, '/'), sha: r.sha256 || '' });
+  for (const r of reg) if (ok(r)) out.set(r.ref, { ref: r.ref, path: AP().fromOld(String(r.path || '')).replace(/\\/g, '/'), sha: r.sha256 || '' });
   const dir = String(it.file).split('/').slice(0, -1).join('/'), side = it.orig.replace(/\.txt$/i, '') + '_写稿' + (it.old && it.stamp ? '__' + it.stamp : '') + '.json';
   if (!it.old || it.stamp) {
     try {
       const pics = ((await io.readJson(dir + '/' + side)) || {}).挂图 || {};
-      for (const [ref, p] of Object.entries(pics)) if (ok({ ref })) { const o = out.get(ref), path = String(p).replace(/\\/g, '/'); out.set(ref, { ref, path, sha: o && o.path === path ? o.sha : '' }); }
+      for (const [ref, p] of Object.entries(pics)) if (ok({ ref })) { const o = out.get(ref), path = AP().fromOld(String(p)).replace(/\\/g, '/'); out.set(ref, { ref, path, sha: o && o.path === path ? o.sha : '' }); }
       if (Object.keys(pics).length) note = '';
     } catch (e) { /* 不是网页上写的稿 */ }
   }

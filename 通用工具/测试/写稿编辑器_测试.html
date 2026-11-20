@@ -240,7 +240,7 @@ async function run() {
     });
     await check('自由模式 @ 弹出资产列表，选择和重开后绑定均保留', async () => {
       reset();
-      const asset = '资产/全局资产/场景/测试门口.png';
+      const asset = '资产/场景/测试门口.png';
       // 1×1 PNG，仅作为图片解码夹具；全部来自内存，不读用户素材。
       const pixel = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lfoAAAAASUVORK5CYII='), ch => ch.charCodeAt(0));
       files.set('项目/' + testProject + '/' + asset, { bytes: pixel, mime: 'image/png', mtime: ++sequence });
@@ -469,18 +469,18 @@ async function run() {
       const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
       const mp4 = new Uint8Array([0, 0, 0, 24, 102, 116, 121, 112, 109, 112, 52, 50]), mp3 = new Uint8Array([73, 68, 51, 3, 0, 0, 0, 0]);
       const add = (path, bytes, mime, mtime) => files.set('项目/' + testProject + '/资产/' + path, { text: '', bytes, mime, mtime: mtime || ++sequence });
-      add('全局资产/人物/老李.png', png, 'image/png'); add('全局资产/人物/老李_候选.png', png, 'image/png');
-      add('全局资产/道具/大刀.png', png, 'image/png', Date.parse('2026-11-15T12:00:00'));   // 确认以后重出过
-      add('全局资产/道具/铁锅.png', png, 'image/png');   // 确认以后描写改过
-      add('全局资产/场景/街口.png', png, 'image/png'); add('第1段/镜头1-5_白模.mp4', mp4, 'video/mp4');
-      add('全局资产/人物/跑步测试.mp4', mp4, 'video/mp4'); add('全局资产/人物/老李_音色.mp3', mp3, 'audio/mpeg'); add('全局资产/人物/街上录音.mp3', mp3, 'audio/mpeg');
+      add('人物和道具/老李.png', png, 'image/png'); add('人物和道具/老李_候选.png', png, 'image/png');
+      add('人物和道具/大刀.png', png, 'image/png', Date.parse('2026-11-15T12:00:00'));   // 确认以后重出过
+      add('人物和道具/铁锅.png', png, 'image/png');   // 确认以后描写改过
+      add('场景/街口.png', png, 'image/png'); add('关键帧/第1段/镜头1-5_白模.mp4', mp4, 'video/mp4');
+      add('人物和道具/跑步测试.mp4', mp4, 'video/mp4'); add('人物和道具/老李_音色.mp3', mp3, 'audio/mpeg'); add('人物和道具/街上录音.mp3', mp3, 'audio/mpeg');
       const ok = '2026-11-15 10:00:00';
       put('项目/' + testProject + '/定稿的剧本/流水线.json', JSON.stringify({
-        人物: [{ 名: '老李', 资产: '资产/全局资产/人物/老李.png' }],
-        道具: [{ 名: '大刀', 资产: '资产/全局资产/道具/大刀.png' }, { 名: '铁锅', 资产: ['资产/全局资产/道具/铁锅.png'], 描写改: '2026-11-15 11:00:00' }],
+        人物: [{ 名: '老李', 资产: '资产/人物和道具/老李.png' }],
+        道具: [{ 名: '大刀', 资产: '资产/人物和道具/大刀.png' }, { 名: '铁锅', 资产: ['资产/人物和道具/铁锅.png'], 描写改: '2026-11-15 11:00:00' }],
         场: [{ 段: '1', 名: '门口', 表达: '来人', 段落: [{ 写什么: '响声', 作用: '打断日常' }] }],
-        可用: { '资产/全局资产/人物/老李.png': ok, '资产/全局资产/道具/大刀.png': ok, '资产/全局资产/道具/铁锅.png': ok, '资产/全局资产/场景/街口.png': ok } }));
-      put(sidePath, JSON.stringify({ ...sideAt(), 挂图: { '@图片1': '资产/全局资产/人物/老李_候选.png' } }));
+        可用: { '资产/人物和道具/老李.png': ok, '资产/人物和道具/大刀.png': ok, '资产/人物和道具/铁锅.png': ok, '资产/场景/街口.png': ok } }));
+      put(sidePath, JSON.stringify({ ...sideAt(), 挂图: { '@图片1': '资产/人物和道具/老李_候选.png' } }));
       await openEditor(); evalIn('document.body.classList.remove("norail"); GOPEN.add("场景"); showRail("assets")');
       const doc = frame.contentDocument;
       await waitFor(() => doc.querySelector('#as-list .as-t'), '资产页签没有列出图');
@@ -501,8 +501,8 @@ async function run() {
       const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
       const mp4 = new Uint8Array([0, 0, 0, 24, 102, 116, 121, 112, 109, 112, 52, 50]), mp3 = new Uint8Array([73, 68, 51, 3, 0, 0, 0, 0]);
       const add = (path, bytes, mime) => files.set('项目/' + testProject + '/资产/' + path, { text: '', bytes, mime, mtime: ++sequence });
-      add('第1段/镜头10-12_白模.mp4', mp4, 'video/mp4'); add('第1段/镜头1-5_白模.mp4', mp4, 'video/mp4'); add('第1段/镜头1_首帧.png', png, 'image/png');
-      add('全局资产/人物/跑步测试.mp4', mp4, 'video/mp4'); add('全局资产/人物/老李_音色.mp3', mp3, 'audio/mpeg'); add('全局资产/道具/大刀.png', png, 'image/png');
+      add('关键帧/第1段/镜头10-12_白模.mp4', mp4, 'video/mp4'); add('关键帧/第1段/镜头1-5_白模.mp4', mp4, 'video/mp4'); add('关键帧/第1段/镜头1_首帧.png', png, 'image/png');
+      add('人物和道具/跑步测试.mp4', mp4, 'video/mp4'); add('人物和道具/老李_音色.mp3', mp3, 'audio/mpeg'); add('人物和道具/大刀.png', png, 'image/png');
       await openEditor(); evalIn('document.body.classList.remove("norail"); showRail("assets")');
       const doc = frame.contentDocument, win = frame.contentWindow, key = k => doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: k, bubbles: true }));
       await waitFor(() => doc.querySelectorAll('#as-list .vc').length === 3, '资产页签没有列出三张视频卡');
@@ -544,7 +544,7 @@ async function run() {
     });
     await check('资产页签里点「插入」：白模视频挂成 @视频1，素材里补白模那几句，已用列表里能再看、再钉住', async () => {
       reset();
-      files.set('项目/' + testProject + '/资产/第1段/镜头1-5_白模.mp4', { text: '', bytes: new Uint8Array([0, 0, 0, 24, 102, 116, 121, 112]), mime: 'video/mp4', mtime: ++sequence });
+      files.set('项目/' + testProject + '/资产/关键帧/第1段/镜头1-5_白模.mp4', { text: '', bytes: new Uint8Array([0, 0, 0, 24, 102, 116, 121, 112]), mime: 'video/mp4', mtime: ++sequence });
       await openEditor(); evalIn('document.body.classList.remove("norail"); showRail("assets")');
       const doc = frame.contentDocument, ta = doc.querySelector('.p-shot .wr-ta');
       await waitFor(() => doc.querySelector('#as-list .vc'), '资产页签没有视频卡');

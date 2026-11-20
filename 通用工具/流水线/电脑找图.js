@@ -2,7 +2,7 @@
    流水线 · 从电脑里找图（2026-11-14 他要的：「如果我电脑其他地方有一张图，要可以支持查找，选中后复制到我们项目中的位置，改好名称」）
    资产页右边挑图那一栏（挑现成的图、＋ 加人物场景道具关键帧、关键帧空格子）左下角「＋ 从电脑里找」打开。一个弹窗两步，一次只看一件事：
      ① 找：顶上搜索框（整台电脑按图名找，几个词用空格隔开），下面一排常去的地方（最近的图、桌面、下载、图片、文档、各个盘），文件夹点进点出。点一张图到 ②。
-     ② 起名：左边大图；右边当什么用（从哪一块点开的就定了）、放哪（全片的：资产/全局资产/类别；只给这一场：资产/第N段）、名字，下面写着复制到哪。
+     ② 起名：左边大图；右边当什么用（从哪一块点开的就定了）、放哪（全片的：资产/人物和道具、资产/场景；只给这一场：资产/关键帧/第N段）、名字，下面写着复制到哪。
         那一层已经有同名的图（后缀不同也算）、名字带类别、第几段、版本号的不让复制；已经在这个项目 资产 里的图不再复制一份。
         点「复制进项目」：原图不动，复制一份过去；回到挑图那一栏，照那一栏顶上写的用上它（挑图栏.js）。
    找、看图、复制都经本机服务（.agents/skills/annotate-live/pc-files.js，/api/pc）。服务是旧的就说要重开。
@@ -141,7 +141,7 @@ async function pcFind({ s, k, row }) {
       const nameIn = h('input', { class: 'inp', value: def, spellcheck: 'false', maxlength: '60' });
       const err = h('div', { class: 'fld-err' }), dest = h('div', { class: 'pc-dest' }), hint = h('span');
       const okBtn = h('button', { class: 'btn ink', type: 'button' }, '复制进项目');
-      const destParts = () => seg ? ['资产', segName(s.段), nameIn.value.trim() + '.' + ext] : ['资产', '全局资产', kind, nameIn.value.trim() + '.' + ext];
+      const destParts = () => [...(seg ? AP.segParts(s.段) : AP.catParts(kind)), nameIn.value.trim() + '.' + ext];
       const ls = new Map(), listDir = parts => { const key = parts.join('/'); if (!ls.has(key)) ls.set(key, FS.list(at([F.name, ...parts])).catch(() => [])); return ls.get(key); };
       const why = async () => {
         if (inMine(x.path)) return '这张已经在这个项目的资产里了（' + x.path.slice(mineRoot.length).replace(/\\/g, ' / ') + '）。同一张图只放一处，不再复制一份';

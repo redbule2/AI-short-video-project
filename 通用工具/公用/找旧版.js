@@ -7,7 +7,7 @@
    2026-11-15 他说：就算去了历史记录，也应该能预览，除非文件真的删了。
    RefFile.find(fs, base, file, sha)：读出登记的那一份。原处的内容和登记的一样就用原处的；不一样、或者原处没有，到历史记录里从新到旧找。
      fs：这一页的 FS（要有 read、list，有 stat 更快）；base：项目文件夹的路径（照这一页 FS 的写法）；
-     file：登记的路径（资产/第3-4段/x.mp4）；sha：登记的 SHA-256，没有就只看原处。
+     file：登记的路径（资产/关键帧/第3-4段/x.mp4）；sha：登记的 SHA-256，没有就只看原处。
      给 { file, parts, bytes, old, here }：file 是读到的那一份在项目里的路径；old：是不是历史记录里的；
      here：原处怎样，'same' 就是它，'changed' 换成别的了，'gone' 没有了。哪儿都没有就报错（大白话）。
    RefFile.locate(fs, base, file, sha)：一样找，只给路径不给内容；核过的记在浏览器里，文件没动过下回不再读。
@@ -18,6 +18,7 @@
 'use strict';
 (function () {
   const H = '历史记录';
+  const AP = () => globalThis.AssetPath || require('./资产路径.js');   // 资产放哪（公用/资产路径.js）
   const low = s => String(s).toLowerCase();
   const isSha = s => typeof s === 'string' && /^[a-f0-9]{64}$/i.test(s);
   const bufOf = r => r && r.buf ? r.buf : r;   // FS.read 给 { buf, mtime, size }
@@ -26,7 +27,7 @@
     return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(x => x.toString(16).padStart(2, '0')).join('');
   }
   function relOf(file) {
-    const rel = String(file || '').replace(/\\/g, '/').split('/').filter(Boolean);
+    const rel = AP().fromOld(String(file || '')).replace(/\\/g, '/').split('/').filter(Boolean);   // 11-20 以前登记的老路径：照新的找
     if (!rel.length || rel.some(p => p === '.' || p === '..' || /[:\u0000]/.test(p))) throw new Error('登记的路径不对：' + file);
     return rel;
   }

@@ -6,7 +6,7 @@
        认图照那一版自己的登记：同一时间收进去的写稿资料里的挂图 → 参考素材映射（现在的、历史记录/资产 里留的底）里字正好对得上的那一份
        → 都没有，照现在同名那一条的登记（标出来：可能不是那时候挂的）。还能和现在那一版比。
      审片：历史记录/成片/第N段 里的样片（审完没选上的，名字不改）。点开在审片台对照看、写批注，批注存在它旁边（审片台.html?old=1）。
-     资产：这一页签里各样的旧图（历史记录/同样的文件夹/图名__时间.png，换下来的候选图也算）；关键帧页签是 历史记录/资产/第N段 里的图。
+     资产：这一页签里各样的旧图（历史记录/同样的文件夹/图名__时间.png，换下来的候选图也算）；关键帧页签是 历史记录/资产/关键帧/第N段 里的图。
    名字怎么认在 公用/历史记录.js（Hist）。要先引 流水线.js、公用/历史记录.js。
    ============================================================ */
 (function () {
@@ -135,7 +135,7 @@ function assets(s, k, items) {
   return get('asset:' + k, s, async () => {
     const ls = lister(F.name), groups = [];
     if (k === '关键帧') {
-      const base = '历史记录/资产/' + segName(s.段), walk = async (dir, depth) => {
+      const base = '历史记录/' + AP.segDir(s.段), walk = async (dir, depth) => {
         const ents = await ls(dir), olds = ents.filter(e => e.kind === 'file' && IMG.test(e.name)).map(e => ({ ...Hist.parse(e.name), file: dir + '/' + e.name, mtime: e.mtime || 0 })).sort(Hist.newer);
         if (olds.length) groups.push({ title: dir === base ? segName(s.段) + ' 文件夹' : dir.slice(base.length + 1), cur: '', olds });
         if (depth < 2) for (const d of ents.filter(e => e.kind === 'directory')) await walk(dir + '/' + d.name, depth + 1);

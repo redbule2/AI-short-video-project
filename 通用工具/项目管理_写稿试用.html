@@ -453,6 +453,7 @@ body.norail .rail { display: none; }
   </div>
 </main>
 <script src="公用/核心.js"></script>
+<script src="公用/资产路径.js"></script>
 <script src="公用/写稿状态.js"></script>
 <script src="公用/写稿交互.js"></script>
 <script src="公用/写稿AI行.js"></script>
@@ -627,24 +628,23 @@ function rememberDraft() {
   catch (e) { setStatus('浏览器恢复草稿未存上，请保持页面打开并保存', true); }
 }
 
-/* ---------- 资产：扫 资产\全局资产 各类别和这一段的文件夹；缩小图用到才做 ---------- */
+/* ---------- 资产：扫 资产/人物和道具、资产/场景 和这一段的文件夹（资产/关键帧/第N段）；缩小图用到才做 ---------- */
 const EXT = { 图片: /\.(png|jpe?g|webp|gif|avif|bmp)$/i, 音频: /\.(mp3|wav|m4a|aac|flac|ogg|opus)$/i, 视频: /\.(mp4|mov|m4v|webm|mkv|avi)$/i };
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif', bmp: 'image/bmp', mp3: 'audio/mpeg', wav: 'audio/wav', m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', ogg: 'audio/ogg', opus: 'audio/ogg', mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', mkv: 'video/x-matroska', avi: 'video/x-msvideo' };
 const KIND_NAME = { person: '人物', prop: '道具', scene: '场景', fx: '特效', frame: '关键帧', audio: '音频', video: '视频' };
-const CAT_KIND = { 人物: 'person', 道具: 'prop', 场景: 'scene', 特效: 'fx' };
+const CAT_KIND = { 人物和道具: 'prop', 场景: 'scene' };   // 人物和道具里的：读了流水线.json 再看人物表挂着的改成 person（loadFlow 以后）
 let ASSETS = [], A = {};
 function assetOf(parts, cat) {
   const file = parts[parts.length - 1], type = Object.keys(EXT).find(t => EXT[t].test(file));
   if (!type) return null;
-  const name = file.replace(/\.[^.]+$/, ''), sub = parts.slice(cat === '本段' ? 4 : 5, -1).join('/');
+  const name = file.replace(/\.[^.]+$/, ''), sub = parts.slice(cat === '本段' ? 5 : 4, -1).join('/');
   const kind = type === '音频' ? 'audio' : type === '视频' ? 'video' : cat === '本段' ? (/首帧|尾帧|关键帧/.test(name) ? 'frame' : 'scene') : CAT_KIND[cat] || 'scene';
   return { path: parts.slice(2).join('/'), parts, file, name, sub, cat, type, kind };
 }
 async function scanAssets() {
   const base = [HOME, PJ, '资产'], out = [];
-  for (const d of await FS.list([...base, '全局资产'])) {
-    if (d.kind !== 'directory') continue;
-    for (const f of await FS.list([...base, '全局资产', d.name])) if (f.kind === 'file') { const a = assetOf([...base, '全局资产', d.name, f.name], d.name); if (a) { a.mtime = f.mtime || 0; out.push(a); } }   // mtime：确认以后图重出过没有（okPaths）
+  for (const c of [AssetPath.CP, AssetPath.SC]) {
+    for (const f of await FS.list([...base, c])) if (f.kind === 'file') { const a = assetOf([...base, c, f.name], c); if (a) { a.mtime = f.mtime || 0; out.push(a); } }   // mtime：确认以后图重出过没有（okPaths）
   }
   const walk = async (parts, depth) => {
     for (const f of await FS.list(parts)) {
@@ -652,12 +652,12 @@ async function scanAssets() {
       else if (depth < 1) await walk([...parts, f.name], depth + 1);   // 只看这一段的文件夹和它下面一层；再深的（白模一帧一帧的图）不列
     }
   };
-  await walk([...base, SEGDIR], 0);
+  await walk([...base, AssetPath.KF, SEGDIR], 0);
   return out.sort((a, b) => a.name.localeCompare(b.name, 'zh', { numeric: true }));   // 镜头2 排在镜头10 前面
 }
 const isNamed = a => a.type === '图片' && (a.kind === 'person' || a.kind === 'prop');   // 镜头里用称谓写的两类
-/* 人物的音色：资产/全局资产/人物 里的录音，流水线人物表里挑给谁的、或照文件名「叫法_音色」认到的（公用/音色.js）。voiceOf 给叫法，不是谁的音色给 '' */
-const voiceOf = a => a && a.type === '音频' && a.cat === '人物' ? Voice.ownerOf(a.path, FLOW_ALL && FLOW_ALL.人物, ASSETS.filter(x => x.type === '音频' && x.cat === '人物' && !x.sub).map(x => x.file)) : '';
+/* 人物的音色：资产/人物和道具 里的录音，流水线人物表里挑给谁的、或照文件名「叫法_音色」认到的（公用/音色.js）。voiceOf 给叫法，不是谁的音色给 '' */
+const voiceOf = a => a && a.type === '音频' && a.cat === AssetPath.CP ? Voice.ownerOf(a.path, FLOW_ALL && FLOW_ALL.人物, ASSETS.filter(x => x.type === '音频' && x.cat === AssetPath.CP && !x.sub).map(x => x.file)) : '';
 const isVoice = a => !!voiceOf(a);
 /* 缩小图：520 宽，做法在 公用/界面.js；顺手记下宽高，悬停的小窗先按比例占位 */
 function thumbUrl(a) {
@@ -1340,7 +1340,7 @@ function atQuery() {
 const pyOf = a => ((SIDE.拼音 || {})[a.name] || '').toLowerCase().split(/\s+/).filter(Boolean);
 const hitAsset = (a, s) => !s || a.name.toLowerCase().includes(s) || pyOf(a).some(p => p.startsWith(s)) || (refOf(a) || '').slice(1).includes(s) || KIND_NAME[a.kind].includes(s) || a.cat.includes(s);
 const usedAssets = () => ['图片', '音频', '视频'].flatMap(t => NUM[t].map(p => A[p])).filter(Boolean);
-const CAT_RANK = a => { const i = ['人物', '道具', '特效', '本段', '场景'].indexOf(a.cat); return i < 0 ? 9 : i; };
+const CAT_RANK = a => { const i = [AssetPath.CP, '本段', AssetPath.SC].indexOf(a.cat); return i < 0 ? 9 : i; };
 function closeAt() { AT = null; pop.hidden = true; }
 /* 全片设定里还没有图的人物、道具（人物先加、图以后才有）：@ 里也摆出来，插进去就是叫法，不挂图、不排号。这一场选上的排前面 */
 function castOnly() {
@@ -1638,7 +1638,7 @@ function paintAi() {
 /* ---------- 右栏：资产、AI 批注、校对、剧本、镜头表（「分镜 / 关键词」11-15 他说不要了；镜头表 11-16 加，公用/写稿镜头表.js） ---------- */
 const RAIL_TABS = [['assets', '资产'], ['ai', '批注'], ['lint', '校对'], ['script', '剧本'], ['shots', '镜头表']];
 let RAIL = 'assets', PIN = null;
-const GOPEN = new Set(['本段', '人物', '道具', '特效']);   // 资产栏里展开着的类别；场景图大、先收着
+const GOPEN = new Set(['本段', AssetPath.CP]);   // 资产栏里展开着的类别；场景图大、先收着
 function showRail(k) { RAIL = k; for (const [x] of RAIL_TABS) $('#pane-' + x).hidden = x !== k; paintTabs(); if (k === 'ai') paintAi(); if (k === 'lint') paintLint(); if (k === 'assets') paintAssets(); if (k === 'script') paintScript(); if (k === 'shots') paintShots(); }
 /* 整段的镜头表，这一条拍的几镜标亮（流水线里没有镜头表的项目，这个页签不摆） */
 const paintShots = () => { if (RAIL === 'shots') WriteShots.paint($('#pane-shots'), flowParas(), STEM + '.txt', Core.vpCode(STEM + '.txt')); };
@@ -1788,7 +1788,7 @@ function okPaths() {
   const at = new Map(Object.entries(ok).map(([k, v]) => [key(k), timeOf(v)]));
   return new Set(ASSETS.filter(a => { const t = at.get(key(a.path)); return !!t && t + 999 >= Math.max(a.mtime || 0, since.get(key(a.path)) || 0); }).map(a => a.path));
 }
-const CAT_ORDER = ['本段', '人物', '道具', '特效', '场景', '别处'];
+const CAT_ORDER = ['本段', AssetPath.CP, AssetPath.SC, '别处'];
 const isBaimo = a => a.type === '视频' && /白模/.test(a.name);
 const byName = (a, b) => a.name.localeCompare(b.name, 'zh', { numeric: true });
 const VIEW_TIP = { 图片: '点击放大', 视频: '点击播放', 音频: '点击试听' };
@@ -1811,7 +1811,7 @@ function videoCard(a, list) {
     h('div', { class: 'vc-pic', title: '点击放大播放', onclick: () => lightbox(a, list) }, posterEl(a), h('span', { class: 'vc-play' }, '▶'), h('span', { class: 'vc-dur', 'data-vdur': a.path }, a.dur ? a.dur.toFixed(1) + ' 秒' : '')),
     h('div', { class: 'vc-info' },
       h('div', { class: 'vc-n' }, ref ? h('b', null, ref) : null, a.name),
-      h('div', { class: 'vc-m', 'data-vmeta': a.path }, mediaMeta(a) || (a.cat === '本段' ? SEGDIR : '全局资产 / ' + a.cat)),
+      h('div', { class: 'vc-m', 'data-vmeta': a.path }, mediaMeta(a) || (a.cat === '本段' ? AssetPath.KF + ' / ' + SEGDIR : a.cat)),
       ref ? h('div', { class: 'vc-m' + (n ? '' : ' warn') }, n ? '正文用了 ' + n + ' 处' : '已挂上，正文还没写到') : null,
       h('div', { class: 'vc-acts' }, h('button', { class: 'mini-b', onclick: () => lightbox(a, list) }, '播放'), h('button', { class: 'mini-b', title: '放在右栏最上面，一边写一边看', onclick: () => pin(a) }, '钉住'), h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'))));
 }
@@ -1847,7 +1847,7 @@ function paintAssets() {
     const list = imgs.filter(a => a.cat === cat && hit(a)).sort(byName);
     if (!list.length) continue;
     const open = !!q || GOPEN.has(cat);
-    out.push(h('div', { class: 'as-h tog' + (open ? ' open' : ''), onclick: () => { GOPEN.has(cat) ? GOPEN.delete(cat) : GOPEN.add(cat); paintAssets(); } }, h('span', null, cat === '本段' ? '这一段的图' : cat), h('em', null, list.length + ' 张　' + (cat === '本段' ? '资产 / ' + SEGDIR : cat === '别处' ? '登记过的别处的文件' : '资产 / 全局资产 / ' + cat))));
+    out.push(h('div', { class: 'as-h tog' + (open ? ' open' : ''), onclick: () => { GOPEN.has(cat) ? GOPEN.delete(cat) : GOPEN.add(cat); paintAssets(); } }, h('span', null, cat === '本段' ? '这一段的图' : cat), h('em', null, list.length + ' 张　' + (cat === '本段' ? '资产 / ' + AssetPath.KF + ' / ' + SEGDIR : cat === '别处' ? '登记过的别处的文件' : '资产 / ' + cat))));
     if (open) out.push(h('div', { class: 'as-grid' }, list.map(a => imageTile(a, list))));
   }
   if (!out.length) out.push(h('p', { class: 'faint small', style: 'padding:20px 0' }, OK && !q ? '还没有确认可用的图：回流水线「资产」那一步，看过能用的点「确认可用」。' : '没找到。'));
@@ -2076,6 +2076,7 @@ async function boot() {
     ASSETS = await scanAssets(); A = Object.fromEntries(ASSETS.map(a => [a.path, a]));
     await loadRefs();
     await loadFlow();
+    for (const a of ASSETS) if (a.cat === AssetPath.CP && a.type === '图片' && AssetPath.rowKind(FLOW_ALL, a.path) === '人物') a.kind = 'person';   // 人物和道具放一起：人物表挂着的是人物
     for (const f of FLOW && Array.isArray(FLOW.关键帧) ? FLOW.关键帧 : []) if (A[f] && A[f].type === '图片') A[f].kind = 'frame';   // 流水线资产那一步「关键帧」一块里挑的（名字不带首帧尾帧的也算）
     DOC = hydrateShots(DOC, SIDE.镜头信息, !SIDE.写法);
   } catch (e) { return fail(e.message); }

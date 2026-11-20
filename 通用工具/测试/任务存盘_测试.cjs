@@ -207,8 +207,8 @@ async function imageTests() {
   F.put(pj(P, '定稿的剧本', '流水线.json'), JSON.stringify({ 场: [{ 段: '1-1', 剧本定稿: nowText(now) }] }));
   F.put(pj(P, '定稿的剧本', '第1-1段', '第1-1段_剧本.docx'), '剧本');
   F.put(pj(P, '提示词', '全局资产', '道具', '砂锅_提示词.txt'), '一只旧砂锅，黑褐色，锅沿有豁口。');
-  F.put(pj(P, '资产', '全局资产', '道具', '砂锅.png'), '旧图');
-  F.put(pj(P, '资产', '全局资产', '道具', '砂锅_候选.png'), '重开前 Codex 刚存上的新图');
+  F.put(pj(P, '资产', '人物和道具', '砂锅.png'), '旧图');
+  F.put(pj(P, '资产', '人物和道具', '砂锅_候选.png'), '重开前 Codex 刚存上的新图');
   F.put(path.join(dir, '自己交.json'), JSON.stringify({ id: 'im1', 项目: P, 建, 开始: 建, 请求: { 事: '出图', 段: '1-1', 类别: '道具', 名: '砂锅' }, 渠道: '自己交给 AI', 方式: 'self', 开: 建, 回复: path.join(dir, '回复.md'), run: true, 接着: { 有图: true } }));
   F.put(LIST(P), JSON.stringify({ 任务: [{ id: 'im1', 事: '出图', 项目: P, 段: '1-1', 标题: '出图 · 砂锅', 状态: '在做', 建, 开始: 建, 交给: { 方式: 'self', 等: '你' } }] }));
   const { call } = boot(F);
@@ -216,14 +216,14 @@ async function imageTests() {
   for (let i = 0; i < 100 && !(j && j.交给); i++) { await sleep(30); j = (await call('GET', '/api/job')).jobs.find(x => x.id === 'im1'); }
   assert.ok(j && j.状态 === '在做' && j.交给 && j.交给.等 === '你', '记着有没有图的出图：重开后接着等');
   assert.ok(F.files.get(path.join(dir, '交给AI的话.txt')).toString().startsWith('【测试 · 出图 · 砂锅】先给这个对话改名'), '名字短的项目照写');
-  assert.equal(F.files.get(pj(P, '资产', '全局资产', '道具', '砂锅_候选.png')).toString(), '重开前 Codex 刚存上的新图', '候选没被收进历史记录');
+  assert.equal(F.files.get(pj(P, '资产', '人物和道具', '砂锅_候选.png')).toString(), '重开前 Codex 刚存上的新图', '候选没被收进历史记录');
   assert.ok(![...F.files.keys()].some(p => p.includes(path.join('历史记录', '资产'))), '什么都没收走');
   assert.deepEqual(F.json(path.join(dir, '自己交.json')).接着, { 有图: true }, '接着等时照旧记着');
   F.put(path.join(dir, '回复.md'), '核图：没看出问题\n存好了。');
   const r = await call('POST', '/api/job/im1?reply', '');
   assert.equal(r.状态, '做完', r.错误);
   assert.match(r.结果, /^新图出好了，先当候选/);
-  assert.deepEqual(r.产出, ['资产/全局资产/道具/砂锅_候选.png']);
+  assert.deepEqual(r.产出, ['资产/人物和道具/砂锅_候选.png']);
   console.log('任务存盘：重开后出图接着等、候选不收走 ✓');
 }
 

@@ -28,11 +28,11 @@ function png(seed, extra) {
 
 /* 本地：首帧现在一版、历史两版；白模现在一版、历史一版 */
 const IMG = '第1段_镜头1_首帧', VID = '第1段_镜头1_白模';
-const imgCur = put(P('资产', '第1段', '镜头1_首帧.png'), png(3), T('20261117-090000'));
-const imgOld1 = put(P('历史记录', '资产', '第1段', '镜头1_首帧__20261116-100000.png'), png(1), T('20261115-120000'));
-const imgOld2 = put(P('历史记录', '资产', '第1段', '镜头1_首帧__20261117-085959.png'), png(2), T('20261116-110000'));
-const vidCur = put(P('资产', '第1段', '镜头1_白模.mp4'), Buffer.from('白模第三版'), T('20261117-080000'));
-const vidOld = put(P('历史记录', '资产', '第1段', '镜头1_白模__20261117-080000.mp4'), Buffer.from('白模第二版'), T('20261116-200000'));
+const imgCur = put(P('资产', '关键帧', '第1段', '镜头1_首帧.png'), png(3), T('20261117-090000'));
+const imgOld1 = put(P('历史记录', '资产', '关键帧', '第1段', '镜头1_首帧__20261116-100000.png'), png(1), T('20261115-120000'));
+const imgOld2 = put(P('历史记录', '资产', '关键帧', '第1段', '镜头1_首帧__20261117-085959.png'), png(2), T('20261116-110000'));
+const vidCur = put(P('资产', '关键帧', '第1段', '镜头1_白模.mp4'), Buffer.from('白模第三版'), T('20261117-080000'));
+const vidOld = put(P('历史记录', '资产', '关键帧', '第1段', '镜头1_白模__20261117-080000.mp4'), Buffer.from('白模第二版'), T('20261116-200000'));
 const item = (title, cur, olds) => ({ title, cur, sha: sha(fs.readFileSync(cur)), olds: olds.map(([t, f]) => ({ t, f, sha: sha(fs.readFileSync(f)) })) });
 const IMG_ITEM = item(IMG, imgCur, [['20261117-085959', imgOld2], ['20261116-100000', imgOld1]]);
 const VID_ITEM = item(VID, vidCur, [['20261117-080000', vidOld]]);
@@ -100,7 +100,7 @@ test('视频：下下来比文件；下不下来照上传时间认', async () =>
 });
 
 test('上传以后文件又改过、没进历史记录：照时间认不出', async () => {
-  const cur = put(P('资产', '第1段', '镜头2_白模.mp4'), Buffer.from('改过的'), T('20261117-120000'));
+  const cur = put(P('资产', '关键帧', '第1段', '镜头2_白模.mp4'), Buffer.from('改过的'), T('20261117-120000'));
   const { c } = canvasOf([{ id: 'node_x', title: '第1段_镜头2_白模', type: 'video', rid: rid(), at: T('20261117-110000') }]);
   const [got] = await ask(c, [item('第1段_镜头2_白模', cur, [])]);
   assert.deepEqual(got, [{ node: 'node_x', 版: '', 凭: '' }]);
@@ -150,3 +150,14 @@ test('plan：写给 Codex 的那一句', () => {
 });
 
 test.after(() => fs.rmSync(TMP, { recursive: true, force: true }));
+
+test('画布上还叫 11-20 以前的老名字（道具_砂锅）：也认出来，任务书叫先改成新名字再引用', async () => {
+  const cur = put(P('资产', '人物和道具', '砂锅.png'), png(5), T('20261117-090000'));
+  const { c } = canvasOf([{ id: 'node_pot', title: '道具_砂锅', type: 'image', rid: rid(), bytes: png(5, true) }]);
+  const it = { title: '人物和道具_砂锅', titles: ['人物和道具_砂锅', '人物_砂锅', '道具_砂锅', '特效_砂锅'], cur, sha: sha(fs.readFileSync(cur)), olds: [] };
+  const [got] = await ask(c, [it]);
+  assert.deepEqual(got, [{ node: 'node_pot', 版: 'cur', 凭: '画面', 名: '道具_砂锅' }]);
+  const say = c.plan('人物和道具_砂锅', got);
+  assert.match(say, /画布上还叫老名字「道具_砂锅」/);
+  assert.match(say, /先把它改名成「人物和道具_砂锅」再引用，不重传/);
+});

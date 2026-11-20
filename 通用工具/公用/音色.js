@@ -1,5 +1,5 @@
 /* 人物的音色（2026-11-15 加：他给童爸爸指定了音色，流水线认不出来）。
-   录音都放 资产/全局资产/人物。哪段给谁用：
+   录音都放 资产/人物和道具（2026-11-20 起人物、道具放一起）。哪段给谁用：
    · 流水线.json 人物那一行写了「音色」就照它（资产页、设定页挑的，存的是录音的路径；写成 '' 是说这个人不用音色）；
    · 没写就照文件名认：叫法_音色.wav（mp3、m4a…也行），叫法和人物表一字不差。
    一段录音只给一个人（sd25-pe：不同人物用不同的素材）：挑过的那段，别人照文件名也认不走。
@@ -16,7 +16,7 @@
   'use strict';
   const EXTS = ['wav', 'mp3', 'm4a', 'aac', 'flac', 'ogg', 'opus'];
   const AUDIO_RE = new RegExp('\\.(' + EXTS.join('|') + ')$', 'i');
-  const DIR = '资产/全局资产/人物';
+  const DIR = '资产/人物和道具';
   const TAIL = '_音色';
   const str = v => String(v == null ? '' : v).trim();
   const norm = p => str(p).replace(/\\/g, '/');
@@ -28,7 +28,7 @@
     return stem.endsWith(TAIL) && stem.length > TAIL.length ? stem.slice(0, -TAIL.length).trim() : '';
   }
   const audios = names => (Array.isArray(names) ? names : []).map(String).filter(f => AUDIO_RE.test(f));
-  /* 人物文件夹里的文件名 → Map(叫法 → 路径)，只认文件名。同一个人有几种格式的，取 wav、mp3……排前面的那个 */
+  /* 人物和道具文件夹本层的文件名 → Map(叫法 → 路径)，只认文件名。同一个人有几种格式的，取 wav、mp3……排前面的那个 */
   function mapOf(names) {
     const out = new Map(), rank = f => EXTS.indexOf(f.split('.').pop().toLowerCase());
     for (const f of audios(names)) {
@@ -39,7 +39,7 @@
     }
     return out;
   }
-  /* 人物表（流水线.json 的「人物」）＋人物文件夹里的文件名 → Map(叫法 → { path, how, want })
+  /* 人物表（流水线.json 的「人物」）＋人物和道具文件夹本层的文件名 → Map(叫法 → { path, how, want })
      how：'挑的'（行里写了、录音在）、'不在了'（行里写了、录音没了，want 是原来那段）、'不用'（行里写成 ''）、'文件名'（照叫法_音色认的）、''（没有） */
   function tableOf(rows, names) {
     const list = audios(names), auto = mapOf(list), out = new Map(), taken = new Set();

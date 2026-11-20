@@ -657,6 +657,7 @@ span.ptitle, span.ptitle:hover { cursor: default; color: var(--ink); }
 <div id="layer"></div>
 <div id="toasts" aria-live="polite"></div>
 <script src="/通用工具/公用/核心.js"></script>
+<script src="/通用工具/公用/资产路径.js"></script>
 <script src="/通用工具/公用/底座.js"></script>
 <script src="/通用工具/公用/界面.js"></script>
 <script src="/通用工具/公用/审片.js"></script>
@@ -1021,7 +1022,7 @@ async function scanProject(name) {
   };
   if (pj.dirs['定稿的剧本']) await walk([name, '定稿的剧本'], 4, docx);
   if (pj.dirs['提示词']) await walk([name, '提示词'], 4, txt);
-  if (pj.dirs['资产']) await walk([name, '资产'], 4, async (p, e) => {
+  if (pj.dirs['资产']) await walk([name, '资产'], 5, async (p, e) => {   // 资产/关键帧/第N段/白模/… 比原来深一层
     if (IMG_RE.test(e.name)) pj.images.push({ path: p, name: e.name, handle: e.handle, stem: e.name.replace(/\.[^.]+$/, '') });
   });
   for (const s of pj.segs.values()) {
@@ -1184,7 +1185,7 @@ async function picList(ed, f) {
 }
 /* 清单里写的路径 → 项目里的那张图；扫过以后才放进来的也认 */
 async function imgAt(file) {
-  const parts = file.replace(/\\/g, '/').split('/').filter(Boolean), i = parts.indexOf('资产');
+  const parts = AssetPath.fromOld(file).replace(/\\/g, '/').split('/').filter(Boolean), i = parts.indexOf('资产');
   if (i < 0 || (i > 0 && parts[i - 1] !== S.pj.name)) return null;
   if (parts.slice(i).some(p => p === '.' || p === '..' || /[:\u0000]/.test(p))) return null;
   const p = [S.pj.name, ...parts.slice(i)], k = p.join('/').toLowerCase();
@@ -1200,13 +1201,13 @@ function picByName(x) {
   const hit = s => S.pj.images.filter(a => a.stem === s || a.stem.split('_')[0] === s);
   let list = hit(x);
   if (!list.length) list = x.split(/[、和与及]/).map(s => s.trim()).filter(Boolean).flatMap(hit);   // 「迫击炮和尾翼炮弹」认 迫击炮 那张
-  const glob = list.filter(a => a.path[2] === '全局资产');
+  const glob = list.filter(a => a.path[2] === AssetPath.CP || a.path[2] === AssetPath.SC);   // 全片的（人物和道具、场景）先认
   return glob.length ? glob : list;
 }
 /* 没登记映射的 @视频N、@音频N：把 资产 里这一类的文件找出来，这一段的和别处的分开 */
 async function segMedia(seg, type) {
   const all = [];
-  await walk([S.pj.name, '资产'], 4, async (p, e) => { if (REF_TYPES[type].test(e.name)) all.push({ path: p, name: e.name, handle: e.handle }); });
+  await walk([S.pj.name, '资产'], 5, async (p, e) => { if (REF_TYPES[type].test(e.name)) all.push({ path: p, name: e.name, handle: e.handle }); });
   const mine = all.filter(a => (C.segFromName(a.name) || segOfDirs(a.path)) === seg);
   return { mine, rest: all.filter(a => !mine.includes(a)) };
 }
@@ -3268,12 +3269,10 @@ function syncNoted() {
   for (const it of S.items) if (pathEq(it.path, v.path)) it.noted = on;
   if (V) paintStrip();
 }
-/* 资产图对应的资产提示词：提示词 下面同样的位置，图名_提示词.txt */
+/* 资产图对应的资产提示词（图名_提示词.txt）：提示词 的分法没改，全片的在 提示词/全局资产/类别，关键帧的在 提示词/第N段（公用/资产路径.js promptPaths）；先有的算 */
 async function promptOf(path) {
-  const i = path.lastIndexOf('资产');
-  if (i < 0) return null;
-  const p = [...path.slice(0, i), '提示词', ...path.slice(i + 1, -1), stem(path[path.length - 1]) + '_提示词.txt'];
-  return (await FS.stat(p)) ? p : null;
+  for (const p of AssetPath.promptPaths(path)) if (await FS.stat(p)) return p;
+  return null;
 }
 
 /* ---------- 进来、出去：流水线点开一张图、一个图片文件夹 ---------- */

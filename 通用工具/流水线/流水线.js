@@ -13,6 +13,7 @@
      （镜头表那一步 2026-11-12 取消了：剧本定稿、资产确认以后直接写提示词，镜头在提示词的「分镜」里设计。老项目已有的镜头表不动，在「剧本」那一步照旧能看）
      资产/第N段_资产清单.json             AI 列的：这一场还缺什么、出到哪一步，写字记的要撑住、核图（AI 写，页面只读）
      提示词/全局资产/类别/图名_提示词.txt   资产的字（出图提示词；场景另有 图名_GEO底稿.md）；关键帧的字在 提示词/第N段
+     资产/人物和道具、资产/场景、资产/关键帧/第N段   图放哪（2026-11-20 他定；公用/资产路径.js）：人物道具特效音色放一起，场景单放，只给这一场用的在 关键帧/第N段
      定稿的剧本/第N段/第N段_影响清单.json  剧本重新定稿以后 AI 列的：哪些资产、提示词要再看（AI 写，页面只读）
      资产/第N段_出片记录.json             批准出片时记的：哪一条、那时候提示词的版本（本机服务写，页面只读）
    被换下来的剧本，和每定一场时的流水线，都留一版在 历史记录/定稿的剧本。
@@ -35,23 +36,31 @@ const SHOTS_TAIL = '_批注截图';
 const FILE = '流水线.json';
 const NOTE_LINE = '项目管理「流水线」页存的。梗概：全片讲什么。人物、道具：全片的，一行一个，「资产」是它引用的那张图（引用了就是对上了）；道具有几个状态、引用了几张图时，「资产」是一个列表，一张图一个状态；「描写改」是这一行的描写最后改动的时间。场景：全片的场景描写，一行写一处地方；场景图：引用的场景图。可用：哪张图人看过、确认能用（图 → 确认的时间），确认过的图各场通用；图重出过、它那一行的描写改过，就要再确认。场：一场一场的，各场的「人物」「道具」写的是上面表里的名字，「场景图」是这一场用的场景图，「场景文字」是这一场用的、只用文字写的地方（全片「场景」里的原句，没有图也算），「不出图」是这一场只用文字写、不出图的几样（人物、道具写名字，场景写地方名：不算缺图，不写出图提示词，写视频提示词时照全片设定里的描写写；挂上了图的照图），「不要GEO」是这一场没有严格站位、不用 GEO 底稿的场景（写地方名：不写、不核 GEO 底稿，写视频提示词也不用），「段落」是这一场的镜头表（一个镜头写什么、起什么作用；字段名照旧叫「段落」；作用写成「标签｜目的，关系」，「秒数」是这一镜预估几秒，「秒数人定」是人改过的，AI 照批注改时照抄；每一镜的「人物」「场景」「道具」是这一镜出场的，场景写地方名）。顶上的「全局」是全片好几段都出场的人物、场景、道具（AI 提炼时估，人能改；好几段都选了的不记也算）；各场的「删掉」是人删掉的、这一段用不着的（类别|名字），AI 重新提炼也不再列。先写剧本（11-16 起），剧本定稿以后 AI 照剧本一次提炼出梗概、这一场的人物道具场景和镜头表（定稿的剧本/第N段/第N段_提炼.json），页面并进全片设定和这一场，人再改；「提炼取」是并进来的那一版的时间，「提炼改」记着 AI 改了哪几样、原来是什么，「提炼批」是人写的还没交出去的批注。写提示词时分镜照剧情需要设计，不必和镜头表一一对应，写在提示词的「分镜」里。「剧本定稿」是人看过剧本以后点的时间，有它、而且不早于剧本最后改动的时间，才许提炼；「回填」是剧本页点「照片子改剧本」、项目照定稿的样片改完剧本的时间，之后剧本没再动，剧本定稿照旧算数；「定稿」是这一场的提炼（出场的、镜头表）定下来的时间，定了才出这一场的资产图；这一场要的图都确认可用了，才写提示词。风格：全片的拍摄风格，「名」是 通用工具/AI短片风格库 里的一种，或者「本项目自己的」（照 提示词/全局资产/全片_光影总基调.txt），「定」是定下来的时间，「换」是从别的风格换过来的时间；一场另选的写在那一场的「风格」里（「风格换」是这一场换风格的时间），没写就照全片的；出资产图、写提示词照它写。「先写提示词」是 true 的场倒着走：人先选出场的人物、写提示词里人写的两块（生成目标、事件脚本），AI 照提示词反推剧本，镜头表、表达、出场的列在 定稿的剧本/第N段/第N段_反推.json，人点「采用」才写进这一场（「反推采用」是采用的那一份的时间）；剧本定稿以后 AI 再把提示词里它写的几块铺进正文。人在页面上写，AI 只读；一场就是一个「第N段」。';
 const IMG_RE = /\.(png|jpe?g|webp|gif|avif)$/i;
-const CAT_ORDER = ['人物', '场景', '道具', '特效'];
 const AI_FILE = '流水线_AI扩写.json';   // 定稿的剧本/流水线_AI扩写.json：AI 补的人物、道具描写，照 GEO 写的场景段（AI 写，页面只读；你点「采用」才换进流水线）
 const GROWS = typeof CSS !== 'undefined' && !!CSS.supports && CSS.supports('field-sizing', 'content');   // 文字框会不会自己长高
 const BOM = String.fromCharCode(0xFEFF);
 const unbom = t => t.startsWith(BOM) ? t.slice(1) : t;
-/* 一行一个的两张表：人物、道具。cats：哪些类别的资产图归它引用 */
+/* 资产放哪（2026-11-20 他定）：人物和道具一个文件夹、场景一个、只给这一场用的在 关键帧/第N段（公用/资产路径.js） */
+const AP = window.AssetPath;
+/* 一行一个的两张表：人物、道具。cats：哪些类别的资产图归它引用（人物和道具文件夹里的图两张表都能引用，归哪张看 listFor） */
 const LISTS = [
-  { key: '人物', no: '二', title: '人　物', cats: c => c === '人物', nameLab: '叫法', namePh: '戏里怎么叫他，比如：爸爸', descPh: '是谁、多大、和别人什么关系，会影响写戏的特点。长相、穿着的细节，剧本定稿后在资产那一步写。', sub: '全片的，一行一个。引用了资产，就和那张图对上了', unit: '个' },
+  { key: '人物', no: '二', title: '人　物', cats: c => c === '人物' || c === AP.CP, nameLab:'叫法', namePh: '戏里怎么叫他，比如：爸爸', descPh: '是谁、多大、和别人什么关系，会影响写戏的特点。长相、穿着的细节，剧本定稿后在资产那一步写。', sub: '全片的，一行一个。引用了资产，就和那张图对上了', unit: '个' },
   { key: '道具', no: '四', title: '道　具', cats: c => c !== '人物' && c !== '场景', nameLab: '名字', namePh: '比如：面车', descPh: '干什么用，会影响写戏的条件（比如能推着跑）。样子、材质的细节，剧本定稿后在资产那一步写。', sub: '全片的，一行一个。有几个状态的，可以引用几张图', unit: '件', multi: true },   // multi：一个道具可以引用几张图，一个状态一张
 ];
 const KIND = Object.fromEntries(LISTS.map(K => [K.key, K]));
 const isSceneImg = it => it.类别 === '场景';
+/* 全片的一张图归人物表还是道具表：人物和道具文件夹里的，给哪一类挑的就是哪一类（k）；不然看哪一行引用着它，都没有算道具 */
+function listFor(x, k) {
+  if (x.类别 !== AP.CP) return LISTS.find(K => K.cats(x.类别)) || null;
+  if (KIND[k]) return KIND[k];
+  return KIND[AP.rowKind(F.doc, x.文件)] || KIND.道具;
+}
 /* 三种素材：人物、场景、道具（特效归道具）。各一个颜色：人物紫、场景蓝、道具赭，各页都照这个先后摆（11-13 他要「明确区分」） */
 const KINDS = ['人物', '场景', '道具'];
 const kindOf = c => c === '人物' || c === '人物图' ? '人物' : c === '场景' || c === '场景图' || c === '场景文字' ? '场景' : c === '关键帧' ? '关键帧' : '道具';
 const kindCls = c => c && c !== '这一段' ? ({ 人物: 'k-ren', 场景: 'k-jing', 道具: 'k-dao', 关键帧: 'k-zhen' })[kindOf(c)] : '';   // 这一段文件夹里还没定当什么的图：不带颜色
-/* 第四样：关键帧（11-13 夜他要的）。只给这一场用，图都在 资产/第N段（含下一层文件夹）。
+const poolCls = x => kindCls(x.类别 === AP.CP ? listFor(x).key : x.类别);   // 挑图时的一张图：人物和道具文件夹里的，颜色照它归哪张表
+/* 第四样：关键帧（11-13 夜他要的）。只给这一场用，图都在 资产/关键帧/第N段（含下一层文件夹）。
    名字或它那一层文件夹的名字带「首帧」「尾帧」「关键帧」的自动算（这一场的「关键帧不用」里记着的除外，当了人物、场景、道具的也除外）；
    别的图在资产页点「＋ 新增关键帧」挑，记在这一场的「关键帧」里。挂到哪条提示词、当首帧还是第几个关键帧，在提示词那一步定 */
 const FRAME_RE = /首帧|尾帧|关键帧/;
@@ -81,10 +90,10 @@ function framesOf(s) {
   return [...new Set([...arrOf(s.关键帧), ...auto])].sort(frameSort);
 }
 const isAutoFrame = (s, f) => (F.frames.get(s.段) || []).some(x => x.file === f);
-/* 这一场自己文件夹里的图（资产/第N段/… 和下一层文件夹里的，比如空镜、单样参考）：只给这一场用，挑的时候定它当人物、场景还是道具。
+/* 这一场自己文件夹里的图（资产/关键帧/第N段/… 和下一层文件夹里的，比如空镜、单样参考）：只给这一场用，挑的时候定它当人物、场景还是道具。
    当场景的记在这一场的「场景图」里（和全片引用的场景图放一起）；当人物、道具的记在这一场的「人物图」「道具图」里，不挂到全片人物表、道具表的哪一行 */
 const SEG_FIELD = { 人物: '人物图', 场景: '场景图', 道具: '道具图' };
-const segImg = (s, f) => String(f).startsWith('资产/' + segName(s.段) + '/');
+const segImg = (s, f) => String(f).startsWith(AP.segDir(s.段) + '/');
 const ownSegImgs = s => s.场景图.filter(f => segImg(s, f) && !F.doc.场景图.includes(f));
 const segOf = (s, k) => k === '场景' ? ownSegImgs(s) : s[SEG_FIELD[k]];   // 这一场挑的这一段的图：当 k 用的那几张
 const segKind = (s, f) => KINDS.find(k => segOf(s, k).includes(f)) || (framesOf(s).includes(f) ? '关键帧' : '');   // 这一段的这张图，这一场当什么用着
@@ -96,7 +105,7 @@ function putSeg(s, k, f) {   // 这一段的一张图，这一场当 k 用（原
   if (isAutoFrame(s, f)) s.关键帧不用.push(f);   // 名字带首帧的图改当别的用：以后这一场不用它了，也别再自己冒回关键帧里
   if (!s[SEG_FIELD[k]].includes(f)) s[SEG_FIELD[k]].push(f);
 }
-/* 关键帧这一场不用了（图还在 资产/第N段 里） */
+/* 关键帧这一场不用了（图还在 资产/关键帧/第N段 里） */
 function dropFrame(s, f) {
   s.关键帧 = arrOf(s.关键帧).filter(g => g !== f); SB.unbind(s, f);
   if (isAutoFrame(s, f) && !arrOf(s.关键帧不用).includes(f)) s.关键帧不用 = [...arrOf(s.关键帧不用), f];
@@ -131,7 +140,6 @@ const typing = () => { const a = document.activeElement; return !!a && /^(INPUT|
 function fit(ta) { if (GROWS) return; ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; }
 const fitAll = () => { if (!GROWS) setTimeout(() => document.querySelectorAll('.fl textarea').forEach(fit), 0); };
 const byZh = (a, b) => a.localeCompare(b, 'zh', { numeric: true });
-const catRank = c => CAT_ORDER.indexOf(c) + 1 || 99;
 const OLD_NAME_CATS = ['人物', '道具', '场景', '特效'];
 const tokenOf = it => {   // 文件名下划线前面那一段，就是戏里的叫法（童爸爸_三十出头 → 童爸爸）；老名字「项目_类别_叫法_资产」取当中的叫法
   let n = it.名称;
@@ -212,18 +220,17 @@ function lister(name) {   // 列不出来（本机服务断了、正在重开）
   return fn;
 }
 const hasFile = async (name, parts) => (await lister(name)(parts.slice(0, -1).join('/'))).some(e => e.kind === 'file' && e.name === parts[parts.length - 1]);
-/* 项目里现成的资产：全局资产各类别里的图 */
+/* 项目里现成的资产：资产/人物和道具、资产/场景 本层的图。类别：人物和道具（归人物表还是道具表看 listFor）、场景 */
 async function loadPool(name, lsIn) {   // lsIn：loadSides 那一轮的 lister（列过的不再列）
   const ls = lsIn || lister(name), out = [];
-  const cats = (await ls('资产/全局资产')).filter(e => e.kind === 'directory' && !e.name.endsWith(SHOTS_TAIL)).map(e => e.name).sort((a, b) => (catRank(a) - catRank(b)) || byZh(a, b));
-  for (const c of cats) for (const e of (await ls('资产/全局资产/' + c)).filter(x => x.kind === 'file' && IMG_RE.test(x.name) && !CAND_RE.test(x.name)).sort((a, b) => byZh(a.name, b.name)))   // 候选图（图名_候选.png）不算现成的图
-    out.push({ 类别: c, 名称: stemOf(e.name), 文件: '资产/全局资产/' + c + '/' + e.name, mtime: e.mtime || 0 });
+  for (const c of [AP.CP, AP.SC]) for (const e of (await ls('资产/' + c)).filter(x => x.kind === 'file' && IMG_RE.test(x.name) && !CAND_RE.test(x.name)).sort((a, b) => byZh(a.name, b.name)))   // 候选图（图名_候选.png）不算现成的图
+    out.push({ 类别: c, 名称: stemOf(e.name), 文件: '资产/' + c + '/' + e.name, mtime: e.mtime || 0 });
   if (ls.failed) throw new Error('本机服务连不上');   // 有一层没列出来：留着手里原来的
   return out;
 }
-/* 这一场文件夹里的图：资产/第N段 本层，和下一层的文件夹（空镜、关键帧、参考……）。组：在哪个文件夹，本层是空的 */
+/* 这一场文件夹里的图：资产/关键帧/第N段 本层，和下一层的文件夹（空镜、关键帧、参考……）。组：在哪个文件夹，本层是空的 */
 async function loadSegPool(name, seg) {
-  const ls = lister(name), base = '资产/' + segName(seg), top = await ls(base);
+  const ls = lister(name), base = AP.segDir(seg), top = await ls(base);
   const imgs = (list, dir) => list.filter(x => x.kind === 'file' && IMG_RE.test(x.name) && !CAND_RE.test(x.name)).sort((a, b) => byZh(a.name, b.name))
     .map(x => ({ 类别: '这一段', 组: dir, 名称: stemOf(x.name), 文件: base + '/' + (dir ? dir + '/' : '') + x.name }));
   const out = imgs(top, '');
@@ -443,7 +450,7 @@ function assetParts(file) {
   if (parts[0] === F.name) parts.shift();
   return parts[0] === '资产' && parts.length > 1 && !parts.some(x => x === '.' || x === '..' || x.includes(':')) ? parts : null;
 }
-/* AI 清单里的每一样在不在：写了文件的看那个文件；没写的按名字去 全局资产/类别 和这一场的文件夹里找 */
+/* AI 清单里的每一样在不在：写了文件的看那个文件；没写的按名字去 资产/人物和道具（或 场景）和这一场的文件夹里找 */
 async function resolveAssets(seg, rec, ls) {
   let changed = false;
   for (const it of rec.items) {
@@ -452,7 +459,7 @@ async function resolveAssets(seg, rec, ls) {
       const parts = assetParts(it.文件);
       if (parts && (await ls(parts.slice(0, -1).join('/'))).some(e => e.kind === 'file' && e.name === parts[parts.length - 1])) p = parts;
     } else {
-      for (const dir of [it.类别 ? '资产/全局资产/' + it.类别 : '', '资产/' + segName(seg)].filter(Boolean)) {
+      for (const dir of [it.类别 && it.类别 !== '关键帧' ? AP.catDir(it.类别) : '', AP.segDir(seg)].filter(Boolean)) {
         const e = (await ls(dir)).find(x => x.kind === 'file' && IMG_RE.test(x.name) && stemOf(x.name) === it.名称);
         if (e) { p = [...dir.split('/'), e.name]; break; }
       }
@@ -471,9 +478,9 @@ async function loadSides() {
   const fileTime = async f => { const parts = assetParts(f); if (!parts) return 0; const ent = (await ls(parts.slice(0, -1).join('/'))).find(e => e.kind === 'file' && e.name === parts[parts.length - 1]); return ent ? ent.mtime || 0 : 0; };
   let linked = false;
   const out = () => { if (linked && F.name === name) { linked = false; touch(); for (const s of F.doc.场) changed.add(s.段); changed.add('*'); } return changed; };   // 半路停下也把替你挂上的图存上
-  const top = await ls('资产');
+  const top = await ls('资产'), kf = await ls('资产/' + AP.KF);
   if (F.name !== name || ls.failed) return changed;   // 列不出来（本机服务断了一下）：这一轮什么都不改，不把列不出来的当成没有
-  F.dirs = new Set(top.filter(e => e.kind === 'directory').map(e => e.name));
+  F.dirs = new Set(kf.filter(e => e.kind === 'directory').map(e => e.name));   // 各场自己的文件夹（资产/关键帧/第N段）
   const lists = new Set(top.filter(e => e.kind === 'file').map(e => e.name));
   // 表里引用的图，文件还在不在
   const gone = new Set(), itime = new Map();
@@ -485,7 +492,7 @@ async function loadSides() {
   // 各场文件夹里名字（或那一层文件夹的名字）带首帧、尾帧、关键帧的图：自动算这一场的关键帧
   const frames = new Map();
   for (const s of F.doc.场) {
-    const base = '资产/' + segName(s.段), list = [];
+    const base = AP.segDir(s.段), list = [];
     if (!F.dirs.has(segName(s.段))) { frames.set(s.段, list); continue; }
     const top = await ls(base);
     const take = (ents, dir) => { for (const e of ents) if (e.kind === 'file' && IMG_RE.test(e.name) && !CAND_RE.test(e.name) && !BMF_RE.test(e.name) && FRAME_RE.test(dir + '/' + stemOf(e.name))) { const file = base + '/' + (dir ? dir + '/' : '') + e.name; list.push({ file, mtime: e.mtime || 0 }); itime.set(file.toLowerCase(), e.mtime || 0); } };
@@ -496,16 +503,14 @@ async function loadSides() {
   }
   // 文生资产：字（图名_提示词.txt）、GEO 底稿、字的批注在不在；候选图（图名_候选.png）、图上写的批注在不在；各场文件夹本层的图（关键帧）
   const words = new Map(), PW = /(_提示词\.txt|_提示词_批注\.md|_GEO底稿\.md)$/i;
-  for (const c of ['人物', '道具', '场景']) {
-    for (const e of await ls('提示词/全局资产/' + c)) if (e.kind === 'file' && PW.test(e.name)) words.set('提示词/全局资产/' + c + '/' + e.name, e.mtime || 0);
-    for (const e of await ls('资产/全局资产/' + c)) if (e.kind === 'file' && (CAND_RE.test(e.name) || /_批注\.md$/i.test(e.name))) words.set('资产/全局资产/' + c + '/' + e.name, e.mtime || 0);
-  }
+  for (const c of ['人物', '道具', '场景']) for (const e of await ls('提示词/全局资产/' + c)) if (e.kind === 'file' && PW.test(e.name)) words.set('提示词/全局资产/' + c + '/' + e.name, e.mtime || 0);
+  for (const c of [AP.CP, AP.SC]) for (const e of await ls('资产/' + c)) if (e.kind === 'file' && (CAND_RE.test(e.name) || /_批注\.md$/i.test(e.name))) words.set('资产/' + c + '/' + e.name, e.mtime || 0);
   for (const s of F.doc.场) {
-    const pd = '提示词/' + segName(s.段), ad = '资产/' + segName(s.段);
+    const pd = '提示词/' + segName(s.段), ad = AP.segDir(s.段);
     for (const e of await ls(pd)) if (e.kind === 'file' && PW.test(e.name)) words.set(pd + '/' + e.name, e.mtime || 0);
     if (F.dirs.has(segName(s.段))) for (const e of await ls(ad)) if (e.kind === 'file' && (IMG_RE.test(e.name) || /_批注\.md$/i.test(e.name))) words.set(ad + '/' + e.name, e.mtime || 0);
   }
-  try {   // 全局资产里现成的图也重读一遍：AI 新出的图（只用文字写的场景出了图）要看得见
+  try {   // 人物和道具、场景里现成的图也重读一遍：AI 新出的图（只用文字写的场景出了图）要看得见
     const pool = await loadPool(name, ls), psig = pool.map(x => x.文件 + '@' + x.mtime).join('|');
     if (psig !== F.poolSig) { const first = F.poolSig === undefined; F.poolSig = psig; F.pool = pool; if (!first) changed.add('*'); }
   } catch (e) { /* 列不出来：下面就停 */ }
@@ -707,7 +712,7 @@ function promptsOf(seg) {
   });
 }
 
-/* ---------- 小图、悬停看大图：路径从项目里面写起（资产/全局资产/人物/x.png） ---------- */
+/* ---------- 小图、悬停看大图：路径从项目里面写起（资产/人物和道具/x.png） ---------- */
 const thumbImg = (file, w) => window.UI.thumbImg(at([F.name, ...file.split('/')]), w);
 const hoverable = (el, file, title) => window.UI.hoverable(el, at([F.name, ...file.split('/')]), title || baseOf(file), file);
 
@@ -1212,7 +1217,7 @@ function picsEl(it) {
 
 /* 资产小格子：点一下选上 */
 function tileEl(x, on, note, onclick) {
-  const b = h('button', { type: 'button', class: 'fl-at ' + kindCls(x.类别) + (on ? ' on' : ''), title: x.文件 + (note ? '\n' + note : ''), onclick }, thumbImg(x.文件), h('span', null, x.名称), note ? h('small', null, note) : null, h('i', null, icon('check')));
+  const b = h('button', { type: 'button', class: 'fl-at ' + poolCls(x) + (on ? ' on' : ''), title: x.文件 + (note ? '\n' + note : ''), onclick }, thumbImg(x.文件), h('span', null, x.名称), note ? h('small', null, note) : null, h('i', null, icon('check')));
   hoverable(b, x.文件, x.名称);
   return b;
 }
@@ -1261,7 +1266,7 @@ async function entryDlg(K, it) {
     descIn.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !isComposing(e)) { e.preventDefault(); ok(false); } });
     const el = dlgShell((isNew ? '加' : '改') + K.key, '写完点「' + (isNew ? '加上' : '改好') + '」。引用了哪张图，这个' + K.key + '就和那张图对上了，后面出片认的就是它。' + (K.multi ? '一个' + K.key + '有几个状态（比如新的、用旧了的），就把几张图都选上。' : ''),
       [field(K.nameLab, nameIn), h('div', { class: 'fld' }, h('span', null, '描写'), descIn, sugBox),
-        h('div', { class: 'fld' }, h('span', null, K.multi ? '引用资产（可以选几张，一个状态一张）' : '引用资产'), items.length ? h('div', { class: 'fl-apick' }, grid) : h('p', { class: 'fn-note' }, '项目的 资产 / 全局资产 里还没有' + K.key + '图。先写上，定下一段以后让 AI 出。')), err],
+        h('div', { class: 'fld' }, h('span', null, K.multi ? '引用资产（可以选几张，一个状态一张）' : '引用资产'), items.length ? h('div', { class: 'fl-apick' }, grid) : h('p', { class: 'fn-note' }, '项目的 资产 / 人物和道具 里还没有' + K.key + '图。先写上，定下一段以后让 AI 出。')), err],
       [it ? h('button', { class: 'btn ghost', style: 'margin-right:auto', onclick: () => close({ del: true }) }, '删掉这一行') : null,
         h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'),
         isNew ? h('button', { class: 'btn', title: '加上这一个，接着加下一个', onclick: () => ok(true) }, '加上，再加一个') : null,
@@ -1438,7 +1443,7 @@ async function pickSegImgs(s, k = '场景') {
   closePop(); hideHov();
   let items = [];
   try { items = await loadSegPool(F.name, s.段); } catch (e) { toast('没读出来：' + e.message, 'err'); return false; }
-  if (!items.length) { toast('资产 / ' + segName(s.段) + ' 里还没有图。空镜、参考图放进去（可以再分一层文件夹，比如「空镜」），再来挑'); return false; }
+  if (!items.length) { toast('资产 / 关键帧 / ' + segName(s.段) + ' 里还没有图。空镜、参考图放进去（可以再分一层文件夹，比如「空镜」），再来挑'); return false; }
   const field = SEG_FIELD[k], picked = new Set(segOf(s, k)), count = h('span'), box = h('div', { class: 'fl-apick' });
   const paint = () => {
     count.textContent = '用这 ' + items.filter(x => picked.has(x.文件)).length + ' 张';
@@ -1448,7 +1453,7 @@ async function pickSegImgs(s, k = '场景') {
   };
   paint();
   const ok = await dialog(close => {
-    const el = dlgShell('这一段的图当' + k + ' · 第' + s.段 + '段', '资产 / ' + segName(s.段) + ' 里的图，连下一层文件夹。点一下选上，再点一下去掉。选上的只给这一段当' + k + '用，图还在原处。', [box],
+    const el = dlgShell('这一段的图当' + k + ' · 第' + s.段 + '段', '资产 / 关键帧 / ' + segName(s.段) + ' 里的图，连下一层文件夹。点一下选上，再点一下去掉。选上的只给这一段当' + k + '用，图还在原处。', [box],
       [h('button', { class: 'btn ghost', onclick: () => close(false) }, '取消'), h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close(true) }, count)]);
     el.classList.add('wide');
     return el;
@@ -1475,7 +1480,7 @@ function openPickPop(anchor, s, after, only) {   // only：只摆人物、场景
     const item = (key, id, name, desc, file) => h('button', { type: 'button', class: 'fl-pi ' + kindCls(key) + (s[key].includes(id) ? ' on' : ''), onclick: () => flip(key, id) },
       file && !F.gone.has(file) ? thumbImg(file) : h('span', { class: 'ph' }, kindOf(key)[0]), h('span', { class: 'pn' }, h('b', null, name), desc ? h('small', null, desc) : null), h('i', null, icon('check')));
     const segPart = k => { for (const f of segOf(s, k)) if (!mine[k].includes(f)) mine[k].push(f); return mine[k].map(f => item(SEG_FIELD[k], f, baseOf(f), '这一段的', f)); };
-    const segLink = k => h('button', { class: 'fl-link', type: 'button', title: '资产 / ' + segName(s.段) + ' 里的图，只给这一段当' + k + '用', onclick: async () => { close(); await pickSegImgs(s, k); after(); } }, '＋ 这一段文件夹里的');
+    const segLink = k => h('button', { class: 'fl-link', type: 'button', title: '资产 / 关键帧 / ' + segName(s.段) + ' 里的图，只给这一段当' + k + '用', onclick: async () => { close(); await pickSegImgs(s, k); after(); } }, '＋ 这一段文件夹里的');
     const listPart = K => [h('div', { class: 'fl-pop-g ' + kindCls(K.key) }, K.key, h('span', { class: 'fl-pop-acts' }, h('button', { class: 'fl-link', type: 'button', title: '写' + K.nameLab + '、描写，记进全片设定的「' + K.key + '」，这一段也选上。不用先有图', onclick: async () => { close(); const n = await entryDlg(K); if (n && !s[K.key].includes(n)) { s[K.key].push(n); touch(); } after(); } }, '＋ 新加一个'), segLink(K.key))),
       ...F.doc[K.key].map(e => item(K.key, e.名, e.名, oneLine(e.描写), e.资产.find(f => !F.gone.has(f)) || '')), ...segPart(K.key),
       F.doc[K.key].length || mine[K.key].length ? null : h('p', { class: 'fl-pop-e' }, '还没有' + K.key + '。点「＋ 新加一个」用文字写，不用先有图。')];
@@ -1496,7 +1501,7 @@ function openPickPop(anchor, s, after, only) {   // only：只摆人物、场景
 }
 
 /* ---------- 资产：这一场出场的人物、道具、场景图各对着哪张图；还没有图的让 AI 出 ---------- */
-/* 认资产和提示词那边是一个路子：图放在 资产/全局资产/类别/名字.png；哪个人物、道具对哪张图，记在 流水线.json 的表里（那一行的「资产」） */
+/* 认资产和提示词那边是一个路子：图放在 资产/人物和道具（场景放 资产/场景）/名字.png；哪个人物、道具对哪张图，记在 流水线.json 的表里（那一行的「资产」） */
 const lacksImg = x => !x.at && !x.文字 && !x.只字;   // 缺图：没图，也不是只用文字写的（场景文字、不出图的）
 const isNarr = n => typeof Voice === 'object' && !!Voice && n === Voice.NARRATOR;   // 旁白（11-17）：画外音，不算出场的人物；资产页人物那一页另有一张旁白卡（音色绑定.js）
 function assetsOf(s) {
@@ -1514,7 +1519,7 @@ function assetsOf(s) {
   for (const k of ['人物', '道具']) for (const f of s[SEG_FIELD[k]]) { seen.add(f.toLowerCase()); out.push({ 类别: SEG_FIELD[k], 名称: baseOf(f), sub: '这一段的', at: F.gone.has(f) ? '' : f, 状态: F.gone.has(f) ? '图不在了' : '', 说明: '', 文件: f, own: true }); }   // 这一段的图当人物、道具用的：不挂表里哪一行
   for (const f of s.场景图) { seen.add(f.toLowerCase()); out.push({ 类别: '场景图', 名称: baseOf(f), sub: segImg(s, f) && !F.doc.场景图.includes(f) ? '这一段的' : '', at: F.gone.has(f) ? '' : f, 状态: F.gone.has(f) ? '图不在了' : '', 说明: '', 文件: f, own: true }); }
   for (const t of uniq(s.场景文字)) out.push({ 类别: '场景文字', 名称: sceneLabel(t), sub: '', at: '', 状态: '', 说明: t, 文字: t, own: true, ...(noImg(s, '场景', sceneStem(t)) ? { 只字: true } : {}) });   // 只用文字写的场景：不要图，不算缺图，也不用确认
-  for (const f of framesOf(s)) { seen.add(f.toLowerCase()); const dir = f.split('/').slice(2, -1).join('/'); out.push({ 类别: '关键帧', 名称: baseOf(f), sub: dir, at: F.gone.has(f) ? '' : f, 状态: F.gone.has(f) ? '图不在了' : '', 说明: '', 文件: f, own: true }); }   // 关键帧：只这一场用
+  for (const f of framesOf(s)) { seen.add(f.toLowerCase()); const dir = f.split('/').slice(AP.segParts(s.段).length, -1).join('/'); out.push({ 类别: '关键帧', 名称: baseOf(f), sub: dir, at: F.gone.has(f) ? '' : f, 状态: F.gone.has(f) ? '图不在了' : '', 说明: '', 文件: f, own: true }); }   // 关键帧：只这一场用
   const named = new Set(out.map(x => x.类别 + '/' + x.名称));
   const inTable = new Set([...LISTS.flatMap(K => F.doc[K.key].flatMap(e => e.资产)), ...F.doc.场景图].map(f => f.toLowerCase()));
   const textStems = new Set(uniq(s.场景文字).map(sceneStem).filter(Boolean));
@@ -1557,12 +1562,12 @@ function assetChip(it, opener) {   // opener：点开这一格时另有做法（
    AI 写的「要撑住」「核图」「核GEO」记在 资产/第N段_资产清单.json 里这张图的那一条（页面只读） ---------- */
 const CAND_RE = /_候选\.(png|jpe?g|webp)$/i;
 const BMF_RE = /_白模帧\.(png|jpe?g|webp)$/i;   // 出关键帧时从白模截的那一刻（过程文件，放在关键帧旁边）：不算关键帧
-const inCatDir = (cat, f) => { const q = String(f).split('/'); return q.length === 4 && q[0] === '资产' && q[1] === '全局资产' && q[2] === cat && nameOk(q[3]); };
+const inCatDir = (cat, f) => { const q = String(f).split('/'); return q.length === 3 && q[0] === '资产' && q[1] === AP.dirName(cat) && nameOk(q[2]); };   // 资产/人物和道具（场景：资产/场景）本层
 const fileTimeOf = f => (F.imgTime && F.imgTime.get(String(f).toLowerCase())) || (F.pool.find(p => p.文件 === f) || {}).mtime || F.words.get(f) || 0;
 const nearTime = (a, b) => !!a && !!b && Math.abs(a - b) < 3000;
 const checkBad = t => !!t && !(/没看出问题|撑得住/.test(t) && !/撑不住/.test(t));   // AI 核图说的是有问题
 const WORD_TX = { 'ai-img': 'AI 在出图', 'ai-word': 'AI 在写字', cand: '新图等你看', ok: '可用', img: '图等你看', word: '字等你批', none: '还没写字', txt: '文字写好了' };   // txt：只用文字的写好了文字描写（11-17）
-/* 一格资产（assetsOf 给的）走这一套用的几个文件、眼下走到哪了。不走这一套的（这一段文件夹里当人物、道具、场景用的图，全局资产别的文件夹里的图）回 null */
+/* 一格资产（assetsOf 给的）走这一套用的几个文件、眼下走到哪了。不走这一套的（这一段文件夹里当人物、道具、场景用的图，人物和道具、场景下一层文件夹里的图）回 null */
 function wordOf(s, it) {   // 只用文字写、不出图的（it.只字）也走这一套：写的是文字描写（公用/文字描写.js），不出图（11-17）
   let cat = '', stem = '', img = '';
   if (KIND[it.类别] && it.own) {
@@ -1571,14 +1576,14 @@ function wordOf(s, it) {   // 只用文字写、不出图的（it.只字）也�
     else stem = it.名称 + (it.sub ? '_' + it.sub : '');
   } else if (it.类别 === '场景图' && it.own) { if (!inCatDir('场景', it.文件)) return null; cat = '场景'; img = it.文件; stem = baseOf(img); }
   else if (it.类别 === '场景文字') { cat = '场景'; stem = sceneStem(it.文字); }
-  else if (it.类别 === '关键帧') { const q = String(it.文件).split('/'); if (q.length !== 3 || q[0] !== '资产' || q[1] !== segName(s.段) || !nameOk(q[2])) return null; cat = '关键帧'; img = it.文件; stem = baseOf(img); }
+  else if (it.类别 === '关键帧') { const q = String(it.文件).split('/'); if (q.length !== 4 || q.slice(0, 3).join('/') !== AP.segDir(s.段) || !nameOk(q[3])) return null; cat = '关键帧'; img = it.文件; stem = baseOf(img); }
   if (!cat || !nameOk(stem) || /_(候选|白模帧)$/.test(stem)) return null;
   return wordFor(s, cat, stem, img, it);
 }
 /* 不在资产格子里的（提示词那一步新加的关键帧）也用它：cat 关键帧、stem 图名 */
 function wordFor(s, cat, stem, img, it) {
   const seg = s.段, frame = cat === '关键帧';
-  const pdir = frame ? '提示词/' + segName(seg) : '提示词/全局资产/' + cat, adir = frame ? '资产/' + segName(seg) : '资产/全局资产/' + cat;
+  const pdir = frame ? '提示词/' + segName(seg) : '提示词/全局资产/' + cat, adir = frame ? AP.segDir(seg) : AP.catDir(cat);
   img = img || adir + '/' + stem + '.png';
   const txtOnly = !frame && !!(it && it.只字);   // 只用文字的：只有一份文字描写，没有图、候选、GEO 底稿
   const w = { s, seg, cat, stem, img, it: it || null, frame, txtOnly,

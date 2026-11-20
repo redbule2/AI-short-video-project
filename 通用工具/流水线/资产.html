@@ -121,6 +121,7 @@
 <div id="layer"></div>
 <div id="toasts" aria-live="polite"></div>
 <script src="../公用/核心.js"></script>
+<script src="../公用/资产路径.js"></script>
 <script src="../公用/底座.js"></script>
 <script src="../公用/界面.js"></script>
 <script src="../公用/音色.js"></script>
@@ -493,7 +494,7 @@ function repaint() {
   document.getElementById('as-tabs').replaceChildren(...TABS.map(t => h('button', { class: 'pz-tab ' + kindCls(t) + (t === cur ? ' on' : ''), type: 'button', role: 'tab', 'aria-selected': String(t === cur), onclick: () => switchTab(t) },
       t, h('em', null, String(marks[t].n)), marks[t].dot ? h('i', { class: 'dot', title: marks[t].dot }) : null)),
     h('span', { class: 'sp' }), HistView.chip(HistView.count(hc), paint, '旧图'),
-    F.dirs.has(segName(s.段)) ? h('button', { class: 'fl-link', type: 'button', title: '看这一段文件夹里的图，框出来写批注', onclick: () => openShell(at([F.name, '资产', segName(s.段)]), '第' + s.段 + '段的图') }, '看这一段文件夹的图') : '');   // 没有这一段的文件夹：空着（null 会被写成字）
+    F.dirs.has(segName(s.段)) ? h('button', { class: 'fl-link', type: 'button', title: '看这一段文件夹里的图，框出来写批注', onclick: () => openShell(at([F.name, ...AP.segParts(s.段)]), '第' + s.段 + '段的图') }, '看这一段文件夹的图') : '');   // 没有这一段的文件夹：空着（null 会被写成字）
   document.getElementById('as-more').replaceChildren(...flat([
     jobs.length ? h('div', { class: 'wf-jobs' }, jobs.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题)))) : null,
     bad ? h('p', { style: 'margin-top:10px' }, bad) : null,
@@ -536,7 +537,7 @@ start({ name: '资产', scene: true, render, repaint, leave: adLeave,   // leave
   jobDone(ended) {   // 只用文字写的场景，图出好了：这一场改用这张图（全片设定里那一句还在）
     for (const j of ended) {
       if (j.事 !== '出图' || j.状态 !== '做完' || j.类别 !== '场景' || !j.文件名) continue;
-      const s = F.doc.场.find(x => x.段 === j.段), t = s && uniq(s.场景文字).find(x => sceneStem(x) === j.文件名), file = '资产/全局资产/场景/' + j.文件名 + '.png';
+      const s = F.doc.场.find(x => x.段 === j.段), t = s && uniq(s.场景文字).find(x => sceneStem(x) === j.文件名), file = AP.catDir('场景') + '/' + j.文件名 + '.png';
       if (t && F.pool.some(p => p.文件 === file)) { useSceneImg(s, t, file); toast('「' + j.文件名 + '」的图出好了，第' + s.段 + '段改用这张图'); }
     }
     paint();

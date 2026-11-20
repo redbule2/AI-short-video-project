@@ -12,6 +12,7 @@
 <div id="layer"></div>
 <div id="toasts" aria-live="polite"></div>
 <script src="../公用/核心.js"></script>
+<script src="../公用/资产路径.js"></script>
 <script src="../公用/底座.js"></script>
 <script src="../公用/界面.js"></script>
 <script src="../公用/音色.js"></script>
@@ -59,12 +60,12 @@ function listSection(K) {
       return row;
     }));
     if (!list.length) box.append(h('div', { class: 'fr-empty' }, '还没有' + K.key + '。点右边「加' + K.key + '」，一行一个。'));
-    if (K.key === '人物') box.append(h('div', { class: 'fr-note' }, '音色：录音放进 资产 / 全局资产 / 人物，点「＋ 音色」挑一段给他（起名「叫法_音色.wav」的不挑也认得上）。写提示词时他有台词就挂上。'));
+    if (K.key === '人物') box.append(h('div', { class: 'fr-note' }, '音色：录音放进 资产 / 人物和道具，点「＋ 音色」挑一段给他（起名「叫法_音色.wav」的不挑也认得上）。写提示词时他有台词就挂上。'));
     const free = poolOf(K).filter(x => !list.some(e => e.资产.includes(x.文件))).length;
     bulk.hidden = !free;
     bulk.textContent = '从已有的图里加（' + free + '）';
   };
-  const bulk = h('button', { class: 'btn sm', type: 'button', title: '项目的 资产 / 全局资产 里已经有图的，选上就各加一行，图也对上了', onclick: () => bulkAddDlg(K) });
+  const bulk = h('button', { class: 'btn sm', type: 'button', title: '项目的 资产 / 人物和道具 里已经有图的，选上就各加一行，图也对上了', onclick: () => bulkAddDlg(K) });
   REPAINT[K.key] = paint;
   paint();
   return h('section', { class: 'fl-sec fl-list' }, secHead(K.no, K.title, K.sub, bulk, h('button', { class: 'btn sm ink', type: 'button', onclick: () => entryDlg(K) }, icon('plus'), '加' + K.key)), box);
@@ -72,7 +73,8 @@ function listSection(K) {
 
 /* 弹窗：从已有的图里一次加几行，叫法取文件名下划线前面那一段 */
 async function bulkAddDlg(K) {
-  const list = F.doc[K.key], free = poolOf(K).filter(x => !list.some(e => e.资产.includes(x.文件)));
+  const other = x => x.类别 === AP.CP && ![K.key, ''].includes(AP.rowKind(F.doc, x.文件));   // 人物和道具放一起：另一张表挂着的不列
+  const list = F.doc[K.key], free = poolOf(K).filter(x => !list.some(e => e.资产.includes(x.文件)) && !other(x));
   if (!free.length) return;
   const picked = new Set(), count = h('span'), grid = h('div', { class: 'fl-ag' });
   const paint = () => { count.textContent = '加上（' + picked.size + (K.multi ? ' 张）' : ' 行）'); grid.replaceChildren(...free.map(x => tileEl(x, picked.has(x.文件), '', () => { picked.has(x.文件) ? picked.delete(x.文件) : picked.add(x.文件); paint(); }))); };
@@ -119,7 +121,7 @@ function sceneSection() {
     strip.replaceChildren(
       ...d.场景图.map(file => imgChip(file, '场景图', () => { d.场景图 = d.场景图.filter(f => f !== file); for (const s of d.场) s.场景图 = s.场景图.filter(f => f !== file); touch(); repaintRefs(); })),
       ...sug.map(x => h('button', { class: 'fl-asset sug', type: 'button', title: '场景里提到了「' + tokenOf(x) + '」，项目里有这张图：' + x.文件, onclick: () => { d.场景图.push(x.文件); touch(); repaintRefs(); } }, thumbImg(x.文件), h('span', { class: 'nm' }, x.名称, h('small', null, '提到了，点一下引用')))),
-      h('button', { class: 'btn sm', type: 'button', title: '从 资产 / 全局资产 / 场景 里选全片用的场景图', onclick: pickSceneImgs }, icon('plus'), '引用场景图'));
+      h('button', { class: 'btn sm', type: 'button', title: '从 资产 / 场景 里选全片用的场景图', onclick: pickSceneImgs }, icon('plus'), '引用场景图'));
   };
   const later = debounce(() => { if (strip.isConnected) paint(); }, 400);
   ta.addEventListener('input', () => { setScene(ta.value); fit(ta); touch(); paintSteps(); later(); });
@@ -133,7 +135,7 @@ async function pickSceneImgs() {
   const d = F.doc;
   F.pool = await loadPool(F.name);
   const items = F.pool.filter(isSceneImg);
-  if (!items.length) { toast('「' + F.name + '」的 资产 / 全局资产 / 场景 里还没有图。先写场景，定下一段以后让 AI 出'); return; }
+  if (!items.length) { toast('「' + F.name + '」的 资产 / 场景 里还没有图。先写场景，定下一段以后让 AI 出'); return; }
   const picked = new Set(d.场景图), count = h('span'), grid = h('div', { class: 'fl-ag' });
   const paint = () => { count.textContent = '引用（' + items.filter(x => picked.has(x.文件)).length + ' 张）'; grid.replaceChildren(...items.map(x => tileEl(x, picked.has(x.文件), '', () => { picked.has(x.文件) ? picked.delete(x.文件) : picked.add(x.文件); paint(); }))); };
   paint();

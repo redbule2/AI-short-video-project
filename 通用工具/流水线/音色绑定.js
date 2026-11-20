@@ -1,5 +1,5 @@
 /* 人物的音色：试听、挑一段、不用（11-15 加，资产页、设定页共用）。
-   录音放 资产/全局资产/人物；挑了哪段记在流水线.json 人物那一行的「音色」（'' 是不用），没挑照文件名「叫法_音色.wav」认。认法在 公用/音色.js。
+   录音放 资产/人物和道具；挑了哪段记在流水线.json 人物那一行的「音色」（'' 是不用），没挑照文件名「叫法_音色.wav」认。认法在 公用/音色.js。
    要先引 公用/音色.js、流水线.js。
    VoiceBind.line(名, paint)：资产页人物卡底下那一行。VoiceBind.buttons(名, paint)：设定页人物那一行的按钮。VoiceBind.reset()：录音可能变了，下回重列 */
 const VoiceBind = (() => {
@@ -57,8 +57,8 @@ const VoiceBind = (() => {
     });
     const got = await dialog(close => {
       const body = NAMES.length ? h('div', { class: 'vb-list', onclick: e => { const b = e.target.closest('[data-use]'); if (b) close(b.dataset.use); } }, rows)
-        : h('p', { class: 'fn-note' }, '人物文件夹里还没有录音：把录音（wav、mp3 都行）放进 资产 / 全局资产 / 人物，再来挑。');
-      return dlgShell('给「' + name + '」挑音色', '录音在 资产 / 全局资产 / 人物。写提示词时' + (name === Voice.NARRATOR ? '这一条有旁白才挂（画外音，画面里的人不开口）' : '他有台词才挂') + '：台词照文字写，录音只给音色、口音、语速和情绪。一段录音只给一个人。', body, [
+        : h('p', { class: 'fn-note' }, '人物和道具文件夹里还没有录音：把录音（wav、mp3 都行）放进 资产 / 人物和道具，再来挑。');
+      return dlgShell('给「' + name + '」挑音色', '录音在 资产 / 人物和道具。写提示词时' + (name === Voice.NARRATOR ? '这一条有旁白才挂（画外音，画面里的人不开口）' : '他有台词才挂') + '：台词照文字写，录音只给音色、口音、语速和情绪。一段录音只给一个人。', body, [
         cur ? h('button', { class: 'btn ghost', type: 'button', onclick: () => close('') }, name + '不用音色') : null,
         h('button', { class: 'btn ink', type: 'button', 'data-focus': '', onclick: () => close(null) }, '关上')].filter(Boolean));
     });
@@ -74,14 +74,14 @@ const VoiceBind = (() => {
     return h('div', { class: 'vb-line' + (st.how === '不在了' ? ' warn' : ''), title: st.path ? '音色：' + st.path : subOf(st), onclick: e => e.stopPropagation() },
       h('span', { class: 'vb-l' }, '音色'), h('span', { class: 'vb-n' }, st.path ? stem(st.path) : subOf(st)),
       st.path ? playBtn(st.path, '试听', 'vb-mini') : null,
-      h('button', { class: 'vb-mini', type: 'button', title: st.path ? '另挑一段，或者不用音色' : '从 资产 / 全局资产 / 人物 的录音里挑一段给' + name, onclick: open }, st.path ? '换' : '挑一段'));
+      h('button', { class: 'vb-mini', type: 'button', title: st.path ? '另挑一段，或者不用音色' : '从 资产 / 人物和道具 的录音里挑一段给' + name, onclick: open }, st.path ? '换' : '挑一段'));
   }
   /* 设定页：有音色的摆「♪ 音色」试听、「换音色」；没有的摆「＋ 音色」 */
   function buttons(name, paint) {
     load(paint);
     const st = stateOf(name), open = e => { e.stopPropagation(); pick(name, paint); };
     if (st.path) return [playBtn(st.path, '♪ 音色', 'fr-use'), h('button', { class: 'fr-use vb-btn', type: 'button', title: '另挑一段，或者不用音色', onclick: open }, '换音色')];
-    return [h('button', { class: 'fr-use vb-btn' + (st.how === '不在了' ? ' warn' : ''), type: 'button', title: subOf(st) + '：点一下从 资产 / 全局资产 / 人物 的录音里挑一段', onclick: open },
+    return [h('button', { class: 'fr-use vb-btn' + (st.how === '不在了' ? ' warn' : ''), type: 'button', title: subOf(st) + '：点一下从 资产 / 人物和道具 的录音里挑一段', onclick: open },
       st.how === '不在了' ? '♪ 录音不在了' : '＋ 音色')];
   }
   return Object.freeze({ line, buttons, reset });

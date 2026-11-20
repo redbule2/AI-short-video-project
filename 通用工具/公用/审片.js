@@ -15,6 +15,7 @@
   const uid = () => Math.random().toString(36).slice(2, 10);
   const baseName = s => String(s).trim().split(/[\\/]/).pop();
   const clean = p => (typeof p === 'string' ? p : '').trim().replace(/\\/g, '/');
+  const AP = () => (typeof globalThis !== 'undefined' && globalThis.AssetPath) || require('./资产路径.js');   // 资产放哪（公用/资产路径.js）
 
   /* ---------- 从 mp4 头里读帧率和帧数；读不出给 null（页面按每秒 24 帧） ---------- */
   const fourcc = (dv, p) => String.fromCharCode(dv.getUint8(p), dv.getUint8(p + 1), dv.getUint8(p + 2), dv.getUint8(p + 3));
@@ -96,11 +97,11 @@
     const ts = [...s.matchAll(/(\d+):(\d{1,2}(?:\.\d+)?)/g)].map(x => (+x[1]) * 60 + (+x[2]));
     return ts.length ? [Math.round(ts[0] * fps), ts[1] != null ? Math.round(ts[1] * fps) : null] : null;
   }
-  /* 「弃用关键帧：@图片9 E:\…\资产\第3-4段\镜头4_首帧.png」→ { ref, rel 从项目里面写起（认不出空着，照编号认）, raw 原样 } */
+  /* 「弃用关键帧：@图片9 E:\…\资产\关键帧\第3-4段\镜头4_首帧.png」→ { ref, rel 从项目里面写起（认不出空着，照编号认）, raw 原样 } */
   function kfParse(s) {
     const m = /^(@图片\d+)\s*(.*)$/.exec(String(s).trim());
     if (!m) return null;
-    const p = clean(m[2]), k = p.lastIndexOf('/资产/');
+    const p = AP().fromOld(clean(m[2])), k = p.lastIndexOf('/资产/');   // 11-20 以前写的老路径：换成新的
     return { ref: m[1], rel: k >= 0 ? p.slice(k + 1) : p.startsWith('资产/') ? p : '', raw: m[2].trim() };
   }
   /* 读：{ prompt 提示词文件名, promptLine 提示词那一行原样, general 整体, notes: [{ id, f, f2, cats, shot, cmp, kf, img, img2, text }] } */

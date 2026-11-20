@@ -47,6 +47,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const isNarr = n => !!Voice && n === Voice.NARRATOR;   // 旁白是画外音（11-17）：不写字、不出图，只挂音色
   const TxtWord = (() => { try { return require(path.join(TOOLS, '公用', '文字描写.js')); } catch (e) { log('读不了 公用/文字描写.js：' + e.message); return null; } })();   // 只用文字写的资产的文字描写（11-17）
   const AssetEdit = (() => { try { return require(path.join(TOOLS, '公用', '资产改过.js')); } catch (e) { log('读不了 公用/资产改过.js：' + e.message); return null; } })();   // 资产改了，照新资产改提示词（11-17）
+  const AP = require(path.join(TOOLS, '公用', '资产路径.js'));   // 资产放哪（2026-11-20：人物和道具、场景、关键帧/第N段）；老路径换新的、画布节点名也照它
   const Scope = (() => { try { return require(path.join(TOOLS, '公用', '资产归类.js')); } catch (e) { log('读不了 公用/资产归类.js：' + e.message); return null; } })();   // 出场的分全局、用在哪几镜，删掉的（11-17）
   const two = n => String(n).padStart(2, '0');
   const stampOf = (d = new Date()) => d.getFullYear() + two(d.getMonth() + 1) + two(d.getDate()) + '-' + two(d.getHours()) + two(d.getMinutes()) + two(d.getSeconds());
@@ -579,15 +580,15 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const mtimeOf = async p => { try { return Math.floor((await fsp.stat(p)).mtimeMs); } catch (e) { return 0; } };   // 核图记下核的是哪一张（图的修改时间）：页面照它分清说的是原图还是候选
   /* 一样东西的几个文件：字（出图提示词）、GEO 底稿（场景）、字的批注、图、候选图、图的批注（看大图时写的） */
   function wordFiles(cat, stem, seg, img) {
-    const p = cat === '关键帧' ? ['提示词', segDir(seg)] : ['提示词', '全局资产', cat], a = cat === '关键帧' ? ['资产', segDir(seg)] : ['资产', '全局资产', cat];
+    const p = cat === '关键帧' ? ['提示词', segDir(seg)] : ['提示词', '全局资产', cat], a = cat === '关键帧' ? AP.segParts(seg) : AP.catParts(cat);
     return { txt: [...p, stem + '_提示词.txt'], note: [...p, stem + '_提示词_批注.md'], geo: cat === '场景' ? [...p, stem + '_GEO底稿.md'] : null,
       img: img || [...a, stem + '.png'], cand: [...a, stem + '_候选.png'], imgNote: [...a, stem + '_批注.md'], shots: [...a, stem + '_批注截图'] };
   }
   /* 页面给的那张图（已经挂着的，名字不一定是「叫法.png」，比如 童爸爸_三十出头.png）：要在这一类的文件夹里 */
   function imgParts(cat, seg, file) {
-    const img = str(file).replace(/\\/g, '/').split('/').filter(Boolean);
+    const img = AP.fromOld(str(file)).replace(/\\/g, '/').split('/').filter(Boolean);
     if (!img.length) return null;
-    const dir = cat === '关键帧' ? ['资产', segDir(seg)] : ['资产', '全局资产', cat];
+    const dir = cat === '关键帧' ? AP.segParts(seg) : AP.catParts(cat);
     if (img.length !== dir.length + 1 || dir.some((x, i) => img[i] !== x) || !IMG_RE.test(img[img.length - 1]) || !img.every(nameOk)) throw fail('这张图不在 ' + dir.join('/') + ' 里');
     return img;
   }
@@ -642,7 +643,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       out.push({ 参考: [], 要求: '', ...x, f, 图: f.img.join('/'), 有图, 有字, 确认, 写, 不写GEO, 旧字: 写 ? await read(f.txt) : '', 旧GEO: 写 && !不写GEO ? await read(f.geo) : '' });
     };
     const entry = (k, n) => (Array.isArray(flow[k]) ? flow[k] : []).find(e => e && e.名 === n) || null;
-    const inGlobal = (k, g) => g.startsWith('资产/全局资产/' + k + '/') && !g.slice(('资产/全局资产/' + k + '/').length).includes('/');
+    const inGlobal = (k, g) => { const d = AP.catDir(k) + '/'; return g.startsWith(d) && !g.slice(d.length).includes('/'); };   // 人物、道具都在 资产/人物和道具，场景在 资产/场景（本层）
     if (j.只.length) {
       for (const x of j.只) {
         const e = x.类别 === '人物' || x.类别 === '道具' ? entry(x.类别, x.名称) : null, 只字 = !!TxtWord && core('noImg')(s, x.类别, x.名称) && !imgsOf(e).length;
@@ -982,7 +983,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         if (await exists(vpPath(j))) throw fail('这份提示词已经存在，请打开接着写；AI 初稿不会覆盖它');
         if (j.白模) {   // 这一条要挂的白模：只认这一段文件夹（含下一层）里的视频
           const f = str(j.白模).replace(/\\/g, '/'), q = f.split('/');
-          if (q[0] !== '资产' || q[1] !== segDir(j.段) || q.length > 4 || !VIDEO_RE.test(f) || q.some(x => !nameOk(x)) || !(await exists(pj(j.项目, ...q)))) throw fail('白模要是 资产/' + segDir(j.段) + ' 里的视频');
+          if (!AP.inSeg(f, j.段) || AP.placeOf(f).depth > 1 || !VIDEO_RE.test(f) || q.some(x => !nameOk(x)) || !(await exists(pj(j.项目, ...q)))) throw fail('白模要是 ' + AP.segDir(j.段) + ' 里的视频');
           j.白模 = f;
         }
         if (j.关键帧 != null) {   // 这一条要挂的关键帧：只认这一段文件夹（含下一层）里的图，照页面排好的先后
@@ -990,7 +991,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           const out = [];
           for (const x of j.关键帧) {
             const f = str(x).replace(/\\/g, '/'), q = f.split('/');
-            if (q[0] !== '资产' || q[1] !== segDir(j.段) || q.length > 4 || !IMG_RE.test(f) || q.some(y => !nameOk(y)) || !(await exists(pj(j.项目, ...q)))) throw fail('关键帧要是 资产/' + segDir(j.段) + ' 里的图');
+            if (!AP.inSeg(f, j.段) || AP.placeOf(f).depth > 1 || !IMG_RE.test(f) || q.some(y => !nameOk(y)) || !(await exists(pj(j.项目, ...q)))) throw fail('关键帧要是 ' + AP.segDir(j.段) + ' 里的图');
             if (!out.includes(f)) out.push(f);
           }
           j.关键帧 = out;
@@ -1142,9 +1143,10 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           log('新建了即梦画布「' + nc.name + '」：' + nc.url);
         }
         j.步骤 = '在核对即梦账号和画布';
-        const nodeName = f => { const q = f.split('/'); const base = q[q.length - 1].replace(/\.[^.]+$/, ''); return q[1] === '全局资产' ? q[2] + '_' + base : /^第.+段$/.test(q[1]) ? q[1] + '_' + base : base; };
+        const nodeName = f => AP.nodeTitle(f);   // 素材节点名照 AGENTS.md「即梦画布」：人物和道具_文件名、场景_文件名、第N段_文件名（公用/资产路径.js）
+        const nodeNote = f => { const [t, ...old] = AP.titlesOf(f); return '素材节点名：' + t + (old.length ? '；画布上要是还叫 11-20 以前的老名字（' + old.map(x => '「' + x + '」').join('或') + '），先把它改名成「' + t + '」再引用，不重传' : ''); };
         const swapped = refs.filter(r => r.换), cid = (/ai-canvas\/([0-9a-f-]{36})/i.exec(str(set.画布)) || [])[1];   // 换过新的：画布上同名的节点各是哪一版，先认好写进任务书，和核对账号一起查（11-17：原来叫 Codex 去生成记录里查，没记的它就停下问人）
-        const seenP = swapped.length && cid ? canvas.versions({ name: j.项目, canvas: cid.toLowerCase(), profile: prof, items: swapped.map(r => ({ title: nodeName(r.path), cur: pj(j.项目, ...r.path.split('/')), sha: r.sha256, olds: r.换 })) })
+        const seenP = swapped.length && cid ? canvas.versions({ name: j.项目, canvas: cid.toLowerCase(), profile: prof, items: swapped.map(r => ({ title: nodeName(r.path), titles: AP.titlesOf(r.path), cur: pj(j.项目, ...r.path.split('/')), sha: r.sha256, olds: r.换 })) })
           .catch(e => { log('画布上同名的节点没认成，任务书照旧叫 Codex 去认：' + e.message); return null; }) : null;
         const JMOK = await jmCheck(set.画布, prof);   // 这个号登着、画布在它名下才写任务书
         if (seenP) { j.步骤 = '在认画布上同名的节点是哪一版'; (await seenP || []).forEach((v, i) => { swapped[i].节点 = v; }); }
@@ -1166,9 +1168,9 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           ...(per ? ['照以往实扣，' + (vrefs.length ? '带参考视频的' : '') + '这种出法每秒约 ' + per + ' 积分，这一条预计约 ' + per * P.秒数 + ' 积分；以报价为准。'] : []),
           ...(vrefs.length && vtotal && Math.abs(vtotal - P.秒数) > 1 ? ['白模合计 ' + vtotal.toFixed(1) + ' 秒，这一条照用户填的出 ' + P.秒数 + ' 秒，不要改。'] : []),
           '', '三、参考：' + refs.length + ' 个，按顺序挂，编号要对上', refs.length ? '画布上已经有同名素材节点的（节点名写在括号里），回读确认还在、类型对，就直接引用，不重传；没有的才用 CLI 传：图片传成独立图片节点' + (vrefs.length ? '，视频传成独立视频素材节点（resource upload --type video，再 node create video）' : '') + (refs.some(r => /^@音频\d+$/.test(r.ref)) ? '，音频传成独立音频素材节点（resource upload --type audio，再 node create audio，不带 --run）' : '') + '，节点名照括号里的写。节点A 里用「从画布选择」引用素材节点，不要直接上传进视频节点。' : '这一条没有登记参考素材（纯文字出片）。',
-          ...refs.map(r => r.ref + ' ' + r.name + '：' + abs(...r.path.split('/')) + (r.secs ? '，' + r.secs.toFixed(1) + ' 秒' : '') + '，SHA-256 ' + r.sha256 + '（素材节点名：' + nodeName(r.path) + '）。'
+          ...refs.map(r => r.ref + ' ' + r.name + '：' + abs(...r.path.split('/')) + (r.secs ? '，' + r.secs.toFixed(1) + ' 秒' : '') + '，SHA-256 ' + r.sha256 + '（' + nodeNote(r.path) + '）。'
             + (r.节点 ? canvas.plan(nodeName(r.path), r.节点) : r.换 ? '这个文件换过新的，旧版收在历史记录。画布上的同名节点照生成记录里的 SHA-256 认：是下面哪一版旧的，就先把它改成那一版的名字（照 AGENTS.md，只改名，不删）：' + r.换.map(o => '「' + nodeName(r.path) + '__' + o.t + '」（SHA-256 ' + o.sha + '）').join('、') + '；改好再照这个文件传一个新节点，名字写「' + nodeName(r.path) + '」。是现在这个文件的，直接引用；哪一版都对不上、查不到，就停下问我。' : '')),
-          ...(refs.some(r => r.换) ? ['给上面写着「换过新的」的旧节点改名，是「别的节点一律不改」唯一的例外。'] : []),
+          ...(refs.some(r => r.换 || AP.titlesOf(r.path).length > 1) ? ['给' + [refs.some(r => r.换) ? '上面写着「换过新的」的旧节点改名' : '', refs.some(r => AP.titlesOf(r.path).length > 1) ? '把还叫老名字的素材节点改成新名字' : ''].filter(Boolean).join('、') + '，是「别的节点一律不改」仅有的例外。'] : []),
           '', '四、提示词', '文件：' + abs(...rel), '核对：非空行 ' + text.split(/\r?\n/).filter(l => l.trim()).length + ' 行，SHA-256 ' + sha256(buf) + '。',
           ...(refs.length ? ['登记：资产/参考素材映射.json 里这份稿的登记，生成任务书时已照这份任务书写齐（正文 SHA-256、第三节的编号和每样的 SHA-256）。跑 核对参考素材.py 不通过，就是任务书生成以后又有人改过：停下告诉我，不要自己改登记。'] : []),'全文原样填进节点A 的提示词，保留换行，不增删、不改字；存草稿后回读，和文件逐字比对一遍。装不下、被截断就停下告诉我，不要删减。',
           '', '五、核对、报价、提交', P.积分上限 > 0 ? '用户批准的积分上限是 ' + P.积分上限 + '：报价不超过它，就直接完成服务端确认、提交，不用再问我；超过就停在草稿，告诉我报价多少。'
@@ -1419,7 +1421,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   async function lessonsOf() {
     try { return unbom(await fsp.readFile(path.join(__dirname, '公用教训.md'), 'utf8')).replace(/\r\n/g, '\n').replace(/^#[^\n]*\n+/, '').trim(); } catch (e) { return ''; }
   }
-  /* 出场人物的音色（录音在 资产/全局资产/人物；流水线人物表里挑给谁的，没挑照「叫法_音色.wav」认，认法在 公用/音色.js；2026-11-15 加）：写提示词时当能用的素材，这一条里他有台词才挂 */
+  /* 出场人物的音色（录音在 资产/人物和道具；流水线人物表里挑给谁的，没挑照「叫法_音色.wav」认，认法在 公用/音色.js；2026-11-15 加）：写提示词时当能用的素材，这一条里他有台词才挂 */
   /* narr：这一段有旁白（剧本里有「旁白：」的台词行，或人物里手加了「旁白」；11-17）：旁白的录音也挂，排在人物后面 */
   async function voiceAssets(name, s, flow, narr) {
     if (!Voice || !s) return [];
@@ -1489,7 +1491,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const vidsOf = regs => regs.filter(r => /^@视频\d+$/.test(r.ref) && VIDEO_RE.test(r.path));
   /* 这一条挂的关键帧（11-13 夜加，流水线资产那一步「关键帧」一块里的图）：这一段文件夹里的图，名字带首帧、尾帧、关键帧的，或者这一场挑进「关键帧」的 */
   const FRAME_RE = /首帧|尾帧|关键帧/;
-  const framesOf = (j, regs, s) => regs.filter(r => /^@图片\d+$/.test(r.ref) && r.path.startsWith('资产/' + segDir(j.段) + '/') && (FRAME_RE.test(path.basename(r.path)) || (!!s && Array.isArray(s.关键帧) && s.关键帧.includes(r.path))));
+  const framesOf = (j, regs, s) => regs.filter(r => /^@图片\d+$/.test(r.ref) && AP.inSeg(r.path, j.段) && (FRAME_RE.test(path.basename(r.path)) || (!!s && Array.isArray(s.关键帧) && s.关键帧.includes(r.path))));
   const frameImgs = (j, frames) => frames.map(f => pj(j.项目, ...(f.path || f).split('/'))).filter(p => IMG_RE.test(p));
   const FRAME_HOW = '写法照 sd25-pe「关键帧锚点」：一张的写「@图片N作为首帧。」，另起一句「该首帧定义……。」（绑在结尾的、名字带「尾帧」的当尾帧）；几张的照上面的先后，先写「以@图片A至@图片B的顺序作为关键帧。」（编号不连着就用顿号一个个列），第一张当首帧，中间的写「@图片N定义第二个关键帧：……。」，最后一张绑在结尾、名字带「尾帧」的当尾帧。写法二放【场景】最前面，写法一放【参考素材职责】最前面。';
   const FRAME_HOW_SHOT = '这一条的关键帧是一镜一镜写参考哪张的（「@图片…是各镜头的关键帧」那一句，和每一镜开头的「参考@图片N」）：照这个写法留着、接着写，不换成 sd25-pe 的锚点句。';
@@ -1986,7 +1988,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     } catch (e) { return { ok: false, error: '即梦命令行调不起来：' + e.message }; }
   }
   const jmCheck = require('./jm-check.js')({ jm, fail, str });   // 出片前核对即梦账号和画布（三条命令一起查，10 分钟内同号同画布不重查；11-16 挪出去）
-  const canvas = require('./canvas.js')({ HOME, JM, run, log });   // 资产页看画布上的图（只读画布，11-14 加）
+  const canvas = require('./canvas.js')({ HOME, JM, run, log, AP });   // 资产页看画布上的图（只读画布，11-14 加）
   async function jimeng(req, res, q, { json, httpErr }) {
     if (req.method === 'GET' && (q.has('canvas') || q.has('img'))) return canvas.handle(req, res, q, { json, httpErr });
     const profile = q.get('profile') || '';

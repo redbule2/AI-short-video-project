@@ -111,7 +111,7 @@ async function bookOf(s) { const j = job(); await s.K.写字.prep(j); return s.K
   });
 
   await check('不出图的后来挂上了图：照图核，不当它只用文字', async () => {
-    const img = '资产/全局资产/人物/老李.png';
+    const img = '资产/人物和道具/老李.png';
     const s = setup(scene({ 人物: ['老李'], 道具: [], 场景文字: [], 不出图: { 人物: ['老李'] } }), { [P(...img.split('/'))]: 'png' }, { 人物: [{ 名: '老李', 描写: '五十岁', 资产: img }] });
     const part = toWrite(await bookOf(s));
     assert.ok(part.includes('【人物｜老李】') && part.includes('有图：' + img), part);
@@ -146,7 +146,7 @@ async function bookOf(s) { const j = job(); await s.K.写字.prep(j); return s.K
   await check('只用文字的已经有文字描写：整段写字时不重写；点名的才照要求改', async () => {
     const more = TXT('人物', '路人甲', '原来写好的样子'), sc = scene({ 不出图: { 人物: ['路人甲'] } });
     assert.ok(!toWrite(await bookOf(setup(sc, more))).includes('【人物｜路人甲】'), '写好了的又写一遍');
-    const s = setup(sc, more), j = { ...job(), 参数: { 只: [{ 类别: '人物', 名称: '路人甲', 图: '资产/全局资产/人物/路人甲.png', 要求: '胡子再多一点' }] } };
+    const s = setup(sc, more), j = { ...job(), 参数: { 只: [{ 类别: '人物', 名称: '路人甲', 图: '资产/人物和道具/路人甲.png', 要求: '胡子再多一点' }] } };
     await s.K.写字.prep(j);
     const book = await s.K.写字.book(j);
     assert.match(toWrite(book), /【人物｜路人甲】.*只用文字，不出图：要写文字描写（原来的字在最后/);
@@ -154,7 +154,7 @@ async function bookOf(s) { const j = job(); await s.K.写字.prep(j); return s.K
   });
 
   await check('出图：字是文字描写（只用文字时写的）就不出，先让 AI 改成出图提示词', async () => {
-    const s = setup(scene(), TXT('人物', '路人甲', '三十来岁的瘦高男人。')), j = { ...job(), 渠道: '自己交给 AI', 类别: '人物', 名: '路人甲', 参数: { 图: '资产/全局资产/人物/路人甲.png' } };   // 「给我提示词」：不用调 Codex
+    const s = setup(scene(), TXT('人物', '路人甲', '三十来岁的瘦高男人。')), j = { ...job(), 渠道: '自己交给 AI', 类别: '人物', 名: '路人甲', 参数: { 图: '资产/人物和道具/路人甲.png' } };   // 「给我提示词」：不用调 Codex
     await s.K.出图.prep(j);
     await assert.rejects(s.K.出图.run(j), /文字描写，不是出图提示词/);
   });
@@ -245,7 +245,7 @@ async function bookOf(s) { const j = job(); await s.K.写字.prep(j); return s.K
 
   await check('写视频提示词：没底稿、有场景图，看图现建，再加第五节；两样都没有，不讲 GEO（11-18 晚）', async () => {
     const run = async (extra, more) => { const s = setup(vpScene(extra), more), j = { 项目: '测试', 段: '1', 名: '1.txt', 渠道: 'self' }; await s.K.写提示词.prep(j); return s.K.写提示词.book(j); };
-    const img = '资产/全局资产/场景/面摊.png', make = await run({ 场景图: [img] }, { [P(...img.split('/'))]: 'PNG' });
+    const img = '资产/场景/面摊.png', make = await run({ 场景图: [img] }, { [P(...img.split('/'))]: 'PNG' });
     assert.ok(make.includes('【GEO底稿】'), '没让 AI 看图现建底稿');
     assert.deepEqual(geoParts(make).map(x => x.slice(0, 2)), ['五、', '六、', '七、']);
     const real = fs.readFileSync(GEO_SKILL, 'utf8').replace(/\r\n/g, '\n');
@@ -285,10 +285,10 @@ async function bookOf(s) { const j = job(); await s.K.写字.prep(j); return s.K
   });
 
   await check('写视频提示词：剧本里有旁白，挂旁白的录音、写明画外音；人物里手加的「旁白」不当人物挂', async () => {
-    const more = { [P('资产', '全局资产', '人物', '旁白_音色.wav')]: 'RIFF' }, NARR = SCRIPT + '\n旁白：江湖传闻，面摊老李一碗面吃了三十年。';
+    const more = { [P('资产', '人物和道具', '旁白_音色.wav')]: 'RIFF' }, NARR = SCRIPT + '\n旁白：江湖传闻，面摊老李一碗面吃了三十年。';
     const run = async (extra, script) => { const s = setup(vpScene(extra), more, {}, script), j = { 项目: '测试', 段: '1', 名: '1.txt', 渠道: 'self' }; await s.K.写提示词.prep(j); return s.K.写提示词.book(j); };
     const book = await run({}, NARR);
-    assert.ok(book.includes('旁白（画外音，不出镜）的音色（录音）：资产/全局资产/人物/旁白_音色.wav'), '没列旁白的录音');
+    assert.ok(book.includes('旁白（画外音，不出镜）的音色（录音）：资产/人物和道具/旁白_音色.wav'), '没列旁白的录音');
     assert.ok(book.includes('@音频1用于画外旁白的音色') && book.includes('「旁白：{台词}」'), '没说怎么挂旁白');
     assert.ok(!(await run({}, SCRIPT)).includes('旁白_音色.wav'), '剧本没旁白也挂了');
     const hand = await run({ 人物: ['旁白'] }, SCRIPT);

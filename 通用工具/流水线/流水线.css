@@ -463,7 +463,7 @@ button.as-warn:hover { border-color: var(--zhu); }
 /* 带颜色的按钮（11-13） */
 .btn.k-ren, .btn.k-jing, .btn.k-dao { border-color: var(--k-line); color: var(--k); }
 .btn.k-ren:hover, .btn.k-jing:hover, .btn.k-dao:hover { border-color: var(--k); background: var(--k-soft); }
-/* 第四样：关键帧（11-13 夜），墨绿。只这一场用，图在 资产/第N段 */
+/* 第四样：关键帧（11-13 夜），墨绿。只这一场用，图在 资产/关键帧/第N段 */
 .k-zhen { --k: #3d7a55; --k-soft: rgba(61, 122, 85, .09); --k-line: rgba(61, 122, 85, .45); }
 .fl-asset.k-zhen { border-left: 4px solid var(--k); }
 .fl-asset.k-zhen img { width: 82px; object-position: center; }

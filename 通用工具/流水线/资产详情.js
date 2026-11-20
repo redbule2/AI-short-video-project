@@ -42,7 +42,7 @@ function adFind(s) {
   const q = AD.q, a = q && q.a;
   if (!a) return null;
   for (const it of assetsOf(s).list) { const w = wordOf(s, it); if (w && w.img === a) { if (w.frame) w.forPrompt = q.v || (w.rec && w.rec.提示词) || ''; return { it, w }; } }
-  const ad = '资产/' + segName(s.段) + '/';
+  const ad = AP.segDir(s.段) + '/';
   if (a.startsWith(ad) && !a.slice(ad.length).includes('/')) {
     const stem = baseOf(a);
     if (nameOk(stem) && !/_(候选|白模帧)$/.test(stem)) {
@@ -514,11 +514,13 @@ function adNowEls(s, it, w, jobs) {
     bad ? h('div', { class: 'ad-job' }, h('span', { class: 'fn-note warn' }, '上一回' + (bad.事 === '出图' || bad.事 === '改图' ? ' Codex ' : ' ' + bad.渠道名 + ' ') + '没做成：' + bad.错误), relDir(bad.记录) ? h('button', { class: 'fl-link', type: 'button', onclick: () => adShowRun(relDir(bad.记录), bad.标题) }, '看过程') : null) : null] };
 }
 const adRow = (lab, hint, body, warn) => h('div', { class: 'ad-row' + (warn ? ' warn' : '') }, h('b', null, lab, hint ? h('span', null, hint) : null), body);
+/* 出图提示词里挂的一张图是哪一类（上颜色用）：场景看文件夹；人物和道具里的看哪一行引用着（listFor）；别处的不上色 */
+const refKind = f => { const a = AP.placeOf(f); return a.hist || a.depth ? '' : a.where === AP.SC ? '场景' : a.where === AP.CP ? listFor({ 类别: AP.CP, 文件: f }).key : ''; };
 function adInfoEls(s, w) {
   const b = AD.base, need = (b && b.need) || w.need, mine = w.rec && Array.isArray(w.rec.替人定的) ? w.rec.替人定的 : [];
   const head = b ? b.head : [], refs = headRefs(head), other = head.filter(l => !/^(用途|要撑住)[：:]/.test(l) && !headRefs([l]).length);
   const refEl = r => {
-    const bm = BMF_RE.test(r.file), ok = bm || markOk(r.file, 0), el = h('button', { class: 'fl-asset ' + (bm ? 'k-zhen' : kindCls(r.file.startsWith('资产/全局资产/') && KINDS.includes(r.file.split('/')[2]) ? r.file.split('/')[2] : '')), type: 'button', title: r.file + '\n点一下看大图', onclick: () => openImage(r.file) },
+    const bm = BMF_RE.test(r.file), ok = bm || markOk(r.file, 0), el = h('button', { class: 'fl-asset ' + (bm ? 'k-zhen' : kindCls(refKind(r.file))), type: 'button', title: r.file + '\n点一下看大图', onclick: () => openImage(r.file) },
       thumbImg(r.file), h('span', { class: 'nm' }, '图' + r.n + ' ' + (bm ? '白模这一刻' : baseOf(r.file)), h('small', null, ok ? (bm ? '构图、站位照它' : '确认过可用') : '还没确认可用')));
     if (!ok) el.classList.add('wd-bad');
     return el;

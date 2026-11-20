@@ -13,8 +13,8 @@
 'use strict';
 /* ---------- 用上一张图 ---------- */
 /* 一张全片的图该挂到哪一行：给哪一行挑的就是那一行；不然看哪一行已经引用它，再不然照图名里的叫法找（老名字「项目_类别_叫法_资产」也认） */
-function rowFor(x, cell) {
-  const K = LISTS.find(k => k.cats(x.类别));
+function rowFor(x, cell, k) {   // k：给哪一类挑的（人物和道具文件夹里的图归哪张表照它）
+  const K = listFor(x, (cell && cell.类别) || k);
   if (!K) return null;
   return (cell && cell.类别 === K.key ? entryOf(K.key, cell.名称) : null) || F.doc[K.key].find(r => r.资产.includes(x.文件)) || F.doc[K.key].find(r => r.名 === tokenOf(x) || r.名 === x.名称) || null;
 }
@@ -25,7 +25,7 @@ function useSeg(s, k, x) {
   return '「' + x.名称 + '」这一段当' + k + '用上了' + (was && was !== k ? '（原来当' + was + '）' : '') + '，只这一段用';
 }
 /* 这一场用上一张全片的图：人物、道具的图挂到 rowFor 找到的那一行（找不到就照叫法加一行），这一场选上；场景图加进全片和这一场 */
-function useImage(s, x, cell) {
+function useImage(s, x, cell, k) {
   const file = x.文件;
   if (isSceneImg(x)) {
     if (!F.doc.场景图.includes(file)) F.doc.场景图.push(file);
@@ -33,8 +33,8 @@ function useImage(s, x, cell) {
     orderCast(s); touch();
     return '场景图「' + x.名称 + '」这一段用上了';
   }
-  const K = LISTS.find(k => k.cats(x.类别));
-  let e = rowFor(x, cell);
+  const K = listFor(x, (cell && cell.类别) || k);
+  let e = rowFor(x, cell, k);
   const fresh = !e;
   if (fresh) { e = { 名: tokenOf(x), 描写: '', 资产: [] }; F.doc[K.key].push(e); }
   if (!e.资产.includes(file)) {
@@ -47,13 +47,13 @@ function useImage(s, x, cell) {
   orderCast(s); touch();
   return K.key + '「' + e.名 + '」' + (fresh ? '加进了' + K.key + '表，' : '') + '挂上了这张图，这一段也选上了';
 }
-/* 删掉的图：历史记录/资产/全局资产/类别/原名__时间.后缀（「图不要了」移过去的） */
+/* 删掉的图：历史记录/资产/人物和道具（场景）/原名__时间.后缀（「图不要了」移过去的） */
 async function loadDeleted() {
   const ls = lister(F.name), out = [];
-  for (const c of (await ls('历史记录/资产/全局资产')).filter(e => e.kind === 'directory').map(e => e.name))
-    for (const e of (await ls('历史记录/资产/全局资产/' + c)).filter(x => x.kind === 'file' && IMG_RE.test(x.name))) {
+  for (const c of [AP.CP, AP.SC])
+    for (const e of (await ls('历史记录/资产/' + c)).filter(x => x.kind === 'file' && IMG_RE.test(x.name))) {
       const m = /^(.+)__(\d{8})-(\d{6})(\.[^.]+)$/.exec(e.name);
-      if (m) out.push({ 类别: c, 名称: m[1], 文件: '历史记录/资产/全局资产/' + c + '/' + e.name, 原处: '资产/全局资产/' + c + '/' + m[1] + m[4], 序: m[2] + m[3], 戳: m[2] + '-' + m[3], 时: m[2].slice(4, 6) + '-' + m[2].slice(6) + ' ' + m[3].slice(0, 2) + ':' + m[3].slice(2, 4) });
+      if (m) out.push({ 类别: c, 名称: m[1], 文件: '历史记录/资产/' + c + '/' + e.name, 原处: '资产/' + c + '/' + m[1] + m[4], 序: m[2] + m[3], 戳: m[2] + '-' + m[3], 时: m[2].slice(4, 6) + '-' + m[2].slice(6) + ' ' + m[3].slice(0, 2) + ':' + m[3].slice(2, 4) });
     }
   return out.sort((a, b) => b.序.localeCompare(a.序)).slice(0, 80);
 }
@@ -125,10 +125,10 @@ async function cvShow(x) {
     return el;
   });
 }
-const cvTile = x => h('button', { type: 'button', class: 'fl-at cv ' + (x.类别 ? kindCls(x.类别) : ''), title: '画布节点：' + x.title + '（' + x.w + '×' + x.h + '）\n' + (x.注 || '本地没有一样的图') + '\n点一下看大图', onclick: () => cvShow(x) },
+const cvTile = x => h('button', { type: 'button', class: 'fl-at cv ' + (x.类别 ? poolCls(x) : ''), title: '画布节点：' + x.title + '（' + x.w + '×' + x.h + '）\n' + (x.注 || '本地没有一样的图') + '\n点一下看大图', onclick: () => cvShow(x) },
   cvImg(x.rid, 220), h('span', null, x.名称 + (x.第几张 ? '（' + x.第几张 + '）' : '')), h('small', null, x.注 ? '和本地同名的不一样' : x.段 && !x.类别 ? '第' + x.段 + '段 · 只在画布' : '只在画布'));
 /* 画布上的、这一回要摆的：人物、场景、道具只摆名字是这一类的；关键帧只摆这一段的 */
-const cvMine = (k, s) => { const all = (CV.name === F.name && CV.data && CV.data.只在画布) || []; return k === '关键帧' ? all.filter(x => x.段 === s.段) : all.filter(x => x.类别 && kindOf(x.类别) === k); };
+const cvMine = (k, s) => { const all = (CV.name === F.name && CV.data && CV.data.只在画布) || []; return k === '关键帧' ? all.filter(x => x.段 === s.段) : all.filter(x => x.类别 && (x.类别 === AP.CP ? !!KIND[k] : kindOf(x.类别) === k)); };   // 人物和道具_ 开头的节点：人物、道具两页都摆
 function cvPane(k, s, list) {
   if (CV.name !== F.name) return [h('p', { class: 'fn-note' }, '还没读画布。')];
   if (CV.st === '没画布') return [h('p', { class: 'fn-note' }, '这个项目还没有即梦画布（资产 / 出片设置.json 里没写画布网址）。')];
@@ -168,7 +168,7 @@ function pbItems(o, tab) {
     return list.map(x => { const u = segKind(s, x.文件), used = u === k && (k !== '关键帧' || o.mode !== 'slot' || SB.bindsOf(s)[x.文件] && SB.bindsOf(s)[x.文件].镜 === o.slot.no && SB.bindsOf(s)[x.文件].刻 === o.slot.刻);
       return { id: 'seg:' + x.文件, kind: 'seg', name: x.名称, file: x.文件, x, group: x.组, used: !!used, note: cvN(x, !u ? '' : u === k ? (k === '关键帧' && SB.bindsOf(s)[x.文件] ? '绑在' + SB.say(SB.bindsOf(s)[x.文件], s.段落).replace(/「[^」]*」/, '') : '这一段当' + u + '用着') : '这一段当' + u + '用着，挑了改当' + k) }; });
   }
-  if (tab === '删掉的') return PB.deleted.filter(x => kindOf(x.类别) === k).map(x => ({ id: 'del:' + x.文件, kind: 'del', name: x.名称, file: x.文件, x, note: x.时 + ' 删的' }));
+  if (tab === '删掉的') return PB.deleted.filter(x => x.类别 === AP.CP ? !!KIND[k] : kindOf(x.类别) === k).map(x => ({ id: 'del:' + x.文件, kind: 'del', name: x.名称, file: x.文件, x, note: x.时 + ' 删的' }));
   return [];
 }
 /* 选中的那一样，按钮上写什么、点了做什么（run 回给 toast 的话；没做成回 null） */
@@ -198,11 +198,11 @@ function pbAct(o, it) {
   if (it.kind === 'row') return { text: '选上「' + it.name + '」', run: async () => { s[k].push(it.name); orderCast(s); touch(); return k + '「' + it.name + '」这一段选上了' + (it.file ? '' : '。它还没有图'); } };
   if (it.kind === 'line') return { text: '选上「' + it.name + '」', run: async () => { s.场景文字 = [...uniq(s.场景文字), it.t]; orderCast(s); touch(); return '场景「' + it.name + '」这一段选上了（只用文字写）'; } };
   if (it.kind === 'seg') return { text: '这一段当' + k + '用', run: async () => useSeg(s, k, it.x) };
-  const poolText = x => { if (isSceneImg(x)) return '这一段用上它'; const r = rowFor(x, null); return !r ? '新加' + k + '「' + tokenOf(x) + '」' : r.资产.includes(x.文件) ? '选上「' + r.名 + '」' : '挂给「' + r.名 + '」'; };
+  const poolText = x => { if (isSceneImg(x)) return '这一段用上它'; const r = rowFor(x, null, k); return !r ? '新加' + k + '「' + tokenOf(x) + '」' : r.资产.includes(x.文件) ? '选上「' + r.名 + '」' : '挂给「' + r.名 + '」'; };
   const poolRun = async x => {
-    const r = isSceneImg(x) ? null : rowFor(x, null), K = r ? LISTS.find(c => c.cats(x.类别)) : null;
+    const r = isSceneImg(x) ? null : rowFor(x, null, k), K = r ? listFor(x, k) : null;
     if (r && !K.multi && r.资产.length && !r.资产.includes(x.文件) && !(await confirmDlg({ title: '「' + r.名 + '」换成这张图？', body: '现在挂的是 ' + baseOf(r.资产[0]) + '，换成 ' + x.名称 + '。原来那张还留在项目里，随时能换回去。', ok: '换成这一张' }))) return null;
-    return useImage(s, x, null);
+    return useImage(s, x, null, k);
   };
   if (it.kind === 'del') return { text: '放回来，' + poolText({ ...it.x, 文件: it.x.原处 }), run: async () => { const x = await restoreDeleted(it.x); return x ? poolRun(x) : null; } };
   return { text: poolText(it.x), run: () => poolRun(it.x) };
@@ -211,8 +211,8 @@ function pbTitle(o) {
   const s = o.s;
   if (o.mode === 'row') return ['给「' + pbLabel(o) + '」挑图', KIND[o.row.类别].multi ? '挑中的挂到全片的「' + o.row.名称 + '」（一个道具可以挂几张，一个状态一张）' : '挑中的挂到全片的「' + o.row.名称 + '」，各段都用这张'];
   if (o.mode === 'text') return ['给场景「' + sceneLabel(o.text) + '」挑一张图', '用了图，这一段就不再只用文字写（全片设定里那一句还在）'];
-  if (o.mode === 'slot') return ['给「镜头' + o.slot.no + ' ' + SB.SAY[o.slot.刻] + '」挑关键帧', '资产 / ' + segName(s.段) + ' 里的图（连下一层文件夹）。挑中的当现用，原来那张改备选'];
-  return ['加' + o.k + ' · 第' + s.段 + '段', o.k === '关键帧' ? '资产 / ' + segName(s.段) + ' 里的图，挑了就当关键帧，放在「还没绑」那一排' : '挑一样，这一段就加上。栏不收，能接着加'];
+  if (o.mode === 'slot') return ['给「镜头' + o.slot.no + ' ' + SB.SAY[o.slot.刻] + '」挑关键帧', '资产 / 关键帧 / ' + segName(s.段) + ' 里的图（连下一层文件夹）。挑中的当现用，原来那张改备选'];
+  return ['加' + o.k + ' · 第' + s.段 + '段', o.k === '关键帧' ? '资产 / 关键帧 / ' + segName(s.段) + ' 里的图，挑了就当关键帧，放在「还没绑」那一排' : '挑一样，这一段就加上。栏不收，能接着加'];
 }
 function pbPaint() {
   const o = PB.o;
@@ -250,8 +250,8 @@ function pbPaint() {
 }
 const PB_EMPTY = (o, tab) => tab === '表里的' ? o.k + '表里的都选上了。表里没有的，点下面「＋ 新加一个' + o.k + '」。'
   : tab === '文字写的' ? '全片设定里写的场景都选上了。没写过的，点下面「＋ 新加一个场景」。'
-    : tab === '全片的' ? '项目的 资产 / 全局资产 / ' + (pbKind(o) === '场景' ? '场景' : pbKind(o)) + ' 里还没有图。'
-      : tab === '这一段的' ? '资产 / ' + segName(o.s.段) + ' 里还没有图。空镜、关键帧、参考图放进去（可以再分一层文件夹，比如「空镜」「关键帧」），这里就有。'
+    : tab === '全片的' ? '项目的 资产 / ' + (pbKind(o) === '场景' ? '场景' : '人物和道具') + ' 里还没有' + (pbKind(o) === '场景' ? '场景' : pbKind(o)) + '图。'
+      : tab === '这一段的' ? '资产 / 关键帧 / ' + segName(o.s.段) + ' 里还没有图。空镜、关键帧、参考图放进去（可以再分一层文件夹，比如「空镜」「关键帧」），这里就有。'
         : tab === '删掉的' ? '没有删掉的图。' : '';
 /* 点了按钮（或点两下）：做选中的那一样。给一行挑、给一格挑的做完就收起；加出场的不收，能接着加 */
 async function go1() {

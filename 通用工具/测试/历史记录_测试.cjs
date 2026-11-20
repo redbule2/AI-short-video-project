@@ -54,8 +54,8 @@ test('老版本挂的图：字对得上的那一份登记；同一时间收进�
   let r = await H.refsFor(fakeIo({}), maps, it, text);
   assert.deepEqual(r.refs, [{ ref: '@图片1', path: '资产/旧.png', sha: 'o' }, { ref: '@图片2', path: '资产/兵.png', sha: 'b' }]);
   assert.equal(r.note, '');
-  r = await H.refsFor(fakeIo({ '历史记录/提示词/第3-4段/1_改3_写稿__20261117-201249.json': { 挂图: { '@图片2': '资产/第3-4段/首帧.png' } } }), maps, it, text);
-  assert.deepEqual(r.refs[1], { ref: '@图片2', path: '资产/第3-4段/首帧.png', sha: '' });
+  r = await H.refsFor(fakeIo({ '历史记录/提示词/第3-4段/1_改3_写稿__20261117-201249.json': { 挂图: { '@图片2': '资产/关键帧/第3-4段/首帧.png' } } }), maps, it, text);
+  assert.deepEqual(r.refs[1], { ref: '@图片2', path: '资产/关键帧/第3-4段/首帧.png', sha: '' });
   r = await H.refsFor(fakeIo({}), maps.slice(0, 1), it, text);
   assert.equal(r.refs[0].path, '资产/新.png');
   assert.match(r.note, /可能不是那时候挂的/);

@@ -120,7 +120,7 @@ const priceOf = vm.runInNewContext(priceCode + '\npriceOf;', {});
   const crypto = require('node:crypto'), sha = b => crypto.createHash('sha256').update(b).digest('hex'), BOM = String.fromCharCode(0xFEFF);
   const pyHash = t => sha(Buffer.from((t.startsWith(BOM) ? t.slice(1) : t).replace(/\r\n/g, '\n').replace(/\r/g, '\n'), 'utf8'));   // 照抄 核对参考素材.py 的 normalize_prompt（读文件时 utf-8-sig 已去掉一个 BOM）
   const key = '提示词/第1-1段/4-6.txt', mapPath = pjt('资产', '参考素材映射.json'), P480 = { 模型: 'Seedance 2.5 样片', 清晰度: '480p', 秒数: 10, 积分上限: 0 };
-  const manAt = '资产/全局资产/人物/洪七公.png', potAt = '资产/全局资产/道具/砂锅.png';
+  const manAt = '资产/人物和道具/洪七公.png', potAt = '资产/人物和道具/砂锅.png';
   const refText = '【基础设定】\r\n写实。\r\n\r\n【素材】\r\n洪七公@图片1，砂锅@图片2。\r\n\r\n【事件脚本】\r\n0-13秒：洪七公把草药投进砂锅。\r\n';   // CRLF：指纹要照 LF 算
   const withRefs = (entry, text = refText) => {
     const s = setup();

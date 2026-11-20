@@ -77,12 +77,12 @@ test('提示词名字里的镜头号：照表里的先后展开、挨着的连�
 
 test('照名字猜：镜头11_首帧 → 镜头11 首帧；表里没有的号、看不出哪一刻的不猜', () => {
   const nos = ['1', '2', '11'];
-  assert.deepEqual(SB.guess('资产/第3-4段/镜头11_首帧.png', nos), { 镜: '11', 刻: '首帧' });
-  assert.deepEqual(SB.guess('资产/第3-4段/1-5_镜头2_尾帧.png', nos), { 镜: '2', 刻: '尾帧' });
-  assert.deepEqual(SB.guess('资产/第3-4段/镜头1_关键帧.png', nos), { 镜: '1', 刻: '关键帧' });
-  assert.equal(SB.guess('资产/第3-4段/镜头1b_首帧.png', nos), null);
-  assert.equal(SB.guess('资产/第3-4段/镜头10_首帧.png', nos), null);
-  assert.equal(SB.guess('资产/第3-4段/镜头1_白模底图.png', nos), null);
+  assert.deepEqual(SB.guess('资产/关键帧/第3-4段/镜头11_首帧.png', nos), { 镜: '11', 刻: '首帧' });
+  assert.deepEqual(SB.guess('资产/关键帧/第3-4段/1-5_镜头2_尾帧.png', nos), { 镜: '2', 刻: '尾帧' });
+  assert.deepEqual(SB.guess('资产/关键帧/第3-4段/镜头1_关键帧.png', nos), { 镜: '1', 刻: '关键帧' });
+  assert.equal(SB.guess('资产/关键帧/第3-4段/镜头1b_首帧.png', nos), null);
+  assert.equal(SB.guess('资产/关键帧/第3-4段/镜头10_首帧.png', nos), null);
+  assert.equal(SB.guess('资产/关键帧/第3-4段/镜头1_白模底图.png', nos), null);
 });
 
 test('绑上、现用和备选、带哪几张、怎么说', () => {
@@ -131,7 +131,7 @@ test('资产页一镜三格：现用的在格里，别的是备选；拖到一�
 
 test('一张一张看的先后：照镜头表，开头中间结尾，同一刻现用在前，没绑的最后', () => {
   const paras = [{ 写什么: '一', 号: '1' }, { 写什么: '二', 号: '2' }], s = {};
-  const f = n => '资产/第1段/' + n + '.png';
+  const f = n => '资产/关键帧/第1段/' + n + '.png';
   SB.bind(s, f('二尾'), '2', '尾帧', paras); SB.bind(s, f('一尾'), '1', '尾帧', paras);
   SB.bind(s, f('一首_雾'), '1', '首帧', paras); SB.bind(s, f('一首'), '1', '首帧', paras, true);   // 后绑的当现用，先绑的雾版改备选
   const t = SB.table([f('没绑'), f('二尾'), f('一尾'), f('一首_雾'), f('一首')], paras, SB.bindsOf(s));
