@@ -359,5 +359,8 @@
   const PE_SKELETON = ['【生成目标】', '', '【事件脚本】', ''];
   function skeleton(eol) { return PE_SKELETON.join(eol || '\r\n'); }
 
-  return Object.freeze({ parse, serialize, shotText, withShotText, skeleton, formatOf, isPeRefHead, isLook, PE_HEADS, PE_REFS });
+  /* 你来写的稿（2026-11-19 又能写了）：写稿资料里记着「手写」；11-15 以前从流水线开的老稿记着「流水线」。AI 写的稿进写稿页改过的，写稿资料里没有这两样（流水线提示词页、写稿页共用） */
+  const isHand = side => !!side && typeof side === 'object' && (side.手写 === true || typeof side.流水线 === 'string');
+
+  return Object.freeze({ parse, serialize, shotText, withShotText, skeleton, formatOf, isPeRefHead, isLook, isHand, PE_HEADS, PE_REFS });
 });

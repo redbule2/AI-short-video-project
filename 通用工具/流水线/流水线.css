@@ -399,7 +399,6 @@ body.wf-covered { overflow: hidden; }
 .wf-item-task { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
 .wf-item .fl-aibox { margin-top: 10px; }
 .wf-item .wf-jobs { margin-top: 10px; }
-.fname-prev { padding: 8px 12px; border-radius: 7px; background: var(--paper); font: 12.5px/1.6 var(--sans); color: var(--ink-2); word-break: break-all; }
 select.inp { cursor: pointer; }
 
 /* 首页：即梦授权，一个登录位一行 */
@@ -723,16 +722,41 @@ span.adm-th.none { cursor: default; }
 .pc-dest { font-size: 13px; line-height: 1.7; color: var(--ink-2); word-break: break-all; }
 .pc-dest b { color: var(--dai); font-weight: 600; }
 
-/* 勾镜头表里的镜头（写提示词勾这一条拍哪几镜、关键帧绑到哪一镜）：提示词、资产两页共用 */
-.prompt-shots { display: grid; gap: 7px; max-height: 34vh; overflow: auto; }
-.prompt-shot { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; cursor: pointer; }
-.prompt-shot:has(input:checked) { border-color: var(--qing); background: var(--qing-soft); }
-.prompt-shot input { margin-top: 5px; accent-color: var(--qing); }
-.prompt-shot > span { display: grid; gap: 3px; min-width: 0; }
-.prompt-shot small { color: var(--ink-3); line-height: 1.6; }
-.prompt-scope { margin-top: 10px; color: var(--ink-2); font-size: 13px; line-height: 1.7; }
-.prompt-scope summary { cursor: pointer; }
-.prompt-scope ol { margin: 6px 0; padding-left: 24px; }
+/* 写一条提示词的框（2026-11-19 两步走）：第 1 步镜头表一镜一行，第 2 步谁来写三选一、白模、关键帧。标题和按钮钉住靠 公用/样式.css 的 .dlg.pin */
+.dlg.np-dlg { width: min(560px, 100%); }
+.np-steps { display: flex; gap: 16px; font-size: 12.5px; line-height: 1.6; color: var(--ink-4); }
+.np-steps .on { color: var(--ink); font-weight: 600; }
+.np-steps .ok { color: var(--dai); }
+.np-lead { margin: 4px 0 0; }
+.np-got { margin-top: 6px; padding: 5px 10px; border-radius: 7px; background: var(--paper); color: var(--ink-2); line-height: 1.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.np-got b { margin-right: 6px; color: var(--ink); }
+.np-shots { display: grid; gap: 5px; }
+.np-shot { display: grid; grid-template-columns: auto 2em minmax(0, 1fr) auto; align-items: baseline; gap: 1px 8px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 7px; cursor: pointer; }
+.np-shot:hover { border-color: var(--line-2); }
+.np-shot:has(input:checked) { border-color: var(--qing); background: var(--qing-soft); }
+.np-shot input { margin: 0; accent-color: var(--qing); align-self: center; }
+.np-no { font: 600 14px/1.5 var(--serif); color: var(--ink-2); }
+.np-shot > b { font-size: 14px; font-weight: 600; line-height: 1.5; }
+.np-sec { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+.np-y { grid-column: 3 / -1; display: flex; align-items: baseline; gap: 0 8px; min-width: 0; font-size: 12px; line-height: 1.6; color: var(--ink-3); }
+.np-y .sw-r { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.np-had { flex: none; color: var(--zhe); }
+.np-picks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.np-pick { display: flex; flex-direction: column; gap: 2px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font: inherit; color: var(--ink); text-align: left; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.np-pick:hover { border-color: var(--ink-4); }
+.np-pick b { font-size: 13.5px; font-weight: 600; }
+.np-pick span { font-size: 12px; line-height: 1.5; color: var(--ink-3); }
+.np-pick.on { border-color: var(--ink); box-shadow: inset 0 0 0 .5px var(--ink); background: #fffaf0; }
+.np-r { float: right; font-style: normal; letter-spacing: 0; color: var(--ink-4); }
+.np-dlg select.inp { width: 100%; }
+.np-dlg .fl-ag { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+.np-more { display: grid; place-items: center; min-height: 96px; padding: 6px; border: 1px dashed var(--line-2); border-radius: 9px; background: none; font: inherit; font-size: 12.5px; color: var(--ink-3); cursor: pointer; }
+.np-more:hover { border-color: var(--ink-4); color: var(--ink-2); }
+.np-sum { margin-right: auto; font-size: 13px; line-height: 1.6; color: var(--ink-2); }
+.np-sum b { color: var(--ink); }
+.np-sum.warn { color: var(--zhu); }
+.np-sp { flex: 1; }
+@media (max-width: 520px) { .np-picks { grid-template-columns: 1fr; } }
 /* 提示词页挑关键帧：绑在镜头上、这一条没带的 */
 .fl-at.kb-t small { color: var(--ink-3); }
 /* 页签（提炼页、资产页顶上：人物、场景、道具……一次看一样） */
@@ -753,3 +777,26 @@ span.adm-th.none { cursor: default; }
 .sw-t.gc, .sw-b.gc { background: #a83a2c; color: #fff; }      /* 高潮 */
 .sw-t.fy, .sw-b.fy { background: #e5edd9; color: #46622f; }   /* 反应 */
 .sw-t.sw, .sw-b.sw { background: #e9e3da; color: #4d453d; }   /* 收尾 */
+
+/* 历史记录（11-19，历史记录.js）：提示词、审片、资产三页的「历史记录」开关和里面摆的 */
+.chip.wf-hist { display: inline-flex; align-items: center; gap: 5px; }
+.chip.wf-hist .ic { width: 13px; height: 13px; }
+.wf-bar .chip.wf-hist, .wf-lock .chip.wf-hist { flex: none; }
+.wf-lock .chip.wf-hist { margin-top: 10px; }
+.as-tabs .chip.wf-hist { align-self: center; margin: 0 10px 4px 0; padding: 2px 10px; font-size: 12.5px; }
+.wf-hist-note { margin: 16px 0 10px; }   /* 跟在筛选条下面：筛选条往下压了 8px */
+.hist-fam { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 14px 0 6px; font-size: 13.5px; }
+.hist-fam:first-child { margin-top: 2px; }
+.hist-fam b { font: 600 14px var(--serif); color: var(--ink); }
+.wf-item.hist { padding: 9px 14px; border-style: dashed; background: transparent; }
+.wf-item.hist + .wf-item.hist { margin-top: -2px; }
+.hist-group { margin-bottom: 8px; }
+.hist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.hist-tile { min-width: 0; overflow: hidden; border: 1px dashed var(--line-2); border-radius: 8px; background: var(--sheet); font-size: 12px; cursor: zoom-in; }
+.hist-tile:hover { border-color: var(--ink-4); }
+.hist-tile.now { border-style: solid; border-color: var(--dai); }
+.hist-im { aspect-ratio: 4 / 3; display: grid; place-items: center; overflow: hidden; background: var(--paper-2); }
+.hist-im img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.hist-nm { padding: 4px 7px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.hist-tile small { display: block; padding: 0 7px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--ink-3); }
+.hist-tile.now small { color: var(--dai); }

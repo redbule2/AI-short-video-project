@@ -4,6 +4,8 @@
      输入框、能编辑的地方、已经是小牌子的（.rf .ref .tk-ref）不动；skip 是这一页另外不动的地方（CSS 选择器）。
      resolve(ref, el)：认得就给一个函数（点了做什么），或 { open, tip }；不认得给 null，这处照旧是字。
      el 是这处字所在的元素，用来看它属于哪一条提示词。
+   RefPic.also(resolve)：另外加一个认图的，先问它（2026-11-19：写稿页旁边摆的参考提示词、流水线里历史记录的老版本，@图片N 照它们自己那一条认）。
+     它给 undefined 是不归它管，接着问 watch 给的；给 null 是归它管、可认不出，这处照旧是字。
    RefPic.scan()：认图的资料（参考素材映射、挂图）读好了、换了，再扫一遍整页。
    RefPic.show(图的地址或 Promise, 标题, 小字)：这一页没有自己的看大图，用这个：黑底、大图、标题；点一下或按 Esc 关。
    ============================================================ */
@@ -12,6 +14,8 @@
   const RE = /@图片\s*([0-9]+)/g;
   const BASE_SKIP = 'textarea, input, select, option, script, style, svg, [contenteditable], .rl, .rf, .ref, .tk-ref, .rl-box, .fl-hov, [data-no-ref]';
   let RES = null, SKIP = BASE_SKIP, MO = null, BOX = null;
+  const EXTRA = [];
+  const on = () => !!RES || EXTRA.length > 0;
   function style() {
     if (document.getElementById('rl-style')) return;
     const el = document.createElement('style');
@@ -26,10 +30,12 @@
       + '.rl-box figcaption small{display:block;font-size:12px;color:rgba(243,234,217,.62);word-break:break-all}';
     document.head.append(el);
   }
-  const got = (ref, el) => { try { return RES ? RES(ref, el) : null; } catch (e) { return null; } };
+  const got = (ref, el) => {
+    try { for (const f of EXTRA) { const g = f(ref, el); if (g !== undefined) return g; } return RES ? RES(ref, el) : null; } catch (e) { return null; }
+  };
   function linkText(tn) {
     const t = tn.data, p = tn.parentElement;
-    if (!RES || t.indexOf('@') < 0 || !p || !tn.isConnected || p.closest(SKIP)) return;
+    if (!on() || t.indexOf('@') < 0 || !p || !tn.isConnected || p.closest(SKIP)) return;
     const frag = document.createDocumentFragment();
     let last = 0, hit = false;
     for (const m of t.matchAll(RE)) {
@@ -47,7 +53,7 @@
     tn.replaceWith(frag);
   }
   function scan(root) {
-    if (!RES) return;
+    if (!on()) return;
     root = root || document.body;
     if (root.nodeType === 3) { linkText(root); return; }
     if (root.nodeType !== 1 || !root.isConnected || root.closest(SKIP)) return;
@@ -58,13 +64,22 @@
   }
   function onClick(e) {
     const a = e.target && e.target.closest ? e.target.closest('.rl') : null;
-    if (!a || !RES) return;
+    if (!a || !on()) return;
     e.preventDefault(); e.stopPropagation();
     const g = got(a.dataset.ref, a.parentElement), fn = typeof g === 'function' ? g : g && g.open;
     if (fn) fn();
   }
   function watch(resolve, skip) {
     RES = resolve; SKIP = skip ? BASE_SKIP + ', ' + skip : BASE_SKIP;
+    start();
+    scan(document.body);
+  }
+  function also(resolve) {
+    EXTRA.push(resolve);
+    start();
+    scan(document.body);
+  }
+  function start() {
     style();
     if (!MO) {
       document.addEventListener('click', onClick, true);   // 抢在整行、整格的点击前面：点的是图就只看图
@@ -76,7 +91,6 @@
       });
       MO.observe(document.body, { childList: true, subtree: true, characterData: true });
     }
-    scan(document.body);
   }
   function close() {
     if (!BOX) return;
@@ -103,5 +117,5 @@
       me.url = u; me.own = typeof src !== 'string' && /^blob:/.test(u); img.src = u;
     }).catch(err => { cap.append(document.createElement('br'), '打不开：' + (err && err.message || err)); });
   }
-  window.RefPic = { watch, scan, show, close };
+  window.RefPic = { watch, also, scan, show, close };
 })();

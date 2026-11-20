@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>再写一条提示词的框 · 设计稿</title>
+<style>
+:root {
+  --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --ink-4: #b2a89b; --line: #d6cab6; --line-2: #e5dccd; --zhu: #a83a2c; --dai: #3e5c5e; --huang: #fff4c9; --zhe: #9a6a2a;
+  --serif: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  --sans: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.85 var(--sans); }
+main { max-width: 1100px; margin: 0 auto; padding: 32px 22px 120px; }
+h1 { margin: 0 0 4px; font: 600 26px/1.4 var(--serif); letter-spacing: .08em; }
+.sub { margin: 0 0 16px; font-size: 14.5px; color: var(--ink-2); }
+h2 { margin: 38px 0 6px; font: 600 19px/1.5 var(--serif); letter-spacing: .1em; }
+.card { margin: 12px 0; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+.card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 600; }
+.card h3 .no { display: inline-block; min-width: 1.7em; color: var(--dai); }
+.card p { margin: 3px 0; color: var(--ink-2); }
+.opts { margin: 8px 0 2px; }
+.opts label { display: block; margin: 5px 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opts label:hover { background: #faf5ea; }
+.opts input { margin-right: 8px; }
+.opts .rec { color: var(--dai); font-size: 13px; margin-left: 4px; }
+textarea { display: block; width: 100%; margin-top: 8px; min-height: 2.6em; padding: 7px 10px; border: 1px dashed #c8b99f; border-radius: 8px; background: #fffef9; font: 15px/1.7 var(--sans); color: var(--ink); resize: vertical; }
+textarea:focus { outline: none; border-style: solid; border-color: var(--dai); background: #fff; }
+textarea.has { border-style: solid; border-color: #b9822f; background: var(--huang); }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; background: rgba(255,253,249,.96); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; justify-content: center; font-size: 14px; z-index: 5; }
+.bar button { padding: 6px 14px; border: 1px solid var(--dai); border-radius: 8px; background: #fff; color: var(--dai); font: inherit; cursor: pointer; }
+.bar button:hover { background: #eef5f3; }
+#st { color: var(--ink-2); }
+.foot { margin-top: 26px; font-size: 13px; color: var(--ink-3); }
+.pc { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0 0; font-size: 14px; }
+.pc > div { padding: 8px 12px; border-radius: 8px; background: var(--sheet); border: 1px solid var(--line); color: var(--ink-2); }
+.pc b { display: block; font-size: 13.5px; }
+.pc .good b { color: var(--dai); } .pc .bad b { color: var(--zhu); }
+
+/* ---- 作用标签的颜色（和流水线、提炼页同一套） ---- */
+.sw-t { display: inline-block; margin-right: 6px; padding: 0 5px; border-radius: 4px; font: 600 11.5px/1.65 var(--sans); white-space: nowrap; vertical-align: 1px; }
+.jd { background: #e3eeed; color: #2f5355; } .pd { background: #f4e7cb; color: #7a5a1e; } .zz { background: #fbe3dc; color: #9a3326; }
+.gc { background: #a83a2c; color: #fff; } .fy { background: #e5edd9; color: #46622f; } .sw { background: #e9e3da; color: #4d453d; }
+
+/* ---- 示意：右边窗格（约 700 宽）里的框，缩小摆 ---- */
+.screens { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+.cap { margin: 0 0 4px; font-size: 13.5px; color: var(--ink-3); }
+.scr { zoom: .9; position: relative; width: 700px; height: 660px; border-radius: 12px; overflow: hidden; background: #b9b0a4; box-shadow: 0 12px 34px -20px rgba(30,28,24,.45); font: 14px/1.5 var(--sans); color: var(--ink); }
+.scr::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(180deg, #c6beb2 0 64px, #b9b0a4 64px 76px); opacity: .6; }
+.dlg { position: absolute; left: 50%; top: 22px; bottom: 22px; transform: translateX(-50%); display: flex; flex-direction: column; background: var(--sheet); border-radius: 11px; box-shadow: 0 0 0 1px rgba(214,202,182,.8), 0 30px 70px -24px rgba(40,28,16,.5); overflow: hidden; }
+.dlg.w5 { width: 560px; } .dlg.w6 { width: 676px; }
+.d-head { padding: 20px 24px 10px; }
+.d-head.sh { border-bottom: 1px solid var(--line-2); box-shadow: 0 6px 12px -12px rgba(40,28,16,.4); }
+.d-t { margin: 0; font: 600 19px/1.4 var(--serif); }
+.d-s { margin: 4px 0 0; font-size: 13px; color: var(--ink-2); }
+.steps { display: flex; gap: 16px; margin: 6px 0 0; font-size: 12.5px; color: var(--ink-4); }
+.steps .on { color: var(--ink); font-weight: 600; } .steps .ok { color: var(--dai); }
+.got { margin-top: 8px; padding: 6px 10px; border-radius: 7px; background: #f6f0e4; font-size: 13px; color: var(--ink-2); }
+.got b { color: var(--ink); margin-right: 6px; }
+.d-body { flex: 1; overflow: hidden; padding: 0 24px 12px; position: relative; }
+.d-body.fade::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background: linear-gradient(rgba(255,253,249,0), var(--sheet)); }
+.sb { position: absolute; right: 5px; width: 5px; border-radius: 3px; background: #d9cfbf; }
+.d-foot { display: flex; align-items: center; gap: 6px; padding: 12px 24px 16px; border-top: 1px solid var(--line-2); background: var(--sheet); }
+.d-foot .sum { flex: 1; font-size: 13px; color: var(--ink-2); }
+.d-foot .sum b { color: var(--ink); }
+.btn { display: inline-block; padding: 7px 15px; border-radius: 6px; font-size: 13.5px; border: 1px solid transparent; white-space: nowrap; }
+.btn.ink { background: var(--ink); color: #f7f1e6; }
+.btn.ghost { color: var(--ink-2); }
+.lab { margin: 12px 0 6px; font-size: 12px; color: var(--ink-3); letter-spacing: .24em; }
+.lab .r { float: right; letter-spacing: 0; color: var(--ink-4); }
+/* 镜头一行 */
+.row { display: grid; grid-template-columns: 16px 24px 1fr auto; gap: 0 8px; align-items: baseline; padding: 6px 10px; margin: 0 0 4px; border: 1px solid var(--line-2); border-radius: 7px; }
+.row.on { border-color: var(--ink); box-shadow: inset 0 0 0 .5px var(--ink); background: #fffaf0; }
+.ck { position: relative; width: 14px; height: 14px; border: 1.5px solid #a99d8f; border-radius: 3px; align-self: center; }
+.row.on .ck { background: var(--ink); border-color: var(--ink); }
+.row.on .ck::after { content: ''; position: absolute; left: 3.5px; top: .5px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.row .no { font: 600 14px/1.5 var(--serif); color: var(--ink-2); }
+.row .w { font-weight: 600; }
+.row .sec { font-size: 12.5px; color: var(--ink-3); }
+.row .y { grid-column: 3 / 5; font-size: 12px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .had { float: right; margin-left: 8px; font-size: 12px; color: var(--zhe); }
+.row.one { grid-template-columns: 16px 24px 1fr auto auto; padding: 5px 10px; }
+.row.one .w .sw-t { margin: 0 0 0 6px; }
+/* 三选一 */
+.picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.picks.col { grid-template-columns: 1fr; gap: 6px; }
+.pk { padding: 8px 11px; border: 1px solid var(--line-2); border-radius: 8px; }
+.pk b { display: block; font-size: 13.5px; }
+.pk span { display: block; font-size: 12px; color: var(--ink-3); line-height: 1.5; }
+.pk.on { border-color: var(--ink); box-shadow: inset 0 0 0 .5px var(--ink); background: #fffaf0; }
+.pk.on b::before { content: '● '; font-size: 10px; vertical-align: 2px; }
+/* 下拉框 */
+.sel { display: flex; justify-content: space-between; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 13.5px; background: #fff; }
+.sel::after { content: '▾'; color: var(--ink-3); }
+.hint { margin: 4px 0 0; font-size: 12px; color: var(--ink-3); }
+/* 关键帧小图 */
+.kf { display: flex; gap: 8px; flex-wrap: wrap; }
+.kt { width: 118px; }
+.kt .im { position: relative; height: 66px; border-radius: 6px; overflow: hidden; background: #ddd3c4; outline: 2px solid var(--ink); outline-offset: -2px; }
+.kt img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.kt .badge { position: absolute; left: 4px; top: 4px; padding: 0 5px; border-radius: 4px; background: var(--ink); color: #f7f1e6; font-size: 11px; line-height: 1.6; }
+.kt small { display: block; margin-top: 3px; font-size: 11.5px; line-height: 1.4; color: var(--ink-3); }
+.more { display: inline-flex; align-items: center; justify-content: center; width: 118px; height: 66px; border: 1px dashed var(--line); border-radius: 6px; font-size: 12px; line-height: 1.4; color: var(--ink-3); text-align: center; }
+.kf.sm .kt, .kf.sm .more { width: 92px; } .kf.sm .kt .im, .kf.sm .more { height: 52px; }
+/* 乙：两栏 */
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; height: 100%; }
+.two > div { position: relative; overflow: hidden; }
+</style>
+</head>
+<body>
+<main>
+<h1>再写一条提示词的框 · 设计稿</h1>
+<p class="sub" id="sub"></p>
+
+<!-- ===== 甲：两步走 ===== -->
+<template id="fig-a">
+<div class="screens">
+  <div><p class="cap">第 1 步：拍哪几镜</p>
+  <div class="scr"><div class="dlg w5">
+    <div class="d-head sh"><p class="d-t">再写一条提示词 · 第3-4段</p>
+      <div class="steps"><span class="on">① 拍哪几镜</span><span>② 怎么写</span></div>
+      <p class="d-s">一条提示词出一条视频，一般 15 秒，最长 30 秒。勾这一条拍哪几镜。</p></div>
+    <div class="d-body fade"><p class="lab">镜头表<span class="r">共 18 镜</span></p><div data-rows="1-9" data-on="5,6"></div><i class="sb" style="top:8px;height:44%"></i></div>
+    <div class="d-foot"><span class="sum"><b>5-6</b> · 2 镜 · 约 9 秒 · 存成 5-6.txt</span><span class="btn ghost">取消</span><span class="btn ink">下一步：怎么写</span></div>
+  </div></div></div>
+  <div><p class="cap">第 2 步：怎么写</p>
+  <div class="scr"><div class="dlg w5">
+    <div class="d-head sh"><p class="d-t">再写一条提示词 · 第3-4段</p>
+      <div class="steps"><span class="ok">① 拍哪几镜 ✓</span><span class="on">② 怎么写</span></div>
+      <div class="got"><b>5-6</b>全线炮声渐息 → 地面直升机起飞 · 约 9 秒</div></div>
+    <div class="d-body">
+      <p class="lab">谁来写</p>
+      <div class="picks">
+        <div class="pk on"><b>我来写 · 分镜模式</b><span>一镜一行，可加可排。其余几块点「AI 铺底」补</span></div>
+        <div class="pk"><b>我来写 · 自由模式</b><span>事件脚本一个大框，随你写。其余也是 AI 铺底</span></div>
+        <div class="pk"><b>AI 先写一版</b><span>AI 照 sd25-pe 写、估秒数，你再批注</span></div>
+      </div>
+      <p class="lab">白模视频<span class="r">可以不挂</span></p>
+      <div class="sel"><span>不挂</span></div>
+      <p class="hint">管到这两镜的 3 段排在最前：镜头1-5、镜头6、镜头6-10</p>
+      <p class="lab">关键帧<span class="r">照勾的镜头自动挂好，第一张当首帧</span></p>
+      <div class="kf">
+        <div class="kt"><div class="im"><img data-f="资产/第3-4段/镜头5_首帧.png" alt=""><span class="badge">首帧</span></div><small>镜头5 开头</small></div>
+        <div class="kt"><div class="im"><img data-f="资产/第3-4段/镜头6_首帧.png" alt=""></div><small>镜头6 开头</small></div>
+        <span class="more">＋ 其他关键帧<br>25 张</span>
+      </div>
+    </div>
+    <div class="d-foot"><span class="btn ghost">‹ 改镜头</span><span class="sum"></span><span class="btn ghost">取消</span><span class="btn ink">开始写</span></div>
+  </div></div></div>
+</div>
+<div class="pc"><div class="good"><b>好</b>一次只想一件事：先定拍哪几镜，再定怎么写。两步都不用往下滚。关键帧照勾的镜头自动挂好。</div><div class="bad"><b>不足</b>多点一下「下一步」。第 2 步看不到整张镜头表，只在顶上写着勾了哪几镜，要改点「改镜头」回去。</div></div>
+</template>
+
+<!-- ===== 乙：宽框两栏 ===== -->
+<template id="fig-b">
+<div class="screens">
+  <div><p class="cap">一屏看全（你右边窗格约 700 宽）</p>
+  <div class="scr"><div class="dlg w6">
+    <div class="d-head sh"><p class="d-t">再写一条提示词 · 第3-4段</p><p class="d-s">一条提示词出一条视频，一般 15 秒，最长 30 秒。</p></div>
+    <div class="d-body"><div class="two">
+      <div class="fade"><p class="lab">拍哪几镜</p><div data-rows="1-13" data-on="5,6" data-one=""></div><i class="sb" style="top:8px;height:58%"></i></div>
+      <div>
+        <p class="lab">谁来写</p>
+        <div class="picks col">
+          <div class="pk on"><b>我来写 · 分镜模式</b><span>一镜一行。其余几块点「AI 铺底」补</span></div>
+          <div class="pk"><b>我来写 · 自由模式</b><span>事件脚本一个大框，随你写</span></div>
+          <div class="pk"><b>AI 先写一版</b><span>AI 写、估秒数，你再批注</span></div>
+        </div>
+        <p class="lab">白模视频</p>
+        <div class="sel"><span>不挂</span></div>
+        <p class="hint">管到这两镜的 3 段排在最前</p>
+        <p class="lab">关键帧</p>
+        <div class="kf sm">
+          <div class="kt"><div class="im"><img data-f="资产/第3-4段/镜头5_首帧.png" alt=""><span class="badge">首帧</span></div><small>镜头5 开头</small></div>
+          <div class="kt"><div class="im"><img data-f="资产/第3-4段/镜头6_首帧.png" alt=""></div><small>镜头6 开头</small></div>
+          <span class="more">＋ 其他<br>25 张</span>
+        </div>
+      </div>
+    </div></div>
+    <div class="d-foot"><span class="sum"><b>5-6</b> · 2 镜 · 约 9 秒 · 存成 5-6.txt</span><span class="btn ghost">取消</span><span class="btn ink">开始写</span></div>
+  </div></div></div>
+</div>
+<div class="pc"><div class="good"><b>好</b>全摆在一屏：勾镜头时，旁边的关键帧跟着换。点一下就开写。</div><div class="bad"><b>不足</b>窗格窄，两栏都挤：镜头只放得下一行字，作用要鼠标停上去才看到。一屏东西多，眼睛要来回找。</div></div>
+</template>
+
+<!-- ===== 丙：一栏收紧 ===== -->
+<template id="fig-c">
+<div class="screens">
+  <div><p class="cap">刚打开</p>
+  <div class="scr"><div class="dlg w5">
+    <div class="d-head sh"><p class="d-t">再写一条提示词 · 第3-4段</p><p class="d-s">一条提示词出一条视频，一般 15 秒，最长 30 秒。</p></div>
+    <div class="d-body fade"><p class="lab">拍哪几镜<span class="r">共 18 镜</span></p><div data-rows="1-9" data-on="5,6"></div><i class="sb" style="top:8px;height:30%"></i></div>
+    <div class="d-foot"><span class="sum"><b>5-6</b> · 2 镜 · 约 9 秒 · 存成 5-6.txt</span><span class="btn ghost">取消</span><span class="btn ink">开始写</span></div>
+  </div></div></div>
+  <div><p class="cap">滚到底</p>
+  <div class="scr"><div class="dlg w5">
+    <div class="d-head sh"><p class="d-t">再写一条提示词 · 第3-4段</p></div>
+    <div class="d-body"><div data-rows="18-19" data-on=""></div>
+      <p class="lab">谁来写</p>
+      <div class="picks">
+        <div class="pk on"><b>我来写 · 分镜模式</b><span>一镜一行，可加可排。其余几块点「AI 铺底」补</span></div>
+        <div class="pk"><b>我来写 · 自由模式</b><span>事件脚本一个大框，随你写。其余也是 AI 铺底</span></div>
+        <div class="pk"><b>AI 先写一版</b><span>AI 照 sd25-pe 写、估秒数，你再批注</span></div>
+      </div>
+      <p class="lab">白模视频</p>
+      <div class="sel"><span>不挂</span></div>
+      <p class="lab">关键帧</p>
+      <div class="kf">
+        <div class="kt"><div class="im"><img data-f="资产/第3-4段/镜头5_首帧.png" alt=""><span class="badge">首帧</span></div><small>镜头5 开头</small></div>
+        <div class="kt"><div class="im"><img data-f="资产/第3-4段/镜头6_首帧.png" alt=""></div><small>镜头6 开头</small></div>
+        <span class="more">＋ 其他关键帧<br>25 张</span>
+      </div>
+      <i class="sb" style="bottom:8px;height:30%"></i>
+    </div>
+    <div class="d-foot"><span class="sum"><b>5-6</b> · 2 镜 · 约 9 秒 · 存成 5-6.txt</span><span class="btn ghost">取消</span><span class="btn ink">开始写</span></div>
+  </div></div></div>
+</div>
+<div class="pc"><div class="good"><b>好</b>顺序和现在一样，改得最少。按钮钉在底下，不再滚走。</div><div class="bad"><b>不足</b>镜头多了，还要滚过整张镜头表才看到「谁来写」。一屏好几件事。</div></div>
+</template>
+
+<div id="sections"></div>
+<h2>别的意见</h2>
+<div class="card"><textarea data-k="其他" placeholder="上面没说到的，写在这里（可以不写）"></textarea></div>
+<p class="foot" id="foot"></p>
+</main>
+<div class="bar"><span id="st">选好、写好自动存。</span><button id="copy">复制批注</button></div>
+<script>
+/* ===== 示意里的镜头表：第3-4段的真数据（2026-11-19 从流水线读的），摆进上面几张图 ===== */
+const SHOTS = [
+  ['1', '炮兵打出末弹', 4, 'pd', '铺垫', '炮兵已在掏箱底，为镜4弹尽', '1 前半条、1 后半条'],
+  ['2', '末轮炮火炸翻敌群', 3, 'pd', '铺垫', '炮火还能压住敌人，为镜5沉寂', '2-4'],
+  ['3', '最后弹壳退膛', 2, 'pd', '铺垫', '一地弹壳显打得久，为镜4见底', '2-4'],
+  ['4', '炮兵弹箱见底', 5, 'zz', '转折', '炮弹打光，阵地少了重火力，接镜1', '2-4'],
+  ['5', '全线炮声渐息', 4, 'fy', '反应', '炮阵一门门哑火，全线没炮，接镜4', ''],
+  ['6', '地面直升机起飞', 5, 'pd', '铺垫', '还有直升机能拼，为镜13救场', ''],
+  ['7', '全军亮出大砍刀', 4, 'pd', '铺垫', '没炮弹就拼刀，士气不倒，为镜9', '7、9'],
+  ['8', '机枪子弹打光', 5, 'zz', '转折', '最后的火力也断了，为镜11冲锋', ''],
+  ['9', '机枪全哑人人握刀', 3, 'fy', '反应', '枪声全停，人人握刀等着，接镜8', '7、9'],
+  ['11', '外星战士喊冲锋', 3, 'zz', '转折', '敌人看穿弹尽，下令冲锋，接镜9', ''],
+  ['12', '敌军扑向沙袋墙', 4, 'pd', '铺垫', '敌人眼看扑上墙头，为镜13救场', ''],
+  ['13', '机群前出防线', 3, 'zz', '转折', '千钧一发机群赶到，接镜6', ''],
+  ['14', '近景跟拍直升机扫射', 4, 'gc', '高潮', '机炮犁倒敌群，全段最爽，接镜13', ''],
+  ['15', '阵前敌军被扫清', 4, 'fy', '反应', '墙前清出一大片空地，接镜14', ''],
+  ['16', '直升机机炮停火', 2, 'zz', '转折', '直升机也打光了，为镜18返航', ''],
+  ['17', '驾驶员连按开火钮', 3, 'fy', '反应', '驾驶员干着急，坐实弹尽，接镜16', ''],
+  ['18', '机群哑火掉头返航', 4, 'fy', '反应', '机群撤走，阵地又孤立了，接镜17', ''],
+  ['19', '外星战士又冲上来', 4, 'sw', '收尾', '敌人再压上来，危急到顶，引下段', ''],
+];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function rowsHtml(from, to, on, one) {
+  const a = SHOTS.findIndex(x => x[0] === from), b = SHOTS.findIndex(x => x[0] === to);
+  return SHOTS.slice(a, b + 1).map(([no, w, sec, cls, tag, why, had]) => {
+    const tg = '<span class="sw-t ' + cls + '">' + tag + '</span>', ck = '<i class="ck"></i><span class="no">' + no + '</span>';
+    if (one) return '<div class="row one' + (on.has(no) ? ' on' : '') + '" title="' + esc(why) + '">' + ck + '<span class="w">' + esc(w) + tg + '</span><span class="had">' + (had ? '已有 ' + (/、.*前半|后半/.test(had) ? '2 条' : esc(had)) : '') + '</span><span class="sec">' + sec + ' 秒</span></div>';
+    return '<div class="row' + (on.has(no) ? ' on' : '') + '">' + ck + '<span class="w">' + esc(w) + '</span><span class="sec">' + sec + ' 秒</span><span class="y">' + (had ? '<span class="had">已有 ' + esc(had) + '</span>' : '') + tg + esc(why) + '</span></div>';
+  }).join('');
+}
+for (const t of document.querySelectorAll('template')) for (const el of t.content.querySelectorAll('[data-rows]')) {
+  const [from, to] = el.dataset.rows.split('-');
+  el.innerHTML = rowsHtml(from, to, new Set(el.dataset.on.split(',').filter(Boolean)), el.hasAttribute('data-one'));
+}
+
+/* ===== 内容（改内容只改这一块；怎么摆、怎么存批注在 公用/说明页.js） ===== */
+const ROUND = 1;
+const SUB = '流水线「提示词」那一步，点「再写一条提示词」弹的框。现在的毛病：框、镜头表、关键帧各有一条滚动条，按钮要滚到底才看见；灰字说明四大段；「已写进 1、1」看不出是哪两条。拟了三种排法，用第3-4段的真数据（假设这回勾镜头5、6）。你挑一种，我再改页面。';
+const FOOT = '2026-11-19 Claude 照提示词页现在的框（提示词.html 里的 newPrompt）拟的。画框照你右边窗格的大小（约 700 宽）缩小摆；关键帧小图是真图。';
+const SECTIONS = [
+  { h: '甲　两步走（推荐）', note: '第 1 步只勾镜头，第 2 步定谁来写、挂什么。选「AI 先写」时，第 2 步多一个「补充要求」框，按钮变成「复制任务，交给 AI」。', fig: 'fig-a' },
+  { h: '乙　宽框两栏', note: '左边勾镜头，右边定怎么写，全摆在一屏。', fig: 'fig-b' },
+  { h: '丙　一栏收紧', note: '照现在的顺序从上往下，去掉多余的，按钮钉在底下。', fig: 'fig-c' },
+  { h: '要你定的', cards: [
+    { id: 'd1', no: '一', t: '选哪一种', p: [ '甲一次只做一件事。乙一屏看全，窗格窄时挤。丙改得最少，还要往下滚。' ],
+      opts: [ { v: '甲', t: '两步走', rec: true }, { v: '乙', t: '宽框两栏' }, { v: '丙', t: '一栏收紧' } ] },
+    { id: 'd2', no: '二', t: '「谁来写」和「写法」', p: [ '写法只管你自己写的稿，AI 先写的用不上。开了写稿页，左栏还能再切。' ],
+      opts: [ { v: 'A', t: '合成一排三选一：我来写·分镜、我来写·自由、AI 先写', rec: true }, { v: 'B', t: '照现在分两排：先选谁来写，选了我来写再出写法' } ] },
+    { id: 'd3', no: '三', t: '关键帧怎么摆', p: [ '3-4 有 27 张关键帧：19 张绑了镜头，8 张是叠图、草图这类没绑的。' ],
+      opts: [ { v: 'A', t: '只摆勾的这几镜绑的，小图一排、自动勾好；别的收进「其他」，点开再挑', rec: true }, { v: 'B', t: '照现在全摆出来，两张一排' } ] },
+  ] },
+  { h: '不用你定（三种都这样改）', cards: [
+    { id: 'c1', no: '1', t: '标题和按钮钉住', p: [ '只有中间一处滚，按钮一直看得见。' ] },
+    { id: 'c2', no: '2', t: '说明只留一句', p: [ '选了哪个，底下一句话说它；细的放进鼠标停上去的提示。' ] },
+    { id: 'c3', no: '3', t: '「已写进 1、1」写清楚', p: [ '镜头1 有前半条、后半条两条，现在都显示成 1。改成「已有 1 前半条、1 后半条」。' ] },
+    { id: 'c4', no: '4', t: '白模好挑', p: [ '管到勾的这几镜的白模排最前。默认还是不挂。' ] },
+    { id: 'c5', no: '5', t: '秒数、名字挨着按钮', p: [ '勾了几镜、约几秒、存成什么名字，写在按钮左边。超过 30 秒变红，提醒分条。' ] },
+  ] },
+];
+window.DOC = { 名: '再写提示词弹窗_设计稿', 题: '再写一条提示词的框设计稿', 存: 'antou:new-prompt-dlg', 轮: ROUND, 副题: SUB, 脚注: FOOT, 先选: { d1: '甲', d2: 'A', d3: 'A' }, 段: SECTIONS };
+</script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="../公用/说明页.js"></script>
+<script>
+/* 关键帧小图：从本机服务读真图（要带 X-Antou，<img> 直接引不了） */
+(function () {
+  const got = new Map();
+  const url = f => got.get(f) || got.set(f, window.Base.FS.read(['项目', '李云龙大战奥特曼', ...f.split('/')]).then(r => URL.createObjectURL(new Blob([r.buf], { type: 'image/png' }))).catch(() => '')).get(f);
+  const fill = () => document.querySelectorAll('#sections img[data-f]:not([src])').forEach(async img => { const u = await url(img.dataset.f); if (u) img.src = u; });
+  new MutationObserver(fill).observe(document.getElementById('sections'), { childList: true });
+  fill();
+})();
+</script>
+</body>
+</html>

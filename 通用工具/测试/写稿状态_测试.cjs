@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { parse, serialize, shotText, withShotText } = require('../公用/写稿状态.js');
+const { parse, serialize, shotText, withShotText, isHand } = require('../公用/写稿状态.js');
 
 const fixture = '\uFEFF说明  \r\n\r\n本段事件：  夜里来人  \r\n\r\n素材\r\n  @图片1 是场景。  \r\n\r\n基础设定\r\n风格:  写实  \r\n\r\n本段\r\n人物：  两个人  \r\n\r\n分镜\r\n说明文字\r\n\r\n  镜头 01 | 开门  \r\n  门开了。  \r\n\r\n\r\n镜头 02｜回头\r\n屋里人回头。\r\n\r\n保持一致：  光线一致';
 
@@ -282,4 +282,10 @@ test('「声音包括」写在【基础设定】里：没改不动；改了风�
   assert.equal(serialize(d), text.replace('镜头1：甲递书。', '镜头1：甲把书递给乙。'));
   const e = parse(text); e.basic[1] = '摄影：近景。';
   assert.equal(serialize(e), '【生成目标】\n甲递书。\n\n【基础设定】\n影像风格：写实。\n摄影：近景。\n\n【事件脚本】\n镜头1：甲递书。\n声音包括翻书声。\n\n【保持一致】\n保持书只有一本。\n');
+});
+
+test('你来写的稿（11-19）：写稿资料记「手写」、老稿记「流水线」才算；AI 写的稿改过的、坏的写稿资料不算', () => {
+  assert.equal(isHand({ 手写: true, 写法: '分镜' }), true);
+  assert.equal(isHand({ 流水线: '这一份是从「流水线」开的稿' }), true);
+  for (const side of [{ 写法: '自由', 分镜稿: '' }, { 手写: 'true' }, null, undefined, '手写', []]) assert.equal(isHand(side), false);
 });

@@ -137,6 +137,12 @@ p { margin: 0; }
 .dlg-sub { margin-bottom: 12px; font-size: 13px; line-height: 1.85; color: var(--ink-2); }
 .dlg-body { display: flex; flex-direction: column; gap: 15px; margin: 10px 0 4px; }
 .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+/* 标题和按钮钉住、只有中间一处滚的框（2026-11-19，先用在「写一条提示词」）：dlgShell 搭的框加上 pin */
+.dlg.pin { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+.dlg.pin > h3 { flex: none; margin: 0; padding: 22px 28px 4px; }
+.dlg.pin > .dlg-sub { flex: none; margin: 0; padding: 0 28px 12px; border-bottom: 1px solid var(--line); }
+.dlg.pin > .dlg-body { flex: 1 1 auto; min-height: 0; overflow: auto; margin: 0; padding: 14px 28px 16px; }
+.dlg.pin > .acts { flex: none; align-items: center; margin: 0; padding: 12px 28px 16px; border-top: 1px solid var(--line); }
 .fld { display: flex; flex-direction: column; gap: 6px; }
 .fld[hidden] { display: none; }   /* 上面那句 display 会盖掉 hidden，弹窗里按选项藏起来的格子要靠这句 */
 .fld > span { font-size: 12px; color: var(--ink-3); letter-spacing: .24em; }

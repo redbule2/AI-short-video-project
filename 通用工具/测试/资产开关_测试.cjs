@@ -234,21 +234,42 @@ async function bookOf(s) { const j = job(); await s.K.写字.prep(j); return s.K
   const vpScene = extra => sceneOnly({ 段落: [{ 号: '1', 写什么: '老李端起碗吃面', 作用: '交代｜老李爱吃面' }], ...extra });
   const vpBook = async (extra, more = {}) => { const s = setup(vpScene(extra), { [geoFile('面摊')]: '【面摊底稿】灶台在左，矮桌在右。', [geoFile('巷口')]: '【巷口底稿】两边灰砖墙，招牌在左。', ...more }), j = { 项目: '测试', 段: '1', 名: '1.txt', 渠道: 'self' }; await s.K.写提示词.prep(j); return s.K.写提示词.book(j); };
 
-  await check('写视频提示词：没标的照旧带 GEO 底稿和 scene-geo 技能', async () => {
+  const GEO_SKILL = path.resolve(__dirname, '../../.agents/skills/scene-geo/SKILL.md');
+  const geoParts = book => [...((book.split('## scene-geo（')[1] || '').split('\n## ')[0].matchAll(/「([^」]+)」/g))].map(m => m[1]);
+  await check('写视频提示词：有底稿就带底稿；scene-geo 只给路径和六、七两节，不贴整份（11-18 晚）', async () => {
     const book = await vpBook({});
-    assert.ok(book.includes('【面摊底稿】') && book.includes('【巷口底稿】') && book.includes('## 技能：scene-geo'), '没标也变了');
+    assert.ok(book.includes('【面摊底稿】') && book.includes('【巷口底稿】') && book.includes('## scene-geo（') && book.includes(GEO_SKILL), '没标也变了');
+    assert.ok(!book.includes('## 技能：scene-geo') && !book.includes('测试技能'), '又把 scene-geo 整份贴进来了');
+    assert.deepEqual(geoParts(book).map(x => x.slice(0, 2)), ['六、', '七、']);
+  });
+
+  await check('写视频提示词：没底稿、有场景图，看图现建，再加第五节；两样都没有，不讲 GEO（11-18 晚）', async () => {
+    const run = async (extra, more) => { const s = setup(vpScene(extra), more), j = { 项目: '测试', 段: '1', 名: '1.txt', 渠道: 'self' }; await s.K.写提示词.prep(j); return s.K.写提示词.book(j); };
+    const img = '资产/全局资产/场景/面摊.png', make = await run({ 场景图: [img] }, { [P(...img.split('/'))]: 'PNG' });
+    assert.ok(make.includes('【GEO底稿】'), '没让 AI 看图现建底稿');
+    assert.deepEqual(geoParts(make).map(x => x.slice(0, 2)), ['五、', '六、', '七、']);
+    const real = fs.readFileSync(GEO_SKILL, 'utf8').replace(/\r\n/g, '\n');
+    for (const x of geoParts(make)) assert.ok(real.includes('\n## ' + x + '\n'), 'scene-geo 里找不到这一节，任务书指错了：' + x);
+    const none = await run({}, {});
+    assert.ok(!/scene-geo/.test(none) && none.includes('这一段没有场景图也没有 GEO 底稿'), '没图没底稿还在讲 GEO');
   });
 
   await check('写视频提示词：标了不要 GEO 的场景，不带它的底稿', async () => {
     const book = await vpBook({ 不要GEO: ['面摊'] });
     assert.ok(!book.includes('【面摊底稿】') && book.includes('【巷口底稿】'), '底稿带错了');
-    assert.ok(book.includes('## 技能：scene-geo'));
+    assert.ok(book.includes('## scene-geo（'));
   });
 
-  await check('写视频提示词：这一段的场景都不要 GEO，不讲 GEO、不建底稿、不带 scene-geo 技能', async () => {
+  await check('写视频提示词：这一段的场景都不要 GEO，不讲 GEO、不建底稿、不带 scene-geo', async () => {
     const book = await vpBook({ 不要GEO: ['面摊'], 不出图: { 场景: ['巷口'] } });
     assert.ok(book.includes('这一段的场景不用 GEO（人定的'), '没说不用 GEO');
-    assert.ok(!book.includes('底稿】') && !book.includes('## 技能：scene-geo') && !book.includes('【GEO底稿】'), '还在讲 GEO');
+    assert.ok(!book.includes('底稿】') && !book.includes('## scene-geo（') && !book.includes('【GEO底稿】'), '还在讲 GEO');
+  });
+
+  await check('写视频提示词：教训只带公用的那一份（11-18 晚），项目自己的历史教训不带', async () => {
+    const lessonFile = path.join(path.dirname(backend), '公用教训.md');
+    const book = await vpBook({}, { [lessonFile]: '# 公用教训（测试）\n\n1. 甲。\n', [P('历史教训', '旧的.md')]: '项目自己的教训' });
+    assert.ok(book.includes('## 公用教训（写的时候记着）\n1. 甲。') && !book.includes('项目自己的教训') && !book.includes('# 公用教训（测试）'));
   });
 
   await check('写视频提示词：只用文字的几样照它们的文字描写写；还没写的、还是出图提示词的照全片设定', async () => {

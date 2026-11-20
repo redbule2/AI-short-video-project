@@ -134,6 +134,39 @@ test('样片和提示词同名（11-18 他定：好找）：1_改3.txt 出的叫
   for (const gone of ['RE_VP_PATCH', 'vpPatchOf', 'patchOut', 'clipOfVer']) assert.equal(Core[gone], undefined, gone);   // 补片那一套已经拿掉
 });
 
+test('接力稿（11-19：一个镜头拆成前后两条出片）：名字最后是前半条、后半条，改几在它前面；任务书、样片照它起名', () => {
+  const t = n => [Core.RE_VP.test(n), Core.vpBase(n), Core.vpVer(n), Core.vpCode(n), Core.vpLabel(n), Core.vpTok(n)];
+  assert.deepEqual(t('1_改6_前半条.txt'), [true, '1_前半条.txt', 6, '1', '镜头1 改6 前半条', '1改6前半条']);
+  assert.deepEqual(t('1_改8_后半条.txt'), [true, '1_后半条.txt', 8, '1', '镜头1 改8 后半条', '1改8后半条']);
+  assert.deepEqual(t('1_前半条.txt'), [true, '1_前半条.txt', 0, '1', '镜头1 前半条', '1前半条']);   // 没改过的
+  assert.deepEqual(t('1-3、5_改2_后半条.txt'), [true, '1-3、5_后半条.txt', 2, '1-3、5', '镜头1-3、5 改2 后半条', '1-3、5改2后半条']);
+  assert.deepEqual(t('4-6_补1_改1_前半条.txt'), [true, '4-6_补1_前半条.txt', 1, '4-6', '镜头4-6 补1 改1 前半条', '4-6补1改1前半条']);
+  for (const bad of ['1_前半条_改1.txt', '1_改6_前半条_后半条.txt', '1_改6_接力.txt', '1_半条.txt', '1_前后半条.txt', '1_改6_前半条_写稿.json', '1_改6_前半条_批注.md', '1_出片任务_改8_后半条.txt']) assert.equal(Core.RE_VP.test(bad), false, bad);
+  const pairs = [['1_改8_后半条.txt', '1_出片任务_改8_后半条.txt'], ['1_前半条.txt', '1_出片任务_前半条.txt'], ['1-3、5_改2_后半条.txt', '1-3、5_出片任务_改2_后半条.txt'], ['4-6_补1_改1_前半条.txt', '4-6_出片任务_补1_改1_前半条.txt']];
+  for (const [vp, tf] of pairs) { assert.equal(Core.vpTask(vp), tf, vp); assert.equal(Core.taskVp(tf), vp, tf); assert.ok(Core.RE_TASK.test(tf), tf); }
+  assert.equal(Core.RE_TASK.test('1_出片任务_改6_接力.txt'), false);   // 以前两条合一份的任务书不认
+  assert.equal(Core.clipName('1_改8_后半条.txt', ['1_改7_前半条.mp4', '1_改8_前后接起来.mp4', '1_改8.mp4']), '1_改8_后半条.mp4');
+  assert.equal(Core.clipName('1_改8_后半条.txt', ['1_改8_后半条.mp4']), '1_改8_后半条_2.mp4');
+  assert.equal(Core.clipTake('1_改8_后半条.mp4', '1_改8.txt'), 0);   // 不算整条稿的
+  assert.equal(Core.clipTake('1_改8_后半条_2.mp4', '1_改8_后半条.txt'), 2);
+});
+
+test('一条只留最新那一版（vpFams，11-19）：前半条、后半条各取最新；接力稿比整条稿新，整条稿不再摆', () => {
+  const dir = ['1.txt', '1_写稿.json', '1_出片任务_改5.txt', '1_出片任务_改8_后半条.txt', '1_改1.txt', '1_改5.txt', '1_改6_前半条.txt', '1_改6_后半条.txt', '1_改7_前半条.txt', '1_改7_后半条.txt', '1_改8_后半条.txt', '2-4.txt', '7、9.txt'];
+  const latest = names => Core.vpFams(names).map(f => f.vers[f.vers.length - 1]).sort();
+  assert.deepEqual(latest(dir), ['1_改7_前半条.txt', '1_改8_后半条.txt', '2-4.txt', '7、9.txt']);   // 1_改5 不再当最新
+  assert.deepEqual(Core.vpFams(dir).find(f => f.key === '1_后半条.txt').vers, ['1_改6_后半条.txt', '1_改7_后半条.txt', '1_改8_后半条.txt']);   // 几版从旧到新
+  assert.deepEqual(latest(new Set([...dir, '1_改9.txt'])), ['1_改9.txt', '2-4.txt', '7、9.txt']);   // 又回到整条稿、比接力稿新：接力稿不摆
+  assert.deepEqual(latest(['1.txt', '1_前半条.txt', '1_后半条.txt']), ['1.txt', '1_前半条.txt', '1_后半条.txt']);   // 一样新：都摆
+  assert.deepEqual(latest(['1-5_改3.txt', '1_改2_前半条.txt', '4-6.txt', '4-6_补1.txt', '4-6_改1.txt']), ['1-5_改3.txt', '1_改2_前半条.txt', '4-6_改1.txt', '4-6_补1.txt']);   // 别的镜头号、补几的照旧各算各的
+  assert.deepEqual(Core.vpFams([]), []);
+});
+
+test('几条提示词摆的先后（vpSort）：照原稿名排，4-6 在 4-6_补1 前面；接力稿前半条在后半条前面', () => {
+  assert.deepEqual(['1_后半条.txt', '7、9.txt', '1_前半条.txt', '4-6_补1.txt', '1.txt', '2-4.txt', '4-6.txt'].sort(Core.vpSort), ['1.txt', '1_前半条.txt', '1_后半条.txt', '2-4.txt', '4-6.txt', '4-6_补1.txt', '7、9.txt']);
+  assert.deepEqual(['1_改6_后半条.txt', '1_改6_前半条.txt'].sort(Core.vpSort), ['1_改6_前半条.txt', '1_改6_后半条.txt']);
+});
+
 test('审片锁不锁（11-18：3-4 镜头1 改3 出了片，别的几条提示词待核对，审片整页锁住看不了）：有样片就能审', () => {
   assert.equal(Core.reviewLock(5, 7, 'you'), '');   // 提示词待核对：不挡已经出好的样片
   assert.equal(Core.reviewLock(5, 7, 'ai'), '');    // AI 在写提示词：也不挡

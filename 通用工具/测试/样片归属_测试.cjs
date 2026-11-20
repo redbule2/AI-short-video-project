@@ -88,7 +88,32 @@ test('和哪一版同名先算：视频提示词_02.mp4 是第 2 条出的，不
   assert.equal(C.promptOf('视频提示词.mp4', [a, b], {}), a.key);
 });
 
+test('接力稿（11-19）：前半条、后半条出的样片各归各的那一条；两条接起来的不算哪一条', () => {
+  const Core = require('../公用/核心.js');
+  const fams = Core.vpFams(['1_改5.txt', '1_改6_前半条.txt', '1_改7_前半条.txt', '1_改6_后半条.txt', '1_改7_后半条.txt', '1_改8_后半条.txt', '2-4.txt'])
+    .map(f => ({ key: f.key, name: f.vers[f.vers.length - 1], vers: f.vers }));   // 和 流水线.js 的 promptsOf 一样
+  const front = fams.find(e => e.key === '1_前半条.txt'), back = fams.find(e => e.key === '1_后半条.txt');
+  assert.equal(fams.length, 3);   // 整条稿 1_改5 比接力稿旧：不摆
+  assert.equal(C.promptOf('1_改7_前半条.mp4', fams, {}), front.key);
+  assert.equal(C.verOf('1_改7_前半条.mp4', front), '1_改7_前半条.txt');
+  assert.equal(C.promptOf('1_改8_后半条_2.mp4', fams, {}), back.key);
+  assert.equal(C.verOf('1_改7_后半条.mp4', back), '1_改7_后半条.txt');
+  assert.equal(C.promptOf('1_改8_前后接起来.mp4', fams, {}), '');
+  assert.deepEqual(C.madeOf(back, ['1_改7_前半条.mp4', '1_改7_后半条.mp4', '1_改8_后半条.mp4', '1_改8_前后接起来.mp4'], fams, {}), ['1_改8_后半条.mp4']);   // 现在这一版（改8）出的
+});
+
 test('样片自己是第几条', () => {
   assert.equal(C.noOf('第3-4段_第14条_镜头1-5改6_样片480p.mp4'), 14);
   assert.equal(C.noOf('没有条号.mp4'), 0);
+});
+
+test('老仓库的名字（11-19 3-1 段搬进来）：记号紧贴段号，后面接第几条', () => {
+  const j1 = P('镜1补拍_视频提示词.txt'), j5 = P('镜5补拍_视频提示词.txt'), j52 = P('镜5两轮递射_视频提示词.txt'), all = [j1, j5, j52, P('视频提示词.txt')];
+  assert.equal(C.promptOf('李云龙大战奥特曼_第3-1段镜1补拍_第4条_用户重试_样片480p.mp4', all, {}), j1.key);
+  assert.equal(C.promptOf('李云龙大战奥特曼_第3-1段镜5补拍_第2条_样片480p.mp4', all, {}), j5.key);
+  assert.equal(C.promptOf('李云龙大战奥特曼_第3-1段镜5两轮递射_第4条_正片720p.mp4', all, {}), j52.key);
+  assert.equal(C.verOf('李云龙大战奥特曼_第3-1段镜5补拍_第2条_样片480p.mp4', j5), j5.key);
+  assert.equal(C.noOf('李云龙大战奥特曼_第3-1段镜5补拍_第2条_样片480p.mp4'), 2);
+  assert.equal(C.promptOf('李云龙大战奥特曼_第3-1段镜6两轮炮击_第1条_样片480p.mp4', all, {}), '');   // 没这条提示词的不乱认
+  assert.equal(C.carries('李云龙大战奥特曼_第3-1段镜1补拍改1_第4条_样片480p.mp4', j1.key), false);   // 记号要整个对上
 });

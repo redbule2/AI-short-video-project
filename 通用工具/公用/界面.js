@@ -61,6 +61,7 @@ const ICON = {
   pen: '<path d="M10.6 3.2 12.8 5.4 6 12.2l-3 .8.8-3z"/><path d="M9.4 4.4l2.2 2.2"/>',
   open: '<path d="M9.2 3h3.8v3.8M13 3 7.6 8.4"/><path d="M11.4 9.4v2.6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1h2.6"/>',
   zoom: '<circle cx="7" cy="7" r="4"/><path d="m10 10 3 3M5.4 7h3.2M7 5.4v3.2"/>',
+  clock: '<circle cx="8" cy="8" r="5.4"/><path d="M8 5v3.2l2.2 1.4"/>',
   flow: '<rect x="2.4" y="2.6" width="4.6" height="3.6" rx=".9"/><rect x="9" y="6.2" width="4.6" height="3.6" rx=".9"/><rect x="2.4" y="9.8" width="4.6" height="3.6" rx=".9"/><path d="M7 4.4h2.6a1.7 1.7 0 0 1 1.7 1.7M11.3 9.8a1.8 1.8 0 0 1-1.8 1.8H7"/>',
 };
 function icon(n, cls) {

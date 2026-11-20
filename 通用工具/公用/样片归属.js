@@ -8,8 +8,13 @@
 'use strict';
 const Core = G.Core || (typeof require === 'function' ? require('./核心.js') : null);
 const stem = n => String(n).replace(/\.[^.]+$/, '');
-/* 样片是不是 name 这一版出的：新名字照 Core.clipTake；老名字看带没带这一版的记号（两头是下划线，「镜头6-9拼接」不算「镜头6-9」） */
-const tokIn = (vid, name) => { const t = Core.vpTok(name); return t !== '整场' && ('_' + stem(vid) + '_').includes('_' + t + '_'); };
+/* 样片是不是 name 这一版出的：新名字照 Core.clipTake；老名字看带没带这一版的记号（两头是下划线，「镜头6-9拼接」不算「镜头6-9」）。
+   老仓库的记号紧贴段号：李云龙大战奥特曼_第3-1段镜1补拍_第3条_样片480p.mp4 是 镜1补拍_视频提示词.txt 出的（11-19 3-1 段搬进来） */
+const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const tokIn = (vid, name) => {
+  const t = Core.vpTok(name), v = '_' + stem(vid) + '_';
+  return t !== '整场' && (v.includes('_' + t + '_') || new RegExp('_第[0-9]+(?:-[0-9]+)?段' + esc(t) + '_第[0-9]+条_').test(v));
+};
 const carries = (vid, name) => Core.clipOld(vid) ? tokIn(vid, name) : !!Core.clipTake(vid, name);
 /* 哪一条：给这一条的原稿名 e.key；认不出给 ''。sel：这一场的选定（原稿名 → 样片名）。
    选定过的照选定的；没选过，和哪一版同名就是哪一条（视频提示词_02.mp4 是 视频提示词_02.txt 出的，不算 视频提示词.txt 再出的第 2 条），再看是哪一版出的；这一场只有一条提示词就是它 */

@@ -3,6 +3,7 @@
 // 出片任务书第五节（11-18 他定）：批准出片时不填积分上限，Codex 报完价直接提交，不再停下问；填了上限，报价超过才停。
 // 样片名（11-18 他定）：下载下来的样片和提示词同名，4-6.txt 出的叫 4-6.mp4；同一版再出一条 4-6_2.mp4。
 // 页面估价（提示词.html 的 priceOf）和任务书里的估价是同一张表，两边对一遍。
+// 登记照任务书写齐（11-19）：批准出片时参考素材映射里这一条改成和任务书一样，正文指纹和 核对参考素材.py 同一算法，Codex 不再因登记对不上停下。
 // 项目读写都在内存里；即梦核对、认画布节点换成假的，不碰真项目，不调即梦命令行。
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -104,6 +105,64 @@ const priceOf = vm.runInNewContext(priceCode + '\npriceOf;', {});
     assert.match(book, /下载到 \S*\/成片\/第1-1段\/4-6_补1\.mp4。/);
     assert.match(book, /名字写：第1-1段｜4-6_补1｜样片480p｜10秒/);
     assert.doesNotMatch(book, /补片|剪进/);
+  });
+  await check('接力稿（11-19）：1_改8_后半条.txt 的任务书叫 1_出片任务_改8_后半条.txt，样片 1_改8_后半条.mp4，出过了接着排 _2', async () => {
+    const s = setup({ [pjt('成片', '第1-1段')]: ['1_改7_前半条.mp4', '1_改8_前后接起来.mp4'], [pjt('历史记录', '成片', '第1-1段')]: ['1_改8_后半条.mp4'] });
+    s.files.set(pjt('提示词', '第1-1段', '1_改8_后半条.txt'), s.files.get(promptPath));
+    await s.K.出片任务书.run({ 项目: '测试', 段: '1-1', 名: '1_改8_后半条.txt', 参数: { 模型: 'Seedance 2.5 样片', 清晰度: '480p', 秒数: 10, 积分上限: 0 } });
+    const book = s.files.get(pjt('提示词', '第1-1段', '1_出片任务_改8_后半条.txt')).toString('utf8');
+    assert.match(book, /第1-1段出一条视频：1_改8_后半条，/);
+    assert.match(book, /下载到 \S*\/成片\/第1-1段\/1_改8_后半条_2\.mp4。/);   // 移进历史记录的 1_改8_后半条.mp4 也让开
+    assert.match(book, /名字写：第1-1段｜1_改8_后半条_2｜样片480p｜10秒/);
+    assert.equal(s.K.出片.title({ 段: '1-1', 名: '1_出片任务_改8_后半条.txt' }), '出片 · 第1-1段 镜头1 改8 后半条');   // 任务书认回提示词
+  });
+  // 登记照任务书写齐（11-19）：写稿页改了字，登记还是旧指纹，Codex 跑 核对参考素材.py 就停下。批准出片时登记改成和任务书一样
+  const crypto = require('node:crypto'), sha = b => crypto.createHash('sha256').update(b).digest('hex'), BOM = String.fromCharCode(0xFEFF);
+  const pyHash = t => sha(Buffer.from((t.startsWith(BOM) ? t.slice(1) : t).replace(/\r\n/g, '\n').replace(/\r/g, '\n'), 'utf8'));   // 照抄 核对参考素材.py 的 normalize_prompt（读文件时 utf-8-sig 已去掉一个 BOM）
+  const key = '提示词/第1-1段/4-6.txt', mapPath = pjt('资产', '参考素材映射.json'), P480 = { 模型: 'Seedance 2.5 样片', 清晰度: '480p', 秒数: 10, 积分上限: 0 };
+  const manAt = '资产/全局资产/人物/洪七公.png', potAt = '资产/全局资产/道具/砂锅.png';
+  const refText = '【基础设定】\r\n写实。\r\n\r\n【素材】\r\n洪七公@图片1，砂锅@图片2。\r\n\r\n【事件脚本】\r\n0-13秒：洪七公把草药投进砂锅。\r\n';   // CRLF：指纹要照 LF 算
+  const withRefs = (entry, text = refText) => {
+    const s = setup();
+    s.files.set(promptPath, Buffer.from(BOM + text));
+    s.files.set(pjt(...manAt.split('/')), Buffer.from('新换的洪七公图')); s.files.set(pjt(...potAt.split('/')), Buffer.from('砂锅图'));
+    if (entry) s.files.set(mapPath, Buffer.from(JSON.stringify({ schema_version: 1, prompts: { [key]: entry, '提示词/第1-1段/别的.txt': { prompt_sha256: 'a'.repeat(64), references: [] } } }, null, 2) + '\n'));
+    return s;
+  };
+  const regOf = s => JSON.parse(s.files.get(mapPath).toString('utf8')).prompts;
+  await check('登记过时（字改过、图换过、多登了正文不用的号）：批准出片后登记和任务书一样，指纹和 核对参考素材.py 同一算法', async () => {
+    const s = withRefs({ prompt_sha256: 'f'.repeat(64), references: [
+      { ref: '@图片1', name: '洪七公', path: manAt, sha256: 'e'.repeat(64) },
+      { ref: '@图片2', name: '砂锅', path: potAt, sha256: sha(Buffer.from('砂锅图')) },
+      { ref: '@图片3', name: '删掉的那张', path: potAt, sha256: 'd'.repeat(64) }], 秒数: { 镜头: { 1: 13 }, 记号: 'k' } });
+    const r = await s.K.出片任务书.run({ 项目: '测试', 段: '1-1', 名: '4-6.txt', 参数: P480 });
+    const reg = regOf(s), e = reg[key];
+    assert.equal(e.prompt_sha256, pyHash(refText));
+    assert.notEqual(e.prompt_sha256, sha(s.files.get(promptPath)));   // 不再照原样字节算（带 BOM、CRLF 的稿以前就对不上）
+    assert.deepEqual(e.references, [{ ref: '@图片1', name: '洪七公', path: manAt, sha256: sha(Buffer.from('新换的洪七公图')) }, { ref: '@图片2', name: '砂锅', path: potAt, sha256: sha(Buffer.from('砂锅图')) }]);   // 只留正文用到的；任务书里的「换」「节点」不进登记
+    assert.deepEqual(e.秒数, { 镜头: { 1: 13 }, 记号: 'k' });   // 别的不动
+    assert.deepEqual(reg['提示词/第1-1段/别的.txt'], { prompt_sha256: 'a'.repeat(64), references: [] });   // 别的稿不动
+    const book = s.files.get(taskPath).toString('utf8');
+    assert.match(book, /SHA-256 (\w+)。\n登记：资产\/参考素材映射\.json 里这份稿的登记，生成任务书时已照这份任务书写齐/);
+    assert.equal(/核对：非空行 \d+ 行，SHA-256 (\w+)。/.exec(book)[1], sha(s.files.get(promptPath)));   // 任务书照旧写文件原样的指纹（Codex 拿文件比）
+    assert.match(book, /不要自己改登记/);
+    assert.match(r.结果, /登记已照任务书补好/);
+  });
+  await check('登记本来就对：登记文件一个字不动，结果里也不说补登记', async () => {
+    const s = withRefs({ prompt_sha256: pyHash(refText), references: [
+      { ref: '@图片1', name: '洪七公', path: manAt, sha256: sha(Buffer.from('新换的洪七公图')) },
+      { ref: '@图片2', name: '砂锅', path: potAt, sha256: sha(Buffer.from('砂锅图')) }] });
+    const before = s.files.get(mapPath);
+    const r = await s.K.出片任务书.run({ 项目: '测试', 段: '1-1', 名: '4-6.txt', 参数: P480 });
+    assert.equal(s.files.get(mapPath), before);   // 没重写
+    assert.doesNotMatch(r.结果, /补好/);
+    assert.match(s.files.get(taskPath).toString('utf8'), /登记：资产\/参考素材映射\.json/);
+  });
+  await check('没挂素材的稿：不新建登记，任务书也不写登记那一句', async () => {
+    const s = setup();
+    await s.K.出片任务书.run({ 项目: '测试', 段: '1-1', 名: '4-6.txt', 参数: P480 });
+    assert.equal(s.files.has(mapPath), false);
+    assert.doesNotMatch(s.files.get(taskPath).toString('utf8'), /登记：/);
   });
   console.log(tested + ' 项检查通过；真实项目数据未读写。');
 })().catch(e => { console.error(e); process.exitCode = 1; });

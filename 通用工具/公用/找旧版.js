@@ -3,6 +3,7 @@
    参考素材映射里登记了每份素材的路径和 SHA-256。原处的文件换了新版、或者挪走了，登记的那一份多半在 历史记录 里：
      历史记录/同样的文件夹/原名__年月日-时分秒.后缀（单个文件收进去的）
      历史记录/…/文件夹名__时间/…/原名.后缀（整个文件夹收进去的）
+     历史记录/原始资料/登记的路径（从老仓库原样搬来的，11-19 3-1 段老稿照老路径登记）
    2026-11-15 他说：就算去了历史记录，也应该能预览，除非文件真的删了。
    RefFile.find(fs, base, file, sha)：读出登记的那一份。原处的内容和登记的一样就用原处的；不一样、或者原处没有，到历史记录里从新到旧找。
      fs：这一页的 FS（要有 read、list，有 stat 更快）；base：项目文件夹的路径（照这一页 FS 的写法）；
@@ -84,6 +85,8 @@
       (await list([H, ...dir.slice(0, i)])).filter(e => e.kind === 'directory' && low(e.name).startsWith(p2))
         .sort((a, b) => b.name.localeCompare(a.name)).forEach(d => out.push([H, ...dir.slice(0, i), d.name, ...dir.slice(i + 1), name]));
     }
+    const raw = (await list([H, '原始资料', ...dir])).find(e => e.kind === 'file' && low(e.name) === low(name));   // 老仓库原样搬来的
+    if (raw) out.push([H, '原始资料', ...dir, raw.name]);
     return out;
   }
 

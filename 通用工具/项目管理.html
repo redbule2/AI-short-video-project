@@ -963,9 +963,9 @@ function promptLabel(fname, pjName, seg) {
   let s = fname.replace(/\.txt$/i, '');
   if (s.startsWith(pjName + '_')) s = s.slice(pjName.length + 1);
   s = s.replace(new RegExp('第\\s*' + seg.replace(/-/g, '\\s*[-－—–]\\s*') + '\\s*段'), '');
+  if (window.Core.vpCode(s + '.txt')) return window.Core.vpLabel(s + '.txt');   // 照镜头号起名的：1-5 叫「镜头1-5」（2026-11-16），改几、补几、接力稿的前半条后半条照流水线的叫法（公用/核心.js）
   const ver = (/_改([0-9]+)$/.exec(s) || [])[1], tail = ver ? ' 改' + ver : '';   // 审片以后照修改方案另存的 _改1、_改2……（2026-11-14）
   s = s.replace(/_改[0-9]+$/, '');
-  if (window.Core.vpCode(s + '.txt')) return '镜头' + window.Core.vpCode(s + '.txt') + tail;   // 照镜头号起名的：1-5 叫「镜头1-5」（2026-11-16）
   const no = /^[_\s]*视频提示词_([0-9]+)$/.exec(s);   // 一场几条：第二条起 视频提示词_02……叫「第N条」；第一条 视频提示词 照旧是「本段」（目录拿它当这一段的简介）
   if (no) return '第' + (+no[1]) + '条' + tail;
   s = s.replace(/_?视频提示词$/, '').replace(/_?提示词$/, '');
@@ -2477,9 +2477,9 @@ function promptLabel(n, pj, seg) {
   let s = stem(n);
   if (s.startsWith(pj + '_')) s = s.slice(pj.length + 1);
   s = s.replace(`第${seg}段`, '');
+  if (window.Core.vpCode(s + '.txt')) return window.Core.vpLabel(s + '.txt');   // 照镜头号起名的：1-5 叫「镜头1-5」（2026-11-16），改几、补几、接力稿的前半条后半条照流水线的叫法（公用/核心.js）
   const ver = (/_改([0-9]+)$/.exec(s) || [])[1], tail = ver ? ' 改' + ver : '';   // 审片以后照修改方案另存的 _改1、_改2……（2026-11-14）
   s = s.replace(/_改[0-9]+$/, '');
-  if (window.Core.vpCode(s + '.txt')) return '镜头' + window.Core.vpCode(s + '.txt') + tail;   // 照镜头号起名的：1-5 叫「镜头1-5」（2026-11-16）
   const no = /^[_\s]*视频提示词_([0-9]+)$/.exec(s);   // 一场几条：第二条起 视频提示词_02……叫「第N条」；第一条 视频提示词 照旧是「本段」（目录拿它当这一段的简介）
   if (no) return '第' + (+no[1]) + '条' + tail;
   s = s.replace(/_?视频提示词$/, '');

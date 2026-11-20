@@ -1131,21 +1131,45 @@ function setNoGeo(s, stem, on) {   // 改了回 true；一个不剩就把「不�
 }
 /* 视频提示词（2026-11-16 他定）：名字就是这一条拍的镜头表镜头号，1-5.txt、4-9.txt；只拍一个镜头 3.txt；勾的不连着 1-3、5.txt。
    审片以后照修改方案另存的 _改1、_改2 也算。老稿照旧认：视频提示词.txt 第 1 条、视频提示词_02.txt 第 2 条，名字前面带别的（镜头1-5_视频提示词.txt）。
-   以前的补片稿（4-6_补1.txt、视频提示词_改2_补1.txt）11-18 起也是正片提示词（他定，不再剪进样片）：名字照旧，各算单独的一条，改了另存 4-6_补1_改1.txt */
+   以前的补片稿（4-6_补1.txt、视频提示词_改2_补1.txt）11-18 起也是正片提示词（他定，不再剪进样片）：名字照旧，各算单独的一条，改了另存 4-6_补1_改1.txt。
+   接力稿（11-19）：一个镜头拆成前后两条出片，名字最后加 _前半条、_后半条（1_改6_前半条.txt、1_改6_后半条.txt；没改过的 1_前半条.txt）。
+   前半条、后半条各算一条，改了另存 1_改9_后半条.txt；出片任务书 1_出片任务_改8_后半条.txt，样片 1_改8_后半条.mp4 */
 const SHOT_CODE = '[0-9]+[a-z]?(?:-[0-9]+[a-z]?)?(?:、[0-9]+[a-z]?(?:-[0-9]+[a-z]?)?)*';   // 镜头表的固定号：中间加的镜头是 3b（公用/关键帧绑定.js）
-const VP_TAIL = '(?:(?:_改[0-9]+)?_补[0-9]+)?(?:_改[0-9]+)?';   // 老名字里的「补几」算这一条名字的一部分，后面才是改几
+const VP_HALF = '_[前后]半条';   // 接力稿的前半条、后半条：在名字最后，改几的后面
+const VP_TAIL = '(?:(?:_改[0-9]+)?_补[0-9]+)?(?:_改[0-9]+)?(?:' + VP_HALF + ')?';   // 老名字里的「补几」算这一条名字的一部分，后面才是改几，最后是接力稿的前半条、后半条
 const RE_VP = new RegExp('(?:(?:^|_)视频提示词(?:_[0-9]+)?|^' + SHOT_CODE + ')' + VP_TAIL + '\\.txt$', 'i');
-const vpVer = name => +((/_改([0-9]+)\.txt$/i.exec(String(name)) || [])[1] || 0);   // 改的第几版；原稿是 0
-const vpBase = name => String(name).replace(/_改[0-9]+(\.txt)$/i, '$1');   // 这一条的原稿名
-const vpNo = name => { const b = vpBase(name); return /^视频提示词\.txt$/i.test(b) ? 1 : +((/^视频提示词_([0-9]+)\.txt$/i.exec(b) || [])[1] || 0); };   // 老稿第几条；镜头号起名的、别的老稿是 0
+const RE_VER = new RegExp('_改([0-9]+)((?:' + VP_HALF + ')?\\.txt)$', 'i');   // 改几：接力稿的在前半条、后半条前面
+const vpVer = name => +((RE_VER.exec(String(name)) || [])[1] || 0);   // 改的第几版；原稿是 0
+const vpBase = name => String(name).replace(RE_VER, '$2');   // 这一条的原稿名：1_改6_前半条.txt → 1_前半条.txt
+const RE_HALF = new RegExp('(' + VP_HALF + ')(\\.txt)$', 'i');
+const vpHalf = name => { const m = RE_HALF.exec(String(name)); return m ? m[1].slice(1) : ''; };   // 接力稿是「前半条」还是「后半条」；不是接力稿给 ''
+const vpWhole = name => String(name).replace(RE_HALF, '$2');   // 去掉前半条、后半条：同一镜头的整条稿（1_改6_前半条.txt → 1_改6.txt）
+const vpNo = name => { const b = vpWhole(vpBase(name)); return /^视频提示词\.txt$/i.test(b) ? 1 : +((/^视频提示词_([0-9]+)\.txt$/i.exec(b) || [])[1] || 0); };   // 老稿第几条；镜头号起名的、别的老稿是 0
 /* 镜头号起名的：1-5.txt（改几的、老名字补几的也算）→ '1-5'；不是这样起名的给 '' */
 const vpCode = name => { const m = new RegExp('^(' + SHOT_CODE + ')' + VP_TAIL + '\\.txt$', 'i').exec(String(name)); return m ? m[1] : ''; };
 /* 名字里的镜头号拍哪几镜、勾了哪几镜起什么名：照镜头表的固定号算，在 公用/关键帧绑定.js（ShotBind.expand、ShotBind.codeOf） */
-/* 老名字带「补几」的，标签、记号照前半截起，后面接上补几、改几：4-6_补1.txt → 镜头4-6 补1；4-6_补1_改1.txt → 镜头4-6 补1 改1 */
+/* 老名字带「补几」的，标签、记号照前半截起，后面接上补几、改几：4-6_补1.txt → 镜头4-6 补1；4-6_补1_改1.txt → 镜头4-6 补1 改1。接力稿最后接上前半条、后半条：1_改6_前半条.txt → 镜头1 改6 前半条 */
 const buOf = name => { const m = /^(.*?)_补([0-9]+)(?:_改[0-9]+)?\.txt$/i.exec(String(name)); return m ? { head: m[1] + '.txt', no: +m[2] } : null; };
-const vpLabel = name => { const u = buOf(name), v = vpVer(name); if (u) return vpLabel(u.head) + ' 补' + u.no + (v ? ' 改' + v : ''); const b = vpBase(name), n = vpNo(b), c = vpCode(b); return (c ? '镜头' + c : n ? '第' + n + '条' : b.replace(/_?视频提示词\.txt$/i, '').replace(/_/g, ' ') || '整场') + (v ? ' 改' + v : ''); };
+const vpLabel = name => { const hf = vpHalf(name); if (hf) return vpLabel(vpWhole(name)) + ' ' + hf; const u = buOf(name), v = vpVer(name); if (u) return vpLabel(u.head) + ' 补' + u.no + (v ? ' 改' + v : ''); const b = vpBase(name), n = vpNo(b), c = vpCode(b); return (c ? '镜头' + c : n ? '第' + n + '条' : b.replace(/_?视频提示词\.txt$/i, '').replace(/_/g, ' ') || '整场') + (v ? ' 改' + v : ''); };
 /* 记号：1-5、1-5改1；老稿 提示词01、镜头1-5改1。镜头号起名的不加「镜头」，免得和老稿 镜头1-5 撞上。11-18 以前的样片名里写的是它（第3-4段_第20条_1改3_720p.mp4），认老样片还用它 */
-const vpTok = name => { const u = buOf(name), v = vpVer(name); if (u) return vpTok(u.head) + '补' + u.no + (v ? '改' + v : ''); const b = vpBase(name), n = vpNo(b), c = vpCode(b); return (c || (n ? '提示词' + String(n).padStart(2, '0') : b.replace(/_?视频提示词\.txt$/i, '') || '整场')) + (v ? '改' + v : ''); };
+const vpTok = name => { const hf = vpHalf(name); if (hf) return vpTok(vpWhole(name)) + hf; const u = buOf(name), v = vpVer(name); if (u) return vpTok(u.head) + '补' + u.no + (v ? '改' + v : ''); const b = vpBase(name), n = vpNo(b), c = vpCode(b); return (c || (n ? '提示词' + String(n).padStart(2, '0') : b.replace(/_?视频提示词\.txt$/i, '') || '整场')) + (v ? '改' + v : ''); };
+/* 一条只留最新那一版（流水线各页、本机服务 jobs.js 共用）：names 里的视频提示词照这一条的原稿名（vpBase）分开，给 [{ key: 原稿名, vers: 几版，照改几从旧到新排 }]，最后一版就是现在用的。
+   接力稿（11-19）：前半条、后半条各算一条。同一镜头的接力稿改到的版比整条稿新，整条稿那一条不再摆（1_改5.txt 和 1_改8_后半条.txt：只摆接力稿）；
+   反过来整条稿比接力稿新，接力稿不摆；一样新的都摆 */
+function vpFams(names) {
+  const by = new Map(), top = new Map();   // top：同一镜头（去掉前半条、后半条）整条稿、接力稿各改到第几版
+  for (const n of names || []) if (RE_VP.test(n)) { const b = vpBase(n); if (!by.has(b)) by.set(b, []); by.get(b).push(n); }
+  for (const [b, vers] of by) {
+    vers.sort((x, y) => vpVer(x) - vpVer(y));
+    const w = vpWhole(b), t = top.get(w) || [-1, -1], i = w === b ? 0 : 1;
+    t[i] = Math.max(t[i], vpVer(vers[vers.length - 1]));
+    top.set(w, t);
+  }
+  return [...by].filter(([b]) => { const w = vpWhole(b), t = top.get(w); return w === b ? !(t[1] > t[0]) : !(t[0] > t[1]); }).map(([key, vers]) => ({ key, vers }));
+}
+/* 几条提示词摆的先后（两个名字比）：照原稿名排，镜头号照数比，4-6 在 4-6_补1 前面；接力稿跟在同一镜头的整条稿后面，前半条在后半条前面（照拼音排，「后」会跑到「前」前面） */
+const HALF_NO = { 前半条: 1, 后半条: 2 };
+const vpSort = (a, b) => { const k = n => vpWhole(n).replace(/\.txt$/i, ''); return k(a).localeCompare(k(b), 'zh', { numeric: true }) || (HALF_NO[vpHalf(a)] || 0) - (HALF_NO[vpHalf(b)] || 0); };
 /* 出片任务书和提示词一一对应：1-5_改1.txt ↔ 1-5_出片任务_改1.txt，老名字 4-6_补1.txt ↔ 4-6_出片任务_补1.txt；老稿 视频提示词_02_改1.txt ↔ 出片任务_02_改1.txt（页面、本机服务都用这一份） */
 const RE_TASK = new RegExp('出片任务(_[0-9]+)?(' + VP_TAIL + ')\\.txt$', 'i');
 const vpTask = name => { const c = vpCode(name); return c ? String(name).replace(new RegExp('^[^_.]+(' + VP_TAIL + ')\\.txt$', 'i'), c + '_出片任务$1.txt') : String(name).replace(new RegExp('视频提示词(_[0-9]+)?(' + VP_TAIL + ')\\.txt$', 'i'), '出片任务$1$2.txt'); };
@@ -1205,7 +1229,7 @@ const Core = {
   parsePrompt, serializePrompt, splitWithEol, joinLines, wrapPara, isBlank, edgeRange, ensureTrailingBlank, promptTemplate, promptSectionKey, promptShotTitle, renumberPromptShots, newPromptShot, PROMPT_SKELETON,
   lintPrompt, lintScript, lintShots, decodeText, hasBom, encodeText, cloneDoc,
   units, redline, diffChars, notesToMd, parseNotes,
-  nameOk, sceneStem, NO_IMG_KINDS, noImgList, noImg, setNoImg, noGeo, setNoGeo, SHOT_CODE, RE_VP, vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, RE_TASK, vpTask, taskVp, RE_CLIP, clipOld, clipTake, clipName, reviewLock,
+  nameOk, sceneStem, NO_IMG_KINDS, noImgList, noImg, setNoImg, noGeo, setNoGeo, SHOT_CODE, RE_VP, vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, vpFams, vpSort, RE_TASK, vpTask, taskVp, RE_CLIP, clipOld, clipTake, clipName, reviewLock,
 };
 Core.scriptFinal = scriptFinal; Core.applyBack = applyBack;
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;

@@ -25,6 +25,8 @@
 <script src="../公用/资产归类.js"></script>
 <script src="流水线.js"></script>
 <script src="../公用/样片归属.js"></script>
+<script src="../公用/历史记录.js"></script>
+<script src="历史记录.js"></script>
 <script>
 /* ============================================================
    流水线 · 审片（一场的第五道工序）
@@ -34,6 +36,7 @@
      审片只批注，不出方案（2026-11-15 他定）。
      选定、这一段定稿、写完批注回来：项目自己调 AI 和剧本对一对，对不上的写成剧本批注（2026-11-16 他定，对剧本.js）。
    没选上的样片及时移进 历史记录/成片/第N段（批注、截图跟着一起移，名字不改；以前补片留下的 _补片 文件夹也跟着移）。
+   2026-11-19 顶上加「历史记录」（他要的：默认不摆，点了只看移进历史记录的样片，照样能在审片台对照看、写批注；流水线/历史记录.js）。
    共用的东西（读写流水线.json、顶栏、步骤条、AI 任务）在 流水线.js。
    ============================================================ */
 'use strict';
@@ -63,11 +66,12 @@ const guess = (s, vid, list) => ClipOf.scene(s).prompt(vid, list);
 const verOf = (s, vid, e) => ClipOf.scene(s).ver(vid, e);
 /* 对照看片、写批注：审片台.html 整页盖上来（样片旁边对照提示词、白模、关键帧、资产图，批注照旧存在样片旁边）。
    它自己有「← 回审片」：先问它一声（没存的批注先存上），再收起、重读 */
-function openDesk(s, vid, list) {
+function openDesk(s, vid, list, old) {   // old：历史记录里的样片（审片台照 历史记录/成片/第N段 读，批注存在它旁边）
   closePop(); hideHov();
   if (SHELL) SHELL.remove();
   const q = new URLSearchParams({ p: F.name, s: s.段, v: vid }), e = list.find(x => x.key === guess(s, vid, list)), pr = verOf(s, vid, e) || (e ? e.name : '');
   if (pr) q.set('pr', pr);
+  if (old) q.set('old', '1');
   const frame = h('iframe', { class: 'wf-shell-frame', title: '对照审片', src: '审片台.html?' + q });
   const close = async () => {
     if (!SHELL) return;
@@ -75,8 +79,8 @@ function openDesk(s, vid, list) {
     if (SHELL) SHELL.remove();
     SHELL = null; window.DESK_HOST = null;
     document.body.classList.remove('wf-covered');
-    await refresh(); await loadExtra(); rerender();
-    if (window.ScriptCheck) ScriptCheck.onNotes(s, vid, pr);   // 写了批注的：自动看看哪几条是剧本的毛病（11-16 加，对剧本.js）
+    HistView.drop(); await refresh(); await loadExtra(); rerender();
+    if (window.ScriptCheck && !old) ScriptCheck.onNotes(s, vid, pr);   // 写了批注的：自动看看哪几条是剧本的毛病（11-16 加，对剧本.js）
   };
   window.DESK_HOST = { close };
   SHELL = h('div', { class: 'wf-shell' }, frame);
@@ -151,7 +155,7 @@ const labelOf2 = vpLabel;
 const startOf = name => vpNo(name) || +((/^(?:段落|镜头)?\s*([0-9]+)/.exec(name) || [])[1] || 1e9);   // 老稿第1条、第2条……；照镜头号起名的（1-5.txt）、老稿 段落a-b_…、镜头a-b_… 按头一个镜头号
 async function playAll(s, list) {
   const sel = selOf(s), vids = clipsOf(s.段).vids;
-  const seq = list.filter(e => sel[e.key] && vids.includes(sel[e.key])).sort((a, b) => startOf(a.key) - startOf(b.key) || a.key.localeCompare(b.key, 'zh', { numeric: true })).map(e => ({ e, vid: sel[e.key] }));
+  const seq = list.filter(e => sel[e.key] && vids.includes(sel[e.key])).sort((a, b) => startOf(a.key) - startOf(b.key) || window.Core.vpSort(a.key, b.key)).map(e => ({ e, vid: sel[e.key] }));   // 同一镜头的接力稿：前半条先放（公用/核心.js）
   if (!seq.length) return;
   const urls = [];
   try { for (const x of seq) { const r = await FS.read(at([...dirOf(s), x.vid])); urls.push(URL.createObjectURL(new Blob([r.buf], { type: 'video/mp4' }))); } }
@@ -181,12 +185,18 @@ async function playAll(s, list) {
 }
 function render() {
   const s = sceneNow(), seg = s.段;
+  const hc = HistView.clips(s), hn = HistView.count(hc), hchip = () => HistView.chip(hn, () => rerender(), '样片');   // 历史记录里的样片（11-19）：点「历史记录」只看它们
+  if (HistView.on) {
+    const list = promptsOf(seg), lb = vid => { const k = guess(s, vid, list); return k ? labelOf2(k) : ''; };
+    return [h('div', { class: 'wf-bar' }, h('span', { class: 'fn-note' }, '只看移进历史记录的样片。再点一下「历史记录」回到成片里的。'), h('span', { class: 'sp' }), hchip()),
+      HistView.clipView(s, hc, vid => openDesk(s, vid, list, true), lb)];
+  }
   const lock = reviewLock(promptsOf(seg).length, clipsOf(seg).vids.length, promptState(s).st);
   if (lock) {   // 有样片就能审（11-18 他定）；没样片时只看提示词本身：还没有、AI 在写、待核对
     const msg = lock === 'none' ? '这一段还没有提示词。有了提示词、出了样片，再来审。'
       : lock === 'ai' ? 'AI 在写提示词，写好了再来审。'
         : '有提示词待核对：它们写好以后，前面（剧本、资产、拍摄风格）又动过。先到「提示词」那一步看一眼，点「沿用」或者改好，再来审。';
-    return h('div', { class: 'wf-lock' }, msg, h('button', { class: 'btn ink', onclick: () => go('提示词', { s: seg }) }, '← 去提示词那一步'));
+    return h('div', { class: 'wf-lock' }, msg, h('button', { class: 'btn ink', onclick: () => go('提示词', { s: seg }) }, '← 去提示词那一步'), hn ? hchip() : null);
   }
   const list = promptsOf(seg), vids = clipsOf(seg).vids, sel = selOf(s), done = list.filter(e => sel[e.key] && vids.includes(sel[e.key]));   // 选定记在这一条的原稿名下
   const stales = done.filter(e => clipStale(s, e.key, sel[e.key]));
@@ -206,6 +216,7 @@ function render() {
     h('button', { class: 'btn sm', onclick: () => go('提示词', { s: seg }) }, '← 回提示词（再出一条）'),
     done.length > 1 ? h('button', { class: 'btn sm' + (all ? ' ink' : ''), title: '选定的几条按第1条、第2条……的顺序在网页里接着放，不存文件', onclick: () => playAll(s, list) }, icon('play'), '连起来看') : null,
     all && vids.length ? h('button', { class: 'btn ink', onclick: finish }, '这一段定稿') : null];
+  bar.push(hchip());
   return [
     h('div', { class: 'wf-bar' }, bar), styleBox(s), window.ScriptCheck ? ScriptCheck.lines(s) : null,
     making.length ? h('div', { class: 'wf-jobs' }, making.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题)))) : null,
@@ -215,9 +226,10 @@ function render() {
 
 start({
   name: '审片', scene: true, render,
-  sides() { loadExtra().then(() => { if (!typing()) rerender(); else F.later = true; }); },   // 你正在写：写完再画（tick 里补）
+  sides() { HistView.drop(); loadExtra().then(() => { if (!typing()) rerender(); else F.later = true; }); },   // 你正在写：写完再画（tick 里补）
   jobDone() { loadExtra().then(rerender); },
 }).then(() => loadExtra().then(() => { if (F.doc && sceneNow()) rerender(); }));
+HistView.ready = () => { if (!F.doc || !sceneNow() || SHELL) return; if (!typing()) rerender(); else F.later = true; };   // 历史记录读好了（审片台盖着时不重画，收起时会重画）
 
 /* 字里的 @图片N 点开看大图（公用/点图.js）：照这条样片出自的那条提示词认图（选的、猜的那一版） */
 if (window.RefPic) RefPic.watch((ref, el) => {

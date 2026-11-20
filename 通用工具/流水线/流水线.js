@@ -27,8 +27,9 @@ if (!window.HandAI && document.currentScript) document.head.append(Object.assign
 if (!window.Wait && document.currentScript) document.head.append(Object.assign(document.createElement('script'), { src: new URL('../公用/等待.js', document.currentScript.src).href }));
 /* 提示词的名字（2026-11-16 他定）：就是这一条拍的镜头表镜头号，1-5.txt、4-9.txt（写的时候勾镜头）。
    老稿还有 视频提示词.txt、视频提示词_02.txt、段落a-b_视频提示词.txt、镜头a-b_视频提示词.txt，照旧认。
-   审片以后改的另存一份，名字后面加 _改1、_改2……（2026-11-14 他定）：原稿、前几版留在原处；一条只摆最新那一版，出片也用它 */
-const { RE_VP, vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, nameOk, sceneStem, noImg, setNoImg, noGeo, setNoGeo, reviewLock } = window.Core;   // 视频提示词怎么起名、文件名能不能用：和审片台、本机服务共用 公用/核心.js 那一份
+   审片以后改的另存一份，名字后面加 _改1、_改2……（2026-11-14 他定）：原稿、前几版留在原处；一条只摆最新那一版，出片也用它。
+   接力稿（11-19）：一个镜头拆成前后两条出片，1_改6_前半条.txt、1_改6_后半条.txt，前半条、后半条各算一条 */
+const { vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, vpFams, nameOk, sceneStem, noImg, setNoImg, noGeo, setNoGeo, reviewLock } = window.Core;   // 视频提示词怎么起名、文件名能不能用：和审片台、本机服务共用 公用/核心.js 那一份
 const VID_RE = /\.(mp4|m4v|mov|webm)$/i;
 const SHOTS_TAIL = '_批注截图';
 const FILE = '流水线.json';
@@ -700,10 +701,7 @@ function aiWaiting(key, name) {
 function promptsOf(seg) {
   const rec = F.names.get(seg);
   if (!rec) return [];
-  const by = new Map();   // 一条（原稿名）→ 它的几版：原稿、_改1、_改2……
-  for (const n of rec.set) if (RE_VP.test(n)) { const b = vpBase(n); if (!by.has(b)) by.set(b, []); by.get(b).push(n); }
-  return [...by].map(([key, vers]) => {
-    vers.sort((a, b) => vpVer(a) - vpVer(b));
+  return vpFams(rec.set).map(({ key, vers }) => {   // 一条（原稿名）→ 它的几版：原稿、_改1、_改2……；接力稿比整条稿新的，整条稿不摆（公用/核心.js）
     const n = vers[vers.length - 1], stem = n.replace(/\.txt$/i, '');   // 摆最新的那一版：改稿、批注、生成任务书、出片都对着它
     return { name: n, key, ver: vpVer(n), vers, label: vpLabel(n), tok: vpTok(n), draft: rec.set.has(stem + '_写稿.json') };
   });
@@ -729,8 +727,9 @@ const openImage = (file, extra) => openShell(at([F.name, ...file.split('/')]), b
 /* 你来写提示词：把写稿那一页（通用工具/项目管理_写稿试用.html）盖上来。它自己读写文件、自己开 AI 任务（请 AI 批、把批注交给 AI 改）；
    写完点「回到流水线」，没存的字先存上。
    页头不盖（2026-11-15 他要的：写提示词时也得看得见「AI 用」选的是谁、能换）：从页头下面盖起（wf-write）；
-   写稿页交 AI 的活现读页头选的 AI、模型、推理（同一份本机记录）。点页头去别的页、换项目，也先把写稿页存上（SHELL.leave，go、pickProject 里调） */
-function openWrite(seg, name) {
+   写稿页交 AI 的活现读页头选的 AI、模型、推理（同一份本机记录）。点页头去别的页、换项目，也先把写稿页存上（SHELL.leave，go、pickProject 里调）。
+   hand：你来写的稿（11-19 又能写了），顶上写「接着写」，提醒写好两块点「AI 铺底」 */
+function openWrite(seg, name, hand) {
   closePop(); hideHov();
   if (SHELL) SHELL.remove();
   const frame = h('iframe', { class: 'wf-shell-frame', title: '写提示词', src: encodeURI('/通用工具/项目管理_写稿试用.html') + '#open=' + [F.name, '提示词', segName(seg), name].map(encodeURIComponent).join('/') });
@@ -750,8 +749,8 @@ function openWrite(seg, name) {
   };
   SHELL = h('div', { class: 'wf-shell wf-write' },
     h('div', { class: 'wf-shell-h' }, h('button', { class: 'btn sm ink', type: 'button', onclick: close }, '← 回到流水线'),
-      h('span', { class: 'wf-shell-t' }, '第' + seg + '段 · ' + vpLabel(name) + ' · 进去改'), h('span', { class: 'sp' }),
-      h('span', { class: 'fn-note' }, '这一条是 AI 写的，在这里自己改。改过以后，AI 估的每镜秒数可能不准，出片时会提醒。')),
+      h('span', { class: 'wf-shell-t' }, '第' + seg + '段 · ' + vpLabel(name) + (hand ? ' · 接着写' : ' · 进去改')), h('span', { class: 'sp' }),
+      h('span', { class: 'fn-note' }, hand ? '你来写的稿：写好生成目标、事件脚本，点右上角「AI 铺底」，素材、基础设定这几块由 AI 补。' : '这一条是 AI 写的，在这里自己改。改过以后，AI 估的每镜秒数可能不准，出片时会提醒。')),
     frame);
   SHELL.leave = keep;
   document.body.append(SHELL); document.body.classList.add('wf-covered');

@@ -321,7 +321,9 @@ const fill = (el, ...kids) => { el.replaceChildren(); return add(el, kids); };  
 const Q = new URLSearchParams(location.search);
 const PJ = Q.get('p') || '', SEG = C.normSeg(Q.get('s') || ''), VID = Q.get('v') || '';
 const SEGD = '第' + SEG + '段';
-const VID_REL = '成片/' + SEGD + '/' + VID;
+const OLD = Q.get('old') === '1';   // 历史记录里的样片（审片那一页「历史记录」里点开的，11-19 加）：批注、截图照旧存在它旁边
+const VID_DIR = (OLD ? '历史记录/' : '') + '成片/' + SEGD;
+const VID_REL = VID_DIR + '/' + VID;
 const pjAt = rel => at([PJ, ...String(rel).split('/').filter(Boolean)]);   // 项目里面的路径（资产/第3-4段/x.png）→ 从总文件夹算起
 
 const NOTES_TAIL = '_批注.md', SHOTS_TAIL = '_批注截图';
@@ -384,7 +386,7 @@ async function loadMap() {
 async function loadPromptList() {
   const ents = await listRel('提示词/' + SEGD);
   D.prompts = ents.filter(e => e.kind === 'file' && RE_VP.test(e.name)).map(e => ({ name: e.name, label: vpLabel(e.name) }))
-    .sort((a, b) => (vpNo(a.name) || 999) - (vpNo(b.name) || 999) || byZh(vpBase(a.name), vpBase(b.name)) || vpVer(a.name) - vpVer(b.name));   // 改过几版的：原稿、改1、改2……挨着
+    .sort((a, b) => (vpNo(a.name) || 999) - (vpNo(b.name) || 999) || window.Core.vpSort(vpBase(a.name), vpBase(b.name)) || vpVer(a.name) - vpVer(b.name));   // 改过几版的：原稿、改1、改2……挨着；接力稿前半条在后半条前面（公用/核心.js）
 }
 /* 这一段的提示词，一条一组：{ key: 原稿名, name: 最新一版, vers: [几版] }（D.prompts 里原稿、改1、改2 挨着） */
 function promptFams() {
@@ -528,7 +530,7 @@ async function loadPrompt(name) {
 }
 /* 这一场别的样片（成片里的、历史记录里的）：和这一条同一时刻一起放着比 */
 async function loadClips() {
-  const pick = async (dir, old) => (await listRel(dir)).filter(e => e.kind === 'file' && VIDEO_RE.test(e.name) && !(dir === '成片/' + SEGD && e.name === VID))
+  const pick = async (dir, old) => (await listRel(dir)).filter(e => e.kind === 'file' && VIDEO_RE.test(e.name) && !(dir === VID_DIR && e.name === VID))
     .map(e => ({ rel: dir + '/' + e.name, name: e.name, label: clipLabel(e.name), old, mtime: e.mtime || 0 }));
   D.clips = [...await pick('成片/' + SEGD, false), ...await pick('历史记录/成片/' + SEGD, true)].sort((a, b) => (a.old - b.old) || b.mtime - a.mtime || byZh(b.name, a.name));
 }
@@ -1376,7 +1378,7 @@ function renderTop() {
   TOP.status = h('div', { class: 'dk-st' });
   return h('header', { class: 'dk-top' },
     h('button', { class: 'btn sm ink', type: 'button', title: '回到审片那一页（批注都存着）', onclick: goBack }, '← 回审片'),
-    h('div', { class: 'dk-title' }, h('b', null, '第' + SEG + '段'), h('span', { title: VID }, clipLabel(VID))),
+    h('div', { class: 'dk-title' }, h('b', null, '第' + SEG + '段'), h('span', { title: VID }, clipLabel(VID)), OLD ? h('span', { class: 'fs-state', title: '这条在历史记录里：批注照旧存在它旁边' }, '历史记录') : null),
     h('span', { class: 'sp' }),
     h('label', { class: 'dk-pr' }, '出自', sel),
     TOP.status);
@@ -1452,14 +1454,14 @@ setInterval(async () => {
   const app = document.getElementById('app');
   if (!(await LINK.up())) { app.replaceChildren(fatal('这一页要经本机服务打开：在 Claude 里说「打开项目管理」。')); return; }
   if (!PJ || !SEG || !VIDEO_RE.test(VID)) { app.replaceChildren(fatal('网址里少了项目、第几段或者样片的名字。')); return; }
-  document.title = '对照审片 · 第' + SEG + '段 · ' + clipLabel(VID);
+  document.title = '对照审片 · 第' + SEG + '段 · ' + (OLD ? '历史记录 · ' : '') + clipLabel(VID);
   let file;
   try { file = await FS.file(pjAt(VID_REL)); } catch (e) { app.replaceChildren(fatal('打不开这条样片（' + VID_REL + '）：' + e.message)); return; }
   const info = await videoInfo(file);
   D.fps = info ? info.fps : 24; D.frames = info ? info.frames : 0;
   D.url = URL.createObjectURL(file);
-  D.notesAt = pjAt('成片/' + SEGD + '/' + stem(VID) + NOTES_TAIL);
-  D.shotsDir = pjAt('成片/' + SEGD + '/' + stem(VID) + SHOTS_TAIL);
+  D.notesAt = pjAt(VID_DIR + '/' + stem(VID) + NOTES_TAIL);
+  D.shotsDir = pjAt(VID_DIR + '/' + stem(VID) + SHOTS_TAIL);
   await loadMap();
   await loadPromptList();
   const md = await readMd(), has = n => !!n && D.prompts.some(p => p.name === n);

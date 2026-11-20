@@ -165,7 +165,7 @@ function routeFor(io) {
   const src = fs.readFileSync(serverPath, 'utf8').split('const [cmd, arg] = process.argv.slice(2);')[0] + '\nmodule.exports = handle;';
   const context = { module: { exports: {} }, Buffer, URL, JSON, console: { log() {}, error() {} }, __dirname: path.dirname(serverPath),
     process: { env: { ANTOU_ROOT: ROOT, ANTOU_PORT: '18761' } },
-    require: name => name === 'fs' ? { promises: io } : name === './jobs.js' || name === './pc-files.js' ? () => ({}) : name === './draft-store.js' ? opts => makeStore({ ...opts, io }) : require(name) };
+    require: name => name === 'fs' ? { promises: io } : name === './jobs.js' || name === './pc-files.js' || name === './prompt-lib.js' ? () => ({}) : name === './draft-store.js' ? opts => makeStore({ ...opts, io }) : require(name) };
   vm.runInNewContext(src, context, { filename: serverPath });
   return async (url, payload, headers = {}, method = 'POST') => {
     const req = Readable.from([Buffer.from(typeof payload === 'string' ? payload : JSON.stringify(payload))]);

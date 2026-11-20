@@ -6,7 +6,8 @@
 <title>案头 · 写稿（试用版）</title>
 <link rel="stylesheet" href="公用/提示条.css">
 <style>
-/* 写稿 · 试用版：提示词一律 AI 写（2026-11-15 他定），这里是「进去改」：自己改 AI 写的稿，也能请 AI 批、写批注让 AI 改。读写真文件，走 annotate-live 的本机服务（另开一个端口）。
+/* 写稿 · 试用版：你来写的稿在这里写（2026-11-19 他要回人写：分镜模式、自由模式，写好生成目标、事件脚本，点「AI 铺底」由 AI 补其余几块，公用/写稿铺底.js）；
+   AI 写的稿在这里「进去改」：自己改字，也能请 AI 批、写批注让 AI 改（11-15 到 11-19 提示词一律 AI 写，那几天只有这一种）。读写真文件，走 annotate-live 的本机服务（另开一个端口）。
    样式照 项目管理.html 起家。2026-11-13 换配色：暖白底、白卡片、字加深；青＝你写的和选中，靛＝AI 写的和 AI 批注，朱＝你的批注和警告。
    现在由「流水线」提示词那一步整页盖上来用（流水线.js 的 openWrite），不再并进 项目管理.html。
    2026-11-13 晚：@ 白模视频（名字里有「白模」的视频）时，素材里补的是 sd25-pe 白模那两句。 */
@@ -401,6 +402,7 @@ body.norail .rail { display: none; }
 /* <<< 流水线 · 作用 */
 </style>
 <link rel="stylesheet" href="公用/写稿编辑.css">
+<link rel="stylesheet" href="公用/写稿参考.css">
 </head>
 <body>
 <main id="main">
@@ -465,6 +467,7 @@ body.norail .rail { display: none; }
 <script src="公用/镜头作用.js"></script>
 <script src="公用/关键帧绑定.js"></script>
 <script src="公用/写稿镜头表.js"></script>
+<script src="公用/写稿铺底.js"></script>
 <script>
 'use strict';
 const $ = (s, r) => (r || document).querySelector(s);
@@ -498,6 +501,7 @@ function jobBody(line, ch) {
   const base = { 渠道: ch, 项目: PJ, 段: SEGDIR.replace(/^第|段$/g, ''), 名: STEM + '.txt' };
   let m;
   if (/^请批注 [^｜]+$/.test(line)) return { ...base, 事: '批注提示词' };
+  if (/^直接铺底 /.test(line)) return { ...base, 事: '直接铺底' };   // AI 铺底：直接写进正文（公用/写稿铺底.js）
   if ((m = /^按批注修改 (.+)$/.exec(line))) return { 渠道: ch, 项目: PJ, 事: '按批注改提示词', 批注: m[1] };
   return null;
 }
@@ -529,6 +533,7 @@ async function tickJobs() {
     Object.assign(j, n);
     if (jobLive(j)) continue;
     JOBS.live = JOBS.live.filter(x => x.id !== j.id);
+    if (Lay.isJob(j)) { Lay.done(j); continue; }   // AI 铺底完了：先把它写的换上，再放开这一页
     if (j.状态 === '做完') toast(j.结果);
     else { toast(j.标题 + (j.状态 === '停了' ? ' 停掉了' : ' 没成：' + j.错误)); if (j.事 === '批注提示词' && AI.busy) { AI.busy = false; setAsk(); paintAi(); paintSteps(); } }
     poll();
@@ -548,6 +553,7 @@ function paintJobs() {   // 一秒走一次表：每一行建一次，以后只�
     row.children[2].textContent = jobClock(j);
     jobActs(row.children[3], j);
   }
+  Lay.paint();   // AI 铺底的按钮跟着转圈、放开
 }
 const jobSay = j => j.状态 === '排队' ? j.渠道名 + ' 排着队' : j.步骤 || j.渠道名 + ' 在做';
 const jobClock = j => { const sec = Math.max(0, Math.round((Date.now() - (j.开始 || j.建)) / 1000)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); };
@@ -1103,7 +1109,7 @@ function secEl(s, i) {
   const ai = s.by === 'ai', fold = s.fold && !OPEN.has(s.key);
   const sec = h('section', { class: 'sec' + (fold ? ' fold' : ''), 'data-sec': s.key },
     h('div', { class: 'sec-h' }, h('span', { class: 'sec-no' }, CN[i]), h('span', { class: 'sec-name' }, s.name),
-      h('span', { class: 'who ' + s.by }, s.who || 'AI 写'), h('span', { class: 'sec-line' }),
+      h('span', { class: 'who ' + s.by }, s.who || Lay.whoOf(s.by)), h('span', { class: 'sec-line' }),
       s.fold ? h('button', { class: 'mini-b fold-b', tabindex: '-1', onclick: () => toggleFold(sec) }, fold ? '展开看' : '收起') : null,
       s.key === 'event' ? h('button', { class: 'mini-b fold-me', tabindex: '-1', title: '写好了就收起来，只留开头两行', onclick: () => foldMine(sec) }, '收起') : null));
   if (s.key === 'event') sec.append(h('div', { class: 'peek', title: '点一下展开', onclick: () => foldMine(sec, false) }), writer('event', 3, isPe() ? '这条视频拍什么：谁要什么，所以发生了什么；结束时什么样。情绪从哪来，也写在这里。' : '谁要什么，所以发生了什么；结束时什么样。两人的情绪从哪来，也写在这里。', DOC.event));
@@ -1132,14 +1138,14 @@ function render() {
   $('#sheet').replaceChildren(
     h('div', { class: 'sheet-head' },
       h('header', { class: 'doc-title' }, h('div', { class: 'doc-kicker' }, '视 频 提 示 词'), h('div', { class: 'doc-seg' }, SEGDIR), short ? h('div', { class: 'doc-name' }, short.replace(/_/g, ' · ')) : null, h('div', { class: 'ornament' }, h('span'))),
-      commonControls()),
+      Lay.nav()),
     h('div', { id: 'gnote' }),
     h('div', { id: 'general-notes' }),
     h('div', { class: 'shared-settings' }, SECS.filter(s => s.key !== 'shots').map((s, i) => secEl(s, i))),
     secEl(SECS.find(s => s.key === 'shots'), SECS.findIndex(s => s.key === 'shots')),
     h('div', { class: 'sheet-foot' }, OPENPATH.split('/').join(' / ')));
   renderShotEditor(); paintSum(); restoreFolds(); updateCommonSections(); $$('.wr-ta').forEach(grow); paintHNotes(); renderNotes();
-  headRO.disconnect(); headRO.observe($('#sheet .sheet-head')); pinHead();
+  headRO.disconnect(); headRO.observe($('#sheet .sheet-head')); pinHead(); Lay.paint();
 }
 function addShot() {
   insertShot();
@@ -1157,7 +1163,12 @@ const savedText = () => SAVED_AT ? '已保存 ' + two(SAVED_AT.getHours()) + ':'
 function touch() { if (!READY) return; VER++; followNotes(); rememberDraft(); setStatus(CONFLICT ? '有修改冲突，输入已保留' : '正在保存…', CONFLICT); clearTimeout(ST); ST = setTimeout(save, 700); }
 let PULLING = false;   // 正在把外面改的换上：这时候不存（页面上 AI 那几区还是旧的，存了就把 AI 刚写的盖掉）
 async function save() {
-  return saveEditor();
+  if (READY && !CONFLICT && !SAVING && Lay.watching()) {   // AI 铺底刚写进文件：先把它写的换进来再存，免得拿旧底去存、闪一下冲突条
+    try { if ((await FS.stat(PROMPT)).mtime !== MTIME) await Lay.merge(); } catch (e) { /* 看不了就照常存，撞上了下面再合 */ }
+  }
+  let ok = await saveEditor();
+  if (!ok && CONFLICT && Lay.watching() && await Lay.heal()) ok = await saveEditor();   // 撞上了 AI 铺底写文件的那一下：合上再存一次
+  return ok;
 }
 async function pullExternal(saving) {   // saving：存盘的半路上调的（这时你写的两处一定以页面为准，换完由存盘那边接着写）
   PULLING = true;
@@ -1167,6 +1178,10 @@ async function pullExternal0(saving) {
   const version = VER;
   const [r, ss] = await Promise.all([FS.text(PROMPT), readSideState()]);
   if (r.text === LASTTEXT && JSON.stringify(editorPart(ss.side)) === JSON.stringify(BASE_EDITOR)) { MTIME = r.mtime; return; }
+  if (Lay.watching()) {   // AI 铺底写进来了：正在存的，等存盘那边（撞上了 save 会合）；能合就只换 AI 那几块，你在写的地方不动
+    if (saving || SAVING) return;
+    if (await Lay.merge(r, ss)) return;
+  }
   if (saving || dirty() || VER !== version || SAVING) return reportConflict();
   SIDE = ss.side; SIDE_MT = ss.mtime;
   BASE_EDITOR = structuredClone(editorPart(SIDE));
@@ -1496,7 +1511,7 @@ const GUIDE_PE = {
 };
 function setGuide(key) {
   const g = (isPe() && GUIDE_PE[key]) || GUIDE[key];
-  $('#guide').replaceChildren(h('b', null, g ? g[0] : '写稿'),
+  $('#guide').replaceChildren(h('b', null, g ? Lay.guideName(key, g[0]) : '写稿'),
     h('div', { class: 'g-list' }, g ? g[1].map(t => h('span', { class: 'g' }, t)) : h('span', { class: 'faint' }, '写到哪一区，这里提醒那一区怎么写。')),
     h('span', { class: 'g-keys' }, h('kbd', null, '@'), ' 插资产'));
 }
@@ -1583,7 +1598,7 @@ function undoNote(n) {
   n.state = null; afterNotes();
 }
 let LASTF = null, LAST = null;   // 最后一次光标在哪：文字框（LASTF）或 AI 那几行里的位置（LAST）
-const setAsk = () => { const off = !READY || AI.busy; $('#askAll').disabled = off; $('#askAll').textContent = AI.busy ? 'AI 正在看稿…' : '请 AI 批'; };
+const setAsk = () => { const off = !READY || AI.busy || Lay.busy(); $('#askAll').disabled = off; $('#askAll').textContent = AI.busy ? 'AI 正在看稿…' : '请 AI 批'; };
 async function askAI() {
   if (AI.busy || !READY) return;
   if (!$$('#sheet .wr-ta').some(t => t.value.trim())) return toast(evName() + '和' + (isPe() ? '事件脚本' : '分镜') + '都还空着，先写一点再请 AI 批');
@@ -2065,7 +2080,7 @@ async function boot() {
     DOC = hydrateShots(DOC, SIDE.镜头信息, !SIDE.写法);
   } catch (e) { return fail(e.message); }
   render(); READY = true;
-  setStatus(savedText()); setAsk(); paintMarks(); showRail('assets'); paintScript();
+  setStatus(savedText()); setAsk(); paintMarks(); showRail('assets'); paintScript(); Lay.init();
   $('#tip').hidden = true;
   $('#railBtn').textContent = document.body.classList.contains('norail') ? '展开侧栏' : '收起侧栏';
   await offerRecovery();
@@ -2079,5 +2094,8 @@ async function boot() {
 addEventListener('hashchange', () => location.reload());
 boot();
 </script>
+<script src="公用/找旧版.js"></script>
+<script src="公用/历史记录.js"></script>
+<script src="公用/写稿参考.js"></script>
 </body>
 </html>

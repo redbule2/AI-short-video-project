@@ -134,6 +134,8 @@
 <script src="电脑找图.js"></script>
 <script src="音色绑定.js"></script>
 <script src="挑图栏.js"></script>
+<script src="../公用/历史记录.js"></script>
+<script src="历史记录.js"></script>
 <script>
 
 /* ============================================================
@@ -160,6 +162,7 @@
    确认可用：一张图一张图确认（2026-11-12 他定的）。确认记在全片，确认过的图别的场不用再确认；这一场要的图都确认了，这一步自动过。图重出过、它的描写改过，那一张要再确认。
    关键帧绑到镜头表的「一镜一刻」上（2026-11-16 他定，流程图 关键帧绑定_流程图.html；算法在 公用/关键帧绑定.js）；同一镜同一刻几张，一张现用、别的备选；
      镜头表后来改了那一镜的字，那张卡左边一道红线，看过点「还对得上」。挂到哪条提示词，在提示词那一步定。
+   2026-11-19 页签那一排右边加「历史记录」（他要的：默认不摆，点了这一页签只看换下来收进历史记录的旧图；流水线/历史记录.js）。
    共用的东西（读写流水线.json、顶栏、步骤条、这一场要哪些图、哪张图确认过）在 流水线.js。
    ============================================================ */
 'use strict';
@@ -484,17 +487,19 @@ function repaint() {
   IMPACT = new Map(impactTodo(s).map(x => [kindOf(x.类别) + '/' + x.名称, x.影响 + '：' + x.为什么]));
   const { list, rec } = assetsOf(s), jobs = AI.jobs.filter(j => WORD_JOBS.includes(j.事) && j.段 === s.段 && jobLive(j)), last = AI.jobs.filter(j => WORD_JOBS.includes(j.事) && j.段 === s.段).pop(), bad = jobs.length || !last ? null : jobFailed(last.事, s.段);
   const cur = tabNow(), marks = tabMarks(s, list);
+  const mineOf = k => list.filter(it => k === '关键帧' ? it.类别 === '关键帧' : it.类别 !== '关键帧' && kindOf(it.类别) === k);
+  const hc = HistView.assets(s, cur, mineOf(cur));   // 这一页签换下来的旧图（11-19）：点「历史记录」只看它们
   document.getElementById('as-h1').replaceChildren(...flat(headEls(s)));
   document.getElementById('as-tabs').replaceChildren(...TABS.map(t => h('button', { class: 'pz-tab ' + kindCls(t) + (t === cur ? ' on' : ''), type: 'button', role: 'tab', 'aria-selected': String(t === cur), onclick: () => switchTab(t) },
       t, h('em', null, String(marks[t].n)), marks[t].dot ? h('i', { class: 'dot', title: marks[t].dot }) : null)),
-    h('span', { class: 'sp' }),
+    h('span', { class: 'sp' }), HistView.chip(HistView.count(hc), paint, '旧图'),
     F.dirs.has(segName(s.段)) ? h('button', { class: 'fl-link', type: 'button', title: '看这一段文件夹里的图，框出来写批注', onclick: () => openShell(at([F.name, '资产', segName(s.段)]), '第' + s.段 + '段的图') }, '看这一段文件夹的图') : '');   // 没有这一段的文件夹：空着（null 会被写成字）
   document.getElementById('as-more').replaceChildren(...flat([
     jobs.length ? h('div', { class: 'wf-jobs' }, jobs.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题)))) : null,
     bad ? h('p', { style: 'margin-top:10px' }, bad) : null,
     rec && rec.bad ? h('p', { class: 'fn-note warn', style: 'margin-top:12px' }, 'AI 列的资产清单读不了：' + rec.bad) : null,
     impactBox(s)]));
-  document.getElementById('as-body').replaceChildren(...flat(cur === '关键帧' ? kbBody(s, list.filter(it => it.类别 === '关键帧')) : kindBody(s, cur, list)));
+  document.getElementById('as-body').replaceChildren(...flat(HistView.on ? HistView.assetView(s, cur, hc) : cur === '关键帧' ? kbBody(s, mineOf('关键帧')) : kindBody(s, cur, list)));
   paintSteps(); paintStatus(); asPin(); PickBar.refresh(); adSync();   // 开着弹窗：跟着换（资产详情.js）
 }
 /* 剧本重新定稿以后 AI 列的影响清单：列上、还没处理的一样一行（为什么、看过了）；「全部重看」照老办法这一场的图全都再核一遍 */
@@ -536,6 +541,7 @@ start({ name: '资产', scene: true, render, repaint, leave: adLeave,   // leave
     }
     paint();
   } });
+HistView.ready = () => { if (F.doc && sceneNow()) paint(); };   // 历史记录读好了
 </script>
 </body>
 </html>
