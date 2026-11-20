@@ -18,6 +18,8 @@
 
 - `sd25-pe`：处理 Seedance 2.5 提示词，视频提示词的格式也照它；写哪一块，先查 `.agents\skills\annotate-live\sd25-pe地图.md`，照它看那几节。挂的素材记进 `资产\参考素材映射.json`，交稿前跑 `通用工具\核对参考素材.py`。
 - `script-shotlist-format`：写或改剧本、镜头表。项目管理照这套格式读写剧本。
+- `alterlab-cdm-film-analysis`：逐镜分析摄影、剪辑、美术、表演及声音；重要判断记录时间位置、可见／可听证据与其他解释，不能凭风格标签猜设备或出品方。
+- `analyze-video`：从本地参考片提炼可复用的视听规则和内容变量；本项目只采用分析与迁移部分，不调用 Novoads API、不继承其自动生成、固定15秒或逐镜时间码流程。实际分镜继续由 sd25-pe 按用户现行七段、独立参数卡、禁止BGM及即梦新草稿规则编写。
 - `chatgpt-mode-image`：用 ChatGPT 模式出图（不是 Codex 的 image_gen）。
 - `scene-geo`：锁场景空间。GEO 底稿只给人审，翻成的场景段放进提示词；和 sd25-pe 冲突时以 sd25-pe 为准。
 - `deepseek`：请 DeepSeek 审稿或给第二意见。
