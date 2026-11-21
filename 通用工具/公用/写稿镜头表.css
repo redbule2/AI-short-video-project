@@ -1,0 +1,48 @@
+/* ============================================================
+   公用 · 镜头表页签的样子（公用/写稿镜头表.js 画的那一栏）：写稿页右栏、审片台右栏都引这一份（2026-11-20 从 写稿编辑.css 搬出来）。
+   作用标签的颜色和 流水线/流水线.css 的 .sw-t 一样，改要两处一起改。
+   用到的颜色：--tc（号、标亮）、--panel（钉住那一块的底）、--card、--edge-2，页面没给就用 样式.css 里的。
+   ============================================================ */
+.sw-t { display: inline-block; margin-right: 5px; padding: 0 5px; border-radius: 4px; font: 600 11px/1.65 var(--sans); white-space: nowrap; vertical-align: 1px; }
+.sw-t.jd, .ws-strip i.jd { background: #e3eeed; color: #2f5355; }   /* 交代 */
+.sw-t.pd, .ws-strip i.pd { background: #f4e7cb; color: #7a5a1e; }   /* 铺垫 */
+.sw-t.zz, .ws-strip i.zz { background: #fbe3dc; color: #9a3326; }   /* 转折 */
+.sw-t.gc, .ws-strip i.gc { background: #a83a2c; color: #fff; }      /* 高潮 */
+.sw-t.fy, .ws-strip i.fy { background: #e5edd9; color: #46622f; }   /* 反应 */
+.sw-t.sw, .ws-strip i.sw { background: #e9e3da; color: #4d453d; }   /* 收尾 */
+.ws-head { position: sticky; top: -14px; z-index: 1; margin: 0 -14px; padding: 6px 14px 1px; background: var(--panel, var(--paper)); }
+.ws-strip { display: flex; height: 16px; margin: 2px 0 5px; border-radius: 4px; overflow: hidden; }
+.ws-strip i { min-width: 3px; background: var(--paper-3); border-right: 1.5px solid var(--panel, var(--paper)); opacity: .55; }
+.ws-strip i:last-child { border-right: 0; }
+.ws-strip i.me { opacity: 1; box-shadow: inset 0 0 0 1.5px var(--tc); }
+.ws-cap { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 0 0 8px; font-size: 12px; line-height: 1.6; color: var(--ink-3); }
+.ws-cap span:last-child { flex: none; }
+.ws-cap .on { color: var(--tc); font-weight: 600; }
+.ws-list { list-style: none; margin: 0; padding: 0; }
+.ws-list li { display: grid; grid-template-columns: 26px 1fr auto; gap: 4px; padding: 5px 6px; border-radius: 6px; }
+.ws-list .n { font: 600 12.5px/1.8 var(--serif); color: var(--tc); }
+.ws-list b { display: block; font-weight: 500; font-size: 13px; line-height: 1.6; color: var(--ink); }
+.ws-list small { display: block; font-size: 12px; line-height: 1.65; color: var(--ink-3); }
+.ws-list .sc { font-size: 12px; line-height: 1.8; color: var(--ink-4); white-space: nowrap; }
+.ws-list li.me { background: #fff6dc; box-shadow: inset 2px 0 0 var(--tc); }
+/* 2026-11-20：加减镜头（公用/写稿改镜头.js）。能改的每一镜前面一个勾，整行都能点；勾得和现在不一样，钉住的那一块里出「改成 镜…」 */
+.ws-list.can li { display: block; padding: 0; }   /* 能勾的：整行是一个 label，格子排在 .ws-row 里 */
+.ws-row { display: grid; grid-template-columns: 18px 26px 1fr auto; gap: 4px; align-items: start; padding: 5px 6px; border-radius: 6px; cursor: pointer; }
+.ws-row:hover { background: rgba(92, 72, 44, .05); }
+.ws-row input { margin: 6px 0 0; accent-color: var(--tc); cursor: pointer; }
+.ws-list li.add { background: #e9f2ea; box-shadow: inset 2px 0 0 #4f8a5f; }
+.ws-list li.drop b { color: var(--ink-3); text-decoration: line-through; text-decoration-color: rgba(154, 51, 38, .55); }
+.ws-list .sc em { margin-right: 6px; padding: 1px 5px; border-radius: 4px; font: 600 11px/1.5 var(--sans); font-style: normal; background: #dcebdf; color: #3c6b49; }
+.ws-list li.drop .sc em { background: #f6e1dc; color: #9a3326; }
+.ws-act { margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; background: var(--card, var(--sheet)); box-shadow: 0 0 0 1px var(--edge-2, var(--line-2)), 0 8px 18px -12px rgba(70, 52, 28, .35); }
+.ws-act.warn { box-shadow: 0 0 0 1px rgba(154, 51, 38, .35); }
+.ws-act-t { font-size: 12.5px; line-height: 1.7; color: var(--ink-2); }
+.ws-act-t b { display: block; font-weight: 600; color: var(--ink); }
+.ws-act.warn .ws-act-t b { color: #9a3326; }
+.ws-act-b { display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px; }
+.ws-note { margin: -4px 0 12px; padding: 7px 12px; border-radius: 7px; background: #fff6dc; font-size: 12.5px; line-height: 1.75; color: #7a5a1e; }
+/* 2026-11-20：审片台放到哪一镜（公用/审片镜头表.js 标 .now；照秒数估的再加 .est） */
+.ws-list li.now { background: rgba(179, 146, 86, .2); box-shadow: inset 3px 0 0 var(--jin); }
+.ws-list li.now .sc::before { content: '在放'; margin-right: 6px; padding: 1px 6px; border-radius: 4px; font: 600 11px/1.5 var(--sans); background: var(--jin); color: #fffaf0; }
+.ws-list li.now.est .sc::before { content: '大约在放'; }
+.ws-strip i.now { opacity: 1; box-shadow: inset 0 0 0 2px var(--jin); }

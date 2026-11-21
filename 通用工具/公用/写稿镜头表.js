@@ -9,7 +9,8 @@
      页面调 WriteShots.paint(格子, 镜头表那几行, 提示词文件名, 核心.js vpCode 认出的镜头号, 改镜头的几样)。
      改镜头的几样：{ lock: 要等的原因（能改给 ''）, apply(勾的号) → 改成了给 true, note: 改完提醒的一句 }；不给就只看不改。
      view()、plan() 只算不画，测试在 通用工具/测试/写稿镜头表_测试.cjs。
-   作用标签的颜色在 写稿编辑.css，和 流水线/流水线.css 的 .sw-t 一样，改要两处一起改。
+   审片台右栏的「镜头表」也用它画（只看不改，11-20；放到哪一镜标「在放」在 公用/审片镜头表.js，照每一行、每一块的 data-no 认）。
+   样子在 公用/写稿镜头表.css（作用标签的颜色和 流水线/流水线.css 的 .sw-t 一样，改要两处一起改）。
    ============================================================ */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(require('./镜头作用.js'), require('./关键帧绑定.js'));
@@ -83,7 +84,7 @@
       opt && opt.note && !change ? h('p', { class: 'ws-note' }, opt.note) : null,
       h('div', { class: 'ws-head' },   // 色带和合计钉在右栏顶上，往下翻也看得见；勾得和现在不一样，「改成…」也钉在这里
         h('div', { class: 'ws-strip', title: '一块一镜，宽窄照秒数，颜色照作用标签' },
-          v.blocks.map((b, i) => h('i', { class: [b.cls, on(b.no) ? 'me' : ''].filter(Boolean).join(' ') || null, style: 'flex:' + b.flex, title: tip(v.rows[i]) }))),
+          v.blocks.map((b, i) => h('i', { class: [b.cls, on(b.no) ? 'me' : ''].filter(Boolean).join(' ') || null, 'data-no': b.no, style: 'flex:' + b.flex, title: tip(v.rows[i]) }))),
         h('div', { class: 'ws-cap' }, h('span', { class: v.mine.length ? 'on' : null }, v.say), h('span', null, v.all)),
         change ? h('div', { class: 'ws-act' + (p.to ? '' : ' warn') },
           h('div', { class: 'ws-act-t' }, h('b', null, p.say), p.to ? h('span', null, '改完拍 ' + p.sum + '，名字改成 ' + p.name) : null),

@@ -71,6 +71,8 @@ const Why = window.ShotWhy;
 /* 出场的人物、场景、道具：全局的（好几段都用）、用在这一段哪几镜，删掉用不着的（2026-11-17 他要）：公用/资产归类.js */
 const Scope = window.AssetScope;
 const shotNos = s => SB.nosOf(s.段落);   // 这一场镜头表各镜的号
+/* 这一条（e：promptsOf 的一条，或者文件名）拍镜头表哪几镜（固定号）：名字是镜头号的照镜头表认，老稿「镜头6-9_视频提示词」照名字里的数认；认不出给 null。提示词、审片两页共用 */
+const shotsOfPrompt = (s, e) => SB.shotsOf(vpCode(e.key || vpBase(e.name || e)), e.name || e, shotNos(s));
 /* 用在哪几镜：一镜一个小牌子，点一下加上、再点去掉。提炼页点开的卡、资产页卡上那行小字共用（11-17 他要在资产页手动绑镜头）。
    who()：现在认的 { k, name }（场景那一句改着改着会变，点的时候再认）；done：改完重画 */
 function shotPicks(s, who, done) {

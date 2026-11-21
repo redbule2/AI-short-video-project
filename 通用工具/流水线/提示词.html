@@ -424,8 +424,6 @@ async function moveMapped(s, e, p, gone = []) {
 }
 
 /* 名字里带着它管哪几个镜头（1-5.txt；老稿 段落a-b_…、镜头a-b_…）：挂白模时，名字对得上的白模先挑上。视频提示词.txt、视频提示词_02.txt 不带 */
-/* 这一条拍镜头表哪几镜（固定号）：名字是镜头号的照镜头表认，老稿「镜头6-9_视频提示词」照名字里的数认；认不出给 null */
-const shotsOfPrompt = (s, e) => SB.shotsOf(vpCode(e.key || vpBase(e.name)), e.name || e, shotNos(s));
 function rangeOf(s, e) {
   const c = vpCode(e.key || vpBase(e.name)), sh = c ? SB.expand(c, shotNos(s)).nos.map(n => parseInt(n, 10)) : null;
   if (sh && sh.length) return [sh[0], sh[sh.length - 1]];

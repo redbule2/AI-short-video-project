@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>对照审片</title>
 <link rel="stylesheet" href="../公用/样式.css">
+<link rel="stylesheet" href="../公用/写稿镜头表.css">
 <style>
 /* 对照审片：流水线第五道工序「审片」里点「对照看片、写批注」盖上来的那一页。样式只这一页用 */
 body.dk { display: block; height: 100vh; overflow: hidden; background: var(--night); }
@@ -140,6 +141,9 @@ body.dk { display: block; height: 100vh; overflow: hidden; background: var(--nig
 .pane > .sec:first-child { margin-top: 0; }
 .on-tag { font-size: 12px; color: var(--zhe); white-space: nowrap; }
 .path { margin-top: 16px; word-break: break-all; }
+/* 镜头表（公用/审片镜头表.js，样子在 写稿镜头表.css）：标亮用黛色，别和批注的朱红混；钉住的那一块贴齐这一栏 */
+.dk-shots { --tc: var(--dai); --panel: var(--paper); } .dk-shots .ws-head { margin: 0 -16px; padding: 6px 16px 1px; }
+.dk-shots .tab-intro { margin: 0 0 10px; font: 13px/1.8 var(--kai); color: var(--ink-3); } .dk-shots .tab-intro b { margin-right: 4px; color: var(--ink-2); }
 
 /* 这一镜 */
 .sh-h { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
@@ -277,7 +281,7 @@ body.dk { display: block; height: 100vh; overflow: hidden; background: var(--nig
 .fl-pop-f { flex: none; padding: 8px 14px 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-3); }
 
 /* 窄的时候：右边一栏挪到下面，整页往下翻 */
-@media (max-width: 1240px) { .dk-main { grid-template-columns: minmax(0, 1fr) 330px; } .keys { display: none; } }
+@media (max-width: 1240px) { .dk-main { grid-template-columns: minmax(0, 1fr) 330px; } .keys { display: none; } .rt-tab { padding: 7px 1px 8px; font-size: 13px; } .rt-tab .n { margin-left: 3px; padding: 0 5px; } }   /* 五个页签带上数也摆得下 */
 @media (max-width: 960px) {
   body.dk { height: auto; min-height: 100vh; overflow: auto; }
   #app { height: auto; }
@@ -302,6 +306,10 @@ body.dk { display: block; height: 100vh; overflow: hidden; background: var(--nig
 <script src="../公用/关键帧写法.js"></script>
 <script src="../公用/白模关键帧写法.js"></script>
 <script src="../公用/审片关键帧.js"></script>
+<script src="../公用/镜头作用.js"></script>
+<script src="../公用/关键帧绑定.js"></script>
+<script src="../公用/写稿镜头表.js"></script>
+<script src="../公用/审片镜头表.js"></script>
 <script src="../公用/点图.js"></script>
 <script src="../公用/找旧版.js"></script>
 <script>
@@ -374,6 +382,7 @@ const xOf = t => Math.min(100, Math.max(0, t * D.fps / Math.max(1, D.frames - 1)
    ============================================================ */
 const AP = window.AssetPath;   // 资产放哪（公用/资产路径.js）
 let FLOWDOC = null;   // 流水线.json：人物和道具文件夹里的图，看人物表、道具表哪一行挂着它，分出人物、道具
+const flowScene = () => FLOWDOC && Array.isArray(FLOWDOC.场) ? FLOWDOC.场.find(x => x && String(x.段) === SEG) || null : null;   // 流水线里的这一场（镜头表、改过的名字）
 const MAP = new Map();   // 参考素材映射里这一场各条提示词的登记：文件名 → [{ ref, name, path }]
 const SECS = new Map();  // 同一份里登记的每一镜几秒（写稿时估的）：文件名 → { 镜头: { '1': 4 } }
 async function loadMap() {
@@ -396,7 +405,7 @@ async function loadPromptList() {
 function promptFams() {
   const m = new Map();
   for (const p of D.prompts) { const k = vpBase(p.name), e = m.get(k) || { key: k, name: p.name, vers: [] }; e.vers.push(p.name); e.name = p.name; m.set(k, e); }
-  const sc = FLOWDOC && Array.isArray(FLOWDOC.场) ? FLOWDOC.场.find(x => x && String(x.段) === SEG) : null, rn = sc && sc.改名, cur = n => D.prompts.some(p => p.name === n);   // 改过名的（写稿页里加减镜头）：每一版以前叫过什么，旧名字出的样片也认
+  const sc = flowScene(), rn = sc && sc.改名, cur = n => D.prompts.some(p => p.name === n);   // 改过名的（写稿页里加减镜头）：每一版以前叫过什么，旧名字出的样片也认
   return [...m.values()].map(e => { const was = rn ? Object.fromEntries(e.vers.map(v => [v, window.Core.vpWas(rn, v, cur)]).filter(x => x[1].length)) : {}; return Object.keys(was).length ? { ...e, was } : e; });
 }
 /* 照名字猜是哪一版出的：和流水线同一套（公用/样片归属.js：和提示词同名的、老名字里带着「提示词02」「镜头1-5」的）；只有一条提示词就是它 */
@@ -892,6 +901,7 @@ function paintTime() {
   const i = shotAt(nowSec());
   if (i !== D.cur) onShot(i);
   else if (D.timed && kfsOf(i).length > 1) kfTurn();
+  if (D.tab === 'shots') DeskShots.tick(nowSec(), Date.now() - RAIL.userScroll > 2500);   // 右栏镜头表：放到哪一镜标「在放」（刚翻过右栏就不替你滚）
   if (P.video.paused) syncCmp(false);
 }
 function paintMarks() {
@@ -1087,20 +1097,22 @@ function paintComposer() {
 }
 
 /* ============================================================
-   右边一栏：这一镜、提示词、资产、批注
+   右边一栏：这一镜、提示词、资产、批注、镜头表（流水线里这一场有镜头表才摆，2026-11-20 加，公用/审片镜头表.js）
    ============================================================ */
-const TABS = [['shot', '这一镜'], ['prompt', '提示词'], ['assets', '资产'], ['notes', '批注']];
+const TABS = [['shot', '这一镜'], ['prompt', '提示词'], ['assets', '资产'], ['notes', '批注'], ['shots', '镜头表']];
+const shotList = () => { const sc = flowScene(); return sc && Array.isArray(sc.段落) ? sc.段落 : []; };
+const paneShots = () => D.prompt ? DeskShots.pane({ list: shotList(), name: D.prompt, code: window.Core.vpCode(D.prompt), t: nowSec(), dur: D.dur || D.frames / D.fps, cuts: D.timed ? D.shots.map(s => [s.a, s.b]) : null }) : noPrompt();
 function setTab(k) { D.tab = k; paintRail(); if (k === 'prompt') markPrompt(true, true); }
 function paintTabs() {
   if (!RAIL.tabs) return;
-  RAIL.tabs.replaceChildren(...TABS.map(([k, n]) => h('button', { type: 'button', class: 'rt-tab' + (D.tab === k ? ' on' : ''), onclick: () => setTab(k) }, n,
+  RAIL.tabs.replaceChildren(...TABS.filter(([k]) => k !== 'shots' || shotList().length).map(([k, n]) => h('button', { type: 'button', class: 'rt-tab' + (D.tab === k ? ' on' : ''), onclick: () => setTab(k) }, n,
     k === 'notes' && D.notes.length ? h('span', { class: 'n' }, D.notes.length) : null, k === 'assets' && D.refs.length ? h('span', { class: 'n soft' }, D.refs.length) : null)));
 }
 function paintRail() {
   if (!RAIL.body) return;
   const a = document.activeElement, mine = !!a && RAIL.body.contains(a) && a.tagName === 'TEXTAREA';   // 正在写的那一格：重画以后接着写
   const sc = RAIL.body.scrollTop, fk = mine ? a.dataset.fk || (a.classList.contains('gen') ? 'gen' : '') : '', s0 = fk ? a.selectionStart : 0, e0 = fk ? a.selectionEnd : 0;
-  const make = { shot: paneShot, prompt: panePrompt, assets: paneAssets, notes: paneNotes }[D.tab] || paneShot;
+  const make = { shot: paneShot, prompt: panePrompt, assets: paneAssets, notes: paneNotes, shots: paneShots }[D.tab] || paneShot;
   RAIL.body.replaceChildren(...[make()].flat(Infinity).filter(Boolean));
   RAIL.body.scrollTop = sc;
   if (fk) { const g = RAIL.body.querySelector('[data-fk="' + fk + '"]') || (fk === 'gen' ? RAIL.body.querySelector('.gen') : null); if (g) { g.focus(); try { g.setSelectionRange(s0, e0); } catch (e) { /* 不要紧 */ } } }

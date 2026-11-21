@@ -28,6 +28,7 @@
 <script src="../公用/样片归属.js"></script>
 <script src="../公用/历史记录.js"></script>
 <script src="历史记录.js"></script>
+<script src="镜头表浮窗.js"></script>
 <script>
 /* ============================================================
    流水线 · 审片（一场的第五道工序）
@@ -38,6 +39,7 @@
      选定、这一段定稿、写完批注回来：项目自己调 AI 和剧本对一对，对不上的写成剧本批注（2026-11-16 他定，对剧本.js）。
    没选上的样片及时移进 历史记录/成片/第N段（批注、截图跟着一起移，名字不改；以前补片留下的 _补片 文件夹也跟着移）。
    2026-11-19 顶上加「历史记录」（他要的：默认不摆，点了只看移进历史记录的样片，照样能在审片台对照看、写批注；流水线/历史记录.js）。
+   2026-11-20 左边钉镜头表（他要的：审片两页都加；和「提示词」那一步同一个，镜头表浮窗.js）：鼠标停在一条样片上，标出出它的那条提示词拍的几镜。
    共用的东西（读写流水线.json、顶栏、步骤条、AI 任务）在 流水线.js。
    ============================================================ */
 'use strict';
@@ -186,6 +188,7 @@ async function playAll(s, list) {
 }
 function render() {
   const s = sceneNow(), seg = s.段;
+  ShotFloat.paint(s);  // 左边的镜头表（镜头表浮窗.js）
   const hc = HistView.clips(s), hn = HistView.count(hc), hchip = () => HistView.chip(hn, () => rerender(), '样片');   // 历史记录里的样片（11-19）：点「历史记录」只看它们
   if (HistView.on) {
     const list = promptsOf(seg), lb = vid => { const k = guess(s, vid, list); return k ? labelOf2(k) : ''; };
@@ -231,6 +234,19 @@ start({
   jobDone() { loadExtra().then(rerender); },
 }).then(() => loadExtra().then(() => { if (F.doc && sceneNow()) rerender(); }));
 HistView.ready = () => { if (!F.doc || !sceneNow() || SHELL) return; if (!typing()) rerender(); else F.later = true; };   // 历史记录读好了（审片台盖着时不重画，收起时会重画）
+
+/* 鼠标停在一条样片上：左边镜头表里标出出它的那条提示词拍的几镜（选定了照选定的，没选照名字猜的） */
+let SF_AT = null;
+document.addEventListener('mouseover', ev => {
+  const it = ev.target.closest && ev.target.closest('.wf-item[data-vid]'), vid = it ? it.dataset.vid : '';
+  if (vid === SF_AT) return;
+  SF_AT = vid;
+  const s = sceneNow();
+  if (!s || !vid) { ShotFloat.mark([]); return; }
+  const list = promptsOf(s.段), sel = !it.dataset.old && s.选定 && typeof s.选定 === 'object' ? s.选定 : {};   // 历史记录里的样片不算选定
+  const own = Object.keys(sel).find(k => sel[k] === vid) || guess(s, vid, list), e = own ? list.find(x => x.key === own) : null;
+  ShotFloat.mark(e ? shotsOfPrompt(s, e) || [] : []);
+});
 
 /* 字里的 @图片N 点开看大图（公用/点图.js）：照这条样片出自的那条提示词认图（选的、猜的那一版） */
 if (window.RefPic) RefPic.watch((ref, el) => {
