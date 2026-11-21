@@ -45,6 +45,15 @@
 .fg-miss .fl-link { font-size: 12.5px; }
 .fg-pre { margin: 0; max-height: 64vh; overflow: auto; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font: 13px/1.85 var(--sans); white-space: pre-wrap; word-break: break-word; color: var(--ink); }
 .fg-img { display: block; max-width: 100%; border-radius: 8px; }
+.fg-people { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 230px)); justify-content: center; gap: 14px; }
+.fg-person { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.fg-person h4 { margin: 0 0 8px; font: 600 15px var(--serif); color: var(--ink); }
+.fg-person-media { display: grid; min-height: 120px; place-items: center; color: var(--ink-3); font-size: 13px; }
+.fg-person-media img { display: block; width: 100%; height: 260px; object-fit: contain; border-radius: 6px; background: var(--sheet); }
+.fg-person .fl-link { display: inline-block; margin-top: 9px; }
+.fg-person-actions { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.fg-person-zoom-btn { display: block; width: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+.fg-person-zoom { display: block; max-width: 100%; max-height: 68vh; margin: auto; object-fit: contain; border-radius: 8px; }
 </style>
 </head>
 <body class="wf">
@@ -109,7 +118,7 @@ function flatRecs(j) {
     const here = { ...up };
     for (const k of PASS) if (mine[k]) here[k] = mine[k];
     if (mine.说明) here.节说明 = mine.说明;
-    if (mine.成片 || mine.喂料 || (mine.名 && mine.状态)) out.push({ ...here, ...mine });
+    if (mine.成片 || mine.喂料 || (mine.名 && mine.状态)) out.push({ ...here, ...mine, 人物资产: Array.isArray(o.人物资产) ? o.人物资产 : [] });
     for (const v of Object.values(o)) if (v && typeof v === 'object') walk(v, here);
   };
   if (j && typeof j === 'object') for (const v of Object.values(j)) walk(v, {});   // 最上面那句「说明」是整份的，不带
@@ -168,7 +177,9 @@ function build() {
     const r = rs.find(x => x.成片 === e.name) || latest(rs);
     const own = has.has(b + '.txt') ? b + '.txt' : '', feed = own ? '' : rs.map(x => str(x.喂料)).find(n => has.has(n)) || '';   // 没有同名稿：用的是别的稿（老写法重出用的是 10 秒那份）
     const v = { file: e.name, b, info, r, mtime: e.mtime || 0, txt: own || feed, feed,
-      key: ['_关键帧.jpg', '_关键帧.jpeg', '_关键帧.png', '_关键帧.webp'].map(x => b + x).find(x => has.has(x)) || '' };
+      key: ['_关键帧.jpg', '_关键帧.jpeg', '_关键帧.png', '_关键帧.webp'].map(x => b + x).find(x => has.has(x)) || '',
+      palette: r && has.has(str(r.色卡)) ? str(r.色卡) : '',
+      characters: r && Array.isArray(r.人物资产) ? r.人物资产.filter(a => a && typeof a === 'object').map(a => ({ name: str(a.名称).trim() || '人物', image: has.has(str(a.图片)) ? str(a.图片) : '', prompt: has.has(str(a.提示词)) ? str(a.提示词) : '' })).filter(a => a.image || a.prompt) : [] };
     v.at = timeOf(r && r.提交时间) || v.mtime;
     const g = info && groups.get(info.名);
     (g ? g.vids : other).push(v);
@@ -216,12 +227,13 @@ function paint() {
     other.length ? h('button', { class: 'chip', type: 'button', onclick: () => toSec('fg-other') }, '认不出风格的', h('small', null, String(other.length))) : null);
   main.replaceChildren(
     secHead('', '风格库', '每种风格现存的样片都在这里，新出的排前面',
+      h('a', { class: 'btn ghost sm', href: '../小云雀风格图鉴/小云雀官方风格图鉴.html' + location.search, title: '查看小云雀 153 种风格示例和整理版提示词' }, '小云雀风格图鉴'),
       has.has('样片总结.md') ? h('button', { class: 'btn ghost sm', type: 'button', title: '各条样片拍出来了什么、没拍出来什么，写法教训', onclick: () => showText('样片总结.md') }, '样片总结') : null,
       has.has('样片剧情.md') ? h('button', { class: 'btn ghost sm', type: 'button', title: '各风格统一用的那个故事', onclick: () => showText('样片剧情.md') }, '统一剧情') : null,
       h('button', { class: 'btn ghost sm', type: 'button', title: '在资源管理器里打开 通用工具\\AI短片风格库', onclick: () => reveal(SL.FILE) }, icon('folderOpen'), '打开文件夹'),
       h('button', { class: 'btn ghost sm', type: 'button', title: '库里加了新样片：重新读一遍', onclick: reload }, icon('refresh'), '重新读')),
     h('p', { class: 'fg-sub' }, '共 ' + order.length + ' 种风格、' + n + ' 条样片。挑风格的弹窗里只放标着「挑风格时放的」那一条，别的是以前出的版本和对比片。',
-      filmName ? ['这部片子用的是「', h('b', null, filmName), '」。'] : '这部片子还没定拍摄风格。'),
+      filmName ? ['这部片子用的是「', h('b', null, filmName), '」。'] : F.name ? '这部片子还没定拍摄风格。' : '可先浏览公共风格，创建项目后再选择拍摄风格。'),
     jump, ...secs);
   fromHash();
 }
@@ -252,7 +264,7 @@ function vidTile(v, c) {
   const media = h('div', { class: 'fg-media', style: 'aspect-ratio: ' + ratioOf(r.比例) });
   media.append(playBtn(v, media, r));
   const key = !!v.key || /m2v|多参考|关键帧/.test(str(r.模型));
-  const meta = [v.r ? shortTime(r.提交时间) : v.mtime ? msTime(v.mtime) : '', r.比例, r.分辨率, r.时长 ? r.时长 + ' 秒' : '', key ? '挂关键帧' : v.r ? '纯文字' : ''].filter(Boolean).join(' · ');
+  const meta = [v.r ? shortTime(r.提交时间) : v.mtime ? msTime(v.mtime) : '', r.比例, r.分辨率, r.时长 ? r.时长 + ' 秒' : '', str(r.参考类型).trim() || (key ? '挂关键帧' : v.r ? '纯文字' : '')].filter(Boolean).join(' · ');
   const story = storyOf(G.txt.get(v.txt)), head = story.split(/[；;。]/)[0];
   const fi = v.feed ? nameInfo(baseOf(v.feed)) : null;
   const notes = [v.feed ? '用的是' + (fi ? '「' + titleOf(fi).label + '」那条的稿' : '「' + baseOf(v.feed) + '」这份稿') : '',
@@ -266,6 +278,8 @@ function vidTile(v, c) {
     h('div', { class: 'fg-acts' },
       v.txt ? h('button', { class: 'fl-link', type: 'button', onclick: () => showText(v.txt) }, '看提示词') : null,
       v.key ? h('button', { class: 'fl-link', type: 'button', onclick: () => showImg(v.key) }, '看关键帧') : null,
+      v.palette ? h('button', { class: 'fl-link', type: 'button', onclick: () => showImg(v.palette, '这条样片使用的色卡，仅供画面配色参考。') }, '看色卡') : null,
+      v.characters.length ? h('button', { class: 'fl-link', type: 'button', onclick: () => showCharacters(v.characters) }, '看人物') : null,
       h('button', { class: 'fl-link', type: 'button', title: v.file, onclick: () => reveal(v.file) }, '在文件夹里显示')));
 }
 function playBtn(v, media, r) {
@@ -304,11 +318,44 @@ async function showText(name) {
     return el;
   });
 }
-async function showImg(name) {
+async function showCharacters(characters) {
+  let active = true;
+  const urls = [];
+  try {
+    await dialog(close => {
+      const grid = h('div', { class: 'fg-people' }, characters.map(a => {
+        const picture = h('div', { class: 'fg-person-media' }, a.image ? '正在读取图片…' : '暂无人物图片');
+        const actions = h('div', { class: 'fg-person-actions' }, a.prompt ? h('button', { class: 'fl-link', type: 'button', onclick: () => showText(a.prompt) }, '看提示词') : h('span', { class: 'fg-meta' }, '暂无提示词'));
+        if (a.image) FS.file([...DIR, a.image]).then(file => {
+          if (!active) return;
+          const u = URL.createObjectURL(file); urls.push(u);
+          const zoom = () => showCharacterImage(a.name, u);
+          picture.replaceChildren(h('button', { class: 'fg-person-zoom-btn', type: 'button', 'aria-label': '放大' + a.name + '图片', onclick: zoom }, h('img', { src: u, alt: a.name })));
+          actions.append(h('button', { class: 'fl-link', type: 'button', onclick: zoom }, '放大'), h('a', { class: 'fl-link', href: u, download: a.image }, '下载'));
+        }).catch(() => { if (active) picture.replaceChildren('人物图片读取失败'); });
+        return h('section', { class: 'fg-person' }, h('h4', null, a.name), picture, actions);
+      }));
+      const el = dlgShell('人物资产', '这条样片使用的人物参考。', [grid], [h('button', { class: 'btn ink', type: 'button', 'data-focus': '', onclick: () => close() }, '关上')]);
+      el.classList.add('wide');
+      return el;
+    });
+  } finally {
+    active = false;
+    for (const u of urls) URL.revokeObjectURL(u);
+  }
+}
+async function showCharacterImage(name, url) {
+  await dialog(close => {
+    const el = dlgShell(name, '人物参考图', [h('img', { class: 'fg-person-zoom', src: url, alt: name })], [h('button', { class: 'btn ink', type: 'button', 'data-focus': '', onclick: () => close() }, '关上')]);
+    el.classList.add('wide');
+    return el;
+  });
+}
+async function showImg(name, description = '这条样片挂的关键帧，几张拼在一张图上。') {
   let u;
   try { u = URL.createObjectURL(await FS.file([...DIR, name])); } catch (e) { toast('读不了「' + name + '」：' + e.message, 'err'); return; }
   await dialog(close => {
-    const el = dlgShell(name, '这条样片挂的关键帧，几张拼在一张图上。', [h('img', { class: 'fg-img', src: u, alt: name })], [h('button', { class: 'btn ink', type: 'button', 'data-focus': '', onclick: () => close() }, '关上')]);
+    const el = dlgShell(name, description, [h('img', { class: 'fg-img', src: u, alt: name })], [h('button', { class: 'btn ink', type: 'button', 'data-focus': '', onclick: () => close() }, '关上')]);
     el.classList.add('wide');
     return el;
   });
@@ -332,7 +379,20 @@ async function reload() {
   paint();
 }
 
-start({ name: '风格', crumb: '风格库', wide: true, render, repaint: () => true, sides() {} }).then(() => { if (document.getElementById('fg-main')) reload(); });
+async function openStyleLibrary() {
+  await start({ name: '风格', crumb: '风格库', wide: true, render, repaint: () => true, sides() {} });
+  // 公共风格库独立于创作项目；空项目状态也应能只读浏览。
+  if (LINK.on && !F.name && F.projects.length === 0) {
+    document.getElementById('wf').replaceChildren(
+      h('header', { class: 'top wf-top' },
+        h('a', { class: 'wf-back', href: '总览.html' }, '← 首页'),
+        h('div', { class: 'crumb' }, h('span', { class: 'ptitle' }, '公共风格库')),
+        h('div', { class: 'top-right' }, h('button', { class: 'btn ghost sm', type: 'button', onclick: newProject }, '新建项目'))),
+      h('main', { class: 'wf-main' }, h('div', { class: 'fl wide', id: 'fl-body' }, render())));
+  }
+  if (document.getElementById('fg-main')) await reload();
+}
+openStyleLibrary();
 window.addEventListener('pagehide', () => { for (const u of G.urls.splice(0)) URL.revokeObjectURL(u); });
 }
 </script>
