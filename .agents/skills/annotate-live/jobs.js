@@ -1984,17 +1984,19 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
 
   /* ---------- 即梦授权：看登没登录、是哪个号；要登录就拿一个授权链接，用户自己在浏览器里点同意 ---------- */
   const JM = process.env.ANTOU_JIMENG || path.join(os.homedir(), 'bin', 'dreamina-canvas.exe');
+  // 即梦命令行一律直连：服务从 Git Bash 起会带上 18778 代理，11-21 实测走代理一条 3.4 秒、直连 1.8 秒（传图也是直连稳）
+  const jmRun = (cmd, args, opt = {}) => run(cmd, args, { ...opt, env: { ...Object.fromEntries(Object.keys(process.env).filter(k => /^(https?|all)_proxy$/i.test(k)).map(k => [k, undefined])), ...opt.env } });
   async function jm(args, timeout) {
     if (!fs.existsSync(JM)) return { ok: false, error: '这台电脑上没找到即梦命令行（' + JM + '）' };
     try {
-      const r = await run(JM, ['--non-interactive', ...args], { timeout: timeout || 40e3 });
+      const r = await jmRun(JM, ['--non-interactive', ...args], { timeout: timeout || 40e3 });
       let data = null;
       try { data = JSON.parse(r.out); } catch (e) { /* 不是 JSON 就原样给 */ }
       return { ok: r.code === 0, code: r.code, data, raw: (r.out || r.err).trim().slice(0, 4000) };
     } catch (e) { return { ok: false, error: '即梦命令行调不起来：' + e.message }; }
   }
   const jmCheck = require('./jm-check.js')({ jm, fail, str });   // 出片前核对即梦账号和画布（三条命令一起查，10 分钟内同号同画布不重查；11-16 挪出去）
-  const canvas = require('./canvas.js')({ HOME, JM, run, log, AP });   // 资产页看画布上的图（只读画布，11-14 加）
+  const canvas = require('./canvas.js')({ HOME, JM, run: jmRun, log, AP });   // 资产页看画布上的图（只读画布，11-14 加）；它只跑即梦命令行，一样直连
   async function jimeng(req, res, q, { json, httpErr }) {
     if (req.method === 'GET' && (q.has('canvas') || q.has('img'))) return canvas.handle(req, res, q, { json, httpErr });
     const profile = q.get('profile') || '';

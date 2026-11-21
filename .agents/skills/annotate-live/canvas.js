@@ -32,7 +32,7 @@ module.exports = function makeCanvas({ HOME, JM, run, log, AP = require(path.res
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   /* ---------- 即梦命令行：一次最多开三个。low：下图排在读节点后面（页面在下小图时点「再读一遍」，不用等图下完）。
-     call 不排队：出片任务书认节点时，几个名字一起查（一条要三秒上下，一起查和查一条一样快），只查节点不下图 ---------- */
+     call 不排队：出片任务书认节点时，几个名字一起查（一条要三秒上下，一起查和查一条一样快；each 一次最多 8 条），只查节点不下图 ---------- */
   let busy = 0;
   const queue = [];
   async function slot(fn, low) {
@@ -52,6 +52,12 @@ module.exports = function makeCanvas({ HOME, JM, run, log, AP = require(path.res
     return j.data || {};
   }
   const cli = (profile, args, timeout, low) => slot(() => call(profile, args, timeout), low);
+  async function each(list, n, fn) {   // 一次最多 n 个一起跑，结果照 list 的先后
+    const out = new Array(list.length);
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(n, list.length) }, async () => { while (next < list.length) { const i = next++; out[i] = await fn(list[i], i); } }));
+    return out;
+  }
 
   /* ---------- 哪张画布、用哪个登录位 ---------- */
   async function settings(name) {
@@ -284,17 +290,23 @@ module.exports = function makeCanvas({ HOME, JM, run, log, AP = require(path.res
      回：和 items 一一对应，每样是画布上一字不差同名的节点 [{ node, 名: 画布上现在叫的老名字（和 title 一样就不写）, 版: 'cur'｜那一版的 __时间｜''（认不出）, 凭: 文件｜画面｜时间｜对不上｜没有素材｜'' }] */
   async function versions({ name, canvas, profile, items }) {
     const cmp = await loadCmp(canvas), base = path.join(HOME, name);
-    const found = await Promise.all(items.map(async it => {   // 按名字查出来的还有 名字__时间、名字_上层 这些，只留一字不差的
-      const out = new Map();   // 节点编号 → 画布上现在的名字
-      for (const t of it.titles || [it.title]) for (let off = 0; off <= 1000;) {
+    const findAll = async t => {   // 一个名字翻页查完：按名字查出来的还有 名字__时间、名字_上层 这些，只留一字不差的
+      const got = [];
+      for (let off = 0; off <= 1000;) {
         const d = await call(profile, ['node', 'find', '--project-id', canvas, '--name', t, '--type', 'image', '--type', 'video', '--limit', '50', '--offset', String(off)]);
         const page = d.items || d.nodes || [];
-        page.filter(n => n && n.nodeId && String(n.title || '').trim() === t).forEach(n => out.set(n.nodeId, t));
+        page.filter(n => n && n.nodeId && String(n.title || '').trim() === t).forEach(n => got.push(n.nodeId));
         if (!d.hasMore || !page.length) break;
         off += page.length;
       }
-      return [...out];
-    }));
+      return got;
+    };
+    // 各样的新名、老名摊开一起查（11-21：原来一个名字查完才查下一个，我军士兵四个名字就要 12 秒，点批准出片要等二十多秒）
+    const asks = items.flatMap((it, i) => (it.titles || [it.title]).map(t => ({ i, t })));
+    const hits = await each(asks, 8, a => findAll(a.t));
+    const found = items.map(() => new Map());   // 节点编号 → 画布上现在的名字；照名字的先后放，不照谁先查完
+    asks.forEach((a, k) => hits[k].forEach(id => found[a.i].set(id, a.t)));
+    for (let i = 0; i < found.length; i++) found[i] = [...found[i]];
     const ids = [...new Set(found.flat().map(x => x[0]))], res = new Map();   // 节点上的素材：编号、是不是视频、上传时间
     for (let i = 0; i < ids.length; i += 20) {
       const d = await call(profile, ['node', 'show', '--project-id', canvas, ...ids.slice(i, i + 20).flatMap(id => ['--node-id', id])]);
@@ -348,8 +360,7 @@ module.exports = function makeCanvas({ HOME, JM, run, log, AP = require(path.res
       const t = await byTime(it, x.at);
       return { node: id, 版: t, 凭: t ? '时间' : '' };
     };
-    const out = [];
-    for (let i = 0; i < items.length; i++) out.push(await Promise.all(found[i].map(async ([id, t]) => ({ ...await judge(items[i], id), ...(t !== items[i].title ? { 名: t } : {}) }))));
+    const out = await Promise.all(items.map((it, i) => Promise.all(found[i].map(async ([id, t]) => ({ ...await judge(it, id), ...(t !== it.title ? { 名: t } : {}) })))));   // 各样一起认（下图照旧走 cli 排队，最多三条）
     await saveCmp(canvas, cmp).catch(e => log('画布比对结果没存上：' + e.message));
     return out;
   }

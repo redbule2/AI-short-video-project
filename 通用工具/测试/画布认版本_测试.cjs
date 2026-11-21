@@ -161,3 +161,34 @@ test('画布上还叫 11-20 以前的老名字（道具_砂锅）：也认出来
   assert.match(say, /画布上还叫老名字「道具_砂锅」/);
   assert.match(say, /先把它改名成「人物和道具_砂锅」再引用，不重传/);
 });
+
+/* 11-21 提速：新名、老名、几样素材的名字一起查，不再一个查完才查下一个。slow：查名字时等 ms(名字) 毫秒，记最多同时开了几条 */
+function slowRun(nodes, ms) {
+  const f = fake(nodes), seen = { now: 0, peak: 0 };
+  const run = async (exe, args) => {
+    seen.now++; seen.peak = Math.max(seen.peak, seen.now);
+    try { if (args.includes('find')) await new Promise(r => setTimeout(r, ms(args[args.indexOf('--name') + 1]))); return await f.run(exe, args); }
+    finally { seen.now--; }
+  };
+  return { c: make({ HOME, JM: process.execPath, run, log() {} }), seen };
+}
+
+test('几个名字一起查：头一个名字最后查完，结果也照名字的先后排', async () => {
+  const cur = put(P('资产', '人物和道具', '战士.png'), png(6), T('20261117-090000'));
+  const { c, seen } = slowRun([
+    { id: 'node_new', title: '人物和道具_战士', type: 'image', rid: rid(), bytes: png(6, true) },
+    { id: 'node_oldname', title: '人物_战士', type: 'image', rid: rid(), bytes: png(6, true) },
+  ], n => n.startsWith('人物和道具') ? 80 : 10);
+  const it = { title: '人物和道具_战士', titles: ['人物和道具_战士', '人物_战士', '道具_战士', '特效_战士'], cur, sha: sha(fs.readFileSync(cur)), olds: [] };
+  const t0 = Date.now(), got = await ask(c, [it, VID_ITEM]);
+  assert.equal(seen.peak, 5, '四个名字和白模那一样，五条要同时查');
+  assert.ok(Date.now() - t0 < 80 + 4 * 10 + 60, '一起查只等最慢的那一条');
+  assert.deepEqual(got, [[{ node: 'node_new', 版: 'cur', 凭: '画面' }, { node: 'node_oldname', 版: 'cur', 凭: '画面', 名: '人物_战士' }], []]);
+});
+
+test('名字再多也一次最多查 8 条', async () => {
+  const { c, seen } = slowRun([], () => 15);
+  const items = ['甲', '乙', '丙'].map(x => ({ title: '人物和道具_' + x, titles: ['人物和道具_', '人物_', '道具_', '特效_'].map(h => h + x), cur: imgCur, sha: IMG_ITEM.sha, olds: [] }));
+  assert.deepEqual(await ask(c, items), [[], [], []]);
+  assert.equal(seen.peak, 8);
+});
