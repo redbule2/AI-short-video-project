@@ -60,3 +60,52 @@ test('每一行：写什么、作用、秒数；老数据的「拍什么」照�
 test('没有镜头表：什么都不画', () => {
   for (const x of [[], null, undefined, 'x']) assert.deepEqual(WS.view(x, '1.txt', '1'), { rows: [], blocks: [], mine: [], say: '', all: '' });
 });
+
+/* 写稿页里加减镜头（2026-11-20）：勾了哪几镜 → 改成什么名字、加了哪几镜、去掉哪几镜、改完拍几镜几秒 */
+const pl = (name, code, picked) => JSON.parse(JSON.stringify(WS.plan(LIST, name, code, picked)));
+
+test('加一镜：名字照表里的先后连着写，说加了哪一镜、改完几镜几秒', () => {
+  const p = pl('1-3.txt', '1-3', ['1', '2', '3', '9']);
+  assert.deepEqual([p.to, p.add, p.drop, p.same], ['1-9.txt', ['9'], [], false]);   // 4 到 8 删了，3 和 9 在表里挨着
+  assert.equal(p.say, '加 镜9');
+  assert.equal(p.sum, '4 镜 · 约 12 秒');
+});
+
+test('去掉中间一镜：断开写；又加又去：两样都说', () => {
+  const p = pl('1-3.txt', '1-3', ['3', '1']);
+  assert.deepEqual([p.to, p.add, p.drop], ['1、3.txt', [], ['2']]);
+  assert.equal(p.say, '去掉 镜2');
+  assert.equal(p.sum, '2 镜 · 约 6 秒');
+  const q = pl('1-3.txt', '1-3', ['2', '3', '9']);
+  assert.deepEqual([q.to, q.pick], ['2-9.txt', ['2', '3', '9']]);
+  assert.equal(q.say, '加 镜9，去掉 镜1');
+});
+
+test('勾的和原来一样：same；表里没有的号不算；没估秒数的照说', () => {
+  const p = pl('1-3.txt', '1-3', ['3', '2', '1', '20']);
+  assert.deepEqual([p.to, p.same, p.say], ['1-3.txt', true, '']);
+  assert.equal(pl('9-12.txt', '9-12', ['9', '11', '12']).same, true);
+  assert.equal(pl('11.txt', '11', ['11', '12']).sum, '2 镜 · 约 3 秒（1 镜没估）');
+});
+
+test('一镜都没勾：没有名字，说至少留一镜', () => {
+  for (const x of [[], null, ['20']]) {
+    const p = pl('1-3.txt', '1-3', x);
+    assert.deepEqual([p.to, p.say, p.sum], ['', '一镜都没勾：至少留一镜', '']);
+  }
+});
+
+test('带字母的号（9b、9c）照认', () => {
+  const L = ['9', '9b', '9c', '9d', '9e', '10'].map(号 => ({ 号, 写什么: '镜' + 号, 秒数: 2 }));
+  const p = JSON.parse(JSON.stringify(WS.plan(L, '9b-9d.txt', '9b-9d', ['9b', '9c', '9d', '9e'])));
+  assert.deepEqual([p.to, p.add, p.drop], ['9b-9e.txt', ['9e'], []]);
+  assert.equal(WS.plan(L, '9b-9d.txt', '9b-9d', ['9', '9b']).to, '9-9b.txt');
+});
+
+test('改过几版的：改完的名字带着它是第几版（1-3_改1.txt → 1-9_改1.txt），按钮上只写镜头号', () => {
+  const p = pl('1-3_改1.txt', '1-3', ['1', '2', '3', '9']);
+  assert.deepEqual([p.to, p.code, p.name], ['1-9.txt', '1-9', '1-9_改1.txt']);
+  assert.equal(pl('1-3.txt', '1-3', ['1', '3']).name, '1、3.txt');
+  assert.equal(pl('1_后半条.txt', '1', ['1', '2']).name, '1-2_后半条.txt');
+  assert.equal(pl('1-3_改1.txt', '1-3', []).name, '');
+});

@@ -396,7 +396,8 @@ async function loadPromptList() {
 function promptFams() {
   const m = new Map();
   for (const p of D.prompts) { const k = vpBase(p.name), e = m.get(k) || { key: k, name: p.name, vers: [] }; e.vers.push(p.name); e.name = p.name; m.set(k, e); }
-  return [...m.values()];
+  const sc = FLOWDOC && Array.isArray(FLOWDOC.场) ? FLOWDOC.场.find(x => x && String(x.段) === SEG) : null, rn = sc && sc.改名, cur = n => D.prompts.some(p => p.name === n);   // 改过名的（写稿页里加减镜头）：每一版以前叫过什么，旧名字出的样片也认
+  return [...m.values()].map(e => { const was = rn ? Object.fromEntries(e.vers.map(v => [v, window.Core.vpWas(rn, v, cur)]).filter(x => x[1].length)) : {}; return Object.keys(was).length ? { ...e, was } : e; });
 }
 /* 照名字猜是哪一版出的：和流水线同一套（公用/样片归属.js：和提示词同名的、老名字里带着「提示词02」「镜头1-5」的）；只有一条提示词就是它 */
 function guessPrompt() {
@@ -746,7 +747,7 @@ function pickVideo(anchor, list) {
 }
 function pickClip(anchor) {
   const fam = D.prompt ? promptFams().find(f => f.key === vpBase(D.prompt)) : null;   // 同一条：原稿出的、改1 出的都算（公用/样片归属.js）
-  const same = c => !!fam && fam.vers.some(n => ClipOf.carries(c.name, n));
+  const same = c => !!fam && fam.vers.some(n => ClipOf.namesOf(fam, n).some(m => ClipOf.carries(c.name, m)));
   const list = [...D.clips].sort((a, b) => same(b) - same(a));
   popover(anchor, close => [h('div', { class: 'fl-pop-h' }, '和哪一条样片比'),
     h('div', { class: 'fl-pl' }, list.map(c => h('button', { type: 'button', class: 'fl-pi' + (CMP.src === 'clip' && CMP.rel === c.rel ? ' on' : ''), onclick: () => { close(); setCmp('clip', c.rel); } },

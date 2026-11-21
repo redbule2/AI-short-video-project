@@ -101,7 +101,7 @@
     const since = timeOf(prev), sel = s.选定 && typeof s.选定 === 'object' ? s.选定 : {}, done = new Set();
     for (const r of v.list) {
       if (r.事 !== '定稿对剧本' || !(r.写了 || []).length || timeOf(r.时间) <= since) continue;
-      const key = vpBase(String(r.提示词 || ''));
+      const key = vpBase(nowName(s.段, String(r.提示词 || '')));   // 记录里是改名以前的名字也认
       if (!key || sel[key] !== r.视频 || done.has(key)) continue;
       done.add(key);
       keepAsIs(s, '样片/' + r.视频);

@@ -468,6 +468,7 @@ body.norail .rail { display: none; }
 <script src="公用/镜头作用.js"></script>
 <script src="公用/关键帧绑定.js"></script>
 <script src="公用/写稿镜头表.js"></script>
+<script src="公用/写稿改镜头.js"></script>
 <script src="公用/写稿铺底.js"></script>
 <script>
 'use strict';
@@ -1137,7 +1138,7 @@ function render() {
   $('#editor-mode').replaceChildren(h('b', { class: 'editor-title' }, '分镜提示词'), modeControls());   // 在左栏最上面（2026-11-15 从顶上那一行挪过来）
   $('#sheet').replaceChildren(
     h('div', { class: 'sheet-head' },
-      h('header', { class: 'doc-title' }, h('div', { class: 'doc-kicker' }, '视 频 提 示 词'), h('div', { class: 'doc-seg' }, SEGDIR), short ? h('div', { class: 'doc-name' }, short.replace(/_/g, ' · ')) : null, h('div', { class: 'ornament' }, h('span'))),
+      h('header', { class: 'doc-title' }, h('div', { class: 'doc-kicker' }, '视 频 提 示 词'), h('div', { class: 'doc-seg' }, SEGDIR), short ? h('div', { class: 'doc-name' }, h('span', { class: 'doc-name-t' }, short.replace(/_/g, ' · ')), ShotEdit.link()) : null, h('div', { class: 'ornament' }, h('span'))),
       Lay.nav()),
     h('div', { id: 'gnote' }),
     h('div', { id: 'general-notes' }),
@@ -1641,7 +1642,7 @@ let RAIL = 'assets', PIN = null;
 const GOPEN = new Set(['本段', AssetPath.CP]);   // 资产栏里展开着的类别；场景图大、先收着
 function showRail(k) { RAIL = k; for (const [x] of RAIL_TABS) $('#pane-' + x).hidden = x !== k; paintTabs(); if (k === 'ai') paintAi(); if (k === 'lint') paintLint(); if (k === 'assets') paintAssets(); if (k === 'script') paintScript(); if (k === 'shots') paintShots(); }
 /* 整段的镜头表，这一条拍的几镜标亮（流水线里没有镜头表的项目，这个页签不摆） */
-const paintShots = () => { if (RAIL === 'shots') WriteShots.paint($('#pane-shots'), flowParas(), STEM + '.txt', Core.vpCode(STEM + '.txt')); };
+const paintShots = () => { if (RAIL === 'shots') WriteShots.paint($('#pane-shots'), flowParas(), STEM + '.txt', Core.vpCode(STEM + '.txt'), ShotEdit.opts()); };   // 加减镜头：公用/写稿改镜头.js
 function paintTabs() {
   const nAi = NOTES.filter(n => !n.state).length, nLint = LINT.filter(x => !x.info).length;
   const box = $('#rail-tabs');
@@ -2050,6 +2051,13 @@ function chooser(list) {
     h('p', null, list.length ? '点一份继续写：' : '到流水线的「提示词」页面，选择一种写法开始。'),
     h('div', { style: 'display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:12px' }, list.map(p => h('button', { class: 'btn', onclick: () => { location.hash = 'open=' + p.map(encodeURIComponent).join('/'); } }, p[0] + ' ／ ' + p[2] + ' ／ ' + vpShort(p[3].replace(/\.txt$/i, '')).replace(/_/g, ' · '))))));
 }
+/* 打开的是哪一份：路径一换，这几样跟着换（打开时；加减镜头、名字跟着改了以后，公用/写稿改镜头.js） */
+function setOpen(open) {
+  PJ = open[0]; OPENPATH = open.join('/'); PROMPT = [HOME, ...open]; DIR = PROMPT.slice(0, -1); STEM = open[open.length - 1].replace(/\.txt$/i, ''); SEGDIR = DIR[DIR.length - 1]; KEY = open.slice(1).join('/');
+  SIDEF = [...DIR, STEM + '_写稿.json']; NOTESF = [...DIR, STEM + '_AI批注.md']; HNF = [...DIR, STEM + '_批注.md']; HIST = [HOME, PJ, '历史记录', ...open.slice(1, -1)];
+  $('#pj').textContent = PJ; $('#crumb').textContent = SEGDIR + ' · ' + vpShort(STEM).replace(/_/g, ' · ') + ' · 写稿';
+  document.title = SEGDIR + ' ' + STEM + ' · 写稿';
+}
 async function boot() {
   let draftConflict = false;
   if (innerWidth && innerWidth < 1040) document.body.classList.add('norail');   // 窗格窄：先把右栏收起来，写的地方宽一点
@@ -2062,10 +2070,7 @@ async function boot() {
     if (list.length === 1) { location.hash = 'open=' + list[0].map(encodeURIComponent).join('/'); return; }   // 网址一变，页面自己重开
     return chooser(list);
   }
-  PJ = open[0]; OPENPATH = open.join('/'); PROMPT = [HOME, ...open]; DIR = PROMPT.slice(0, -1); STEM = open[open.length - 1].replace(/\.txt$/i, ''); SEGDIR = DIR[DIR.length - 1]; KEY = open.slice(1).join('/');
-  SIDEF = [...DIR, STEM + '_写稿.json']; NOTESF = [...DIR, STEM + '_AI批注.md']; HNF = [...DIR, STEM + '_批注.md']; HIST = [HOME, PJ, '历史记录', ...open.slice(1, -1)];
-  $('#pj').textContent = PJ; $('#crumb').textContent = SEGDIR + ' · ' + vpShort(STEM).replace(/_/g, ' · ') + ' · 写稿';
-  document.title = SEGDIR + ' ' + STEM + ' · 写稿';
+  setOpen(open);
   try {
     const r = await FS.text(PROMPT);
     MTIME = r.mtime; DOC = parsePrompt(r.text); LASTTEXT = r.text;

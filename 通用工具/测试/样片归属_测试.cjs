@@ -117,3 +117,16 @@ test('老仓库的名字（11-19 3-1 段搬进来）：记号紧贴段号，后�
   assert.equal(C.promptOf('李云龙大战奥特曼_第3-1段镜6两轮炮击_第1条_样片480p.mp4', all, {}), '');   // 没这条提示词的不乱认
   assert.equal(C.carries('李云龙大战奥特曼_第3-1段镜1补拍改1_第4条_样片480p.mp4', j1.key), false);   // 记号要整个对上
 });
+
+/* 写稿页里加减镜头（2026-11-20）：2-3 连前几版改名成 2-4，旧名字出的样片照样算这一条的、照样认得是哪一版 */
+test('改过名的：旧名字出的样片照 was 认回来，出片记录写旧名字也认', () => {
+  const e = { key: '2-4.txt', name: '2-4_改1.txt', vers: ['2-4.txt', '2-4_改1.txt'], was: { '2-4.txt': ['2-3.txt'], '2-4_改1.txt': ['2-3_改1.txt'] } };
+  const ls = [e, P('1.txt')];
+  for (const [vid, ver] of [['2-3_改1.mp4', '2-4_改1.txt'], ['2-3_改1_2.mp4', '2-4_改1.txt'], ['2-3.mp4', '2-4.txt'], ['2-4_改1.mp4', '2-4_改1.txt'], ['第1-1段_第3条_2-3_720p.mp4', '2-4.txt']]) {
+    assert.equal(C.promptOf(vid, ls, {}), '2-4.txt', vid);
+    assert.equal(C.verOf(vid, e, null), ver, vid);
+  }
+  assert.equal(C.verOf('看不出来.mp4', e, { 提示词: '2-3_改1.txt' }), '2-4_改1.txt');
+  assert.deepEqual(C.madeOf(e, ['2-3_改1.mp4', '2-3.mp4', '1.mp4'], ls, {}), ['2-3_改1.mp4']);
+  assert.deepEqual(C.namesOf(P('1.txt'), '1.txt'), ['1.txt']);   // 没改过名的只认自己
+});

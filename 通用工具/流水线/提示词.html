@@ -655,8 +655,9 @@ async function jobEnd(id) {
 /* 删一条提示词：不是彻底删，移进 历史记录/提示词/第N段/原名__时间.后缀，跟着它的几样用同一个时间一起走。
    流水线.json 里这一条的「选定」「沿用」、参考素材映射里这一条的登记一起去掉。出过的样片不动；别的条不改名（改了，样片名、任务书就对不上） */
 const KIN = [['_写稿.json', '写稿资料'], ['_批注.md', '批注'], ['_AI批注.md', 'AI 批注']];
+const own = (o, k) => !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);   // 自己有这个键（删一条、加减镜头都用）
 async function removePrompt(s, e) {
-  const tf = taskOf(e.name), stem = e.name.replace(/\.txt$/i, ''), rel = ['提示词', segName(s.段)], own = (o, k) => !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);
+  const tf = taskOf(e.name), stem = e.name.replace(/\.txt$/i, ''), rel = ['提示词', segName(s.段)];
   if (AI.jobs.some(j => j.段 === s.段 && jobLive(j) && (j.名 === e.name || j.名 === tf))) { toast('AI 正在做这一条，做完再删', 'err'); return; }
   const ls = lister(F.name), ents = await ls(rel.join('/'));
   if (ls.failed) { toast('本机服务连不上，这回没删', 'err'); return; }
@@ -696,6 +697,82 @@ async function removePrompt(s, e) {
   await loadSides(); await loadExtra(); rerender();
   toast(left.length ? '删了，可这几样没移走：' + left.join('、') : '删了，在 历史记录 / ' + rel.join(' / ') + ' 里', left.length ? 'err' : undefined);
 }
+/* ---------- 写稿页里加减镜头（2026-11-20 他要的：开头勾了镜头，进去写的时候照样能加镜头、去掉镜头；出过片、改过几版的也一样能改，不加限制） ----------
+   名字就是镜头号，拍的变了名字跟着变（9b-9d.txt → 9b-9e.txt）。改过几版的前几版一起改（原稿、_改1……一版一个名字），
+   每一版的写稿资料、批注、AI 批注、批注截图、出片任务书跟着改名（KIN），流水线.json 的「选定」「沿用」、参考素材映射里的登记换到新名字下。
+   出过的样片、关键帧、出片记录、影响清单、历史记录里的旧名字不动（样片名照 AGENTS.md 不改），改名一版一行记在这一场的「改名」，各页照它认回来（流水线.js 的 nowName）。
+   只等一种：AI 正在做这一条（它做完会写回旧名字）。事件脚本里的字不动。
+   写稿页（同一个网站的 iframe，公用/写稿改镜头.js）调 parent.PromptShots：lock(段, 名) 给要等的原因（能改给 ''）；
+   rename(段, 名, 勾的号) 改好给 { name: 这一份的新名字, warn: 没跟上的一句, vers: 一起改名的几版 }，改不成抛错（挪了一半的挪回去）。测试：测试/加减镜头_测试.cjs */
+const sceneOfSeg = seg => F.doc ? F.doc.场.find(x => String(x.段) === String(seg)) || null : null;
+const famOf = (s, name) => promptsOf(s.段).find(x => x.vers.includes(name)) || null;
+const codeTo = (name, code) => code + String(name).slice(vpCode(name).length);   // 9b-9d_改1.txt 换成 9b-9e 开头：9b-9e_改1.txt
+function shotLock(s, name) {
+  if (!s) return '流水线里找不到这一段：回流水线看一眼。';
+  if (!s.段落.length) return '这一段还没有镜头表：先到流水线「提炼」准备好。';
+  const e = famOf(s, name);
+  if (!e) return '流水线里找不到这一条：回流水线看一眼。';
+  if (!vpCode(name)) return '这一条不是照镜头号起的名字，标不出拍哪几镜。';
+  const vs = e.vers, notes = vs.map(v => ['项目', F.name, '提示词', segName(s.段), v.replace(/\.txt$/i, '') + '_批注.md'].join('/'));
+  const mine = j => (j.段 === s.段 && (vs.includes(j.名) || vs.some(v => j.名 === taskOf(v)) || (j.只提示词 || []).some(n => vs.includes(n)))) || notes.includes(j.批注);
+  if (AI.jobs.some(j => jobLive(j) && mine(j))) return 'AI 正在做这一条：等它做完再加减镜头（不然它做完会写回旧名字）。';
+  return '';
+}
+async function renameShots(s, name, picked) {
+  const why = shotLock(s, name);
+  if (why) throw new Error(why);
+  const e = famOf(s, name), to = SB.codeOf(picked, shotNos(s)), code = to.replace(/\.txt$/i, '');
+  if (!to) throw new Error('一镜都没勾：至少留一镜');
+  if (code === vpCode(name)) return { name, warn: '', vers: 0 };
+  const vmap = e.vers.map(v => [v, codeTo(v, code)]), key = codeTo(e.key, code), news = vmap.map(x => x[1]);   // 一版一个：[旧名, 新名]
+  const busy = AI.jobs.filter(j => j.事 === '写提示词' && j.段 === s.段 && jobLive(j)).map(j => j.名);   // AI 正在写、文件还没落下的，也占着名字
+  if (promptsOf(s.段).some(x => x !== e && (x.key === key || x.vers.some(n => news.includes(n)))) || busy.some(n => n === key || news.includes(n))) throw new Error('已经有「' + vpLabel(key) + '」这一条了：换几个镜头再改，或者回流水线打开那一条');
+  const rel = ['提示词', segName(s.段)], ls = lister(F.name), ents = await ls(rel.join('/'));
+  if (ls.failed) throw new Error('本机服务连不上，这回没改');
+  const names = new Set(ents.map(x => x.name)), stem = n => n.replace(/\.txt$/i, '');
+  if (!names.has(name)) throw new Error('「' + name + '」已经不在了');
+  const pairs = [];   // 要挪的文件：每一版自己、写稿资料、批注、AI 批注、批注截图、出片任务书
+  for (const [a, b] of vmap) pairs.push([a, b], ...KIN.map(([t]) => [stem(a) + t, stem(b) + t]), [stem(a) + SHOTS_TAIL, stem(b) + SHOTS_TAIL], [taskOf(a), taskOf(b)]);
+  const moves = pairs.filter(([a]) => names.has(a));
+  const clash = [...moves.map(x => x[1]), ...news.map(taskOf)].find(n => names.has(n));
+  if (clash) throw new Error('这里已经有「' + clash + '」了，这回没改');
+  await flush();
+  if (F.err) throw new Error('流水线没存上，这回没改');
+  const P = n => at([F.name, ...rel, n]), done = [];
+  const back = async () => { for (const [a, b] of done.slice().reverse()) await FS.move(P(b), P(a)).catch(() => {}); };
+  try { for (const [a, b] of moves) { await FS.move(P(a), P(b)); done.push([a, b]); } }
+  catch (err) { await back(); throw new Error('改名没改成，已经挪回去：' + err.message); }
+  const rk = n => [...rel, n].join('/');   // 参考素材映射里每一版的登记挪到新名字下；新名字下原来有的，是删掉的旧稿留下的，不算这一条的
+  try {
+    if (await hasFile(F.name, ['资产', '参考素材映射.json'])) {
+      const mp = at([F.name, '资产', '参考素材映射.json']), j = await readJson(mp), ps = j && j.prompts;
+      if (vmap.some(([a, b]) => own(ps, rk(a)) || own(ps, rk(b)))) {
+        for (const [, b] of vmap) delete ps[rk(b)];
+        for (const [a, b] of vmap) if (own(ps, rk(a))) { ps[rk(b)] = ps[rk(a)]; delete ps[rk(a)]; }
+        await FS.write(mp, C.encodeText(JSON.stringify(j, null, 2) + '\n'));
+      }
+    }
+  } catch (err) { await back(); throw new Error('参考素材映射没改上，名字也挪回去了：' + err.message); }
+  let warn = '';
+  try {   // 流水线.json：选定（记在原稿名下）、沿用（每一版的提示词、白模）、改名
+    const obj = o => !!o && typeof o === 'object' && !Array.isArray(o);
+    const swap = (o, pre) => { for (const [, b] of vmap) delete o[pre + b]; for (const [a, b] of vmap) if (own(o, pre + a)) { o[pre + b] = o[pre + a]; delete o[pre + a]; } };
+    if (obj(s.选定)) swap(s.选定, '');
+    if (obj(s.沿用)) { swap(s.沿用, '提示词/'); swap(s.沿用, '白模/'); }
+    s.改名 = window.Core.vpRenamed(s.改名, vmap);
+    touch(); await flush();
+    if (F.err) warn = '流水线里的改名记录还没存上（过一会儿自己再存）';
+  } catch (err) { warn = '流水线里的改名记录没记上：' + err.message; }
+  try {
+    for (const [a, b] of vmap) if (X.open.delete(a)) X.open.add(b);
+    await loadSides(); await loadExtra(); rerender();
+    const t = document.querySelector('.wf-write .wf-shell-t'), now = vmap.find(x => x[0] === name)[1];   // 盖上来的写稿页顶上那一行（流水线.js 的 openWrite）
+    if (t) t.textContent = t.textContent.split(vpLabel(name)).join(vpLabel(now));
+  } catch (err) { warn = warn || '流水线这一页没跟上：回到流水线再看'; }
+  return { name: vmap.find(x => x[0] === name)[1], warn, vers: vmap.length };
+}
+window.PromptShots = Object.freeze({ lock: (seg, name) => shotLock(sceneOfSeg(seg), name), rename: (seg, name, picked) => renameShots(sceneOfSeg(seg), name, picked) });
+/* ---------- 写稿页里加减镜头：完 ---------- */
 /* 一条改过几版（审片以后另存的 _改1、_改2……）：摆的是最新那一版；能和上一版比、看上一版 */
 function verLine(s, e) {
   if (!e.vers || e.vers.length < 2) return null;
@@ -777,11 +854,12 @@ function frameWs(s, e) {
   for (const x of list) if (x.类别 === '关键帧' && x.提示词 && x.文件.startsWith(ad)) stems.add(baseOf(x.文件));
   for (const j of AI.jobs) if (j.事 === '写字' && j.段 === s.段 && jobLive(j) && Array.isArray(j.只)) j.只.forEach((k, i) => { if (k.startsWith('关键帧/')) { stems.add(k.slice(4)); if ((j.只提示词 || [])[i]) byJob.set(k.slice(4), j.只提示词[i]); } });
   const out = [], pt = timeOfFile(s, e.name), imp = impactPrompt(s, e.name);
+  const pres = [pre, ...Object.values(e.was || {}).flat().map(o => framePre({ key: vpBase(o), name: o }))];   // 改过名的（写稿页里加减镜头）：旧名字开头的关键帧也算这一条的
   for (const stem of stems) {
     if (stem.includes('/') || !nameOk(stem) || /_(候选|白模帧)$/.test(stem)) continue;
     const w = wordFor(s, '关键帧', stem, '', null), fh = X.fw.get(stem);
     const who = (w.rec && w.rec.提示词) || (fh && fh.prompt) || byJob.get(stem) || '';
-    if (who ? vpBase(who) !== vpBase(e.name) : !stem.startsWith(pre)) continue;   // 改出了新的一版：原来那一版的关键帧照样算这一条的
+    if (who ? vpBase(nowName(s.段, who)) !== vpBase(e.name) : !pres.some(p => stem.startsWith(p))) continue;   // 改出了新的一版：原来那一版的关键帧照样算这一条的
     if (!(w.hasTxt || w.hasImg || w.hasCand || w.writing || w.drawing)) continue;
     w.forPrompt = e.name; w.refs = fh ? fh.refs.map(r => r.file) : [];
     const kt = timeOf(keptOf(s)['关键帧/' + stem]), base = Math.max(F.words.get(w.txt) || 0, w.hasImg ? fileTimeOf(w.img) : 0, kt);

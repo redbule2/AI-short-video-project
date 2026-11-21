@@ -703,12 +703,17 @@ function aiWaiting(key, name) {
   const got = v && v.描写 ? (timeOf(v.时间) || F.ai.mtime) : 0;
   return got >= asked ? '' : (key === '场景' ? b.场景 : b[key][name]).slice(5, 16);
 }
+/* 改过名的提示词（2026-11-20 写稿页里加减镜头：拍的镜头变了，连前几版一起改名，一版一行记在这一场的「改名」{ 旧名: 新名 }）。
+   样片、出片记录、影响清单、关键帧的字、历史记录里留的旧名字，照它认回现在的名字（公用/核心.js 的 vpNow、vpWas） */
+const renamesOf = seg => { const s = F.doc ? F.doc.场.find(x => String(x.段) === String(seg)) : null; return s && s.改名 && typeof s.改名 === 'object' && !Array.isArray(s.改名) ? s.改名 : null; };
+const nowName = (seg, name) => { const rec = F.names.get(seg); return window.Core.vpNow(renamesOf(seg), name, rec ? n => rec.set.has(n) : null); };
 function promptsOf(seg) {
   const rec = F.names.get(seg);
   if (!rec) return [];
+  const rn = renamesOf(seg), was = vers => { const w = rn ? Object.fromEntries(vers.map(v => [v, window.Core.vpWas(rn, v, n => rec.set.has(n))]).filter(x => x[1].length)) : {}; return Object.keys(w).length ? { was: w } : {}; };   // 每一版以前叫过什么（公用/样片归属.js 照它认旧名字的样片）
   return vpFams(rec.set).map(({ key, vers }) => {   // 一条（原稿名）→ 它的几版：原稿、_改1、_改2……；接力稿比整条稿新的，整条稿不摆（公用/核心.js）
     const n = vers[vers.length - 1], stem = n.replace(/\.txt$/i, '');   // 摆最新的那一版：改稿、批注、生成任务书、出片都对着它
-    return { name: n, key, ver: vpVer(n), vers, label: vpLabel(n), tok: vpTok(n), draft: rec.set.has(stem + '_写稿.json') };
+    return { name: n, key, ver: vpVer(n), vers, label: vpLabel(n), tok: vpTok(n), draft: rec.set.has(stem + '_写稿.json'), ...was(vers) };
   });
 }
 
@@ -850,7 +855,7 @@ const keptOf = s => (s.沿用 && typeof s.沿用 === 'object' && !Array.isArray(
 function keepAsIs(s, key) { keptOf(s)[key] = nowText(); touch(); }
 /* 这一场前面几道最后一次确认是什么时候：剧本定稿、这一场的图最后一次确认、拍摄风格，和资产最后一回改（assetEdits） */
 function upTime(s, name) {   // name：哪一条提示词。剧本重新定稿、影响清单没列上这一条的：剧本照上回定稿的时间算（没受影响，不用你再看）
-  const v = name ? impactOf(s) : null, fin = v && !v.提示词.some(x => vpBase(x.文件) === vpBase(name)) ? timeOf(v.上回) : timeOf(s.剧本定稿);
+  const v = name ? impactOf(s) : null, fin = v && !v.提示词.some(x => vpBase(nowName(s.段, x.文件)) === vpBase(name)) ? timeOf(v.上回) : timeOf(s.剧本定稿);   // 清单上写的是改名以前的名字也认
   let t = Math.max(fin, assetCheckTime(s), styleChangedAt(s));   // 换了拍摄风格也算
   for (const p of assetEdits(s)) t = Math.max(t, p.时间);
   return t;
@@ -884,7 +889,7 @@ function clipStale(s, pname, vid) {
 }
 /* 这条样片当初照哪一版出的：出片记录里，样片下载下来以前批准出这一条（哪一版都算）的最后一回 */
 function shotRecOf(seg, pname, t) {
-  const r = F.shotLog.get(seg), b = vpBase(pname), xs = r ? r.记录.filter(x => vpBase(String(x.提示词 || '')) === b && timeOf(x.时间) <= t + 999) : [];
+  const r = F.shotLog.get(seg), b = vpBase(pname), xs = r ? r.记录.map(x => ({ ...x, 提示词: nowName(seg, String(x.提示词 || '')) })).filter(x => vpBase(x.提示词) === b && timeOf(x.时间) <= t + 999) : [];   // 改过名的：记录里的旧名字换成现在的
   return xs.length ? xs[xs.length - 1] : null;
 }
 /* ---------- 影响清单（2026-11-14 文生资产流程图「中途改剧本」）：剧本重新定稿以后，AI 对一遍新旧剧本，列出哪些资产、提示词要再看、为什么。
@@ -902,7 +907,7 @@ function impactOf(s) {
   return !v || !s.剧本定稿 || timeOf(v.时间) + 999 < timeOf(s.剧本定稿) || s.影响全看 === v.时间 ? null : v;
 }
 const impactKey = x => '影响/' + kindOf(x.类别) + '/' + x.名称;
-const impactPrompt = (s, name) => { const v = impactOf(s); return v ? v.提示词.find(x => vpBase(x.文件) === vpBase(name)) || null : null; };   // 改过几版的：清单上写哪一版都算这一条
+const impactPrompt = (s, name) => { const v = impactOf(s); return v ? v.提示词.find(x => vpBase(nowName(s.段, x.文件)) === vpBase(name)) || null : null; };   // 改过几版的：清单上写哪一版都算这一条
 /* 清单上列的资产，还没处理的。处理了：要改的那张图后来又确认过；要加的这一场选上了；不用了的这一场去掉了；或者你点了「看过了」 */
 function impactTodo(s, v) {
   v = v || impactOf(s);

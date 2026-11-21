@@ -39,7 +39,7 @@ function prompts(s) {
       if (e.kind !== 'file') continue;
       const p = Hist.parse(e.name);
       if (!Core.RE_VP.test(p.orig)) continue;
-      out.push({ ...p, file: dir + '/' + e.name, mtime: e.mtime || 0, key: Core.vpBase(p.orig), label: Core.vpLabel(p.orig) });
+      out.push({ ...p, file: dir + '/' + e.name, mtime: e.mtime || 0, key: Core.vpBase(nowName(s.段, p.orig)), label: Core.vpLabel(p.orig) });   // 改过名的（写稿页里加减镜头）：旧名字留的底也归到现在这一条
     }
     return out.sort(Hist.newer);
   });

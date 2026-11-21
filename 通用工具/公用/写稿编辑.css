@@ -143,6 +143,23 @@
 .ws-list small { display: block; font-size: 12px; line-height: 1.65; color: var(--ink-3); }
 .ws-list .sc { font-size: 12px; line-height: 1.8; color: var(--ink-4); white-space: nowrap; }
 .ws-list li.me { background: #fff6dc; box-shadow: inset 2px 0 0 var(--tc); }
+/* 2026-11-20：加减镜头（公用/写稿改镜头.js）。能改的每一镜前面一个勾，整行都能点；勾得和现在不一样，钉住的那一块里出「改成 镜…」 */
+.ws-list.can li { display: block; padding: 0; }   /* 能勾的：整行是一个 label，格子排在 .ws-row 里 */
+.ws-row { display: grid; grid-template-columns: 18px 26px 1fr auto; gap: 4px; align-items: start; padding: 5px 6px; border-radius: 6px; cursor: pointer; }
+.ws-row:hover { background: rgba(92, 72, 44, .05); }
+.ws-row input { margin: 6px 0 0; accent-color: var(--tc); cursor: pointer; }
+.ws-list li.add { background: #e9f2ea; box-shadow: inset 2px 0 0 #4f8a5f; }
+.ws-list li.drop b { color: var(--ink-3); text-decoration: line-through; text-decoration-color: rgba(154, 51, 38, .55); }
+.ws-list .sc em { margin-right: 6px; padding: 1px 5px; border-radius: 4px; font: 600 11px/1.5 var(--sans); font-style: normal; background: #dcebdf; color: #3c6b49; }
+.ws-list li.drop .sc em { background: #f6e1dc; color: #9a3326; }
+.ws-act { margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; background: var(--card); box-shadow: 0 0 0 1px var(--edge-2), 0 8px 18px -12px rgba(70, 52, 28, .35); }
+.ws-act.warn { box-shadow: 0 0 0 1px rgba(154, 51, 38, .35); }
+.ws-act-t { font-size: 12.5px; line-height: 1.7; color: var(--ink-2); }
+.ws-act-t b { display: block; font-weight: 600; color: var(--ink); }
+.ws-act.warn .ws-act-t b { color: #9a3326; }
+.ws-act-b { display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px; }
+.ws-note { margin: -4px 0 12px; padding: 7px 12px; border-radius: 7px; background: #fff6dc; font-size: 12.5px; line-height: 1.75; color: #7a5a1e; }
+.shot-edit-b { margin-left: 8px; font: 12.5px/1.5 var(--sans); letter-spacing: 0; }
 
 /* 2026-11-16 配色：他定「甲 暖灰台面」＋「聚光」（通用工具/流水线/写稿页配色_设计稿.html）。
    四层一层比一层亮：台面（整页底）→ 右栏、底栏 → 镜头卡 → 写字框。他说颜色过渡要自然：相邻两层只差一点，不用实线框，用很淡的边和柔影子分开；

@@ -1188,6 +1188,20 @@ function clipTake(vid, name) {
 }
 /* 这一版下一条样片叫什么：names 是这一段 成片、历史记录/成片 里的文件名（移进历史记录的名字不改，也要让开） */
 const clipName = (name, names) => { const k = [...(names || [])].reduce((m, n) => Math.max(m, clipTake(n, name)), 0); return String(name).replace(/\.txt$/i, '') + (k ? '_' + (k + 1) : '') + '.mp4'; };
+/* 提示词改过名（2026-11-20 写稿页里加减镜头：9b-9d.txt → 9b-9e.txt，前几版一起改），一版一行记在 流水线.json 这一场的「改名」{ 旧名: 新名 }。
+   以前留下的还带着旧名字（样片、出片记录、影响清单、关键帧的字、历史记录），照它认回现在的名字：
+   vpNow 旧名 → 现在的名字（没改过名的照原样给）；vpWas 现在的名字 → 以前叫过的几个；vpRenamed 记一回改名（pairs：[[旧, 新]…]），给新的「改名」。
+   cur(名字)：这个名字现在有没有这一条。旧名又被新写的一条用上了，就照新写的那一条算，不再往下认 */
+const vpNow = (map, name, cur) => { let n = String(name || ''); for (let i = 0; i < 50 && !!map && typeof map === 'object' && Object.prototype.hasOwnProperty.call(map, n) && !(cur && cur(n)); i++) n = String(map[n]); return n; };
+const vpWas = (map, name, cur) => Object.keys(map && typeof map === 'object' ? map : {}).filter(o => o !== name && !(cur && cur(o)) && vpNow(map, o, cur) === name);
+function vpRenamed(map, pairs) {
+  const m = {};
+  for (const [k, v] of Object.entries(map && typeof map === 'object' && !Array.isArray(map) ? map : {})) if (typeof v === 'string') m[k] = v;
+  for (const [a, b] of pairs || []) { for (const k of Object.keys(m)) if (m[k] === a) m[k] = b; m[a] = b; }   // 以前改成 a 的，现在跟着改成 b
+  for (const [, b] of pairs || []) delete m[b];   // 新名字现在就是这一条，不再是谁的旧名（改回去：9b-9e → 9b-9d，9b-9d 那一行去掉）
+  for (const k of Object.keys(m)) if (m[k] === k) delete m[k];
+  return m;
+}
 /* 审片那一步锁不锁（11-18 他定：出好的样片随时能审）。n：这一场几条提示词；vids：几条样片；st：提示词那一步的状态（ok、ai AI 在写、you 待核对）。
    有样片就不锁：提示词待核对、AI 在写都不挡，待核对标在那条样片上。没提示词锁（'none'）；没样片时提示词那一步没好也锁（'ai'、'stale'）。不锁给 '' */
 const reviewLock = (n, vids, st) => !n ? 'none' : vids || st === 'ok' ? '' : st === 'ai' ? 'ai' : 'stale';
@@ -1229,7 +1243,7 @@ const Core = {
   parsePrompt, serializePrompt, splitWithEol, joinLines, wrapPara, isBlank, edgeRange, ensureTrailingBlank, promptTemplate, promptSectionKey, promptShotTitle, renumberPromptShots, newPromptShot, PROMPT_SKELETON,
   lintPrompt, lintScript, lintShots, decodeText, hasBom, encodeText, cloneDoc,
   units, redline, diffChars, notesToMd, parseNotes,
-  nameOk, sceneStem, NO_IMG_KINDS, noImgList, noImg, setNoImg, noGeo, setNoGeo, SHOT_CODE, RE_VP, vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, vpFams, vpSort, RE_TASK, vpTask, taskVp, RE_CLIP, clipOld, clipTake, clipName, reviewLock,
+  nameOk, sceneStem, NO_IMG_KINDS, noImgList, noImg, setNoImg, noGeo, setNoGeo, SHOT_CODE, RE_VP, vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, vpFams, vpSort, RE_TASK, vpTask, taskVp, RE_CLIP, clipOld, clipTake, clipName, vpNow, vpWas, vpRenamed, reviewLock,
 };
 Core.scriptFinal = scriptFinal; Core.applyBack = applyBack;
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;

@@ -201,3 +201,24 @@ test('镜头里的他、她要报，台词旁白 {} 里的不报（11-17：旁�
   assert.equal(hits.length, 1);
   assert.ok(hits[0].loc && JSON.stringify(hits[0].loc).length);
 });
+
+/* 写稿页里加减镜头（2026-11-20）：提示词连前几版一起改了名，旧名字认回现在的名字 */
+test('改名记录：记一回、接着改、改回去；旧名又有了新的一条就不往下认', () => {
+  let m = Core.vpRenamed(undefined, [['2-3.txt', '2-4.txt'], ['2-3_改1.txt', '2-4_改1.txt']]);
+  assert.deepEqual(m, { '2-3.txt': '2-4.txt', '2-3_改1.txt': '2-4_改1.txt' });
+  assert.equal(Core.vpNow(m, '2-3_改1.txt'), '2-4_改1.txt');
+  assert.equal(Core.vpNow(m, '1.txt'), '1.txt');   // 没改过名的照原样
+  assert.deepEqual(Core.vpWas(m, '2-4.txt'), ['2-3.txt']);
+  m = Core.vpRenamed(m, [['2-4.txt', '2-5.txt'], ['2-4_改1.txt', '2-5_改1.txt']]);   // 接着改：以前改成 2-4 的跟着到 2-5
+  assert.equal(Core.vpNow(m, '2-3_改1.txt'), '2-5_改1.txt');
+  assert.deepEqual(Core.vpWas(m, '2-5.txt').sort(), ['2-3.txt', '2-4.txt']);
+  m = Core.vpRenamed(m, [['2-5.txt', '2-3.txt'], ['2-5_改1.txt', '2-3_改1.txt']]);   // 改回去：2-3 又是现在的名字，不再是旧名
+  assert.equal(Object.prototype.hasOwnProperty.call(m, '2-3.txt'), false);
+  assert.equal(Core.vpNow(m, '2-4_改1.txt'), '2-3_改1.txt');
+  assert.equal(Core.vpNow(m, '2-3.txt'), '2-3.txt');
+  const cur = n => n === '2-4.txt';   // 2-4.txt 又被新写的一条用上了
+  assert.equal(Core.vpNow(m, '2-4.txt', cur), '2-4.txt');
+  assert.deepEqual(Core.vpWas(m, '2-3.txt', cur), ['2-5.txt']);
+  assert.deepEqual(Core.vpRenamed('乱写的', []), {});
+  assert.equal(Core.vpNow(null, 'a.txt'), 'a.txt');
+});
