@@ -68,7 +68,7 @@ for (const draft of [false, true]) {
 
 const textOf = node => typeof node === 'string' ? node : node && typeof node === 'object' ? node.children.map(textOf).join('') : '';
 
-test('你来写的稿（写稿资料记「手写」，老稿记「流水线」）标「手写稿」、按钮「接着写」；AI 写的改过的照旧「改过」「进去改」；铺底没成也摆出来', () => {
+test('你来写的稿（写稿资料记「手写」，老稿记「流水线」）标「手写稿」、按钮「接着写」；AI 写的改过的照旧「改过」「进去改」；交给 AI 写完没成也摆出来', () => {
   for (const side of [{ 手写: true }, { 流水线: '这一份是从「流水线」开的稿' }]) {
     const { buttons, calls, row, fails } = promptButtons(true, false, side);
     const labels = buttons.map(b => b.children.join(''));
@@ -77,7 +77,7 @@ test('你来写的稿（写稿资料记「手写」，老稿记「流水线」�
     assert.deepEqual(calls[0], ['编辑', '1', '1-5.txt', true]);   // 写稿页顶上写「接着写」
     assert.match(textOf(row), /手写稿/);
     assert.doesNotMatch(textOf(row), /改过/);
-    assert.ok(fails.includes('直接铺底'));
+    assert.ok(fails.includes('写完提示词'));
   }
   const { row, buttons } = promptButtons(true, false, { 写法: '分镜', 分镜稿: '' });
   assert.match(textOf(row), /改过/);

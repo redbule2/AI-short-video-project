@@ -7,12 +7,13 @@ const { randomUUID } = require('crypto');
 const { isDeepStrictEqual } = require('util');
 
 const EDITOR_FIELDS = ['写法', '写法范围', '分镜稿', '自由稿', '镜头信息', '挂图'];
+const LATER_FIELDS = ['镜头写法'];   // 后加的（2026-11-20：分镜用合并还是分区写法）：没带它的老页面照旧存，页面带了才比
 const own = (x, k) => Object.prototype.hasOwnProperty.call(x, k);
 const object = x => x !== null && typeof x === 'object' && !Array.isArray(x);
 const error = (status, message) => Object.assign(new Error(message), { status });
 const decode = buf => buf.toString('utf8');
 const mtime = st => Math.floor(st.mtimeMs);
-const pickEditor = side => Object.fromEntries(EDITOR_FIELDS.filter(k => own(side, k)).map(k => [k, side[k]]));
+const pickEditor = (side, more = []) => Object.fromEntries([...EDITOR_FIELDS, ...more].filter(k => own(side, k)).map(k => [k, side[k]]));
 
 module.exports = function makeDraftStore({ ROOT, io = fs.promises, now = () => new Date(), RE_VP = require(path.join(__dirname, '..', '..', '..', '通用工具', '公用', '核心.js')).RE_VP }) {   // RE_VP：视频提示词的名字，和页面共用 公用/核心.js
   const pending = new Map();
@@ -77,7 +78,9 @@ module.exports = function makeDraftStore({ ROOT, io = fs.promises, now = () => n
   async function save(abs, body) {
     const { side: sidePath, hist } = pathsFor(abs);
     if (!object(body) || typeof body.text !== 'string' || typeof body.baseText !== 'string' || !object(body.sidePatch) || !object(body.baseEditor)) throw error(400, '缺少 text、baseText、sidePatch 或 baseEditor');
-    if (Object.keys(body.sidePatch).some(k => !EDITOR_FIELDS.includes(k)) || Object.keys(body.baseEditor).some(k => !EDITOR_FIELDS.includes(k))) throw error(400, '草稿保存不能改 AI 建议等非编辑器字段');
+    const fields = [...EDITOR_FIELDS, ...LATER_FIELDS], more = LATER_FIELDS.filter(k => own(body.sidePatch, k) || own(body.baseEditor, k));
+    if (Object.keys(body.sidePatch).some(k => !fields.includes(k)) || Object.keys(body.baseEditor).some(k => !fields.includes(k))) throw error(400, '草稿保存不能改 AI 建议等非编辑器字段');
+    if (own(body.sidePatch, '镜头写法') && !['合并', '分区'].includes(body.sidePatch.镜头写法)) throw error(400, '镜头写法只能是合并或分区');
     if (own(body.sidePatch, '写法') && !['分镜', '自由'].includes(body.sidePatch.写法)) throw error(400, '写法只能是分镜或自由');
     if (own(body.sidePatch, '写法范围') && body.sidePatch.写法范围 !== '分镜') throw error(400, '写法范围只能是分镜');
     for (const k of ['分镜稿', '自由稿']) if (own(body.sidePatch, k) && typeof body.sidePatch[k] !== 'string') throw error(400, k + '必须是文字');
@@ -88,7 +91,7 @@ module.exports = function makeDraftStore({ ROOT, io = fs.promises, now = () => n
       const oldText = await io.readFile(abs), oldSide = await optionalRead(sidePath);
       const current = parseSide(oldSide);
       if (decode(oldText) !== body.baseText) throw error(409, '提示词已在别处修改；未覆盖文件，页面输入已保留');
-      if (!isDeepStrictEqual(pickEditor(current), body.baseEditor)) throw error(409, '写稿记录已在别处修改；未覆盖文件，页面输入已保留');
+      if (!isDeepStrictEqual(pickEditor(current, more), body.baseEditor)) throw error(409, '写稿记录已在别处修改；未覆盖文件，页面输入已保留');
       const merged = { ...current, ...body.sidePatch };
       const newText = Buffer.from(body.text), newSide = Buffer.from(JSON.stringify(merged, null, 2) + '\n');
       const textChanged = !oldText.equals(newText), sideChanged = oldSide === null || !oldSide.equals(newSide);

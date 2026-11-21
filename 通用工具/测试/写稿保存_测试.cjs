@@ -75,6 +75,22 @@ test('范围标记受乐观锁保护，旧页面不能覆盖已迁移的新稿',
   await store(io).save(TARGET, body({ baseEditor: { ...base, 写法范围: '分镜' } }));
   assert.equal(io.side().写法范围, '分镜');
 });
+test('镜头写法（合并／分区，11-20）：老页面不带照旧存、照留；新页面带了才比；非法值 400', async () => {
+  const old = new MemoryFS('原文', { ...base, 镜头写法: '分区' });
+  await store(old).save(TARGET, body());
+  assert.equal(old.side().镜头写法, '分区');
+  const io = new MemoryFS();
+  await store(io).save(TARGET, body({ sidePatch: { ...base, 分镜稿: '新文', 镜头写法: '分区' } }));
+  assert.equal(io.side().镜头写法, '分区');
+  const other = new MemoryFS('原文', { ...base, 镜头写法: '合并' }), before = other.snapshot();   // 别处挑过了，这一页的底里还没有
+  await assert.rejects(store(other).save(TARGET, body({ sidePatch: { ...base, 分镜稿: '新文', 镜头写法: '分区' } })), { status: 409 }); other.unchanged(before);
+  await store(other).save(TARGET, body({ sidePatch: { ...base, 分镜稿: '新文', 镜头写法: '分区' }, baseEditor: { ...base, 镜头写法: '合并' } }));
+  assert.equal(other.side().镜头写法, '分区');
+  for (const invalid of ['整段', '', null, 1]) {
+    const x = new MemoryFS(), b = x.snapshot();
+    await assert.rejects(store(x).save(TARGET, body({ sidePatch: { ...base, 镜头写法: invalid } })), { status: 400 }); x.unchanged(b);
+  }
+});
 test('TXT 冲突返回 409，两文件保持原样', async () => {
   const io = new MemoryFS('外部改文'), before = io.snapshot();
   await assert.rejects(store(io).save(TARGET, body()), { status: 409 }); io.unchanged(before);

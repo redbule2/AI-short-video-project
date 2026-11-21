@@ -14,17 +14,19 @@
 .sheet { width: 100%; max-width: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 .sheet::after { display: none; }
 .doc-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 14px; margin: 0; text-align: left; }
-/* 钉在正文顶上的一条：宽的时候标题、分区按钮、「AI 铺底」一行摆下；窄了标题和「AI 铺底」一行、分区按钮一行（AI 铺底：公用/写稿铺底.js） */
+/* 钉在正文顶上的一条：宽的时候标题、分区按钮、「交给 AI 写完」一行摆下；窄了标题和「交给 AI 写完」一行、分区按钮一行（交给 AI 写完：公用/写稿写完.js） */
 .sheet-head { container-type: inline-size; position: sticky; top: 0; z-index: 20; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 16px; padding: 0 0 12px; background: var(--paper); }
 .sheet-head .doc-seg { font-size: 22px; }
 .sheet-head .section-nav { flex: 1 1 auto; margin: 0; }
 .canvas.stuck .sheet-head { box-shadow: 0 1px 0 var(--line), 0 12px 12px -12px rgba(30, 28, 24, .22); }
 @container (max-width: 820px) {
   .sheet-head .section-nav { flex-basis: 100%; }
-  .sheet-head .lay-b { position: absolute; top: 0; right: 0; }
+  .sheet-head .fin-b { position: absolute; top: 0; right: 0; }
 }
-.section-nav .lay-b { margin-left: auto; }
-.lay-b .wt-ring { margin-right: 6px; }
+.section-nav .fin-b { margin-left: auto; }
+.fin-b .wt-ring { margin-right: 6px; }
+/* AI 在写完的时候这一页锁着：正文淡一点，顶上那一条照常看得清 */
+.sheet.fin-lock > :not(.sheet-head) { opacity: .55; }
 .doc-kicker, .ornament { display: none; }
 .doc-name { margin-top: 0; }
 .shared-settings > .sec { margin: 0 0 16px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 9px; background: var(--sheet); }
@@ -159,3 +161,28 @@ body { background: var(--desk); }
 .p-shot:focus-within .shot-h { background: linear-gradient(to bottom, rgba(31, 107, 105, .075), rgba(31, 107, 105, .03)); }
 .pshots:has(.p-shot:focus-within) .p-shot:not(:focus-within) { opacity: .6; }
 .pshots:has(.p-shot:focus-within) .p-shot:not(:focus-within):hover { opacity: .92; }
+
+/* 2026-11-20 资产页签分类（公用/写稿资产栏.js）：搜索框、分类小页签、一句说明钉在顶上，底下一次只列一类 */
+#pane-assets { container-type: inline-size; }
+.as-top { position: sticky; top: -14px; z-index: 2; margin: -14px -14px 6px; padding: 12px 14px 8px; background: var(--panel); box-shadow: 0 10px 12px -14px rgba(70, 52, 28, .45); }
+.as-tabs { display: flex; align-items: center; gap: 2px; margin-top: 8px; padding: 3px; border-radius: 9px; background: rgba(92, 72, 44, .06); box-shadow: inset 0 0 0 1px var(--edge-2); }
+.as-tab { flex: 1 1 auto; min-width: 0; display: inline-flex; align-items: baseline; justify-content: center; gap: 3px; padding: 5px 3px; border: 0; border-radius: 6px; background: none; color: var(--ink-3); font: 12.5px/1.4 var(--sans); white-space: nowrap; cursor: pointer; transition: background .15s, color .15s; }
+.as-tab i { font: normal 10.5px var(--sans); color: var(--ink-4); }
+.as-tab:hover { color: var(--ink); }
+.as-tab.on { background: var(--card); color: var(--ink); box-shadow: 0 0 0 1px var(--edge), 0 1px 3px rgba(30, 28, 24, .08); }
+.as-tab.on i { color: var(--qing); font-weight: 600; }
+.as-tab.zero { color: var(--ink-4); }
+.as-sep { flex: none; width: 1px; height: 14px; margin: 0 3px; background: var(--edge-2); }
+.as-hint { margin: 7px 2px 0; font-size: 11.5px; line-height: 1.6; color: var(--ink-3); cursor: help; }
+.as-h.as-type { margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--edge); font-size: 14px; color: var(--ink); }
+.as-h.as-type:first-child { margin-top: 4px; padding-top: 0; border-top: 0; }
+.as-grid.wide { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.as-grid.wide .as-t img { aspect-ratio: 16 / 9; object-position: center; }
+.as-t.unok .as-n { color: var(--zhu); }
+.as-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 18px 2px; font-size: 12.5px; line-height: 1.7; color: var(--ink-3); }
+/* 这一条拍的镜头排最前（11-20，只认关键帧绑定）：那一块的标题青色；图名前面标绑在哪一镜 */
+.as-h.as-mine { color: var(--qing); letter-spacing: .08em; }
+.as-h.as-mine em { color: var(--qing); opacity: .7; }
+.as-lack { margin: -4px 2px 8px; font-size: 11.5px; line-height: 1.6; color: var(--ink-3); cursor: help; }
+.as-n .as-bind { margin-right: 4px; font: 600 10.5px var(--sans); color: var(--qing); }
+@container (max-width: 300px) { .as-tab i { display: none; } }   /* 右栏太窄：页签上不写个数，挤得下 */

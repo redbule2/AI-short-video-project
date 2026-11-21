@@ -1,0 +1,67 @@
+/* 写稿页 · 分镜的两种写法（公用/写稿分区.js，2026-11-20）。样子照 流水线/写稿页分区镜头_设计稿.html 的「甲」「丙」 */
+
+/* 镜头卡里的正文：外面套一层（对照着看时左右两栏） */
+.p-shot > .zbody { margin: 0 18px 12px; }
+.p-shot.fold > .zbody { display: none; }
+.zbody > .zalt { display: none; }
+.p-shot.cmp > .zbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.p-shot.cmp > .zbody > .zalt { display: block; }
+.zmine { min-width: 0; }
+@media (max-width: 1100px) { .p-shot.cmp > .zbody { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .p-shot > .zbody { margin-right: 12px; margin-left: 12px; } }
+
+/* 甲：一栏一个小框，栏名在左 */
+.zf { display: grid; grid-template-columns: 7.4em minmax(0, 1fr); gap: 10px; align-items: start; margin: 5px 0; }
+.zk { padding-top: 5px; font: 13px/1.6 var(--kai); color: var(--ink-3); text-align: right; white-space: nowrap; }
+.zf:focus-within .zk { color: var(--qing); font-weight: 600; }
+.zf .wr { border-radius: 6px; }
+.zf .wr-bg, .zf .wr-ta { padding: 3px 10px; font: 14.5px/1.8 var(--serif); }
+.zf .wr:has(.wr-ta:placeholder-shown) { border-style: dashed; background: #fcfbf9; }
+.zf .wr-ta::placeholder { font: 13px/1.95 var(--sans); }
+.zsub { margin: 10px 0 0; padding: 6px 12px 8px 10px; border-left: 3px solid var(--qing-line); border-radius: 8px; background: rgba(31, 107, 105, .035); }
+.zsub-h { display: flex; align-items: center; gap: 10px; margin: 0 0 2px; }
+.zsub-n { font: 600 13.5px/1.6 var(--kai); letter-spacing: .2em; color: var(--qing); }
+.zsub-ops { display: flex; gap: 4px; margin-left: auto; opacity: .35; transition: opacity .15s; }
+.zsub:hover .zsub-ops, .zsub:focus-within .zsub-ops { opacity: 1; }
+.zsub .zf { grid-template-columns: 6.4em minmax(0, 1fr); }
+.zadd { display: block; width: 100%; margin: 10px 0 4px; padding: 4px 0; border: 1px dashed var(--qing-line); border-radius: 8px; background: transparent; cursor: pointer; font: 13px/1.6 var(--sans); color: var(--qing); }
+.zadd:hover { background: var(--qing-soft); }
+.zend { margin-top: 10px; padding-top: 6px; border-top: 1px dashed var(--line-2); }
+
+/* 丙：分镜那一区顶上一条 */
+.zbar { margin: 0 0 12px; }
+.zbar:empty { display: none; }
+.zbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 13px; color: var(--ink-2); }
+.zseg { display: inline-flex; border: 1px solid var(--qing-line); border-radius: 999px; overflow: hidden; }
+.zseg button { padding: 2px 14px; border: 0; background: #fff; cursor: pointer; font: 13px/1.6 var(--sans); color: var(--qing); }
+.zseg button + button { border-left: 1px solid var(--qing-line); }
+.zseg button.on { background: var(--qing); color: #fff; font-weight: 600; cursor: default; }
+.zseg button:disabled:not(.on) { color: var(--ink-4); cursor: not-allowed; }
+.zhint { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-3); }
+.zhint b { color: var(--qing); }
+.zchip { display: inline-flex; align-items: center; gap: 6px; padding: 1px 10px; border: 1px solid var(--line-2); border-radius: 6px; background: #fff; cursor: pointer; font: 12.5px/1.7 var(--sans); color: var(--ink-2); }
+.zchip:hover:not(:disabled) { border-color: var(--qing-line); color: var(--qing); }
+.zchip.on { border-color: var(--qing); color: var(--qing); background: var(--qing-soft); }
+.zchip.ai { margin-left: auto; border-color: #c9a45c; color: #7a5a1e; background: #fff8e6; }
+.zchip:disabled { opacity: .55; cursor: not-allowed; }
+.zchip .wt-ring, .zhint .wt-ring { width: 11px; height: 11px; }
+.zstale { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 8px 0 0; padding: 6px 12px; border-radius: 8px; background: #fff6dc; font-size: 13px; color: #7a5a1e; }
+.zstale .zchip { margin-left: auto; border-color: #c9a45c; color: #7a5a1e; }
+.zloose { margin: 8px 0 0; padding: 6px 12px; border-radius: 8px; background: var(--qing-soft); font-size: 13px; color: var(--ink-2); }
+.zloose q { color: var(--ink); font-family: var(--serif); }
+.pshots[inert], .add-shot[inert], .free-section[inert] { opacity: .55; }
+
+/* 对照着看：左边那一栏另一种（只看） */
+.zalt { min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: #fbfaf7; }
+.zalt-h { display: flex; align-items: baseline; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--line); font: 600 13.5px/1.6 var(--kai); letter-spacing: .2em; color: var(--ink-2); }
+.zalt-h em { font: normal 11.5px/1.6 var(--sans); letter-spacing: 0; color: var(--ink-4); }
+.zalt-b { padding: 8px 12px 10px; font: 13.5px/1.85 var(--serif); color: var(--ink); white-space: pre-wrap; overflow-wrap: break-word; }
+.zalt-b p { margin: 0; }
+.zalt-b .k { font-family: var(--kai); color: var(--ink-3); }
+.zalt-b .sl { margin-top: 4px; font: 600 12.5px/1.8 var(--kai); letter-spacing: .2em; color: var(--qing); }
+.zalt.old .zalt-b { color: var(--ink-3); }
+.zalt.old .zalt-h em { color: #a07a2a; }
+
+/* 整页自由写的老稿（认不出分区的）：照原样整页改，共用的几区不摆 */
+#sheet.whole .shared-settings, #sheet.whole .section-nav { display: none; }
+.whole-note { margin: 0 0 10px; padding: 6px 12px; border-radius: 8px; background: #fff6dc; font-size: 13px; color: #7a5a1e; }

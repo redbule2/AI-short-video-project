@@ -76,7 +76,7 @@
     const p = flow(), toast = window.UI.toast;
     if (!p) { toast(lock()); return false; }
     if (!READY || CONFLICT || RECOVERY_PENDING) { toast('这份稿还有冲突或恢复草稿没处理：先处理好再改'); return false; }
-    if (Lay.watching() || JOBS.live.length) { toast('AI 正在做这一条（左下角那一条）：做完再改'); return false; }
+    if (Finish.busy() || JOBS.live.length) { toast('AI 正在做这一条（左下角那一条）：做完再改'); return false; }
     const from = STEM + '.txt', was = OPENPATH, pl = WriteShots.plan(flowParas(), from, Core.vpCode(from), picked);
     if (!pl.to) { toast(pl.say); return false; }
     if (pl.same) return true;
@@ -91,7 +91,7 @@
     try { if (r.name !== from) retarget(r.name, was); }
     finally { PULLING = false; }
     S.note = framesSay(pl.add, pl.drop); S.noteFor = OPENPATH;
-    paintShots(); Lay.paint();
+    paintShots(); Finish.paint();
     toast('改好了：这一条拍 镜' + Core.vpCode(r.name) + '，名字改成 ' + r.name + (r.vers > 1 ? '（前几版一起改了名）' : '') + (r.warn ? '。' + r.warn : ''));
     return true;
   }

@@ -1033,8 +1033,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         const otherText = sc.others.length ? ['', '## 这一段的其他几条提示词（只看，别改；接头处的人物位置、动作、光线要接得上）', ...sc.others.map(o => '### ' + o.f + (o.no ? '（第 ' + o.no + ' 条）' : '') + '\n' + (o.text || '（还是空的）'))].join('\n') : '';
         const pm = await pePart(j, { voice: vo.length > 0, bm: !!j.白模, frame: frames.length > 0 });
         return ['# 任务：给一段戏写 Seedance 视频提示词', '', '今天 ' + today() + '。这是一个 AI 短视频项目。下面有定稿的剧本、镜头表、全片设定、这一段能用的资产图。请照 sd25-pe 的格式写视频提示词。' + range,
-          '', '## 要求', '1. 格式照下面「提示词格式」：这一条挂的素材五份以内用写法一，多于五份用写法二。镜头由剧情需要来设计，不必和镜头表一一对应，写在【事件脚本】里，一镜一行，一镜只讲一两件事；戏照「写戏规矩」写。', '2. 素材职责里用 @图片1、@图片2……引用资产图，只能用下面「能用的资产图」里的，镜头里看得见的人物、道具、场景都要挂。' + (txts.length ? TxtWord.PROMPT_RULE : ''),
-          '3. 不写总时长（在生成参数里设）；要说清某一段在第几秒（比如白模只管的那几秒），写整秒「第2-4秒」。不写画面里没有的东西。' + (Secs ? Secs.ASK : ''), '4. ' + gp.rule, '5. 回复' + ['两', '三', '四'][(gp.make ? 1 : 0) + (Secs ? 1 : 0)] + '块' + (gp.make ? '（最前面是【GEO底稿】）' : '') + '，照这个样子：', ...(gp.make ? ['【GEO底稿】', '（照 scene-geo 第五节模板写的底稿）'] : []), '【提示词】', '（整份提示词，从「【生成目标】」开始）', '【素材登记】', '[{"ref": "@图片1", "name": "叫法", "path": "资产/……png"}]', ...(Secs ? Secs.ASK_EG : []),
+          '', '## 要求', '1. 格式照下面「提示词格式」：这一条挂的素材五份以内用写法一，多于五份用写法二。镜头由剧情需要来设计，不必和镜头表一一对应，写在【事件脚本】里，一镜一行，一镜只讲一两件事；戏照「写戏规矩」写。' + Styles.writeRule, '2. 素材职责里用 @图片1、@图片2……引用资产图，只能用下面「能用的资产图」里的，镜头里看得见的人物、道具、场景都要挂。' + (txts.length ? TxtWord.PROMPT_RULE : ''),
+          '3. 不写总时长（在生成参数里设）；要说清某一段在第几秒（比如白模只管的那几秒），写整秒「第2-4秒」。不写画面里没有的东西。' + (Secs ? Secs.ASK : ''), '4. ' + gp.rule, '5. 回复' + ['两', '三', '四', '五', '六'][(gp.make ? 1 : 0) + (Secs ? 1 : 0) + Styles.writeMore] + '块' + (gp.make ? '（最前面是【GEO底稿】）' : '') + '，照这个样子：', ...(gp.make ? ['【GEO底稿】', '（照 scene-geo 第五节模板写的底稿）'] : []), '【提示词】', '（整份提示词，从「【生成目标】」开始）', '【素材登记】', '[{"ref": "@图片1", "name": "叫法", "path": "资产/……png"}]', ...(Secs ? Secs.ASK_EG : []), ...Styles.writeEg(),
           ...(j.白模 ? ['6. 白模视频 @视频1 要挂：素材职责里照下面「这一条挂的白模视频」那一段写，【素材登记】里也登记它（{"ref": "@视频1", "name": "白模", "path": "' + j.白模 + '"}）。'] : []),
           ...(frames.length ? [(j.白模 ? '7' : '6') + '. 关键帧要挂：照下面「这一条挂的关键帧」那一段写，【素材登记】里也登记它们（name 写「关键帧」）。'] : []),
           ...(vo.length ? [(6 + (j.白模 ? 1 : 0) + (frames.length ? 1 : 0)) + '. ' + voiceRule(vo)] : []),
@@ -1043,13 +1043,13 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           '', '## 定稿的剧本', scriptTx, otherText, lessons ? '\n## 公用教训（写的时候记着）\n' + lessons : '', '', PE_FORMAT, '', PE_DRAMA, ...(gp.ref ? ['', gp.ref] : []), TAIL].join('\n');
       },
       async apply(j, text) {
-        const t = text.replace(/\r\n/g, '\n'), a = t.indexOf('【提示词】'), z = t.indexOf('【素材登记】'), q = t.indexOf('【秒数】', a);
+        const sz = Styles.takeBlocks(text, ['分区', '标题']), t = sz.rest, a = t.indexOf('【提示词】'), z = t.indexOf('【素材登记】'), q = t.indexOf('【秒数】', a);   // 分区写法那份、标题先掐出来（shot-styles.js），别混进提示词、素材登记
         if (a < 0) throw fail('AI 没按要的格式回（没有【提示词】）');
         const end = Math.min(...[z, q].filter(x => x > a), t.length);
         const prompt = body(t.slice(a + 5, end), /^本段事件|^【生成目标】/);
         if (prompt.length < 80) throw fail('AI 写的提示词太短了');
         const rel = ['提示词', segDir(j.段), j.名];
-        const buf = Buffer.from(prompt + '\n', 'utf8');
+        const fx = await Styles.forNew(j, prompt, sz.got), buf = Buffer.from(fx.text + '\n', 'utf8');   // 分区写进去（这一条拨成合并的照合并），另一种记进写稿资料备选
         await fsp.mkdir(path.dirname(vpPath(j)), { recursive: true });
         try { await fsp.writeFile(vpPath(j), buf, { flag: 'wx' }); }
         catch (e) { if (e.code === 'EEXIST') throw fail('等待 AI 时这份稿已被创建，保留现有内容；AI 答卷可在任务记录里查看'); throw e; }
@@ -1070,10 +1070,11 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         map.prompts = map.prompts && typeof map.prompts === 'object' ? map.prompts : {};
         map.prompts[rel.join('/')] = { prompt_sha256: sha256(buf), references: list };
         await writeFile(mp, JSON.stringify(map, null, 2) + '\n');
+        await Styles.putSide(j, fx.side);
         const secs = await putSecs(j.项目, rel, t);
         const nv = list.filter(r => /^@视频/.test(r.ref)).length, lostF = (Array.isArray(j.关键帧) ? j.关键帧 : []).filter(f => !list.some(r => r.path === f));
         const fNote = lostF.length ? '；注意：关键帧 ' + lostF.map(f => stemOf(f)).join('、') + ' AI 没登记，打开看一眼，出片前要补上' : '';
-        return { 结果: '提示词写好了，挂了 ' + (list.length - nv) + ' 张图' + (nv ? '、' + nv + ' 段白模' : '') + bmNote + fNote + (geoAt ? '；AI 看图新建了一份 GEO 底稿，等你审' : '') + secsSay(secs), 产出: [rel.join('/'), ...(geoAt ? [geoAt] : [])] };
+        return { 结果: '提示词写好了，挂了 ' + (list.length - nv) + ' 张图' + (nv ? '、' + nv + ' 段白模' : '') + bmNote + fNote + (geoAt ? '；AI 看图新建了一份 GEO 底稿，等你审' : '') + secsSay(secs) + fx.say, 产出: [rel.join('/'), ...(geoAt ? [geoAt] : [])] };
       },
     },
     /* 生成出片任务书：不用 AI，照固定的样子把这一条要用的东西排好（提示词、挂哪几张图、画布、参数、存到哪） */
@@ -1351,7 +1352,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     ...segRefs(s).map(x => ({ 行: x.k + '参考「' + x.n + '」（这一段的图）：' + x.f, f: x.f })),
     ...Array.from(s.场景图 || []).map(f => ({ 行: '场景图：' + f, f })),
   ];
-  /* 只用文字写、不出图的几样（11-17）：照它们的文字描写写（还是出图提示词的不算，照全片设定）。写提示词、AI 铺底共用 */
+  /* 只用文字写、不出图的几样（11-17）：照它们的文字描写写（还是出图提示词的不算，照全片设定）。写提示词、交给 AI 写完共用 */
   async function txtsOf(j, flow, s) {
     const out = [];
     if (TxtWord) for (const x of TxtWord.itemsOf(flow, s, { noImg: core('noImg'), sceneStem, skip: isNarr })) {
@@ -1611,11 +1612,13 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
           '5. ' + ADD_IMG, '【素材登记】', '[{"ref": "@图片2", "name": "叫法", "path": "资产/……png"}]',
           ...(Secs ? ['6. ' + Secs.ASK.replace('回复最后', 'JSON 后面'), ...Secs.ASK_EG] : []),
           '', pm.text,
-          '', '## 原文（文件：' + j.名 + '）', vpText, await bmPart(j, vids),
+          '', '## 原文（文件：' + j.名 + '）', vpText, ...await Styles.fixPart(j, vpText), await bmPart(j, vids),
           framePart(frames, '关键帧那几句的编号和先后、每一镜开头的秒数和参考哪张，批注没说到的不动。', vpText, s, shotsOf(s, j.名)), await lookPart(j.项目, null, s, '改', '全片的光影总基调（批注说到画面味道时照它改）'), '', '## 能挂的图（这一场的）', imgs.map(x => x.行).join('\n') || '（没有）', '', '## 批注', note,
           (await exists(sp)) ? '\n## 这一段的剧本（对照用）\n' + await docText(sp) : '', '', PE_FORMAT, '', PE_DRAMA, TAIL].join('\n');
       },
       async apply(j, text) {
+        const alt = Styles.takeBlocks(text, ['另一种']);   // 另一种写法跟着改的几镜（shot-styles.js）：先掐出来，别混进 JSON、素材登记
+        text = alt.rest;
         const z = text.indexOf('【素材登记】'), q = text.indexOf('【秒数】'), reg = z >= 0 ? text.slice(z, q > z ? q : undefined) : '';   // 新挂的图（11-18）登记在 JSON 后面的【素材登记】
         const ops = opsOf(z >= 0 ? text.slice(0, z) : text), rel = ['提示词', segDir(j.段), j.名];
         if (!ops.length) {   // 照新资产改（11-17，公用/资产改过.js）：AI 对过说都对得上。稿子一字不动，只把时间更新（不再标「资产改了」），批注照旧收走
@@ -1645,8 +1648,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         await writeFile(vpPath(j), out);
         await archive(j.项目, j.rel);
         await resha(j.项目, rel, undefined, add.length ? add : undefined);
-        const secs = await putSecs(j.项目, rel, text);
-        return { 结果: '提示词按批注改好了，改了 ' + ops.length + ' 处' + (add.length ? '，新挂了 ' + add.map(r => r.ref + '（' + (r.name || stemOf(r.path)) + '）').join('、') : '') + secsSay(secs), 产出: [rel.join('/')] };
+        const secs = await putSecs(j.项目, rel, text), altSay = await Styles.fixApply(j, alt.got.另一种, out);
+        return { 结果: '提示词按批注改好了，改了 ' + ops.length + ' 处' + (add.length ? '，新挂了 ' + add.map(r => r.ref + '（' + (r.name || stemOf(r.path)) + '）').join('、') : '') + secsSay(secs) + altSay, 产出: [rel.join('/')] };
       },
     },
   });
@@ -1657,11 +1660,14 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     try { ops = JSON.parse(t.slice(a, z + 1)); } catch (e) { throw fail('AI 没按要的格式回（要一段 JSON 列表）'); }
     return (Array.isArray(ops) ? ops : []).filter(o => o && typeof o.原文 === 'string' && o.原文.trim() && typeof o.改成 === 'string');
   };
-  /* ---------- AI 铺底（11-19 他要回人写提示词：人写生成目标、事件脚本，AI 写其余几块）。都在 pe-lay.js ---------- */
-  Object.assign(KINDS, require('./pe-lay.js')({ fsp, pj, str, fail, segDir, exists, unbom, oneLine, today, TAIL, PromptDraft, Secs, Voice, BmKey, isNarr,
+  /* ---------- 分镜两种写法（11-20 他定；11-21 分区为主、合并备选）：另写一种，写提示词、按批注改提示词、交给 AI 写完里的几处钩子。都在 shot-styles.js ---------- */
+  const Styles = require('./shot-styles.js')({ fsp, str, fail, segDir, unbom, today, TAIL, PromptDraft, exists, vpNeed, vpPath, vpLabel, withFileLocks, sideOf, keepCopy, writeFile, isPeText });
+  Object.assign(KINDS, Styles.KINDS);
+  /* ---------- 交给 AI 写完（11-21 他定：没有「AI 铺底」，人写好事件脚本，剩下的 AI 一次写完；以前的直接铺底、整理分镜并进来了）。都在 pe-finish.js ---------- */
+  Object.assign(KINDS, require('./pe-finish.js')({ fsp, pj, str, fail, segDir, exists, unbom, oneLine, today, TAIL, PromptDraft, Secs, Voice, BmKey, isNarr,
     readFlow, sceneOf, scriptPath, finalOk, isPeText, vpNeed, vpPath, vpLabel, regOf, vidsOf, framesOf, frameImgs, framePart, bmPart,
-    geoPart, saveGeo, lookPart, lessonsOf, pePart, PE_FORMAT, sceneImgs, txtsOf, TxtWord, voiceAssets, voiceRule, settingText, sceneText, docText, shotsOf,
-    refsIn, withFileLocks, sideOf, keepCopy, writeFile, resha, putSecs, secsSay }).KINDS);
+    geoPart, saveGeo, lookPart, lessonsOf, pePart, PE_FORMAT, PE_DRAMA, sceneImgs, txtsOf, TxtWord, voiceAssets, voiceRule, settingText, sceneText, docText, shotsOf,
+    refsIn, withFileLocks, sideOf, keepCopy, writeFile, resha, putSecs, secsSay, Styles }).KINDS);
   /* ---------- 对剧本（11-16 他定）：审片页自动开，不用复制给 AI；先本机 Codex 命令行，不行换 DeepSeek 接口。都在 script-check.js ---------- */
   const BUILTIN = '内置';
   CHANNELS[BUILTIN] = { 名: '内置 AI', 说明: '对剧本：先本机 Codex 命令行，不行换 DeepSeek 接口', ok: () => true, 模型: [], 默认模型: () => '', 模型说明: '', 深度: [], 默认深度: () => '', 深度说明: '' };

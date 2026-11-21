@@ -58,7 +58,7 @@ test('找不到的节算对不上：代码块里的 # 不当小标题、下面�
   assert.match(r.text, /这回地图对不上：找不到一：「甲」开头。sd25-pe 要通读整份/);
 });
 
-test('对不上就写明通读整份：地图读不了、sd25-pe 升级过；换行和 BOM 不算升级', () => {
+test('对不上就写明通读整份：地图读不了、sd25-pe 升级过；换行、BOM、首尾空行不算升级', () => {
   const none = M.bookRef(SKILL, {}, '');
   assert.match(none.missing[0], /地图/); assert.match(none.text, /这回地图对不上：.*通读整份/);
   const bumped = SKILL + '\n新加的一条。\n', up = M.bookRef(bumped, {});
@@ -67,4 +67,5 @@ test('对不上就写明通读整份：地图读不了、sd25-pe 升级过；换
   const fake = M.bookRef('别的技能', {});   // 小标题全对不上：只列头几处
   assert.ok(fake.missing.length > 3 && fake.text.includes('等 ' + fake.missing.length + ' 处') && fake.text.length < 700, fake.text.length + ' 字');
   assert.deepEqual(M.bookRef('\uFEFF' + SKILL.replace(/\r?\n/g, '\r\n'), {}).missing, []);
+  assert.deepEqual(M.bookRef(SKILL.replace(/\r\n/g, '\n').trim(), {}).missing, []);   // 流水线的读法（jobs.js 的 skill() 去掉首尾空白）：11-21 以前回回报对不上
 });

@@ -42,12 +42,13 @@
    分几条你定（2026-11-16 他定）：每写一条先勾它拍镜头表里的哪几个镜头，名字就是镜头号：1-5.txt、4-9.txt（只一个 3.txt，不连着的 1-3、5.txt）。
      老稿（视频提示词.txt、视频提示词_02.txt……）照旧认、照旧用。
    谁来写（2026-11-19 他要回人写稿；11-15 起只许 AI 写，这回放开）：
-     「我来写」建一份空稿、打开写稿页：分镜模式一镜一行，自由模式只把事件脚本换成一个大输入框。你写【生成目标】【事件脚本】，
-       其余几块（素材、基础设定、主体与关系、保持一致、「声音包括」那一行）在写稿页点「AI 铺底」交给 AI 补（公用/写稿铺底.js，本机服务 pe-lay.js）。
+     「我来写」建一份空稿、打开写稿页的自由模式（11-21 他定：人只写自由模式）：你只写事件脚本，照剧本写这几镜里发生什么，一大段也行。
+       写好在写稿页点「交给 AI 写完」，剩下的 AI 一次写完：拆成一镜一镜（分区写法，合并的另存备选），写生成目标、素材、基础设定、主体与关系、保持一致和「声音包括」那一行
+       （公用/写稿写完.js，本机服务 pe-finish.js；以前的「AI 铺底」「AI 整理成分镜」并进来了）。
        写稿资料里记「手写」，列表上标「手写稿」、按钮是「接着写」（11-15 以前从这里开的老稿记的是「流水线」，也算）。
      「AI 先写一版」照 sd25-pe 只写勾的那几个镜头，可另外写要求；本机服务照名字认这一条拍哪几个镜头。
        点「复制任务，自己交给 AI」，贴进你自己开的对话。写好以后打开看、写批注交给 AI 改；也能「进去改」自己动手改字（他要留着）。
-   每镜几秒（2026-11-15 他定）：AI 写稿、照批注改稿、AI 铺底时顺手估每一镜几秒，记在参考素材映射这一条的「秒数」（公用/秒数.js）；
+   每镜几秒（2026-11-15 他定）：AI 写稿、照批注改稿、交给 AI 写完时顺手估每一镜几秒，记在参考素材映射这一条的「秒数」（公用/秒数.js）；
      点「批准出片」时时长自动填合计，下面列每镜几秒。估完以后稿子又改过（进去改的），弹窗提醒秒数是改之前估的。
    写好并确认满意后，点「批准出片」，选好怎么出，页面排好任务书，就交给 Codex 去即梦出样片。
    出片要花积分：页面只在你点了「批准出片」、在弹窗里又点了一次以后才发出去。2026-11-15 他定：「生成任务书」和「批准出片」合成一个按钮。
@@ -433,7 +434,7 @@ function rangeOf(s, e) {
   return [Math.min(a, b), Math.max(a, b)];
 }
 
-/* 你来写的空稿（2026-11-19 他要回来）：只放你写的两块，【生成目标】和【事件脚本】，事件脚本留空，由你逐镜添加或自由填写；其余几块 AI 铺底时补上。
+/* 你来写的空稿（2026-11-19 他要回来）：只放【生成目标】和【事件脚本】两个空块，事件脚本由你在自由模式写；生成目标和其余几块交给 AI 写完时写上。
    挂了白模、关键帧的，素材里先带上它们的句子（frames：[{ ref, name, ph }]，排好先后）：素材五份以内写法一（【参考素材职责】），
    多于五份写法二（关键帧放【场景】，白模放【动作与声音】）。白模只当普通素材，只带它自己的两句（11-15 起） */
 function skeleton(bmRef, frames = []) {
@@ -455,7 +456,7 @@ async function makeDraft(s, name, mode, shots, bm, frames = []) {
   await createPromptFile(at(p), text);
   try {
     await createPromptFile(at(side), JSON.stringify({ 说明: SIDE_NOTE,
-      流水线: '这一份是从「流水线」开的稿，人来写：全片的梗概、人物、场景、道具（各自引用了哪张图），和这一段（' + segName(s.段) + '）的镜头表，都写在 定稿的剧本/流水线.json 里；这一段定稿的剧本在 定稿的剧本/' + segName(s.段) + ' 里。这一份拍镜头表里的镜头 ' + shots.join('、') + '（名字就是镜头号）。人写生成目标和事件脚本，其余几块由 AI 铺底补上；AI 批注、建议都照人写的这两块。',
+      流水线: '这一份是从「流水线」开的稿，人来写：全片的梗概、人物、场景、道具（各自引用了哪张图），和这一段（' + segName(s.段) + '）的镜头表，都写在 定稿的剧本/流水线.json 里；这一段定稿的剧本在 定稿的剧本/' + segName(s.段) + ' 里。这一份拍镜头表里的镜头 ' + shots.join('、') + '（名字就是镜头号）。人只写事件脚本（自由模式写一大段），交给 AI 写完：拆成分镜，生成目标、素材这几块一起写；AI 批注、建议都照人写的事件脚本。',
       写法: mode, 写法范围: '分镜', 分镜稿: text, 自由稿: '', 镜头信息: [], 手写: true, ...(Object.keys(hang).length ? { 挂图: hang } : {}) }, null, 2) + '\n');
   } catch (e) { throw new Error('「' + name + '」正文已创建并保留，但写稿资料未保存：' + e.message); }
 }
@@ -472,15 +473,15 @@ const bmCover = (v, picked, nos) => (SB.shotsOf('', v.name, nos) || []).filter(n
 /* ---------- 写一条提示词的框 ---------- */
 /* 2026-11-16 他定：勾这一条拍镜头表里的哪几个镜头，名字就是镜头号（1-5.txt）；本机服务照名字认范围，只写这几个镜头。
    11-19 他在设计稿（流水线/再写提示词弹窗_设计稿.html）里挑了「两步走」：第 1 步只勾镜头；第 2 步定谁来写、挂白模和关键帧。
-   谁来写三选一：我来写·分镜模式、我来写·自由模式（建空稿、进写稿页），AI 先写一版（交给 AI）。标题和按钮钉住，只有中间一处滚（.dlg.pin） */
-const HOW = [['分镜', '我来写 · 分镜模式', '一镜一行，可加可排。其余几块点「AI 铺底」补'], ['自由', '我来写 · 自由模式', '事件脚本一个大框，随你写。其余也是 AI 铺底'], ['ai', 'AI 先写一版', 'AI 照 sd25-pe 写、估每镜几秒，你再批注']];
+   谁来写二选一（11-21 他定：人只写自由模式）：我来写（建空稿、进写稿页的自由模式，写好交给 AI 写完），AI 先写一版（交给 AI）。标题和按钮钉住，只有中间一处滚（.dlg.pin） */
+const HOW = [['自由', '我来写', '照剧本写这几镜里发生什么，一大段也行。写好点「交给 AI 写完」：拆成分镜，生成目标、素材这些一起写'], ['ai', 'AI 先写一版', 'AI 照 sd25-pe 写、估每镜几秒，你再批注']];
 async function newPrompt(s) {
   if (!s.段落.length) { toast('先到「提炼」准备好镜头表，再勾这一条拍哪几个镜头', 'err'); return; }
   const busy = AI.jobs.filter(j => j.事 === '写提示词' && j.段 === s.段 && jobLive(j)).map(j => j.名);   // AI 正在写、文件还没落下的，也占着名字
   const have = promptsOf(s.段), taken = new Set([...have.map(e => e.key), ...busy]);
   const nos = shotNos(s), picked = new Set(), shotNumbers = () => nos.filter(n => picked.has(n));   // 镜头表的固定号（2026-11-16）：删过的不挪，中间加的是 3b
   const pickedRows = () => s.段落.filter((x, i) => picked.has(nos[i]));
-  let name = '', step = 1, how = '分镜', top1 = 0, shell = null;
+  let name = '', step = 1, how = '自由', top1 = 0, shell = null;
   /* 第 1 步：镜头表一镜一行。号、写什么、秒数；底下一行作用、已经写进哪几条 */
   const shotGrid = h('div', { class: 'np-shots', role: 'group', 'aria-label': '勾这一条拍镜头表里的哪几个镜头' }, s.段落.map((shot, index) => {
     const number = nos[index], had = hadOf(have, number, nos), sec = Why.secOf(shot);
@@ -1038,12 +1039,12 @@ function rowOf(s, e, made) {
   const see = () => openShell(at([...dirOf(s), e.name]), '第' + s.段 + '段 · ' + e.label), hand = isHandDraft(e);
   return h('div', { class: 'wf-item', 'data-name': e.name },
     h('div', { class: 'wf-item-h' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), madeTag(made),
-      hand ? h('span', { class: 'fs-state', title: '你来写的稿：分镜模式或自由模式接着写；素材、基础设定这几块在写稿页点「AI 铺底」由 AI 补' }, '手写稿')
+      hand ? h('span', { class: 'fs-state', title: '你来写的稿：在写稿页接着写事件脚本，写好点「交给 AI 写完」，分镜和生成目标、素材这几块由 AI 写' }, '手写稿')
         : e.draft ? h('span', { class: 'fs-state', title: '在写稿页里改过：AI 估的每镜秒数可能不准，出片时会提醒' }, '改过') : null,
       stale ? [h('span', { class: 'fs-state', style: 'color:var(--zhu);border-color:var(--zhu-line)', title: imp ? '剧本重新定稿了，AI 对新旧剧本说这一条要再看：' + imp.为什么 : ed.length ? '这一条写好以后，这几样资产又改了：' + AssetEdit.say(ed) + '。点下面「照新资产改」交给 AI 对一遍；打开看一眼还对得上就沿用' : '这一条写好以后，前面（剧本、资产、拍摄风格）又动过。打开看一眼还对得上' }, imp ? '剧本改了，待核对' : ed.length ? '资产改了，待核对' : '待核对'),
         h('button', { class: 'fl-link', type: 'button', title: '看过了，还对得上，就用这一版', onclick: () => { keepAsIs(s, '提示词/' + e.name); rerender(); } }, '还对得上，沿用')] : null,
       h('span', { class: 'sp' }),
-      hand ? btn('接着写', () => openWrite(s.段, e.name, true), 'ink', '打开写稿页接着写（分镜模式或自由模式）；写好生成目标、事件脚本，点「AI 铺底」补其余几块；右栏看资产、AI 批注、校对和剧本')
+      hand ? btn('接着写', () => openWrite(s.段, e.name, true), 'ink', '打开写稿页接着写：写好事件脚本，点「交给 AI 写完」，AI 拆成分镜、写好其余几块；右栏看资产、AI 批注、校对和剧本')
         : e.draft ? btn('进去改', () => openWrite(s.段, e.name), 'ink', '在写稿页里打开，自己改字；右栏看资产、AI 批注、校对和剧本')
         : [btn('进去改', () => openWrite(s.段, e.name), 'ink', 'AI 写的稿也能自己改：在写稿页里打开，改完点「回到流水线」就存好。改过以后，AI 估的每镜秒数可能不准，出片时会提醒'),
           btn('打开看、写批注', see, '', '在这里看提示词、点一段写批注，再交给 AI 改；@图片 点一下能看图')],
@@ -1061,7 +1062,7 @@ function rowOf(s, e, made) {
     frameLine(s, e, inStrip),
     frameWordLine(s, e, kws, !restFr.length),
     jobs.length ? h('div', { class: 'wf-jobs' }, jobs.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题.replace(/ · .*/, ''))))) : null,
-    busy ? null : jobFailed('直接铺底', s.段, j => j.名 === e.name) || jobFailed('写提示词', s.段, j => j.名 === e.name) || jobFailed('批注提示词', s.段, j => j.名 === e.name) || jobFailed('按批注改提示词', s.段, j => j.名 === e.name) || jobFailed('出片任务书', s.段, j => j.名 === e.name) || jobFailed('出片', s.段, j => j.名 === tf)
+    busy ? null : jobFailed('写完提示词', s.段, j => j.名 === e.name) || jobFailed('写提示词', s.段, j => j.名 === e.name) || jobFailed('批注提示词', s.段, j => j.名 === e.name) || jobFailed('按批注改提示词', s.段, j => j.名 === e.name) || jobFailed('出片任务书', s.段, j => j.名 === e.name) || jobFailed('出片', s.段, j => j.名 === tf)
       || jobFailed('写字', s.段, j => (j.只提示词 || []).includes(e.name)) || jobFailed('出图', s.段, j => j.类别 === '关键帧' && kws.some(w => w.stem === j.文件名)) || jobFailed('改图', s.段, j => j.类别 === '关键帧' && kws.some(w => w.stem === j.文件名)),
     note ? notesBox(s, e, note) : null);
 }

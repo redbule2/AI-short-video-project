@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>写稿页分区镜头 · 设计稿</title>
+<style>
+:root {
+  --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --line: #d6cab6; --zhu: #a83a2c; --dai: #3e5c5e; --huang: #fff4c9;
+  /* 写稿页自己的颜色（示意照它画） */
+  --w-paper: #f5f3ef; --w-paper-2: #ebe8e2; --w-ink: #1f1c19; --w-ink-2: #4d4842; --w-ink-3: #736c64; --w-ink-4: #a39d95; --w-line: #e6e2db; --w-line-2: #d4cfc6;
+  --qing: #1f6b69; --qing-soft: rgba(31, 107, 105, .08); --qing-line: rgba(31, 107, 105, .32);
+  --serif: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  --sans: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --kai: 'KaiTi', 'STKaiti', 'Kaiti SC', 'BiauKai', 'Noto Serif SC', serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.85 var(--sans); }
+main { max-width: 1000px; margin: 0 auto; padding: 32px 22px 120px; }
+h1 { margin: 0 0 4px; font: 600 26px/1.4 var(--serif); letter-spacing: .08em; }
+.sub { margin: 0 0 16px; font-size: 14.5px; color: var(--ink-2); }
+h2 { margin: 38px 0 6px; font: 600 19px/1.5 var(--serif); letter-spacing: .1em; }
+.card { margin: 12px 0; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+.card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 600; }
+.card h3 .no { display: inline-block; min-width: 1.7em; color: var(--dai); }
+.card p { margin: 3px 0; color: var(--ink-2); }
+.opts { margin: 8px 0 2px; }
+.opts label { display: block; margin: 5px 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opts label:hover { background: #faf5ea; }
+.opts input { margin-right: 8px; }
+.opts .rec { color: var(--dai); font-size: 13px; margin-left: 4px; }
+textarea { display: block; width: 100%; margin-top: 8px; min-height: 2.6em; padding: 7px 10px; border: 1px dashed #c8b99f; border-radius: 8px; background: #fffef9; font: 15px/1.7 var(--sans); color: var(--ink); resize: vertical; }
+textarea:focus { outline: none; border-style: solid; border-color: var(--dai); background: #fff; }
+textarea.has { border-style: solid; border-color: #b9822f; background: var(--huang); }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; background: rgba(255,253,249,.96); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; justify-content: center; font-size: 14px; z-index: 5; }
+.bar button { padding: 6px 14px; border: 1px solid var(--dai); border-radius: 8px; background: #fff; color: var(--dai); font: inherit; cursor: pointer; }
+.bar button:hover { background: #eef5f3; }
+#st { color: var(--ink-2); }
+.foot { margin-top: 26px; font-size: 13px; color: var(--ink-3); }
+.pc { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0 0; font-size: 14px; }
+.pc > div { padding: 8px 12px; border-radius: 8px; background: var(--sheet); border: 1px solid var(--line); color: var(--ink-2); }
+.pc b { display: block; font-size: 13.5px; }
+.pc .good b { color: var(--dai); } .pc .bad b { color: var(--zhu); }
+.cap-out { margin: 14px 0 4px; font-size: 13px; color: var(--ink-3); }
+
+/* ---- 示意：写稿页的样子 ---- */
+.mock { padding: 16px 20px 18px; border: 1px solid var(--w-line-2); border-radius: 10px; background: var(--w-paper); color: var(--w-ink); font: 14px/1.7 var(--sans); box-shadow: 0 10px 30px -18px rgba(30,28,24,.35); }
+.m-lab { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font: 13px/1.5 var(--kai); letter-spacing: .3em; color: var(--w-ink-2); }
+.m-lab::after { content: ''; flex: 1; border-top: 1px solid var(--w-line); }
+.m-lab em { font: normal 11.5px/1.6 var(--sans); letter-spacing: 0; padding: 0 9px; border: 1px solid var(--qing-line); border-radius: 999px; color: var(--qing); background: var(--qing-soft); }
+
+/* 镜头卡（和写稿页现在一样的头） */
+.p-shot { padding: 10px 16px 14px; border: 1px solid var(--w-line); border-radius: 10px; background: linear-gradient(to bottom, rgba(245,243,239,.6), #fff 70px); }
+.p-shot + .p-shot { margin-top: 10px; }
+.shot-h { display: flex; align-items: center; gap: 10px; padding: 0 0 8px; border-bottom: 1px solid var(--w-line); }
+.handle { color: var(--w-ink-4); letter-spacing: -2px; }
+.shot-no { flex: none; padding: 1px 10px; border-radius: 4px; background: var(--qing); color: #fff; font: 13px/1.6 var(--kai); letter-spacing: .15em; }
+.shot-t { flex: 1; min-width: 0; font: 600 16px/1.5 var(--serif); letter-spacing: .05em; }
+.ops { flex: none; display: flex; gap: 12px; font-size: 12px; color: var(--w-ink-3); }
+.cap2 { display: flex; justify-content: space-between; gap: 10px; margin: 10px 0 6px; font-size: 12.5px; color: var(--w-ink-3); }
+.ta { padding: 10px 14px; border: 1px solid var(--w-line-2); border-radius: 8px; background: #fff; font: 15px/1.95 var(--serif); color: var(--w-ink); }
+.r { padding: 0 2px; border-radius: 3px; background: var(--w-paper-2); }
+.s { color: #9a6b1f; }
+.t { color: #7a3d8c; }
+
+/* 甲：一栏一栏填 */
+.f { display: grid; grid-template-columns: 7.4em 1fr; gap: 10px; align-items: start; margin: 5px 0; }
+.f .k { padding-top: 4px; font: 13px/1.6 var(--kai); color: var(--w-ink-3); text-align: right; white-space: nowrap; }
+.f .v { padding: 3px 10px; border: 1px solid var(--w-line-2); border-radius: 6px; background: #fff; font: 14.5px/1.8 var(--serif); color: var(--w-ink); }
+.f .v.ph { color: var(--w-ink-4); background: #fcfbf9; border-style: dashed; font-family: var(--sans); font-size: 13px; }
+.f.focus .v { border-color: var(--qing); box-shadow: 0 0 0 3px var(--qing-soft); }
+.zsub { margin: 10px 0 0; padding: 6px 12px 8px 10px; border-left: 3px solid var(--qing-line); border-radius: 8px; background: rgba(31,107,105,.035); }
+.zsub-h { display: flex; align-items: center; gap: 10px; margin: 0 0 2px; }
+.zsub-h b { font: 600 13.5px/1.6 var(--kai); letter-spacing: .2em; color: var(--qing); }
+.zsub-h .ops { margin-left: auto; }
+.zsub .f { grid-template-columns: 6.4em 1fr; }
+.zadd { margin: 10px 0 4px; padding: 4px 0; border: 1px dashed var(--qing-line); border-radius: 8px; text-align: center; font-size: 13px; color: var(--qing); }
+.zend { margin-top: 10px; padding-top: 6px; border-top: 1px dashed var(--w-line-2); }
+
+/* 乙：一个框，栏名上色 */
+.ta.zt p { margin: 0; }
+.ta.zt .k { color: var(--qing); font-weight: 600; }
+.ta.zt .sl { margin: 6px 0 0; padding-top: 4px; border-top: 1px dashed var(--qing-line); font: 600 13.5px/1.8 var(--kai); letter-spacing: .2em; color: var(--qing); }
+
+/* 丙：两种一起写，挑一种 */
+.vbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 10px; font-size: 13px; color: var(--w-ink-2); }
+.seg { display: inline-flex; border: 1px solid var(--qing-line); border-radius: 999px; overflow: hidden; }
+.seg span { padding: 2px 14px; font-size: 13px; color: var(--qing); background: #fff; }
+.seg span.on { background: var(--qing); color: #fff; font-weight: 600; }
+.vbar b { color: var(--qing); }
+.chip { padding: 1px 10px; border: 1px solid var(--w-line-2); border-radius: 6px; background: #fff; font-size: 12.5px; color: var(--w-ink-2); }
+.chip.on { border-color: var(--qing); color: var(--qing); background: var(--qing-soft); }
+.chip.ai { margin-left: auto; border-color: #c9a45c; color: #7a5a1e; background: #fff8e6; }
+.stale { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 6px 12px; border-radius: 8px; background: #fff6dc; font-size: 13px; color: #7a5a1e; }
+.stale .chip { margin-left: auto; border-color: #c9a45c; color: #7a5a1e; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.col { min-width: 0; border: 1px solid var(--w-line); border-radius: 8px; background: #fff; }
+.col.on { border-color: var(--qing-line); box-shadow: inset 0 3px 0 var(--qing); }
+.col-h { display: flex; align-items: baseline; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--w-line); font: 600 13.5px/1.6 var(--kai); letter-spacing: .2em; color: var(--w-ink-2); }
+.col.on .col-h { color: var(--qing); }
+.col-h em { font: normal 11.5px/1.6 var(--sans); letter-spacing: 0; color: var(--w-ink-4); }
+.col.on .col-h em { color: var(--qing); }
+.col-b { padding: 8px 12px 10px; font: 13.5px/1.85 var(--serif); color: var(--w-ink); }
+.col-b p { margin: 0; }
+.col-b .k { font-family: var(--kai); color: var(--w-ink-3); }
+.col-b .sl { margin-top: 4px; font: 600 12.5px/1.8 var(--kai); letter-spacing: .2em; color: var(--qing); }
+.col.old .col-b { color: var(--w-ink-3); }
+.who { margin: 10px 0 0; padding: 0; list-style: none; font-size: 14px; color: var(--ink-2); }
+.who li { margin: 4px 0; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); }
+.who b { color: var(--ink); }
+@media (max-width: 680px) { .two, .pc { grid-template-columns: 1fr; } .f, .zsub .f { grid-template-columns: 1fr; gap: 0; } .f .k { text-align: left; padding: 0; } }
+</style>
+</head>
+<body>
+<main>
+<h1>写稿页分区镜头 · 设计稿</h1>
+<p class="sub" id="sub"></p>
+<div id="sections"></div>
+<h2>其他意见</h2>
+<textarea data-k="其他" placeholder="还有什么想说的（可以不写）"></textarea>
+<p class="foot" id="foot"></p>
+</main>
+<div class="bar"><span id="st">选一选、写批注会自动存好</span><button id="copy" type="button">复制批注</button></div>
+
+<!-- ===== 甲：一栏一栏填 ===== -->
+<template id="fig-a">
+<div class="mock">
+  <div class="m-lab">事件脚本 <em>分区写法</em></div>
+  <div class="p-shot">
+    <div class="shot-h"><span class="handle">⋮⋮</span><span class="shot-no">镜头 2</span><span class="shot-t">敌人扑上墙头</span><span class="ops"><span>↑</span><span>↓</span><span>复制</span><span>收起</span><span>删除</span></span></div>
+    <div class="cap2"><span>镜头正文</span><span>一栏一栏填 · 整段贴进来自动分栏 · 输入 @ 引用素材</span></div>
+    <div class="f"><span class="k">机位/景别/角度</span><span class="v">第一视角，从沙袋墙后一名半跪的我军士兵的眼睛看出去，跟着人眼的高度微微起伏。</span></div>
+    <div class="f"><span class="k">本镜调用</span><span class="v">这名<span class="r">我军士兵</span>只露出握刀的双手；<span class="r">钢刀</span>；<span class="r">外星人战士</span>；墙头的沙袋和旁边停了火的机枪。</span></div>
+    <div class="f"><span class="k">画面构图</span><span class="v">画面下沿是这名士兵握着钢刀的双手和墙头的沙袋，旁边那挺机枪的枪口冒着青烟；墙外的外星人战士从远到近铺满画面。</span></div>
+    <div class="f"><span class="k">环境音</span><span class="v">风声，墙外成片的脚步声越来越急。</span></div>
+    <div class="f"><span class="k">进入状态</span><span class="v">机枪都停了火，外星人战士还在往墙冲。</span></div>
+    <div class="zsub">
+      <div class="zsub-h"><b>小节一</b><span class="ops"><span>↑</span><span>↓</span><span>删除</span></span></div>
+      <div class="f focus"><span class="k">动作/表情</span><span class="v">冲在最前头的一个外星人战士见枪口不冒火了，扬起手臂朝身后一挥，用日语高喊；无数外星人战士齐声吼着，踩着倒下的同伴加速涌向沙袋墙。</span></div>
+      <div class="f"><span class="k">音效</span><span class="v">成片的<span class="s">&lt;吼声&gt;</span>，沉重的<span class="s">&lt;脚步声&gt;</span>越来越急。</span></div>
+      <div class="f"><span class="k">镜头</span><span class="v">跟着这名士兵的视线，盯着冲来的人潮。</span></div>
+      <div class="f"><span class="k">台词</span><span class="v">领头的外星人战士用日语高喊<span class="t">{弾切れだ！突撃！}</span></span></div>
+    </div>
+    <div class="zsub">
+      <div class="zsub-h"><b>小节二</b><span class="ops"><span>↑</span><span>↓</span><span>删除</span></span></div>
+      <div class="f"><span class="k">动作/表情</span><span class="v">当先一排外星人战士冲到墙跟前，蹬地跃起，从左腰拔出佩刀高高举过头顶，眼看就要劈下来，这名士兵握刀的双手往上一抬。</span></div>
+      <div class="f"><span class="k">音效</span><span class="v">身后传来由远而近的<span class="s">&lt;旋翼轰鸣&gt;</span>。</span></div>
+      <div class="f"><span class="k">镜头</span><span class="v">视线跟着跃起的外星人战士往上抬。</span></div>
+      <div class="f"><span class="k">台词</span><span class="v">无</span></div>
+    </div>
+    <div class="zsub">
+      <div class="zsub-h"><b>小节三</b><span class="ops"><span>↑</span><span>↓</span><span>删除</span></span></div>
+      <div class="f"><span class="k">动作/表情</span><span class="v">一串粗亮的曳光从头顶后方斜着扫下来，还在半空没落下的外星人战士被打得往后倒飞出老远，砸进后面的外星人战士人群里，撞倒一片。</span></div>
+      <div class="f"><span class="k">音效</span><span class="v">直升机重机枪的<span class="s">&lt;扫射声&gt;</span>。</span></div>
+      <div class="f"><span class="k">镜头</span><span class="v">被身后的扫射震得一抖。</span></div>
+      <div class="f"><span class="k">台词</span><span class="v">无</span></div>
+    </div>
+    <div class="zadd">＋ 加一个小节</div>
+    <div class="zend">
+      <div class="f"><span class="k">退出状态</span><span class="v">半空的外星人战士都被打飞，后面的人群被砸倒一片，旋翼轰鸣越来越近。</span></div>
+      <div class="f"><span class="k">切点</span><span class="v">旋翼声最响时，切到墙后低处，看机群从头顶飞过。</span></div>
+    </div>
+  </div>
+  <p class="cap-out">点「＋ 加一个小节」后，四栏空着，灰字提示该写什么：</p>
+  <div class="zsub">
+    <div class="zsub-h"><b>小节四</b><span class="ops"><span>↑</span><span>↓</span><span>删除</span></span></div>
+    <div class="f"><span class="k">动作/表情</span><span class="v ph">谁做了什么，一两件事</span></div>
+    <div class="f"><span class="k">音效</span><span class="v ph">这一下响什么，写在 &lt; &gt; 里</span></div>
+    <div class="f"><span class="k">镜头</span><span class="v ph">镜头怎么动，不动写「机位不挪」</span></div>
+    <div class="f"><span class="k">台词</span><span class="v ph">谁说什么，原话写在 { } 里；没有写「无」</span></div>
+  </div>
+</div>
+<div class="pc"><div class="good"><b>好</b>每栏有名字，空着的一眼看出来；小节能加、能删、能挪。整段分区的字贴进来，自动分到各栏。存进提示词还是一栏一行，和现在一字不差。</div><div class="bad"><b>不足</b>比一个框长一些（整镜照样能收起）。栏名是固定的，想多写一栏，写在最近的那栏里。</div></div>
+</template>
+
+<!-- ===== 乙：一个框，栏名上色 ===== -->
+<template id="fig-b">
+<div class="mock">
+  <div class="m-lab">事件脚本 <em>分区写法</em></div>
+  <div class="p-shot">
+    <div class="shot-h"><span class="handle">⋮⋮</span><span class="shot-no">镜头 2</span><span class="shot-t">敌人扑上墙头</span><span class="ops"><span>↑</span><span>↓</span><span>复制</span><span>收起</span><span>删除</span></span></div>
+    <div class="cap2"><span>镜头正文</span><span>自由写 · 栏名自动上色 · 输入 @ 引用素材</span></div>
+    <div class="ta zt">
+      <p><span class="k">机位/景别/角度：</span>第一视角，从沙袋墙后一名半跪的我军士兵的眼睛看出去，跟着人眼的高度微微起伏。</p>
+      <p><span class="k">本镜调用：</span>这名<span class="r">我军士兵</span>只露出握刀的双手；<span class="r">钢刀</span>；<span class="r">外星人战士</span>；墙头的沙袋和旁边停了火的机枪。</p>
+      <p><span class="k">画面构图：</span>画面下沿是这名士兵握着钢刀的双手和墙头的沙袋……</p>
+      <p><span class="k">环境音：</span>风声，墙外成片的脚步声越来越急。</p>
+      <p><span class="k">进入状态：</span>机枪都停了火，外星人战士还在往墙冲。</p>
+      <p class="sl">小节一</p>
+      <p><span class="k">动作/表情：</span>冲在最前头的一个外星人战士见枪口不冒火了……</p>
+      <p><span class="k">音效：</span>成片的<span class="s">&lt;吼声&gt;</span>，沉重的<span class="s">&lt;脚步声&gt;</span>越来越急。</p>
+      <p><span class="k">镜头：</span>跟着这名士兵的视线，盯着冲来的人潮。</p>
+      <p><span class="k">台词：</span>领头的外星人战士用日语高喊<span class="t">{弾切れだ！突撃！}</span></p>
+      <p class="sl">小节二</p>
+      <p>……</p>
+    </div>
+  </div>
+</div>
+<div class="pc"><div class="good"><b>好</b>和现在一样随手写，改动小。</div><div class="bad"><b>不足</b>栏名要自己打，漏了一栏、写错栏名都看不出来；长了不好找。</div></div>
+</template>
+
+<!-- ===== 丙：两种一起写，挑一种用 ===== -->
+<template id="fig-c">
+<div class="mock">
+  <div class="m-lab">事件脚本</div>
+  <div class="vbar">
+    <span class="seg"><span>合并</span><span class="on">分区</span></span>
+    <span>拿去出片的是 <b>分区</b> 这种</span>
+    <span class="chip on">对照着看</span>
+    <span class="chip ai">AI 整理成分镜</span>
+  </div>
+  <div class="stale">合并那种旧了：你改过分区的镜头2。<span class="chip">照分区重写合并</span></div>
+  <div class="p-shot">
+    <div class="shot-h"><span class="handle">⋮⋮</span><span class="shot-no">镜头 2</span><span class="shot-t">敌人扑上墙头</span><span class="ops"><span>↑</span><span>↓</span><span>复制</span><span>收起</span><span>删除</span></span></div>
+    <div class="two">
+      <div class="col old">
+        <div class="col-h">合并 <em>一镜一段 · 旧了</em></div>
+        <div class="col-b">第一视角，从沙袋墙后一名半跪的我军士兵的眼睛看出去，画面下沿是这名士兵握着钢刀的双手和墙头的沙袋，旁边那挺机枪停着火，枪口冒着青烟。墙外，冲在最前头的一个外星人战士见枪口不冒火了，扬起手臂朝身后一挥，用日语高喊<span class="t">{弾切れだ！突撃！}</span>；无数外星人战士齐声吼着，踩着倒下的同伴加速涌向沙袋墙。当先一排外星人战士冲到墙跟前，蹬地跃起……</div>
+      </div>
+      <div class="col on">
+        <div class="col-h">分区 <em>拿去出片</em></div>
+        <div class="col-b">
+          <p><span class="k">机位/景别/角度</span>　第一视角，从沙袋墙后一名半跪的我军士兵的眼睛看出去……</p>
+          <p><span class="k">本镜调用</span>　这名<span class="r">我军士兵</span>只露出握刀的双手；<span class="r">钢刀</span>；<span class="r">外星人战士</span>……</p>
+          <p><span class="k">进入状态</span>　机枪都停了火，外星人战士还在往墙冲。</p>
+          <p class="sl">小节一</p>
+          <p><span class="k">动作/表情</span>　冲在最前头的一个外星人战士见枪口不冒火了……</p>
+          <p><span class="k">台词</span>　领头的外星人战士用日语高喊<span class="t">{弾切れだ！突撃！}</span></p>
+          <p class="sl">小节二 · 小节三</p>
+          <p>……</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="cap-out">不点「对照着看」时，每镜只摆拿去出片的那一种，和甲、乙一样。两种是谁写的：</p>
+<ul class="who">
+  <li><b>AI 先写</b>（新建提示词时选的）：一次写两种。</li>
+  <li><b>AI 整理成分镜</b>（新按钮）：你在自由模式写的一大段，AI 照它拆成镜头、扩写，两种一起写。就是 8、11-14 这回你让我做的事。</li>
+  <li><b>按批注改</b>：改到镜头时，两种一起改。</li>
+  <li><b>你自己写</b>：你写的是哪种就有哪种；另一种空着，点一下 AI 才写（和上面「照分区重写合并」一样的按钮）。</li>
+</ul>
+</template>
+
+<script>
+/* ===== 内容（改内容只改这一块；怎么摆、怎么存批注在 公用/说明页.js） ===== */
+const ROUND = 1;
+const SUB = '你要的两件事：一、分区写的镜头好写好看；二、每条提示词的分镜一次写合并、分区两种，你挑一种用。下面拿 8、11-14 的镜头2 当例子。还没改页面，你挑好、批完我再改。';
+const FOOT = '2026-11-20 Claude 照写稿页现在的样子和改好的 8、11-14 拟的。合并＝一镜一段；分区＝一镜分好几栏、几个小节。';
+const SECTIONS = [
+  { h: '甲　一栏一栏填（推荐）', note: '每一栏一个小框，栏名写在左边。小节一块一块的，能加、删、挪。光标在哪一栏，那一栏亮起来。', fig: 'fig-a' },
+  { h: '乙　一个框写，栏名上色', note: '和现在一样一镜一个大框，栏名和「小节」自动上色。', fig: 'fig-b' },
+  { h: '丙　两种一起写，你挑一种用', note: '事件脚本顶上一个开关「合并｜分区」，拨到哪种，提示词里就放哪种、拿去出片。「对照着看」把两种并排摆。', fig: 'fig-c' },
+  { h: '要你定的', cards: [
+    { id: 'd1', no: '一', t: '分区的镜头怎么摆', p: [ '甲：空栏一眼看得出，小节好加好挪。乙：随手写，改动小。' ],
+      opts: [ { v: '甲', t: '一栏一栏填', rec: true }, { v: '乙', t: '一个框写，栏名上色' } ] },
+    { id: 'd2', no: '二', t: '两种怎么挑', p: [ '整条一起挑，一条提示词里写法统一，模型不容易乱。' ],
+      opts: [ { v: 'A', t: '整条一起挑', rec: true }, { v: 'B', t: '每一镜各挑各的' } ] },
+    { id: 'd3', no: '三', t: '改了一种，另一种怎么办', p: [ '两种写的是同一件事，改了一种，另一种就对不上了。' ],
+      opts: [ { v: 'A', t: '标「旧了」，你点按钮 AI 才重写', rec: true }, { v: 'B', t: '改完 AI 自动跟着重写' }, { v: 'C', t: '不管，另一种留着旧的' } ] },
+    { id: 'd4', no: '四', t: '加不加「AI 整理成分镜」按钮', p: [ '你在自由模式写的一大段，点一下，AI 拆成镜头、扩写，两种一起写。' ],
+      opts: [ { v: 'A', t: '加', rec: true }, { v: 'B', t: '不加，照旧在对话里叫我' } ] },
+  ] },
+  { h: '不用你定', cards: [
+    { id: 'c1', no: '1', t: '只管镜头', p: [ '素材、基础设定、保持一致这些只有一份，两种共用。分区只是镜头的写法。' ] },
+    { id: 'c2', no: '2', t: '出片用挑中的那种', p: [ '两种都存在稿子旁边的 写稿.json；提示词文件里只放挑中的那种。换一种时，旧的照例先留一份进历史记录。' ] },
+    { id: 'c3', no: '3', t: 'AI 铺底、AI 批注照旧', p: [ 'AI 铺底不动镜头。AI 批注只批拿去出片的那种。' ] },
+    { id: 'c4', no: '4', t: '新稿默认用分区', p: [ '你这回挑的分区；以后默认你上回挑的那种。' ] },
+    { id: 'c5', no: '5', t: '顺手修两个毛病', p: [ '① 自由模式一存盘，整份分区稿会被套进旧的六块空壳：今天 15:25 套了 8、11-14 一回，字没丢，已经改好了。', '② 改过分区镜头再存，第一栏会挤到「镜头2：」那一行。' ] },
+  ] },
+];
+window.DOC = { 名: '写稿页分区镜头_设计稿', 题: '写稿页分区镜头设计稿', 存: 'antou:write-zoned', 轮: ROUND, 副题: SUB, 脚注: FOOT, 先选: { d1: '甲', d2: 'A', d3: 'A', d4: 'A' }, 段: SECTIONS };
+</script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="../公用/说明页.js"></script>
+</body>
+</html>

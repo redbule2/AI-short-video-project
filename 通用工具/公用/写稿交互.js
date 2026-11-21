@@ -1,7 +1,9 @@
 /* 写稿页交互。只操作用户当前选择的稿。 */
 'use strict';
 
-/* 新稿只替换分镜正文。旧版整页自由稿原样保留在自由分镜里，首次保存才迁移。 */
+/* 新稿只替换分镜正文。旧版整页自由稿原样保留在自由分镜里，首次保存才迁移。
+   认不出分区的整页老稿（不是新格式、也不是标准旧稿）：whole，照原样整页改、整页存，不往骨架里套（2026-11-20） */
+let WHOLE = false;
 function readEditorDraft(text, side) {
   const parsed = parsePrompt(text);
   const mode = side.写法 === '自由' || (!side.写法 && !parsed.has.shots) ? '自由' : '分镜';
@@ -10,11 +12,12 @@ function readEditorDraft(text, side) {
   const scoped = side.写法范围 === '分镜';
   let free = scoped ? String(side.自由稿 || '') : text;
   // 标准旧稿可确认边界：采用当前文件的公共区，并继续保留备用结构化镜头。
-  if (!scoped && parsed._source.parts.map(part => part.key).join(',') === 'pre,event,refs,basic,seg,shots,keep') {
+  const known = parsed.fmt === 'pe' || parsed._source.parts.map(part => part.key).join(',') === 'pre,event,refs,basic,seg,shots,keep';
+  if (!scoped && known) {
     free = PromptDraft.shotText(parsed);
     doc = parsePrompt(PromptDraft.withShotText(parsed, PromptDraft.shotText(doc)));
   }
-  return { mode, doc, free, conflict: scoped && PromptDraft.withShotText(doc, free) !== text };
+  return { mode, doc, free, conflict: scoped && PromptDraft.withShotText(doc, free) !== text, whole: !scoped && !known };
 }
 
 let COMMON_SECTION = '';
@@ -54,7 +57,7 @@ function paintOutline() {
     h('button', { class: 'outline-link on', onclick: () => $('[data-sec="shots"]').scrollIntoView({ behavior: 'smooth', block: 'start' }) }, '分镜' + (MODE === '分镜' ? ' ' + $$('.p-shot').length : ' · 自由')),
     ...$$('.p-shot').map(el => h('button', { class: 'outline-link outline-shot' + (el.dataset.id === SELECTED_ID ? ' selected' : ''), onclick: () => {
       foldMine(el, false); selectShot(el.dataset.id); el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } }, el.dataset.no + ' ' + ($('.shot-title', el).value || $('.wr-ta', el).value.trim().slice(0, 14) || '未命名镜头'))));
+    } }, el.dataset.no + ' ' + ($('.shot-title', el).value || Zone.peekOf(el).trim().slice(0, 14) || '未命名镜头'))));
 }
 
 function renderMode() {
@@ -62,7 +65,7 @@ function renderMode() {
     if (!$('#' + id)) continue;
     $('#' + id).classList.toggle('on', MODE === mode);
     $('#' + id).setAttribute('aria-selected', String(MODE === mode));
-    $('#' + id).disabled = !DOC;
+    $('#' + id).disabled = !DOC || (WHOLE && mode === '分镜');   // 整页自由写的老稿：认不出分区，不往分镜模式换
   }
   if ($('#importStructured')) $('#importStructured').hidden = MODE !== '自由';
 }
@@ -74,19 +77,20 @@ function modeControls() {   // 摆在左栏最上面（2026-11-15）；说明收
     h('button', { id: 'importStructured', class: 'mini-b', title: '把分镜模式里各镜的文字接到自由稿后面', onclick: () => { const ta = $('#freeText'); typeInto(ta, ta.value.length, ta.value.length, (ta.value ? '\n\n' : '') + PromptDraft.shotText(collect())); } }, '带入分镜文字'));
 }
 function renderFree() {
-  const wr = writer('free', 12, isPe() ? '在这里自由写事件脚本……\n\n可以一镜一行写「镜头1：……」，也可以写【阶段一】开始时、主要事件、结束时。\n素材、主体与关系等统一使用上方的设置。' : '在这里自由写分镜……\n\n可以写一整段，也可以自己分行、分镜。\n素材、基础设定等统一使用上方的设置。', FREE);
+  const wr = writer('free', 12, isPe() ? '在这里自由写这一条的戏：谁做什么、说什么，先后照剧本来，一大段也行。\n\n写好点上面「交给 AI 写完」：AI 拆成一镜一镜，生成目标、素材这些一起写好。' : '在这里自由写分镜……\n\n可以写一整段，也可以自己分行、分镜。\n素材、基础设定等统一使用上方的设置。', FREE);
   $('.wr-ta', wr).id = 'freeText';
   $('.wr-ta', wr).setAttribute('aria-label', '自由提示词');
-  $('#shot-editor').replaceChildren(h('div', { class: 'free-section' },
+  $('#shot-editor').replaceChildren(Zone.bar() || '', WHOLE ? h('div', { class: 'whole-note' }, '这份稿是整页写的老格式，认不出分区：这里照原样整页改，存的时候一字不添。') : '', h('div', { class: 'free-section' },
     wr, h('div', { class: 'free-footer' }, '分镜正文 · 输入 @ 引用素材', h('span', { id: 'freeCount' }, FREE.length + ' 字'))));
   grow($('#freeText'));
   LASTF = $('#freeText'); LAST = null;
 }
 function renderShotEditor() {
   renderMode();
+  $('#sheet').classList.toggle('whole', MODE === '自由' && WHOLE);   // 整页老稿：共用的几区不摆（公用/写稿分区.css）
   if (MODE === '自由') renderFree();
   else {
-    $('#shot-editor').replaceChildren(h('div', { class: 'pshots' }, DOC.shots.length ? DOC.shots.flatMap((s, i) => [shotEl(s), i < DOC.shots.length - 1 ? h('button', { class: 'mini-b insert-shot', onclick: () => insertShot(i + 1) }, '＋ 在这里插入一镜') : null]) : h('p', { class: 'empty-shots' }, '还没有镜头，从空白开始写。')), h('button', { class: 'add-shot', onclick: () => addShot() }, '＋ 添加空白镜头'));
+    $('#shot-editor').replaceChildren(Zone.bar() || '', h('div', { class: 'pshots' }, DOC.shots.length ? DOC.shots.flatMap((s, i) => [shotEl(s), i < DOC.shots.length - 1 ? h('button', { class: 'mini-b insert-shot', onclick: () => insertShot(i + 1) }, '＋ 在这里插入一镜') : null]) : h('p', { class: 'empty-shots' }, '还没有镜头，从空白开始写。')), h('button', { class: 'add-shot', onclick: () => addShot() }, '＋ 添加空白镜头'));
     $$('.wr-ta', $('#shot-editor')).forEach(grow); updateShotControls();
   }
   paintOutline();
@@ -94,6 +98,7 @@ function renderShotEditor() {
 let switchingMode = false;
 async function switchMode(mode) {
   if (!READY || switchingMode || mode === MODE) return;
+  if (WHOLE && mode === '分镜') return toast('这份稿是整页写的老格式，认不出分区：只能照原样整页改');
   switchingMode = true;
   try {
     if (!await save()) return;
@@ -146,7 +151,7 @@ function copyShot(el) {
   DOC = collect();
   const index = DOC.shots.findIndex(s => s.id === el.dataset.id), src = DOC.shots[index];
   if (!src) return;
-  insertShot(index + 1, { title: src.title, lines: [...src.lines], purpose: src.purpose, keywords: structuredClone(src.keywords || {}) });
+  insertShot(index + 1, { title: src.title, lines: [...src.lines], purpose: src.purpose, keywords: structuredClone(src.keywords || {}), ...(src.alt ? { alt: [...src.alt], altKey: src.altKey } : {}) });   // 另一种写法跟着复制（公用/写稿分区.js）
 }
 function previewDraft() {
   showEditorDialog('当前草稿预览', activeText());
@@ -226,7 +231,7 @@ async function offerRecovery() {
       const s = recovery.editor;
       const text = s.写法 === '自由' ? s.写法范围 === '分镜' ? PromptDraft.withShotText(parsePrompt(s.分镜稿 || ''), s.自由稿 || '') : s.自由稿 || '' : s.分镜稿 || '';
       const draft = readEditorDraft(text, s);
-      MODE = draft.mode; FREE = draft.free;
+      MODE = draft.mode; FREE = draft.free; WHOLE = !!draft.whole;
       DOC = hydrateShots(draft.doc, s.镜头信息, false); SIDE.挂图 = { ...SIDE.挂图, ...s.挂图 };
       render(); touch(); bar.remove();
       if (recovery.baseText !== LASTTEXT) reportConflict('恢复草稿和文件内容有差异，请核对后保存');

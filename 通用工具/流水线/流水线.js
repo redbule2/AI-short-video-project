@@ -740,7 +740,7 @@ const openImage = (file, extra) => openShell(at([F.name, ...file.split('/')]), b
    写完点「回到流水线」，没存的字先存上。
    页头不盖（2026-11-15 他要的：写提示词时也得看得见「AI 用」选的是谁、能换）：从页头下面盖起（wf-write）；
    写稿页交 AI 的活现读页头选的 AI、模型、推理（同一份本机记录）。点页头去别的页、换项目，也先把写稿页存上（SHELL.leave，go、pickProject 里调）。
-   hand：你来写的稿（11-19 又能写了），顶上写「接着写」，提醒写好两块点「AI 铺底」 */
+   hand：你来写的稿（11-19 又能写了），顶上写「接着写」，提醒写好事件脚本点「交给 AI 写完」（11-21） */
 function openWrite(seg, name, hand) {
   closePop(); hideHov();
   if (SHELL) SHELL.remove();
@@ -762,7 +762,7 @@ function openWrite(seg, name, hand) {
   SHELL = h('div', { class: 'wf-shell wf-write' },
     h('div', { class: 'wf-shell-h' }, h('button', { class: 'btn sm ink', type: 'button', onclick: close }, '← 回到流水线'),
       h('span', { class: 'wf-shell-t' }, '第' + seg + '段 · ' + vpLabel(name) + (hand ? ' · 接着写' : ' · 进去改')), h('span', { class: 'sp' }),
-      h('span', { class: 'fn-note' }, hand ? '你来写的稿：写好生成目标、事件脚本，点右上角「AI 铺底」，素材、基础设定这几块由 AI 补。' : '这一条是 AI 写的，在这里自己改。改过以后，AI 估的每镜秒数可能不准，出片时会提醒。')),
+      h('span', { class: 'fn-note' }, hand ? '你来写的稿：在自由模式写好事件脚本，点「交给 AI 写完」，AI 拆成分镜，生成目标、素材这几块一起写好。' : '这一条是 AI 写的，在这里自己改。改过以后，AI 估的每镜秒数可能不准，出片时会提醒。')),
     frame);
   SHELL.leave = keep;
   document.body.append(SHELL); document.body.classList.add('wf-covered');

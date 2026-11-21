@@ -212,18 +212,98 @@
     return heading + (token.eol || (body ? eol : '')) + body;
   }
 
-  // pe 稿一镜一行「镜头1：正文」；改过的镜头整镜重写，镜头后面原有的空行留着
+  // pe 稿一镜一行「镜头1：正文」；改过的镜头整镜重写，镜头后面原有的空行留着。
+  // 分区写法的一镜「镜头1：」独占一行，下面一栏一行，后面空一行（2026-11-20）
   function renderPeShot(shot, eol) {
-    const value = shotValue(shot, true), source = shot._source;
-    if (!source || !Array.isArray(source.tokens) || !source.tokens.length) return '镜头' + value.no + '：' + value.lines.join(eol) + eol;
+    const value = shotValue(shot, true), source = shot._source, zoned = isZoned(value.lines);
+    if (!source || !Array.isArray(source.tokens) || !source.tokens.length)
+      return zoned ? '镜头' + value.no + '：' + eol + value.lines.join(eol) + eol + eol : '镜头' + value.no + '：' + value.lines.join(eol) + eol;
     if (equal(source.value, value)) return source.raw;
     const tokens = source.tokens;
     let end = tokens.length;
     while (end > 1 && !tokens[end - 1].text.trim()) end--;
     const m = /^(\s*镜头\s*)[0-9０-９]+(\s*[｜|：:]?\s*)/.exec(tokens[0].text), trailing = /\s*$/.exec(tokens[end - 1].text)[0];
     const head = m ? m[1] + value.no + (m[2].trim() ? m[2] : '：') : '镜头' + value.no + '：';
+    if (zoned) return head.trimEnd() + eol + value.lines.join(eol) + eol + (rawOf(tokens.slice(end)) || eol);
     return head + value.lines.join(eol) + (value.lines.length ? trailing : '') + (tokens[end - 1].eol || (end < tokens.length ? eol : '')) + rawOf(tokens.slice(end));
   }
+
+  /* ---------- 分区写法的一镜（2026-11-20 他定：分镜可以照分区写法写，素材这些照 pe 不变） ----------
+     「镜头N：」下面一栏一行：机位/景别/角度、本镜调用、画面构图、环境音、进入状态；小节一、小节二……各四栏：动作/表情、音效、镜头、台词；
+     最后退出状态、切点。栏名就是 核心.js 七分区稿分镜那一套（PROMPT_SHOT_HEAD、PROMPT_SUB、PROMPT_SHOT_TAIL、RE_SUB）。
+     写稿页一栏一个框；读成栏再写回来和原来一字不差才算标准的样子（zonedOf 给 null 的照旧一镜一个框写，页面不替人改字） */
+  const ZONE_HEAD = Core.PROMPT_SHOT_HEAD, ZONE_SUB = Core.PROMPT_SUB, ZONE_TAIL = Core.PROMPT_SHOT_TAIL, RE_ZONE_SUB = Core.RE_SUB;
+  const ZONE_ALL = [...ZONE_HEAD, ...ZONE_SUB, ...ZONE_TAIL];
+  const CN_NUM = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+  const subName = i => '小节' + (i < CN_NUM.length ? CN_NUM[i] : String(i + 1));
+  const zoneField = line => { const f = labelOf(String(line).trim()); return f && ZONE_ALL.includes(f.label) ? { k: f.label, v: f.value.trim() } : null; };
+  const cleanLines = lines => strings(lines).map(l => l.trim()).filter(Boolean);
+  const blankBox = keys => Object.fromEntries(keys.map(k => [k, '']));
+  /* 这一镜是不是分区写法：有「小节N」一行，或者第一行是开头那几栏 */
+  function isZoned(lines) {
+    const ls = cleanLines(lines);
+    if (!ls.length) return false;
+    if (ls.some(l => RE_ZONE_SUB.test(l))) return true;
+    const f = zoneField(ls[0]);
+    return !!f && ZONE_HEAD.includes(f.k);
+  }
+  /* 读成栏：{ head: {栏: 字}, subs: [{ name: '小节一', f: {栏: 字} }], tail: {栏: 字} }。一栏写了几行，字里用 \n 隔开。
+     loose：贴进来的字照能认的认（开头一行「镜头N：」不要），认不全不算错；不 loose 的要写回来一字不差，不然给 null */
+  function zonedOf(lines, loose) {
+    let ls = cleanLines(lines);
+    if (loose) ls = ls.filter((l, i) => i || !/^镜头\s*[0-9０-９]+\s*([｜|：:]\s*)?$/.test(l));
+    if (!loose && !isZoned(ls)) return null;
+    const z = { head: blankBox(ZONE_HEAD), subs: [], tail: blankBox(ZONE_TAIL) }, seen = new Set();
+    let part = 'head', at = null, got = 0;
+    for (const l of ls) {
+      if (RE_ZONE_SUB.test(l)) {
+        if (part === 'tail' && !loose) return null;
+        z.subs.push({ name: l, f: blankBox(ZONE_SUB) }); part = 'sub'; at = null; continue;
+      }
+      const f = zoneField(l);
+      if (f) {
+        const box = ZONE_TAIL.includes(f.k) ? z.tail : part === 'sub' && ZONE_SUB.includes(f.k) ? z.subs[z.subs.length - 1].f : part === 'head' && ZONE_HEAD.includes(f.k) ? z.head : null;
+        const id = (box === z.head ? 'h' : box === z.tail ? 't' : 's' + z.subs.length) + f.k;
+        if (box && !seen.has(id)) {
+          if (box === z.tail) part = 'tail';
+          box[f.k] = f.v; seen.add(id); at = [box, f.k]; got++; continue;
+        }
+        if (!loose) return null;   // 栏放错了地方、同一栏写了两回：不是标准的样子
+      }
+      if (!at) return null;   // 第一栏前面还有字（贴进来的也不拆，照常贴）
+      at[0][at[1]] = at[0][at[1]] ? at[0][at[1]] + '\n' + l : l;   // 接着上一栏写的一行
+    }
+    if (loose) return got >= 2 ? z : null;
+    return equal(zonedLines(z), ls) ? z : null;
+  }
+  /* 栏 → 一行一行（空栏不写；小节没起名的照先后叫「小节一」……） */
+  function zonedLines(z) {
+    const out = [];
+    const put = (box, keys) => {
+      for (const k of keys) {
+        const v = String((box || {})[k] || '').split(/\r\n|\n|\r/).map(x => x.trim()).filter(Boolean);
+        if (v.length) out.push(k + '：' + v[0], ...v.slice(1));
+      }
+    };
+    put(z.head, ZONE_HEAD);
+    (z.subs || []).forEach((s, i) => { out.push(String(s.name || '').trim() || subName(i)); put(s.f, ZONE_SUB); });
+    put(z.tail, ZONE_TAIL);
+    return out;
+  }
+  /* 这一镜在文件里是哪几行（批注照「原文＋第几处」对回去要用）：分区写法「镜头N：」独占一行，别的「镜头N：」和第一行连着 */
+  function peShotLines(no, lines) {
+    const ls = cleanLines(lines);
+    if (isZoned(ls)) return ['镜头' + no + '：', ...ls];
+    return ls.length ? ['镜头' + no + '：' + ls[0], ...ls.slice(1)] : ['镜头' + no + '：'];
+  }
+  /* 一镜正文的指纹：另一种写法是照哪一版写的（对不上就是「旧了」）。页面和本机服务一个算法 */
+  function linesKey(lines) {
+    const s = cleanLines(lines).join('\n');
+    let x = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 0x01000193) >>> 0; }
+    return x.toString(16).padStart(8, '0');
+  }
+  const ZONED = Object.freeze({ HEAD: ZONE_HEAD, SUB: ZONE_SUB, TAIL: ZONE_TAIL, isZoned, of: zonedOf, lines: zonedLines, subName, shotLines: peShotLines, key: linesKey });
 
   function changed(doc, key, source) {
     const now = contentOf(doc);
@@ -362,5 +442,5 @@
   /* 你来写的稿（2026-11-19 又能写了）：写稿资料里记着「手写」；11-15 以前从流水线开的老稿记着「流水线」。AI 写的稿进写稿页改过的，写稿资料里没有这两样（流水线提示词页、写稿页共用） */
   const isHand = side => !!side && typeof side === 'object' && (side.手写 === true || typeof side.流水线 === 'string');
 
-  return Object.freeze({ parse, serialize, shotText, withShotText, skeleton, formatOf, isPeRefHead, isLook, isHand, PE_HEADS, PE_REFS });
+  return Object.freeze({ parse, serialize, shotText, withShotText, skeleton, formatOf, isPeRefHead, isLook, isHand, PE_HEADS, PE_REFS, Zoned: ZONED });
 });

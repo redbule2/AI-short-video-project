@@ -19,8 +19,9 @@ const WHEN = [['音色', 'voice'], ['白模', 'bm'], ['关键帧', 'frame']];
 
 const linesOf = text => String(text || '').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').split('\n');
 const isFence = l => /^\s*```/.test(l);
-/* 技能的指纹：换行统一以后 sha256 的前 8 位（地图里记着核对过的那一份） */
-const printOf = skillText => crypto.createHash('sha256').update(linesOf(skillText).join('\n'), 'utf8').digest('hex').slice(0, 8);
+/* 技能的指纹：换行统一、去掉首尾空白以后 sha256 的前 8 位（地图里记着核对过的那一份）。
+   首尾空白不算：流水线读技能会去掉它（jobs.js 的 skill()），以前算进去，回回报对不上（11-21） */
+const printOf = skillText => crypto.createHash('sha256').update(linesOf(skillText).join('\n').trim(), 'utf8').digest('hex').slice(0, 8);
 
 /* 技能里的小标题（代码块里的 # 不算）：{ i: 第几行, lv: 几个 #, t: 标题字 } */
 function headsOf(ls) {
