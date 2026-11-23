@@ -1,11 +1,12 @@
 /* ============================================================
-   流水线 · 历史记录（window.HistView）：提示词、审片、资产三页的「历史记录」筛选（2026-11-19 他要的）。
+   流水线 · 历史记录（window.HistView）：提示词、资产两页的「历史记录」筛选（2026-11-19 他要的）；审片弹窗也照它摆历史记录里的样片。
    默认不摆历史记录里的东西；点顶上「历史记录」只看历史记录里的，再点一下回来（不记住：换一页、刷新就回到不看）。
    只看、不改、不挪：
      提示词：历史记录/提示词/第N段 里收进去的视频提示词（改版、删掉时收进去的，原名__时间.txt）。点「看」看字，@图片 能点开，
        认图照那一版自己的登记：同一时间收进去的写稿资料里的挂图 → 参考素材映射（现在的、历史记录/资产 里留的底）里字正好对得上的那一份
        → 都没有，照现在同名那一条的登记（标出来：可能不是那时候挂的）。还能和现在那一版比。
-     审片：历史记录/成片/第N段 里的样片（审完没选上的，名字不改）。点开在审片台对照看、写批注，批注存在它旁边（审片台.html?old=1）。
+     审片弹窗（11-22 起，流水线/审片弹窗.js）：历史记录/成片/第N段 里的样片（审完不要了的名字不改；删提示词时跟着走的带「__时间」，不摆）。
+       弹窗里摆这一条的，在审片台对照看、写批注，批注存在它旁边（审片台.html?old=1）。
      资产：这一页签里各样的旧图（历史记录/同样的文件夹/图名__时间.png，换下来的候选图也算）；关键帧页签是 历史记录/资产/关键帧/第N段 里的图。
    名字怎么认在 公用/历史记录.js（Hist）。要先引 流水线.js、公用/历史记录.js。
    ============================================================ */
@@ -105,28 +106,12 @@ function refAt(ref, el) {
   } };
 }
 
-/* ---------- 审片 ---------- */
+/* ---------- 样片（审片弹窗用）：[{ name, orig, stamp, when, file, mtime, noted }] ---------- */
 function clips(s) {
   return get('clip', s, async () => {
     const dir = '历史记录/成片/' + segName(s.段), ents = await lister(F.name)(dir), names = new Set(ents.map(e => e.name));
     return ents.filter(e => e.kind === 'file' && VID.test(e.name)).map(e => ({ ...Hist.parse(e.name), file: dir + '/' + e.name, mtime: e.mtime || 0, noted: names.has(stemOf(e.name) + '_批注.md') })).sort(Hist.newer);
   });
-}
-/* 审片那一页：一条样片一张卡。open(vid)：在审片台打开；label(vid)：它是哪一条提示词出的（认不出给 ''） */
-function clipView(s, c, open, label) {
-  if (!c.items) return h('p', { class: 'fn-note wf-none' }, '正在看历史记录…');
-  if (c.err) return h('p', { class: 'fn-note wf-none warn' }, '历史记录读不了：' + c.err);
-  if (!c.items.length) return h('p', { class: 'fn-note wf-none' }, '这一段的历史记录里没有样片。');
-  const day = t => { const d = new Date(t); return two(d.getMonth() + 1) + '-' + two(d.getDate()); };
-  return [h('p', { class: 'fn-note wf-hist-note' }, '历史记录里的 ' + c.items.length + ' 条样片：审完没选上的。点开对照看、写批注，批注存在它旁边；不在这里选定、不挪。'),
-    h('div', { class: 'wf-items' }, c.items.map(it => {
-      const lb = label(it.name);
-      return h('div', { class: 'wf-item hist', 'data-vid': it.name, 'data-old': '1' },
-        h('div', { class: 'wf-item-h' }, h('b', null, stemOf(it.name)), lb ? h('span', { class: 'fs-state', title: '照名字认的：这条是哪一条提示词出的' }, '出自 ' + lb) : null,
-          it.noted ? h('span', { class: 'fs-state', title: '这条写过批注' }, '有批注') : null,
-          h('span', { class: 'faint small', title: it.when ? '收进历史记录的时间' : '文件的修改时间' }, it.when || (it.mtime ? day(it.mtime) : '')), h('span', { class: 'sp' }),
-          h('button', { class: 'btn sm ink', type: 'button', title: '看样片，旁边对照提示词、白模、关键帧和资产图；停在哪一帧就在哪一帧写批注', onclick: () => open(it.name) }, icon('play'), '对照看片、写批注')));
-    }))];
 }
 
 /* ---------- 资产 ---------- */
@@ -180,6 +165,6 @@ if (window.RefPic && RefPic.also) RefPic.also(refAt);   // 历史记录里那一
 window.HistView = {
   get on() { return HV.on; }, set on(v) { HV.on = !!v; },
   set ready(fn) { HV.ready = fn; },
-  drop, chip, count, prompts, promptView, clips, clipView, assets, assetView,
+  drop, chip, count, prompts, promptView, clips, assets, assetView,
 };
 })();

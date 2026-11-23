@@ -16,6 +16,8 @@ import numpy as np
 import soundfile as sf
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, ROOT)
+from 配音 import series_file   # 这套教程自己有 声音参考.wav、声音对照.wav 就用自己的
 
 
 def load16(p):
@@ -30,7 +32,7 @@ def load16(p):
 
 def main():
     folder = sys.argv[1]
-    other = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, '声音对照.wav')
+    other = sys.argv[2] if len(sys.argv) > 2 else series_file(folder, '声音对照.wav')
     from modelscope.pipelines import pipeline
     sv = pipeline(task='speaker-verification', model='iic/speech_campplus_sv_zh-cn_16k-common', model_revision='v1.0.0')
     with tempfile.TemporaryDirectory() as d:
@@ -39,7 +41,7 @@ def main():
             sf.write(p, x, 16000, subtype='PCM_16')
             return float(sv([ref, p])['score'])
         ref = os.path.join(d, 'ref.wav')
-        sf.write(ref, load16(os.path.join(ROOT, '声音参考.wav')), 16000, subtype='PCM_16')
+        sf.write(ref, load16(series_file(folder, '声音参考.wav')), 16000, subtype='PCM_16')
         o = load16(other)
         base = {'整段': score(o, 'o')}
         for w in (1.5, 3.0, 6.0):

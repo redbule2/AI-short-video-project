@@ -11,69 +11,140 @@ const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const rowCode = script.slice(script.indexOf('function rowOf('), script.indexOf('/* ---------- 筛选'));
 
 function buttonsOf(node) {
+  if (Array.isArray(node)) return node.flatMap(buttonsOf);
   if (!node || typeof node !== 'object') return [];
   return [...(node.tag === 'button' ? [node] : []), ...node.children.flatMap(buttonsOf)];
 }
+const textOf = node => typeof node === 'string' ? node : Array.isArray(node) ? node.map(textOf).join('') : node && typeof node === 'object' ? node.children.map(textOf).join('') : '';
+const labelOf = b => b.attrs.class === 'fl-ib' ? '⋯' : textOf(b);
 
-function promptButtons(draft, busy, side) {
-  const calls = [], fails = [];
+/* made：这一版出过的样片；task：上回排过任务书；filmed：本机服务说这一版出过片（11-22，原稿不能改，只能另存） */
+function promptButtons(draft, busy, side, made = [], task = false, filmed = null, v = 24) {   // v：本机服务第几版
+  const calls = [], fails = [], pops = [];
   const empty = () => [];
   const none = () => null;
   const context = {
-    h: (tag, attrs, ...children) => ({ tag, attrs, children: children.flat(Infinity).filter(x => x != null) }),
+    h: (tag, attrs, ...children) => ({ tag, attrs: attrs || {}, children: children.flat(Infinity).filter(x => x != null) }),
     taskOf: () => '出片任务.txt', promptStale: () => false, PromptDraft: require('../公用/写稿状态.js'),
-    X: { tasks: new Set(), notes: new Map(), side: new Map(side ? [['1-5.txt', side]] : []) },
-    AI: { ok: true, jobs: busy ? [{ 段: '1', 名: '1-5.txt', 标题: '正在写' }] : [] },
+    X: { tasks: new Set(task ? ['出片任务.txt'] : []), notes: new Map(), side: new Map(side ? [['1-5.txt', side]] : []), filmed: new Map(filmed ? [['1-5.txt', filmed]] : []) },
+    vpVer: require('../公用/核心.js').vpVer, forkPrompt: (...args) => calls.push(['另存', ...args]),
+    AI: { ok: true, jobs: busy ? [{ 段: '1', 名: '1-5.txt', 标题: '正在写' }] : [] }, LINK: { v },
     jobLive: () => true, bmStale: () => false,
     vidRefs: empty, frameWs: empty, frameRefsOf: empty, framesOf: empty,
     madeTag: none, verLine: none, patchesOf: empty, bmLine: none,
     frameLine: none, frameWordLine: none, jobFailed: k => { fails.push(k); return null; }, jobLine: none,
     icon: none, at: parts => parts, dirOf: () => ['提示词', '第1段'],
+    promptsOf: () => ['这一段的几条'],
+    ReviewPop: { btn: (s, e, list) => ({ tag: 'button', attrs: { class: 'btn sm', disabled: !made.length, onclick: () => calls.push(['审片', s, e, list]) }, children: ['审片'] }) },   // 审片弹窗（流水线/审片弹窗.js，11-22）：它自己的测试在 审片弹窗_测试.cjs
     openWrite: (...args) => calls.push(['编辑', ...args]),
     openShell: (...args) => calls.push(['查看', ...args]),
     approve: (...args) => calls.push(['出片', ...args]),
+    go: (...args) => calls.push(['去', ...args]),
+    outFrameDlg: (...args) => calls.push(['出关键帧', ...args]),
+    removePrompt: (...args) => calls.push(['删除', ...args]),
+    popover: (anchor, build) => { const p = { anchor, closed: false }; p.el = build(() => { p.closed = true; }); pops.push(p); },
   };
   vm.createContext(context);
   vm.runInContext(rowCode, context, { filename: page });
   const scene = { 段: '1' }, entry = { name: '1-5.txt', label: '镜头1-5', draft };
-  const row = context.rowOf(scene, entry, []), buttons = buttonsOf(row);
-  return { buttons, calls, scene, entry, row, fails };
+  const row = context.rowOf(scene, entry, made), buttons = buttonsOf(row);
+  return { buttons, calls, scene, entry, row, fails, pops };
 }
 
 test('提示词页面脚本语法有效，页面说明不再引导点击已移除的按钮', () => {
   assert.doesNotThrow(() => new vm.Script(script, { filename: page }));
   assert.doesNotMatch(html, /让\s*AI\s*批一批/);
   assert.match(html, /确认满意后点「批准出片」/);
+  assert.doesNotMatch(script, /'(看排好的|挂白模…|挂关键帧…)'/);   // 11-21 他定：那一行不再摆
+  assert.doesNotMatch(script, /点「挂关键帧…」/);
 });
 
 for (const draft of [false, true]) {
-  test((draft ? '改过的稿' : 'AI 初稿') + '只去掉 AI 批一批，编辑、查看与出片入口可用', () => {
-    const { buttons, calls, scene, entry } = promptButtons(draft, false);
-    const labels = buttons.map(b => b.children.join(''));
+  test((draft ? '改过的稿' : 'AI 初稿') + '：那一行只摆编辑、批准出片、审片和「⋯」；出关键帧、删除收在「⋯」里', () => {
+    const { buttons, calls, scene, entry, pops } = promptButtons(draft, false);
+    const labels = buttons.map(labelOf);
+    for (const gone of ['看排好的', '挂白模…', '挂关键帧…', '出关键帧…', '删除']) assert.ok(!labels.includes(gone), gone + ' 不该摆在那一行');
     assert.ok(!labels.some(t => /批一批/.test(t)));
-    assert.ok(labels.includes('出关键帧…'));
-    assert.ok(labels.includes('删除'));
-    const edit = buttons.find(b => b.children.includes('进去改'));
-    edit.attrs.onclick();
-    assert.deepEqual(calls[0], ['编辑', '1', '1-5.txt']);
-    const view = buttons.find(b => b.children.includes(draft ? '看排好的' : '打开看、写批注'));
-    view.attrs.onclick();
-    assert.equal(calls[1][0], '查看');
-    const approve = buttons.find(b => b.children.includes('批准出片'));
+    buttons.find(b => labelOf(b) === '进去改').attrs.onclick();
+    assert.deepEqual(calls.at(-1), ['编辑', '1', '1-5.txt']);
+    const view = buttons.find(b => labelOf(b) === '打开看、写批注');   // AI 写的稿：写批注的入口留着
+    if (draft) assert.equal(view, undefined);
+    else { view.attrs.onclick(); assert.equal(calls.at(-1)[0], '查看'); }
+    const approve = buttons.find(b => labelOf(b) === '批准出片');
     assert.equal(approve.attrs.disabled, false);
     approve.attrs.onclick();
-    assert.deepEqual(calls[2], ['出片', scene, entry]);
+    assert.deepEqual(calls.at(-1), ['出片', scene, entry]);
+    const more = buttons.find(b => labelOf(b) === '⋯');
+    more.attrs.onclick({ currentTarget: more });
+    assert.equal(pops.length, 1);
+    assert.equal(pops[0].anchor, more);
+    const items = buttonsOf(pops[0].el);
+    assert.deepEqual(items.map(b => textOf(b.children[0].children[0])), ['出关键帧…', '删除']);
+    items[0].attrs.onclick();
+    assert.deepEqual(calls.at(-1), ['出关键帧', scene, entry]);
+    assert.equal(pops[0].closed, true);
+    items[1].attrs.onclick();
+    assert.deepEqual(calls.at(-1), ['删除', scene, entry]);
   });
 }
 
-const textOf = node => typeof node === 'string' ? node : node && typeof node === 'object' ? node.children.map(textOf).join('') : '';
+test('手写稿那一行依次是 接着写、批准出片、看任务书、审片、⋯（11-21 他定）', () => {
+  const { buttons } = promptButtons(true, false, { 手写: true }, ['1-5.mp4'], true);
+  assert.deepEqual(buttons.map(labelOf), ['接着写', '批准出片', '看任务书', '审片', '⋯']);
+});
+
+test('出过片的那一版（11-22 他定：原稿不能改，只能另存）：接着写、进去改换成「另存成改N」和「打开看、写批注」，批准出片灰掉，审片照旧', () => {
+  const fz = { 出过片: true, 片: ['1-5.mp4'], 历史: [], 在出: false, 下一版: '1-5_改1.txt', 最新: '1-5.txt', 不能另存: '', 批注: ['成片/第1段/1-5_批注.md', '提示词/第1段/1-5_批注.md'] };
+  const grey = (b, tip) => { assert.equal(labelOf(b), '批准出片'); assert.equal(b.attrs.disabled, true); assert.doesNotMatch(b.attrs.class, /zhu/); assert.match(b.attrs.title, tip); };
+  for (const side of [{ 手写: true }, {}]) {
+    const { buttons, calls, scene, entry } = promptButtons(true, false, side, ['1-5.mp4'], true, fz);
+    assert.deepEqual(buttons.map(labelOf), ['另存成改1', '打开看、写批注', '批准出片', '看任务书', '审片', '⋯']);
+    const fork = buttons[0];
+    assert.equal(fork.attrs.disabled, false);
+    assert.match(fork.attrs.title, /出过片（1-5\.mp4）.*照样片「1-5」的审片批注、提示词上写的批注改，改好的另存成「1-5_改1\.txt」。不许原样照抄.*原稿和它出的样片都不动/);   // 11-23 他定：不照抄，交给 AI 照批注改
+    fork.attrs.onclick();
+    assert.deepEqual(calls.at(-1), ['另存', scene, entry]);
+    buttons[1].attrs.onclick();
+    assert.equal(calls.at(-1)[0], '查看');
+    grey(buttons[2], /出过片了.*另存成改1/);   // 11-22 他定：出过片的不再批准出片，要再出先另存
+    assert.equal(buttons[4].attrs.disabled, false);   // 审片照旧能点
+  }
+  assert.equal(promptButtons(true, true, { 手写: true }, ['1-5.mp4'], false, fz).buttons[0].attrs.disabled, true);   // AI 正在做这一条：等做完
+  const bare = promptButtons(true, false, { 手写: true }, ['1-5.mp4'], false, { ...fz, 批注: [] }).buttons[0];   // 还没写批注：没东西照着改，点不了
+  assert.equal(labelOf(bare), '另存成改1'); assert.equal(bare.attrs.disabled, true); assert.match(bare.attrs.title, /还没写批注：先点「审片」/);
+  const oldSvc = promptButtons(true, false, { 手写: true }, ['1-5.mp4'], false, fz, 23).buttons[0];   // 本机服务还是第 23 版：没有照审片批注另存
+  assert.equal(oldSvc.attrs.disabled, true); assert.match(oldSvc.attrs.title, /本机服务是旧的/);
+  const old = promptButtons(false, false, null, ['1-5.mp4'], false, { ...fz, 下一版: '', 不能另存: '这一条已经有更新的「1-5_改2.txt」了：去改那一版' }).buttons;
+  assert.equal(labelOf(old[0]), '另存'); assert.equal(old[0].attrs.disabled, true); assert.match(old[0].attrs.title, /更新的/);
+  grey(old[2], /^这一版出过片了，不再出$/);
+  grey(promptButtons(true, false, { 手写: true }, [], false, { ...fz, 片: [], 在出: true, 下一版: '', 不能另存: '这一版正在出片：出完再另存成新的一版' }).buttons[2], /正在出片/);
+});
+
+test('只有「已出片」标签、本机服务不算出过片的（老名字的样片认到这一条上）：批准出片照常能点', () => {
+  const b = promptButtons(true, false, { 手写: true }, ['第1-1段_第3条_定稿.mp4']).buttons.find(x => labelOf(x) === '批准出片');
+  assert.equal(b.attrs.disabled, false);
+  assert.match(b.attrs.class, /zhu/);
+});
+
+test('审片（11-22 改成弹窗）：那一行的「审片」交给审片弹窗，带上这一条和这一段的几条；不再去审片那一页', () => {
+  const { buttons, calls, scene, entry } = promptButtons(true, false, { 手写: true }, ['1-5.mp4']);
+  const rv = buttons.find(b => labelOf(b) === '审片');
+  rv.attrs.onclick({ currentTarget: rv });
+  assert.equal(calls.at(-1)[0], '审片');
+  assert.equal(calls.at(-1)[1], scene);
+  assert.equal(calls.at(-1)[2], entry);
+  assert.deepEqual([...calls.at(-1)[3]], ['这一段的几条']);   // render 没给 list：照 promptsOf 认
+  assert.ok(!calls.some(c => c[0] === '去'));
+  assert.match(script, /rowOf\(s, e, made\.get\(e\.name\), list\)/);   // render 把这一段的几条带进去
+  assert.match(html, /<script src="审片弹窗\.js"><\/script>/);
+});
 
 test('你来写的稿（写稿资料记「手写」，老稿记「流水线」）标「手写稿」、按钮「接着写」；AI 写的改过的照旧「改过」「进去改」；交给 AI 写完没成也摆出来', () => {
   for (const side of [{ 手写: true }, { 流水线: '这一份是从「流水线」开的稿' }]) {
     const { buttons, calls, row, fails } = promptButtons(true, false, side);
-    const labels = buttons.map(b => b.children.join(''));
+    const labels = buttons.map(labelOf);
     assert.ok(labels.includes('接着写') && !labels.includes('进去改'));
-    buttons.find(b => b.children.includes('接着写')).attrs.onclick();
+    buttons.find(b => labelOf(b) === '接着写').attrs.onclick();
     assert.deepEqual(calls[0], ['编辑', '1', '1-5.txt', true]);   // 写稿页顶上写「接着写」
     assert.match(textOf(row), /手写稿/);
     assert.doesNotMatch(textOf(row), /改过/);
@@ -82,18 +153,18 @@ test('你来写的稿（写稿资料记「手写」，老稿记「流水线」�
   const { row, buttons } = promptButtons(true, false, { 写法: '分镜', 分镜稿: '' });
   assert.match(textOf(row), /改过/);
   assert.doesNotMatch(textOf(row), /手写稿/);
-  assert.ok(buttons.some(b => b.children.includes('进去改')));
+  assert.ok(buttons.some(b => labelOf(b) === '进去改'));
   assert.doesNotMatch(textOf(promptButtons(false, false, { 手写: true }).row), /手写稿/);   // 没有写稿资料的（AI 初稿）不看 X.side
 });
 
 test('已有任务执行时，批准出片仍禁用', () => {
   const { buttons } = promptButtons(true, true);
-  assert.equal(buttons.find(b => b.children.includes('批准出片')).attrs.disabled, true);
+  assert.equal(buttons.find(b => labelOf(b) === '批准出片').attrs.disabled, true);
 });
 
-test('「下一步：审片」照审片那一步锁不锁摆（11-18：别的提示词待核对，出好的样片也要能去审）', () => {
-  const line = script.split('\n').find(l => l.includes('下一步：审片'));
-  assert.ok(line, '提示词那一步要有「下一步：审片」');
-  assert.match(line, /reviewState\(s\)\.st !== 'lock'/);
-  assert.doesNotMatch(line, /!stale\.length \?/);
+test('第五步审片拿掉了（11-22 他定：审片是每条上的弹窗）：不再摆「下一步：审片」，也不去审片那一页', () => {
+  assert.doesNotMatch(script, /下一步：审片/);
+  assert.doesNotMatch(script, /go\('审片'/);
+  assert.doesNotMatch(script, /reviewState|reviewBtn/);
+  assert.ok(!fs.existsSync(path.join(path.dirname(page), '审片.html')), '审片.html 该删了');
 });

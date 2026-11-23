@@ -1,6 +1,6 @@
 /* ============================================================
    流水线 · 各页共用（总览、设定、分场、剧本、资产 都先引这一份）
-   流程：一场一场：先写剧本（自己写，或写一句这一场想写什么让 AI 写）、你定稿 → AI 照定稿的剧本提炼梗概、这一场的人物道具场景和镜头表，你改或批注、定下来 → 资产字先定、图后出 → 写提示词（要关键帧的在这一步出） → 审片。
+   流程：一场一场：先写剧本（自己写，或写一句这一场想写什么让 AI 写）、你定稿 → AI 照定稿的剧本提炼梗概、这一场的人物道具场景和镜头表，你改或批注、定下来 → 资产字先定、图后出 → 写提示词（要关键帧的在这一步出），出片、审片也在这一步（2026-11-22 起审片是每条提示词上的弹窗，流水线/审片弹窗.js）。
    （2026-11-16 他定：第一步直接写剧本；梗概、人物、场景、道具不先写，剧本定稿以后 AI 提炼，和镜头表一起，人可以直接改，也可以批注交给 AI 改）
    这里放：流水线.json 怎么读、怎么存；各场走到哪一步；顶栏和步骤条；几页都用的小部件。
    每一页自己的东西写在那一页里。页面之间只靠网址（p＝项目，s＝第几场）和项目里的文件传话。
@@ -30,11 +30,11 @@ if (!window.Wait && document.currentScript) document.head.append(Object.assign(d
    老稿还有 视频提示词.txt、视频提示词_02.txt、段落a-b_视频提示词.txt、镜头a-b_视频提示词.txt，照旧认。
    审片以后改的另存一份，名字后面加 _改1、_改2……（2026-11-14 他定）：原稿、前几版留在原处；一条只摆最新那一版，出片也用它。
    接力稿（11-19）：一个镜头拆成前后两条出片，1_改6_前半条.txt、1_改6_后半条.txt，前半条、后半条各算一条 */
-const { vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, vpFams, nameOk, sceneStem, noImg, setNoImg, noGeo, setNoGeo, reviewLock } = window.Core;   // 视频提示词怎么起名、文件名能不能用：和审片台、本机服务共用 公用/核心.js 那一份
+const { vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, vpFams, nameOk, sceneStem, noImg, setNoImg, noGeo, setNoGeo } = window.Core;   // 视频提示词怎么起名、文件名能不能用：和审片台、本机服务共用 公用/核心.js 那一份
 const VID_RE = /\.(mp4|m4v|mov|webm)$/i;
 const SHOTS_TAIL = '_批注截图';
 const FILE = '流水线.json';
-const NOTE_LINE = '项目管理「流水线」页存的。梗概：全片讲什么。人物、道具：全片的，一行一个，「资产」是它引用的那张图（引用了就是对上了）；道具有几个状态、引用了几张图时，「资产」是一个列表，一张图一个状态；「描写改」是这一行的描写最后改动的时间。场景：全片的场景描写，一行写一处地方；场景图：引用的场景图。可用：哪张图人看过、确认能用（图 → 确认的时间），确认过的图各场通用；图重出过、它那一行的描写改过，就要再确认。场：一场一场的，各场的「人物」「道具」写的是上面表里的名字，「场景图」是这一场用的场景图，「场景文字」是这一场用的、只用文字写的地方（全片「场景」里的原句，没有图也算），「不出图」是这一场只用文字写、不出图的几样（人物、道具写名字，场景写地方名：不算缺图，不写出图提示词，写视频提示词时照全片设定里的描写写；挂上了图的照图），「不要GEO」是这一场没有严格站位、不用 GEO 底稿的场景（写地方名：不写、不核 GEO 底稿，写视频提示词也不用），「段落」是这一场的镜头表（一个镜头写什么、起什么作用；字段名照旧叫「段落」；作用写成「标签｜目的，关系」，「秒数」是这一镜预估几秒，「秒数人定」是人改过的，AI 照批注改时照抄；每一镜的「人物」「场景」「道具」是这一镜出场的，场景写地方名）。顶上的「全局」是全片好几段都出场的人物、场景、道具（AI 提炼时估，人能改；好几段都选了的不记也算）；各场的「删掉」是人删掉的、这一段用不着的（类别|名字），AI 重新提炼也不再列。先写剧本（11-16 起），剧本定稿以后 AI 照剧本一次提炼出梗概、这一场的人物道具场景和镜头表（定稿的剧本/第N段/第N段_提炼.json），页面并进全片设定和这一场，人再改；「提炼取」是并进来的那一版的时间，「提炼改」记着 AI 改了哪几样、原来是什么，「提炼批」是人写的还没交出去的批注。写提示词时分镜照剧情需要设计，不必和镜头表一一对应，写在提示词的「分镜」里。「剧本定稿」是人看过剧本以后点的时间，有它、而且不早于剧本最后改动的时间，才许提炼；「回填」是剧本页点「照片子改剧本」、项目照定稿的样片改完剧本的时间，之后剧本没再动，剧本定稿照旧算数；「定稿」是这一场的提炼（出场的、镜头表）定下来的时间，定了才出这一场的资产图；这一场要的图都确认可用了，才写提示词。风格：全片的拍摄风格，「名」是 通用工具/AI短片风格库 里的一种，或者「本项目自己的」（照 提示词/全局资产/全片_光影总基调.txt），「定」是定下来的时间，「换」是从别的风格换过来的时间；一场另选的写在那一场的「风格」里（「风格换」是这一场换风格的时间），没写就照全片的；出资产图、写提示词照它写。「先写提示词」是 true 的场倒着走：人先选出场的人物、写提示词里人写的两块（生成目标、事件脚本），AI 照提示词反推剧本，镜头表、表达、出场的列在 定稿的剧本/第N段/第N段_反推.json，人点「采用」才写进这一场（「反推采用」是采用的那一份的时间）；剧本定稿以后 AI 再把提示词里它写的几块铺进正文。人在页面上写，AI 只读；一场就是一个「第N段」。';
+const NOTE_LINE = '项目管理「流水线」页存的。梗概：全片讲什么。人物、道具：全片的，一行一个，「资产」是它引用的那张图（引用了就是对上了）；道具有几个状态、引用了几张图时，「资产」是一个列表，一张图一个状态；「描写改」是这一行的描写最后改动的时间。场景：全片的场景描写，一行写一处地方；场景图：引用的场景图。可用：哪张图人看过、确认能用（图 → 确认的时间），确认过的图各场通用；图重出过、它那一行的描写改过，就要再确认。场：一场一场的，各场的「人物」「道具」写的是上面表里的名字，「场景图」是这一场用的场景图，「场景文字」是这一场用的、只用文字写的地方（全片「场景」里的原句，没有图也算），「不出图」是这一场只用文字写、不出图的几样（人物、道具写名字，场景写地方名：不算缺图，不写出图提示词，写视频提示词时照全片设定里的描写写；挂上了图的照图），「不要GEO」是这一场没有严格站位、不用 GEO 底稿的场景（写地方名：不写、不核 GEO 底稿，写视频提示词也不用），「段落」是这一场的镜头表（一个镜头写什么、起什么作用；字段名照旧叫「段落」；作用写成「标签｜目的，关系」，「秒数」是这一镜预估几秒，「秒数人定」是人改过的，AI 照批注改时照抄；每一镜的「人物」「场景」「道具」是这一镜出场的，场景写地方名）。顶上的「全局」是全片好几段都出场的人物、场景、道具（AI 提炼时估，人能改；好几段都选了的不记也算）；各场的「删掉」是人删掉的、这一段用不着的（类别|名字），AI 重新提炼也不再列。先写剧本（11-16 起），剧本定稿以后 AI 照剧本一次提炼出梗概、这一场的人物道具场景和镜头表（定稿的剧本/第N段/第N段_提炼.json），页面并进全片设定和这一场，人再改；「提炼取」是并进来的那一版的时间，「提炼改」记着 AI 改了哪几样、原来是什么，「提炼批」是人写的还没交出去的批注。写提示词时分镜照剧情需要设计，不必和镜头表一一对应，写在提示词的「分镜」里。「剧本定稿」是人看过剧本以后点的时间，有它、而且不早于剧本最后改动的时间，才许提炼；「回填」是剧本页点「照片子改剧本」、项目照定稿的样片改完剧本的时间，之后剧本没再动，剧本定稿照旧算数；「定稿」是这一场的提炼（出场的、镜头表）定下来的时间，定了才出这一场的资产图；这一场要的图都确认可用了，才写提示词。风格：全片的拍摄风格，「名」是 通用工具/AI短片风格库 里的一种，或者「本项目自己的」（照 提示词/全局资产/全片_光影总基调.txt），「定」是定下来的时间，「换」是从别的风格换过来的时间；一场另选的写在那一场的「风格」里（「风格换」是这一场换风格的时间），没写就照全片的；出资产图、写提示词照它写。「先写提示词」是 true 的场没有剧本（11-21 起）：人先在写稿页写一段自由模式的提示词（提示词/第N段/自由稿.txt），点「提炼分镜」记成这一场的「剧本定稿」，AI 照自由稿提炼梗概、出场的和镜头表；「定稿」（分镜定下来）以后出资产图，写提示词时 AI 照镜头表拆、照自由稿写；提炼以后自由稿又改过，分镜待核对，人点「照旧」或「重新提炼」（只动改到的镜头，号不变）。人在页面上写，AI 只读；一场就是一个「第N段」。';
 const IMG_RE = /\.(png|jpe?g|webp|gif|avif)$/i;
 const AI_FILE = '流水线_AI扩写.json';   // 定稿的剧本/流水线_AI扩写.json：AI 补的人物、道具描写，照 GEO 写的场景段（AI 写，页面只读；你点「采用」才换进流水线）
 const GROWS = typeof CSS !== 'undefined' && !!CSS.supports && CSS.supports('field-sizing', 'content');   // 文字框会不会自己长高
@@ -71,7 +71,7 @@ const Why = window.ShotWhy;
 /* 出场的人物、场景、道具：全局的（好几段都用）、用在这一段哪几镜，删掉用不着的（2026-11-17 他要）：公用/资产归类.js */
 const Scope = window.AssetScope;
 const shotNos = s => SB.nosOf(s.段落);   // 这一场镜头表各镜的号
-/* 这一条（e：promptsOf 的一条，或者文件名）拍镜头表哪几镜（固定号）：名字是镜头号的照镜头表认，老稿「镜头6-9_视频提示词」照名字里的数认；认不出给 null。提示词、审片两页共用 */
+/* 这一条（e：promptsOf 的一条，或者文件名）拍镜头表哪几镜（固定号）：名字是镜头号的照镜头表认，老稿「镜头6-9_视频提示词」照名字里的数认；认不出给 null。提示词那一页用（左边镜头表标出它拍的几镜） */
 const shotsOfPrompt = (s, e) => SB.shotsOf(vpCode(e.key || vpBase(e.name || e)), e.name || e, shotNos(s));
 /* 用在哪几镜：一镜一个小牌子，点一下加上、再点去掉。提炼页点开的卡、资产页卡上那行小字共用（11-17 他要在资产页手动绑镜头）。
    who()：现在认的 { k, name }（场景那一句改着改着会变，点的时候再认）；done：改完重画 */
@@ -616,7 +616,12 @@ async function loadSides() {
     const pfiles = (await ls('提示词/' + segName(seg))).filter(e => e.kind === 'file'), names = pfiles.map(e => e.name).sort();
     if (F.name !== name || ls.failed) return out();
     const sig = pfiles.map(e => e.name + '@' + (e.mtime || 0)).sort().join('|'), was = F.names.get(seg);
-    if (!was || was.sig !== sig) { F.names.set(seg, { sig, set: new Set(names), time: new Map(pfiles.map(e => [e.name, e.mtime || 0])) }); changed.add(seg); }
+    if (!was || was.sig !== sig) {
+      const pfSt = names.includes(C.PF_FILE) ? await FS.stat(at([name, '提示词', segName(seg), C.PF_FILE])) : null;   // 自由稿多大：建了还没写字的（0 字节）算还没写（11-21）
+      if (F.name !== name) return out();
+      F.names.set(seg, { sig, set: new Set(names), time: new Map(pfiles.map(e => [e.name, e.mtime || 0])), pfSize: pfSt && typeof pfSt.size === 'number' ? pfSt.size : undefined });
+      changed.add(seg);
+    }
     // 这一场的样片：成片/第N段 里的视频，和它们旁边的批注、AI 建议
     const vfiles = (await ls('成片/' + segName(seg))).filter(e => e.kind === 'file'), vf = vfiles.map(e => e.name).sort(byZh);
     if (F.name !== name || ls.failed) return out();
@@ -761,11 +766,16 @@ function openWrite(seg, name, hand) {
   };
   SHELL = h('div', { class: 'wf-shell wf-write' },
     h('div', { class: 'wf-shell-h' }, h('button', { class: 'btn sm ink', type: 'button', onclick: close }, '← 回到流水线'),
-      h('span', { class: 'wf-shell-t' }, '第' + seg + '段 · ' + vpLabel(name) + (hand ? ' · 接着写' : ' · 进去改')), h('span', { class: 'sp' }),
-      h('span', { class: 'fn-note' }, hand ? '你来写的稿：在自由模式写好事件脚本，点「交给 AI 写完」，AI 拆成分镜，生成目标、素材这几块一起写好。' : '这一条是 AI 写的，在这里自己改。改过以后，AI 估的每镜秒数可能不准，出片时会提醒。')),
+      h('span', { class: 'wf-shell-t' }, '第' + seg + '段 · ' + (name === C.PF_FILE ? '自由稿' : vpLabel(name)) + (hand ? ' · 接着写' : ' · 进去改')), h('span', { class: 'sp' }),
+      h('span', { class: 'fn-note' }, name === C.PF_FILE ? '这一段的戏你来写：谁在哪、做什么、说什么，想好的机位、声音也写上。写好点「提炼分镜」，AI 照它分镜头、列出场的人物场景道具。' : hand ? '你来写的稿：在自由模式写好事件脚本，点「交给 AI 写完」，AI 拆成分镜，生成目标、素材这几块一起写好。' : '这一条是 AI 写的，在这里自己改。改过以后，AI 估的每镜秒数可能不准，出片时会提醒。')),
     frame);
   SHELL.leave = keep;
   document.body.append(SHELL); document.body.classList.add('wf-covered');
+}
+/* 盖上来的写稿页换了一份稿（加减镜头改了名、出过片另存成了下一版）：顶上那一行跟着换名字。写稿页（iframe）调 parent.retitleWrite */
+function retitleWrite(from, to) {
+  const t = document.querySelector('.wf-write .wf-shell-t');
+  if (t && from && to) t.textContent = t.textContent.split(vpLabel(from)).join(vpLabel(to));
 }
 /* 看这一段现有的剧本、镜头表（整页盖上来看，能写批注） */
 function seeOld(seg, kind) {
@@ -789,7 +799,7 @@ const chNow = CH.now, chName = CH.name, handOf = CH.hand;
 const jobLive = j => !!j && (j.状态 === '排队' || j.状态 === '在做');
 /* 这件事（这一场）最近的一个任务 */
 const jobOf = (事, 段, pred) => AI.jobs.filter(j => j.事 === 事 && (段 == null || j.段 === 段) && (!pred || pred(j))).pop() || null;
-const chPicker = () => AI.ok ? window.UI.aiPicker('ai-ch', '点「让 AI ……」的时候交给谁。选「给我提示词」就不调 AI：把要交代的话给你，贴进你自己开的对话，它做完告诉项目。出图、出片走 Codex') : null;
+const chPicker = () => AI.ok ? window.UI.aiPicker('ai-ch', '点「让 AI ……」的时候交给谁。选「给我提示词」就不调 AI：把要交代的话给你，贴进你自己开的对话，它做完告诉项目。出图走 Codex，出片由流水线自己做') : null;
 /* 开一个任务。quiet：不单独提示（一次开好几个时最后统一说一句） */
 async function startJob(body, quiet) {
   await flush();
@@ -798,12 +808,12 @@ async function startJob(body, quiet) {
     const b = CH.fill({ 项目: F.name, 渠道: chNow(), ...body });   // 模型、推理深度只说「AI 用」选的那一个（出片这类指定了 Codex 的不带）
     const j = await (await LINK.req('POST', '/api/job', C.encodeText(JSON.stringify(b)))).json();
     AI.jobs = AI.jobs.filter(x => x.id !== j.id).concat(j);
-    const hand = j.渠道 === b.渠道 ? handOf(j.渠道) : '';   // 同一件事已经在做的，服务给的是原来那个任务
+    const hand = j.渠道 === b.渠道 && !j.本机 ? handOf(j.渠道) : '';   // 同一件事已经在做的，服务给的是原来那个任务；本机的活（排任务书、出片）不经 AI
     if (hand === 'self' && window.HandAI) HandAI.wait(j, () => loadJobs());   // 给我提示词：话备好就弹出来给你复制
     if (!quiet) toast(hand === 'self' ? '要交代的话备好就弹出来：复制，贴进你自己开的对话。它做完这里自动出现'
       : hand === 'claude' ? '在 Claude 桌面版开了一个新对话，任务填好了：到 Claude 窗口里按发送。做完这里自动出现'
       : hand === 'deepseek' ? '交给 DeepSeek 了：它在自己的窗口里做，做完这里自动出现'
-      : '交给 ' + j.渠道名 + ' 了。做完这里自动出现');
+      : j.本机 ? '流水线在做了，做完这里自动出现' : '交给 ' + j.渠道名 + ' 了。做完这里自动出现');
     return j;
   } catch (e) { toast('没交上：' + e.message, 'err'); return null; }
 }
@@ -841,7 +851,7 @@ async function startSelf(body) {
 /* 上一回没做成：说一句为什么（做成过、或者过了半小时就不提了） */
 function jobFailed(事, 段, pred) {
   const j = jobOf(事, 段, pred);
-  return j && (j.状态 === '没成') && Date.now() - j.结束 < 30 * 60e3 ? h('span', { class: 'fn-note warn', title: '任务书和 AI 的回答留在：' + j.记录 }, '上一回' + (j.本机 ? '' : ' ' + (j.事 === '出片' ? 'Codex' : j.渠道名) + ' ') + '没做成：' + j.错误) : null;   // 本机的活（生成任务书）不经 AI；出片是 Codex 做的
+  return j && (j.状态 === '没成') && Date.now() - j.结束 < 30 * 60e3 ? h('span', { class: 'fn-note warn', title: '任务书和 AI 的回答留在：' + j.记录 }, '上一回' + (j.本机 ? '' : ' ' + (j.事 === '出片' ? 'Codex' : j.渠道名) + ' ') + '没做成：' + j.错误) : null;   // 本机的活（生成任务书，11-21 起出片也是）不经 AI；11-21 以前的出片是 Codex 做的
 }
 setInterval(() => document.querySelectorAll('.ai-run b[data-t0]').forEach(b => {
   const s = Math.max(0, Math.round((Date.now() - +b.dataset.t0) / 1000));
@@ -849,7 +859,8 @@ setInterval(() => document.querySelectorAll('.ai-run b[data-t0]').forEach(b => {
 }), 1000);
 
 /* ---------- 各场走到哪一步：总览的进度表、一场页面顶上的步骤条都看它 ---------- */
-const STEPS = [['剧本', '一', '剧本'], ['分场', '二', '提炼'], ['资产', '三', '资产'], ['提示词', '四', '提示词'], ['审片', '五', '审片']];   // [哪一页, 第几道工序, 这一步叫什么]。先写剧本，定稿以后提炼（11-16 他定）；提炼那一页的文件还叫 分场.html
+const STEPS = [['剧本', '一', '剧本'], ['分场', '二', '提炼'], ['资产', '三', '资产'], ['提示词', '四', '提示词']];   // [哪一页, 第几道工序, 这一步叫什么]。先写剧本，定稿以后提炼（11-16 他定）；提炼那一页的文件还叫 分场.html。第五步「审片」11-22 拿掉了：审片是提示词那一步每条上的弹窗
+const PF_STEP = { 剧本: '自由稿', 分场: '提炼分镜', 提示词: '写完出片' };   // 先写提示词的段（11-21 他定）：这几步换个叫法
 const clipsOf = seg => (F.clips.get(seg) || { vids: [], all: new Set(), time: new Map() });
 /* ---------- 待核对：前面确认过的东西后来又动过，后面用到它的要你看一眼。看过了选「沿用」（这里记一个时间），或者重做（文件新了自然就不算旧）。
    记在这一场的「沿用」里：{ '提示词/文件名': 时间, '样片/视频名': 时间 } ---------- */
@@ -879,15 +890,6 @@ function promptSince(s, name) {
 function promptStale(s, name) {
   const t = promptSince(s, name);
   return !!t && t + 999 < upTime(s, name);   // 不知道它什么时候写的：不乱标
-}
-/* 选定的这条样片：它出了以后，那条提示词又改过（审片以后改出了新的一版也算），或者前面几道又动过。pname：这一条的原稿名（哪一版的名字都行） */
-function clipStale(s, pname, vid) {
-  const c = F.clips.get(s.段), p = F.names.get(s.段), t = c && c.time ? c.time.get(vid) || 0 : 0;
-  if (!t) return false;
-  const e = promptsOf(s.段).find(x => x.key === vpBase(pname)), cur = e ? e.name : pname;   // 这一条现在最新的那一版
-  const kept = timeOf(keptOf(s)['样片/' + vid]), pt = p && p.time ? p.time.get(cur) || 0 : 0, rec = shotRecOf(s.段, cur, t);
-  if (rec) return Math.max(timeOf(rec.时间), kept) + 999 < upTime(s, cur) || (rec.提示词 === cur ? !!rec.提示词时间 && Math.max(rec.提示词时间, kept) + 999 < pt : Math.max(timeOf(rec.时间), kept) + 999 < pt);   // 照批准出片时那一版提示词算（11-14 和 Codex 定的），不照样片下载下来的时间；照的是旧的一版，新的一版就是后来改的
-  return Math.max(t, kept) + 999 < Math.max(upTime(s, cur), pt);
 }
 /* 这条样片当初照哪一版出的：出片记录里，样片下载下来以前批准出这一条（哪一版都算）的最后一回 */
 function shotRecOf(seg, pname, t) {
@@ -949,8 +951,9 @@ function assetCheckTime(s) {
 }
 /* 工序三 资产：剧本定稿以后才开；这一场要的图都有了、每一张你都确认过可用，就算完（不用另外再点）。剧本重新定过稿，要再看一遍（待核对） */
 function assetState(s) {
-  if (scriptState(s).st !== 'final') return { st: 'lock', tx: '剧本定稿后' };
-  if (!s.定稿) return { st: 'lock', tx: '提炼定了后' };   // 出场的人物、道具是剧本定稿以后提炼的（11-16）
+  const sc = scriptState(s);
+  if (sc.st !== 'final') return { st: 'lock', tx: sc.pf ? (sc.again && hasParas(s) ? '分镜核对后' : '写好自由稿后') : '剧本定稿后' };   // 先写提示词的段（11-21）：分镜定下来就能出
+  if (!s.定稿) return { st: 'lock', tx: sc.pf ? '分镜定下来后' : '提炼定了后' };   // 出场的人物、道具是剧本定稿以后提炼的（11-16）
   if (jobLive(jobOf('出图', s.段))) return { st: 'ai', tx: 'AI 在出图' };
   if (jobLive(jobOf('写字', s.段))) return { st: 'ai', tx: 'AI 在写字' };
   if (jobLive(jobOf('影响清单', s.段))) return { st: 'ai', tx: 'AI 在对剧本' };
@@ -961,7 +964,7 @@ function assetState(s) {
   const again = !!s.头回定稿 && timeOf(s.头回定稿) + 999 < timeOf(s.剧本定稿);   // 头回定稿：剧本头一回定稿的时间（剧本页点定稿时记的）
   const im = again ? impactOf(s) : null, todo = im ? impactTodo(s, im) : [];   // 有影响清单：只看列上的
   if (todo.length) return { st: 'you', tx: '待核对', why: '剧本改了，AI 列了 ' + todo.length + ' 样要再看', impact: todo, ok, n: has.length };
-  if (again && !im && assetCheckTime(s) + 999 < timeOf(s.剧本定稿)) return { st: 'you', tx: '待核对', why: '剧本重新定过稿了', ok, n: has.length };
+  if (again && !im && assetCheckTime(s) + 999 < timeOf(s.剧本定稿)) return { st: 'you', tx: '待核对', why: sc.pf ? '自由稿改过了' : '剧本重新定过稿了', ok, n: has.length };
   if (has.length && assetCheckTime(s) + 999 < styleChangedAt(s)) return { st: 'you', tx: '待核对', why: '拍摄风格换过了', ok, n: has.length };   // 图是照原来的风格出的
   return { st: 'ok', tx: '确认了', ok, n: has.length };
 }
@@ -972,22 +975,12 @@ function promptState(s) {
   if (list.some(e => promptStale(s, e.name))) return { st: 'you', tx: '待核对', n };
   return n ? { st: 'ok', tx: n + ' 条', n } : { st: 'you', tx: '还没写', n };
 }
-/* 工序五 审片：每一条提示词都选定了一条样片、你点了「这一场定稿」才算完 */
-function reviewState(s) {
-  const vids = clipsOf(s.段).vids, list = promptsOf(s.段), sel = s.选定 || {};
-  if (reviewLock(list.length, vids.length, promptState(s).st)) return { st: 'lock', tx: list.length ? '前面核对后' : '有了提示词后' };   // 有样片就能审（11-18 他定）：公用/核心.js
-  if (jobLive(jobOf('出片', s.段))) return { st: 'ai', tx: '在出片' };
-  if (!vids.length) return { st: 'you', tx: '还没出片' };
-  const picked = list.filter(e => sel[e.key] && vids.includes(sel[e.key])), done = picked.length;   // 选定记在这一条的原稿名下：改出了新的一版，选定还在
-  if (picked.some(e => clipStale(s, e.key, sel[e.key]))) return { st: 'you', tx: '待核对' };
-  if (done < list.length) return { st: 'you', tx: '选定 ' + done + '/' + list.length };
-  return s.成片定稿 ? { st: 'ok', tx: '定稿了' } : { st: 'you', tx: '等你定稿' };
-}
-/* 一场的五步各是什么样：ok 做完了、you 等你、ai AI 在做、lock 前一步没完还不能做 */
+/* 一场的四步各是什么样：ok 做完了、you 等你、ai AI 在做、lock 前一步没完还不能做 */
 function stepInfo(s) {
   const sc = scriptState(s);
-  const a = sc.st === 'none' ? { st: 'you', tx: '还没写' } : sc.st !== 'final' ? { st: 'you', tx: sc.again ? '改过，再定稿' : '等你定稿' } : { st: 'ok', tx: '定稿了' };
-  return [a, paraState(s), assetState(s), promptState(s), reviewState(s)];
+  const a = sc.pf ? (sc.st === 'none' ? { st: 'you', tx: '还没写' } : sc.st === 'final' ? { st: 'ok', tx: '提炼了' } : sc.again && hasParas(s) ? { st: 'ok', tx: '改过了' } : { st: 'you', tx: '等你提炼' })   // 先写提示词的段：第一步是自由稿（改过了：到提炼分镜那一步核对）
+    : sc.st === 'none' ? { st: 'you', tx: '还没写' } : sc.st !== 'final' ? { st: 'you', tx: sc.again ? '改过，再定稿' : '等你定稿' } : { st: 'ok', tx: '定稿了' };
+  return [a, paraState(s), assetState(s), promptState(s)];
 }
 /* 工序二 提炼（11-16 他定：先写剧本）：剧本定稿以后 AI 一次提炼出梗概、这一场的人物道具场景和镜头表，你直接改、或者写批注交给 AI 改，点「定下来」就算完。
    剧本重新定过稿（头一回定稿以后又定了一回），已经定下来的要再看一眼：待核对 */
@@ -995,7 +988,9 @@ const hasParas = s => s.段落.some(x => x.写什么.trim() || x.作用.trim());
 const paraStale = s => !!s.定稿 && !!s.头回定稿 && timeOf(s.定稿) + 999 < timeOf(s.剧本定稿) && timeOf(s.头回定稿) + 999 < timeOf(s.剧本定稿);
 function paraState(s) {
   for (const 事 of ['提炼', '提炼按批注改']) { const job = jobOf(事, s.段); if (jobLive(job)) return { st: 'ai', tx: 事 === '提炼' ? 'AI 在提炼' : 'AI 在改', job }; }
-  if (scriptState(s).st !== 'final') return { st: 'lock', tx: '剧本定稿后' };
+  const sc = scriptState(s);
+  if (sc.pf && sc.again && hasParas(s)) return { st: 'you', tx: '待核对', stale: true, edited: true };   // 先写提示词的段：提炼以后自由稿又改过（11-21 他定：照旧，或者重新提炼）
+  if (sc.st !== 'final') return { st: 'lock', tx: sc.pf ? '写好自由稿后' : '剧本定稿后' };
   if (!hasParas(s)) return { st: 'you', tx: '还没提炼' };
   if (!s.定稿) return { st: 'you', tx: '等你定' };
   if (paraStale(s)) return { st: 'you', tx: '待核对', stale: true };
@@ -1032,10 +1027,9 @@ function renderTop() {
       window.BgTasks ? BgTasks.topBtn() : null,   // 后台任务（11-17 加；在 后台任务.js）：各项目在做的事都在一个抽屉里，点一行去那一页
       PAGE.name === '风格' ? null : h('a', { class: 'btn ghost sm wf-styles', href: pageUrl('风格', { p: F.name }), title: '风格库：每种风格现存的几条样片，都能在这里放', onclick: e => { e.preventDefault(); go('风格'); } }, icon('film'), '风格'),   // 11-14 加：风格.html
       PAGE.name === '网盘' ? null : h('a', { class: 'btn ghost sm wf-cloud', href: pageUrl('网盘', { p: F.name }), title: '这个项目在网盘上的那一份：传上去、拿下来、删网盘上的', onclick: e => { e.preventDefault(); go('网盘'); } }, icon('cloud'), '网盘'),
-      window.ScriptCheck ? ScriptCheck.topBtn() : null,   // 内置 AI（对剧本用的，11-16 加；在 对剧本.js）
       chPicker(), h('div', { class: 'status', id: 'fl-status' })));
 }
-/* 一场的页面顶上：剧本 → 提炼 → 资产 → 提示词 → 审片，现在在哪一步、各步什么样；右边换上一场、下一场 */
+/* 一场的页面顶上：剧本 → 提炼 → 资产 → 提示词，现在在哪一步、各步什么样；右边换上一场、下一场 */
 function stepsEls() {
   const s = sceneNow();
   if (!s) return [];
@@ -1044,7 +1038,7 @@ function stepsEls() {
     const x = info[i], on = PAGE.name === page;
     if (i) out.push(h('span', { class: 'wf-arrow' }, '→'));
     out.push(h('button', { class: 'wf-step ' + x.st + (on ? ' on' : ''), type: 'button', title: x.st === 'lock' ? x.tx + '才能做这一步' : null, onclick: () => { if (!on) go(page, { s: s.段 }); } },
-      h('i', null, x.st === 'ok' ? icon('check') : no), label, h('small', null, x.tx)));
+      h('i', null, x.st === 'ok' ? icon('check') : no), (C.isPF(s) && PF_STEP[page]) || label, h('small', null, x.tx)));
   });
   out.push(h('span', { class: 'sp' }));
   const sty = styleChip(s);
@@ -1332,7 +1326,11 @@ function mentioned(s) {
 }
 const pickCount = s => s.人物.length + s.道具.length + s.场景图.length + uniq(s.场景文字).length + s.人物图.length + s.道具图.length;
 /* 资产那一步还不能开：剧本没定稿，或者提炼还没定（资产页、资产详情页都用） */
+const PF_LOCK = { 写好自由稿后: ['先写好自由稿，点「提炼分镜」；分镜定下来以后才能出资产图。', '剧本', '← 去写自由稿'], 分镜核对后: ['自由稿提炼以后又改过：先到「提炼分镜」那一步点「照旧」或「重新提炼」，再出资产图。', '分场', '← 去提炼分镜'],
+  分镜定下来后: ['分镜定下来才能出资产图：出场的人物、场景、道具是照自由稿提炼的。先到「提炼分镜」那一步，看完点「定下来」。', '分场', '← 去提炼分镜'] };   // 先写提示词的段（11-21）
 function assetLock(s, lk) {
+  const pf = PF_LOCK[lk.tx];
+  if (pf) return h('div', { class: 'wf-lock' }, pf[0], h('button', { class: 'btn ink', onclick: () => go(pf[1], { s: s.段 }) }, pf[2]));
   const sc = lk.tx === '剧本定稿后';
   return h('div', { class: 'wf-lock' }, sc ? '剧本定稿以后才能出资产图。先到「剧本」那一步，看完点「剧本定稿」。' : '提炼定了才能出资产图：出场的人物、场景、道具是剧本定稿以后提炼的。先到「提炼」那一步，看完点「定下来」。',
     h('button', { class: 'btn ink', onclick: () => go(sc ? '剧本' : '分场', { s: s.段 }) }, sc ? '← 去看剧本' : '← 去提炼'));
@@ -1388,9 +1386,13 @@ async function sendAI(line, ok) {
    剧本定稿：你看过剧本，点了「剧本定稿」，之后剧本没再动。定稿了才提炼，提炼定了才许出资产图。11-16 起剧本是第一步，提炼再改不碰剧本定稿 */
 function scriptState(s) {
   const d = docsOf(s.段);
+  if (C.isPF(s)) {   // 先写提示词的段（11-21 他定）：第一步是自由稿（提示词/第N段/自由稿.txt），点「提炼分镜」记下时间，之后自由稿没再改就算数
+    const rec = F.names.get(s.段), has = !!rec && rec.set.has(C.PF_FILE);   // 建了还没写字的自由稿也算还没写（公用/核心.js 的 pfState）
+    return { d, pf: true, ...C.pfState(has ? { mtime: rec.time.get(C.PF_FILE) || 0, size: rec.pfSize } : null, s.剧本定稿) };
+  }
   if (!d.script) return { d, st: 'none' };
   const fin = timeOf(s.剧本定稿);   // 记到秒，文件时间到毫秒：比的时候让一秒
-  if (fin && (C.scriptFinal ? C.scriptFinal(s.剧本定稿, s.回填, d.script.mtime) : fin + 999 >= d.script.mtime)) return { d, st: 'final' };   // 回填：之后只是照定稿的片子改过（对剧本.js「照片子改剧本」，11-18），照旧算定稿
+  if (fin && (C.scriptFinal ? C.scriptFinal(s.剧本定稿, s.回填, d.script.mtime) : fin + 999 >= d.script.mtime)) return { d, st: 'final' };   // 回填：老数据，之后只是照定稿的片子改过（11-18 的「照片子改剧本」，11-22 随对剧本删了），照旧算定稿
   return { d, st: 'ok', again: !!fin };   // again：定稿以后剧本又改过
 }
 /* ---------- 只用文字写的场景（11-14 他要：出场的人物、场景、道具，全片设定里写过就能选，不用先有图）。
@@ -1619,14 +1621,14 @@ function wordFor(s, cat, stem, img, it) {
 const wordTx = w => (w.step === 'word' || w.step === 'txt') && w.hasNote ? '批注还没交给 AI' : w.txtOnly && w.step === 'none' ? '还没写文字描写' : w.step === 'img' && checkBad(w.checkImg) ? 'AI 核图说有问题' : WORD_TX[w.step];
 /* 交给 AI 写字。ws：wordOf 给的几样，空着就是这一场全部（没字没图的写字，有图的核一遍撑不撑得住）。req：人写的要求 */
 async function askWords(s, ws, req, self) {   // self：自己交给 AI（复制任务贴进自己开的对话）
-  if (scriptState(s).st !== 'final') { toast('剧本定稿以后才能写字', 'err'); return null; }
+  if (scriptState(s).st !== 'final') { toast(C.isPF(s) ? '分镜定下来以后才能写字' : '剧本定稿以后才能写字', 'err'); return null; }
   if (!AI.ok) { toast('本机服务是旧的，重开一次才能让 AI 写出图提示词', 'err'); return null; }
   const only = (ws || []).map(w => ({ 类别: w.cat, 名称: w.name, 状态名: w.state, 图: w.img, 文字: w.text, 要求: req || w.req || '', 参考: w.refs || [], ...(w.forPrompt ? { 提示词: w.forPrompt } : {}) }));
   return (self ? startSelf : startJob)({ 事: '写字', 段: s.段, ...(only.length ? { 参数: { 只: only } } : {}) });
 }
 /* 照字出图：Codex 一次一张；已经有图的，新图先存成候选 */
 async function askDraw(s, w) {
-  if (scriptState(s).st !== 'final') { toast('剧本定稿以后才能出图', 'err'); return null; }
+  if (scriptState(s).st !== 'final') { toast(C.isPF(s) ? '分镜定下来以后才能出图' : '剧本定稿以后才能出图', 'err'); return null; }
   return startJob({ 事: '出图', 段: s.段, 类别: w.cat, 名: w.name, 状态名: w.state, 参数: { 图: w.img } });
 }
 /* 照图上写的批注改图：以这张为底只改说到的地方，改出来的先当候选 */
@@ -1880,7 +1882,7 @@ async function styleDlg(s, opt) {
   const timer = setInterval(paint, 1000);
   paint();
   const subOf = () => one ? '全片是「' + film.名 + '」。这一段要另选就点下面一种；' + (str(s.风格).trim() ? '跟回全片点左下角「跟全片」。' : '不另选就关上。')
-    : (opt.first ? '剧本定稿了，接着定这部片子的拍摄风格（以后能换）。' : '') + '一部片子一个风格，个别段可以另选。出资产图、写提示词都照它写；审片时对着「一眼认出」看像不像。' + (film ? '中途换了，已经出的图、写好的提示词和样片会标「待核对」。' : '');
+    : (opt.lead || (opt.first ? '剧本定稿了，接着定这部片子的拍摄风格（以后能换）。' : '')) + '一部片子一个风格，个别段可以另选。出资产图、写提示词都照它写；审片时对着风格库里的「一眼认出」看像不像。' + (film ? '中途换了，已经出的图、写好的提示词和样片会标「待核对」。' : '');
   await dialog(close => {
     done = close;
     const el = dlgShell(one ? '第' + s.段 + '段的拍摄风格' : '定这部片子的拍摄风格', subOf(), [aiBox, grid],
@@ -1906,9 +1908,6 @@ async function styleDlg(s, opt) {
   await flush();
   rerender();
 }
-
-/* 对剧本（2026-11-16 加）：审片、剧本两页自动对剧本，顶栏「内置 AI」各页都有。功能在 对剧本.js，这里替各页引上，各页的 html 不用一个个加 */
-if (!document.querySelector('script[src$="对剧本.js"]')) document.head.append(Object.assign(document.createElement('script'), { src: new URL('对剧本.js', document.currentScript ? document.currentScript.src : location.href).href }));
 
 /* 后台任务（2026-11-17 加）：顶栏「后台任务」，各项目在做的事都在一个抽屉里，点一行去那一页。功能在 后台任务.js，这里替各页引上 */
 if (!window.BgTasks) document.head.append(Object.assign(document.createElement('script'), { src: new URL('后台任务.js', document.currentScript ? document.currentScript.src : location.href).href }));

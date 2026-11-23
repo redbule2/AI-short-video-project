@@ -19,7 +19,6 @@ body.dk { display: block; height: 100vh; overflow: hidden; background: var(--nig
 .dk-title span { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: 15px var(--kai); color: var(--ink-2); }
 .dk-top .sp { flex: 1; }
 .dk-pr { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
-.dk-pr select { max-width: 240px; padding: 4px 8px; border: 1px solid var(--line-2); border-radius: 6px; background: #fff; font: 13px var(--sans); color: var(--ink); cursor: pointer; }
 .dk-st { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
 .dk-st .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-2); }
 .dk-st.noted { color: var(--zhu); }
@@ -312,15 +311,17 @@ body.dk { display: block; height: 100vh; overflow: hidden; background: var(--nig
 <script src="../公用/审片镜头表.js"></script>
 <script src="../公用/点图.js"></script>
 <script src="../公用/找旧版.js"></script>
+<script src="审片台这一条.js"></script>
 <script>
 /* ============================================================
-   对照审片（流水线第五道工序「审片」：一条样片一页）
+   对照审片：一条样片一页（2026-11-22 起是「提示词」那一步每条上「审片」点开的弹窗，流水线/审片弹窗.js；以前是第五道工序「审片」）
    看片的时候，旁边随时能对照：这条提示词挂的白模（同一时刻一起放）、这一镜的关键帧、另一条样片、哪一张资产图；
    放到哪一镜，画面下面和右边「这一镜」就跟到哪一镜：提示词这一镜怎么写的、关键帧、提到的图、这一镜的批注。
    批注照「项目管理」审片那一样的格式存在样片旁边（视频名_批注.md、视频名_批注截图），多记一行「对照」：写这条时旁边摆着什么。
    审片只批注、不出方案（2026-11-15 他定）：怎么改由他拿着批注和自己的 AI 商量，再回前面那一道重新走。
-   网址：审片台.html?p=项目&s=第几场&v=样片文件名&pr=提示词文件名（pr 可不给：批注里记过的、名字里看得出的、只有一条的）
-   嵌在审片那一页里时，那一页给 window.DESK_HOST.close；这一页给它 window.DESK.leave（没存的先存上）
+   只审这一条提示词（11-22 他定）：网址带 k＝这一条的原稿名，换样片、对照另一条样片都只摆这一条几版出的，换不到别的提示词（流水线/审片台这一条.js）。
+   网址：审片台.html?p=项目&s=第几场&v=样片文件名&k=原稿名&pr=哪一版（pr、k 可不给：照名字认）
+   嵌在弹窗里时，弹窗那一页给 window.DESK_HOST（close 收起、retire 移走一条样片）；这一页给它 window.DESK.leave（没存的先存上）
    ============================================================ */
 'use strict';
 const { C, LINK, FS, at, isComposing } = window.Base;
@@ -347,7 +348,6 @@ const baseName = s => String(s).trim().split(/[\\/]/).pop();
 const str = v => typeof v === 'string' ? v : '';
 const clean = p => str(p).trim().replace(/\\/g, '/');
 const uid = () => Math.random().toString(36).slice(2, 10);
-const byZh = (a, b) => a.localeCompare(b, 'zh', { numeric: true });
 const secText = x => String(Math.round(x * 10) / 10);
 const clipLabel = n => { let s = stem(n); if (s.startsWith(SEGD + '_')) s = s.slice(SEGD.length + 1); return s.replace(/_/g, ' '); };
 const frameNo = rel => { const m = /(?:镜头|段落)\s*0*([0-9]+)/.exec(fileOf(rel)); return m ? +m[1] : null; };
@@ -401,17 +401,13 @@ async function loadPromptList() {
   D.prompts = ents.filter(e => e.kind === 'file' && RE_VP.test(e.name)).map(e => ({ name: e.name, label: vpLabel(e.name) }))
     .sort((a, b) => (vpNo(a.name) || 999) - (vpNo(b.name) || 999) || window.Core.vpSort(vpBase(a.name), vpBase(b.name)) || vpVer(a.name) - vpVer(b.name));   // 改过几版的：原稿、改1、改2……挨着；接力稿前半条在后半条前面（公用/核心.js）
 }
-/* 这一段的提示词，一条一组：{ key: 原稿名, name: 最新一版, vers: [几版] }（D.prompts 里原稿、改1、改2 挨着） */
+/* 这一段的提示词，一条一组：{ key: 原稿名, name: 最新一版, vers: [几版] }；和流水线的 promptsOf 同一套（公用/核心.js 的 vpFams：接力稿比整条稿新的，整条稿不摆） */
 function promptFams() {
-  const m = new Map();
-  for (const p of D.prompts) { const k = vpBase(p.name), e = m.get(k) || { key: k, name: p.name, vers: [] }; e.vers.push(p.name); e.name = p.name; m.set(k, e); }
   const sc = flowScene(), rn = sc && sc.改名, cur = n => D.prompts.some(p => p.name === n);   // 改过名的（写稿页里加减镜头）：每一版以前叫过什么，旧名字出的样片也认
-  return [...m.values()].map(e => { const was = rn ? Object.fromEntries(e.vers.map(v => [v, window.Core.vpWas(rn, v, cur)]).filter(x => x[1].length)) : {}; return Object.keys(was).length ? { ...e, was } : e; });
-}
-/* 照名字猜是哪一版出的：和流水线同一套（公用/样片归属.js：和提示词同名的、老名字里带着「提示词02」「镜头1-5」的）；只有一条提示词就是它 */
-function guessPrompt() {
-  const fams = promptFams(), e = fams.find(f => f.key === ClipOf.promptOf(VID, fams, null));
-  return e ? ClipOf.verOf(VID, e, null) : '';
+  return window.Core.vpFams(D.prompts.map(p => p.name)).map(({ key, vers }) => {
+    const e = { key, name: vers[vers.length - 1], vers }, was = rn ? Object.fromEntries(vers.map(v => [v, window.Core.vpWas(rn, v, cur)]).filter(x => x[1].length)) : {};
+    return Object.keys(was).length ? { ...e, was } : e;
+  });
 }
 const KIND_CLS = { 人物: 'k-ren', 场景: 'k-jing', 道具: 'k-dao', 特效: 'k-dao', 关键帧: 'k-zhen' };
 function kindOfRef(r) {
@@ -543,13 +539,6 @@ async function loadPrompt(name) {
   timeShots();
   frameShots();
 }
-/* 这一场别的样片（成片里的、历史记录里的）：和这一条同一时刻一起放着比 */
-async function loadClips() {
-  const pick = async (dir, old) => (await listRel(dir)).filter(e => e.kind === 'file' && VIDEO_RE.test(e.name) && !(dir === VID_DIR && e.name === VID))
-    .map(e => ({ rel: dir + '/' + e.name, name: e.name, label: clipLabel(e.name), old, mtime: e.mtime || 0 }));
-  D.clips = [...await pick('成片/' + SEGD, false), ...await pick('历史记录/成片/' + SEGD, true)].sort((a, b) => (a.old - b.old) || b.mtime - a.mtime || byZh(b.name, a.name));
-}
-
 /* ---------- 一镜在哪 ---------- */
 function shotAt(t) {
   if (!D.timed) return D.pick;
@@ -741,7 +730,7 @@ function paintCmpBar() {
     h('div', { class: 'seg-btns' },
       b('bm', '白模', bm.length, '这条提示词没挂白模', bm.length > 1 ? e => pickVideo(e.currentTarget, bm) : null),
       b('kf', '关键帧', kf, '这条提示词没挂关键帧（或者没写哪一镜参考哪一张）'),
-      b('clip', '另一条样片', clips.length, '这一段没有别的样片', e => pickClip(e.currentTarget)),
+      b('clip', '另一条样片', clips.length, '这一条提示词没出过别的样片', e => pickClip(e.currentTarget)),
       CMP.src === 'img' ? b('img', '一张图', true, '', () => {}) : null,
       b('', '不对照', true)),
     CMP.src ? h('div', { class: 'seg-btns' }, mb('side', '并排', '两格挨着放'), mb('over', '叠起来', '对照的那一层半透明地盖在样片上：看机位、构图对不对得上')) : null,
@@ -754,13 +743,10 @@ function pickVideo(anchor, list) {
   popover(anchor, close => [h('div', { class: 'fl-pop-h' }, '和哪一段白模比'), h('div', { class: 'fl-pl' }, list.map(r => h('button', { type: 'button', class: 'fl-pi' + (CMP.src === 'bm' && CMP.rel === r.rel ? ' on' : ''), onclick: () => { close(); setCmp('bm', r.rel); } },
     h('span', { class: 'ph' }, icon('film')), h('span', { class: 'pn' }, h('b', null, r.ref + ' · ' + r.label), h('small', null, r.rel)))))]);
 }
-function pickClip(anchor) {
-  const fam = D.prompt ? promptFams().find(f => f.key === vpBase(D.prompt)) : null;   // 同一条：原稿出的、改1 出的都算（公用/样片归属.js）
-  const same = c => !!fam && fam.vers.some(n => ClipOf.namesOf(fam, n).some(m => ClipOf.carries(c.name, m)));
-  const list = [...D.clips].sort((a, b) => same(b) - same(a));
-  popover(anchor, close => [h('div', { class: 'fl-pop-h' }, '和哪一条样片比'),
-    h('div', { class: 'fl-pl' }, list.map(c => h('button', { type: 'button', class: 'fl-pi' + (CMP.src === 'clip' && CMP.rel === c.rel ? ' on' : ''), onclick: () => { close(); setCmp('clip', c.rel); } },
-      h('span', { class: 'ph' }, icon('film')), h('span', { class: 'pn' }, h('b', null, c.label), h('small', null, (c.old ? '历史记录里的' : '成片里的') + (same(c) ? ' · 同一条提示词' : '')))))),
+function pickClip(anchor) {   // 只摆这一条提示词几版出的（审片台这一条.js）
+  popover(anchor, close => [h('div', { class: 'fl-pop-h' }, '和这一条的哪条样片比'),
+    h('div', { class: 'fl-pl' }, D.clips.map(c => h('button', { type: 'button', class: 'fl-pi' + (CMP.src === 'clip' && CMP.rel === c.rel ? ' on' : ''), onclick: () => { close(); setCmp('clip', c.rel); } },
+      h('span', { class: 'ph' }, icon('film')), h('span', { class: 'pn' }, h('b', null, c.label), h('small', null, (c.old ? '历史记录里的' : '成片里的') + (c.ver ? ' · ' + vpLabel(c.ver) + ' 出的' : '')))))),
     h('div', { class: 'fl-pop-f' }, '两条同一时刻一起放，另一条不出声。')]);
 }
 
@@ -1118,7 +1104,7 @@ function paintRail() {
   if (fk) { const g = RAIL.body.querySelector('[data-fk="' + fk + '"]') || (fk === 'gen' ? RAIL.body.querySelector('.gen') : null); if (g) { g.focus(); try { g.setSelectionRange(s0, e0); } catch (e) { /* 不要紧 */ } } }
   paintTabs();
 }
-const noPrompt = () => h('p', { class: 'hint' }, D.prompts.length ? '没对上这条样片出自哪一条提示词。在上面「出自」那里选一条。' : '这一段还没有提示词。');
+const noPrompt = () => h('p', { class: 'hint' }, D.prompts.length ? '认不出这条样片是哪一条提示词出的，或者那一条已经删掉了。' : '这一段还没有提示词。');
 const navBtn = (d, i) => h('button', { class: 'nav', type: 'button', disabled: i + d < 0 || i + d >= D.shots.length, title: d < 0 ? '上一镜（↑）' : '下一镜（↓）', onclick: () => gotoShot(i + d) }, d < 0 ? '‹' : '›');
 function figureOf(r, acts, more) {   // more：图下面另外摆的（关键帧：弃用的理由、那一排按钮）
   const img = thumbImg(pjAt(r.at || r.rel), 720), gone = isKf(r) && goneOf(r);
@@ -1369,37 +1355,9 @@ function paintStatus() {
   el.title = n ? '存在 ' + shown(D.notesAt) : '';
   el.replaceChildren(h('i', { class: 'dot' }), D.err ? '没存上：' + D.err : n ? '批注 ' + D.notes.length + ' 条' + (D.general.trim() ? ' · 整条意见' : '') + ' · 已存' : '还没有批注');
 }
-async function setPrompt(name) {
-  if (name === D.prompt) return;
-  D.promptKeep = '';
-  await loadPrompt(name);
-  await kfLoad();
-  if (CMP.src === 'bm' && !vidRefs().some(r => r.rel === CMP.rel)) { const r = vidRefs()[0]; CMP.src = r ? 'bm' : hasKf() ? 'kf' : ''; CMP.rel = r ? r.rel : ''; }
-  else if (CMP.src === 'kf' && !hasKf()) CMP.src = '';
-  await paintCmp();
-  D.cur = -2; paintShots(); onShot(shotAt(nowSec()));
-  paintMarks(); paintRail();
-  if (window.RefPic) RefPic.scan();   // 换了提示词，认图跟着换
-  if (D.notes.length || D.general.trim()) saveNow();
-  toast(name ? '照「' + vpLabel(name) + '」对照' : '不对应哪一条提示词了');
-}
-function paintSel() {   // 「出自」那一格：这一场的提示词（改过几版的，每一版一项）
-  const sel = TOP.sel;
-  if (!sel) return;
-  fill(sel, h('option', { value: '' }, D.promptKeep ? '（原来记的：' + baseName(D.promptKeep) + '）' : D.prompts.length ? '没对上' : '这一段还没有提示词'),
-    D.prompts.map(p => h('option', { value: p.name }, p.label)));
-  sel.value = D.prompt;
-}
-function renderTop() {
-  const sel = TOP.sel = h('select', { title: '这条样片是照哪一条提示词出的。右边的「这一镜」「提示词」「资产」都照它摆', onchange: e => { e.target.blur(); setPrompt(e.target.value); } });
-  paintSel();
+function renderTop() {   // 关闭、换这一条的哪条样片、出自哪一版、复制批注、这条不要了（审片台这一条.js）
   TOP.status = h('div', { class: 'dk-st' });
-  return h('header', { class: 'dk-top' },
-    h('button', { class: 'btn sm ink', type: 'button', title: '回到审片那一页（批注都存着）', onclick: goBack }, '← 回审片'),
-    h('div', { class: 'dk-title' }, h('b', null, '第' + SEG + '段'), h('span', { title: VID }, clipLabel(VID)), OLD ? h('span', { class: 'fs-state', title: '这条在历史记录里：批注照旧存在它旁边' }, '历史记录') : null),
-    h('span', { class: 'sp' }),
-    h('label', { class: 'dk-pr' }, '出自', sel),
-    TOP.status);
+  return DeskOne.top(TOP.status);
 }
 function render() {
   RAIL.tabs = h('div', { class: 'rt-tabs' });
@@ -1409,7 +1367,7 @@ function render() {
   document.getElementById('app').replaceChildren(renderTop(), h('div', { class: 'dk-main' }, buildStage(), h('aside', { class: 'dk-rail' }, RAIL.tabs, RAIL.body)));
   paintStatus(); paintCmp(); paintShots(); onShot(shotAt(0)); paintMarks(); paintComposer(); paintPlay(); paintTime(); paintRail();
 }
-const fatal = msg => h('div', { class: 'dk-fatal' }, msg, h('div', { style: 'margin-top:16px' }, h('button', { class: 'btn', type: 'button', onclick: goBack }, '← 回审片')));
+const fatal = msg => h('div', { class: 'dk-fatal' }, msg, h('div', { style: 'margin-top:16px' }, h('button', { class: 'btn', type: 'button', onclick: goBack }, '关闭')));
 async function leave() {
   if (!(await leaveForm())) return false;
   if (P) halt();
@@ -1419,11 +1377,11 @@ async function leave() {
 }
 async function goBack() {
   const ho = host();
-  if (ho && typeof ho.close === 'function') { ho.close(); return; }   // 嵌在审片那一页里：那一页先问这一页 leave() 再关
+  if (ho && typeof ho.close === 'function') { ho.close(); return; }   // 嵌在弹窗里：那一页先问这一页 leave() 再收起
   if (!(await leave())) return;
-  location.href = '审片.html?' + new URLSearchParams({ p: PJ, s: SEG });
+  location.href = '提示词.html?' + new URLSearchParams({ p: PJ, s: SEG });
 }
-window.DESK = { leave, get D() { return D; }, get CMP() { return CMP; }, get P() { return P; } };   // 审片那一页关之前问一声；后面几个调试用
+window.DESK = { leave, get D() { return D; }, get CMP() { return CMP; }, get P() { return P; } };   // 弹窗收起之前问一声；后面几个调试用
 
 /* ---------- 键盘 ---------- */
 document.addEventListener('keydown', e => {
@@ -1438,6 +1396,7 @@ document.addEventListener('keydown', e => {
   const tag = document.activeElement && document.activeElement.tagName, typing = /^(INPUT|TEXTAREA|SELECT)$/.test(tag || '');
   if (D.form && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveForm(); return; }
   if (D.form && e.key === 'Escape') { e.preventDefault(); leaveForm(); return; }
+  if (e.key === 'Escape' && !typing) { e.preventDefault(); goBack(); return; }   // 没在写：收起弹窗
   if (typing || !P || e.altKey || e.ctrlKey || e.metaKey) return;
   if (e.key === ' ') { e.preventDefault(); togglePlay(); }
   else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); const d = e.key === 'ArrowLeft' ? -1 : 1; step(e.shiftKey ? d * Math.round(D.fps) : d); }
@@ -1482,12 +1441,13 @@ setInterval(async () => {
   D.shotsDir = pjAt(VID_DIR + '/' + stem(VID) + SHOTS_TAIL);
   await loadMap();
   await loadPromptList();
-  const md = await readMd(), has = n => !!n && D.prompts.some(p => p.name === n);
-  const want = [md && md.prompt, Q.get('pr')].find(has) || guessPrompt();   // 批注里记过的（在这一页选过）→ 审片那一页给的 → 照名字猜
-  if (md && md.prompt && !has(md.prompt) && !want) D.promptKeep = md.promptLine;   // 批注里记的提示词已经不在了：照原样留着
-  await loadPrompt(want || '');
+  const fam = await DeskOne.load(), it = DeskOne.items.find(x => x.vid === VID && !!x.old === OLD);   // 这一条（网址的 k）和它出过的样片
+  const md = await readMd(), has = n => !!n && !!fam && fam.vers.includes(n) && D.prompts.some(p => p.name === n);   // 只认这一条的几版
+  const want = [it && it.ver, md && md.prompt, Q.get('pr')].find(has) || (fam ? fam.name : '');   // 照名字认的那一版 → 批注里记过的 → 弹窗给的 → 这一条最新的一版
+  if (md && md.prompt && !fam) D.promptKeep = md.promptLine;   // 认不出是哪一条：批注里原来记的照原样留着
+  await loadPrompt(want);
   await kfLoad();
-  await loadClips();
+  D.clips = DeskOne.others();
   restoreCmp();
   render();
   if (window.RefPic) RefPic.watch(ref => { const r = refBy(ref); return r && isImgRef(r) ? { tip: ref + ' · ' + r.label + '　点开看大图', open: () => openRef(r) } : null; }, '.dk-box');   // 字里的 @图片N 都能点开看大图（公用/点图.js），照「出自」选的那条提示词认图

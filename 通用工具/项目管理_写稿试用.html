@@ -185,6 +185,7 @@ section.sec.fold > .wr, .p-shot.fold > .wr { display: none; }
 ::highlight(sfx) { color: #8a5714; background-color: rgba(176, 116, 32, .11); }
 ::highlight(ph) { color: #6b4d0c; background-color: rgba(232, 184, 60, .32); }
 ::highlight(lint) { text-decoration: underline wavy #b8382b; text-underline-offset: 4px; }
+::highlight(ainote) { background-color: rgba(74, 83, 166, .18); }
 
 /* 分镜 */
 .pshots { display: flex; flex-direction: column; gap: 18px; margin-top: 12px; }
@@ -352,30 +353,6 @@ body.norail .rail { display: none; }
 .hov-n b { color: var(--qing); }
 .hov-p { font-size: 11.5px; color: var(--ink-3); word-break: break-all; line-height: 1.5; }
 .hov-tip { margin-top: 4px; color: var(--qing); }
-/* 大窗：看大图、看视频、听音频。点黑底或按 Esc 关；图点一下放到原尺寸；有一组的，左右键或两边的箭头翻 */
-.lb { position: fixed; inset: 0; z-index: 80; display: flex; flex-direction: column; background: rgba(25, 23, 20, .88); cursor: zoom-out; }
-.lb-stage { flex: 1; min-height: 0; display: flex; overflow: auto; padding: 56px 76px 8px; }
-.lb-stage > * { flex: none; margin: auto; }
-.lb-stage img, .lb-stage video { max-width: calc(100vw - 152px); max-height: calc(100vh - 176px); border-radius: 6px; background: #000; box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .5); }
-.lb-stage img { cursor: zoom-in; }
-.lb-stage.zoom img { max-width: none; max-height: none; cursor: zoom-out; }
-.lb-stage video, .lb-stage audio { cursor: default; }
-.lb-stage audio { width: min(560px, 92vw); }
-.lb-bar { flex: none; padding: 8px 20px 18px; text-align: center; color: #f3f1ed; cursor: default; }
-.lb-title { font: 600 14px/1.5 var(--sans); }
-.lb-title b { margin-right: 8px; color: #8fd3cf; }
-.lb-n { margin-left: 10px; font-weight: 400; color: #b9b3a8; }
-.lb-meta { margin-top: 2px; font-size: 12px; color: #b9b3a8; word-break: break-all; }
-.lb-acts { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.lb-b { padding: 2px 14px; border: 1px solid rgba(255, 255, 255, .3); border-radius: 999px; background: rgba(255, 255, 255, .08); color: #f3f1ed; cursor: pointer; font: 12.5px/1.8 var(--sans); }
-.lb-b:hover { background: rgba(255, 255, 255, .2); }
-.lb-b.on { background: var(--qing); border-color: var(--qing); }
-.lb-x, .lb-nav { position: absolute; z-index: 1; border: 0; background: rgba(255, 255, 255, .12); color: #fff; cursor: pointer; line-height: 1; }
-.lb-x:hover, .lb-nav:hover { background: rgba(255, 255, 255, .26); }
-.lb-x { right: 18px; top: 12px; width: 36px; height: 36px; border-radius: 50%; font-size: 22px; }
-.lb-nav { top: 50%; width: 44px; height: 64px; margin-top: -40px; border-radius: 8px; font-size: 30px; }
-.lb-nav.prev { left: 14px; }
-.lb-nav.next { right: 14px; }
 #toasts { bottom: 64px; }   /* 提示条（公用/提示条.css）抬到底下那条写稿提示栏上面 */
 /* 左下角：AI 正在做的任务 */
 #jobs { position: fixed; left: 16px; bottom: 16px; z-index: 80; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
@@ -400,7 +377,9 @@ body.norail .rail { display: none; }
 <link rel="stylesheet" href="公用/写稿编辑.css">
 <link rel="stylesheet" href="公用/写稿分区.css">
 <link rel="stylesheet" href="公用/写稿镜头表.css">
+<link rel="stylesheet" href="公用/写稿旁窗.css">
 <link rel="stylesheet" href="公用/写稿参考.css">
+<link rel="stylesheet" href="公用/写稿看图.css">
 </head>
 <body>
 <main id="main">
@@ -463,12 +442,17 @@ body.norail .rail { display: none; }
 <script src="公用/等待.js"></script>
 <script src="公用/底座.js"></script>
 <script src="公用/界面.js"></script>
+<script src="公用/写稿旁窗.js"></script>
+<script src="公用/写稿看图.js"></script>
 <script src="公用/镜头作用.js"></script>
 <script src="公用/关键帧绑定.js"></script>
 <script src="公用/写稿镜头表.js"></script>
 <script src="公用/写稿改镜头.js"></script>
 <script src="公用/写稿写完.js"></script>
+<script src="公用/写稿出过片.js"></script>
+<script src="公用/写稿自由稿.js"></script>
 <script src="公用/写稿分区.js"></script>
+<script src="公用/写稿批注定位.js"></script>
 <script src="公用/写稿资产栏.js"></script>
 <script>
 'use strict';
@@ -506,6 +490,7 @@ function jobBody(line, ch) {
   if (/^写完提示词 /.test(line)) return { ...base, 事: '写完提示词' };   // 交给 AI 写完：拆分镜、写其余几块（公用/写稿写完.js）
   if ((m = /^按批注修改 (.+)$/.exec(line))) return { 渠道: ch, 项目: PJ, 事: '按批注改提示词', 批注: m[1] };
   if ((m = Zone.jobBody(line, base))) return m;   // 另写一种（公用/写稿分区.js）
+  if ((m = Filmed.jobBody(line, base))) return m;   // 出过片的另存：交给 AI 照审片批注改（公用/写稿出过片.js）
   return null;
 }
 async function tellAI(line) {   // 交给谁：照流水线顶栏「AI 用」选的
@@ -536,6 +521,7 @@ async function tickJobs() {
     Object.assign(j, n);
     if (jobLive(j)) continue;
     JOBS.live = JOBS.live.filter(x => x.id !== j.id);
+    if (Filmed.done(j)) continue;   // 按批注改的另存成了下一版（出过片的，11-22）：换到那一版（公用/写稿出过片.js）
     if (Finish.isJob(j)) { Finish.done(j); continue; }   // 交给 AI 写完的写好了：先整页换上，再放开这一页（公用/写稿写完.js）
     if (Zone.isJob(j)) { Zone.done(j); continue; }   // 另写一种写好了：就地换上（公用/写稿分区.js）
     if (j.状态 === '做完') toast(j.结果);
@@ -559,6 +545,7 @@ function paintJobs() {   // 一秒走一次表：每一行建一次，以后只�
   }
   Finish.paint();   // 「交给 AI 写完」的按钮跟着转圈，这一页跟着锁上、放开
   Zone.paint();   // 分镜两种写法那一条也是（公用/写稿分区.js）
+  Filmed.paint();   // 出过片的锁着（公用/写稿出过片.js）：别处放开了再锁回来
 }
 const jobSay = j => j.状态 === '排队' ? j.渠道名 + ' 排着队' : j.步骤 || j.渠道名 + ' 在做';
 const jobClock = j => { const sec = Math.max(0, Math.round((Date.now() - (j.开始 || j.建)) / 1000)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); };
@@ -1141,7 +1128,7 @@ function render() {
   $('#sheet').replaceChildren(
     h('div', { class: 'sheet-head' },
       h('header', { class: 'doc-title' }, h('div', { class: 'doc-kicker' }, '视 频 提 示 词'), h('div', { class: 'doc-seg' }, SEGDIR), short ? h('div', { class: 'doc-name' }, h('span', { class: 'doc-name-t' }, short.replace(/_/g, ' · ')), ShotEdit.link()) : null, h('div', { class: 'ornament' }, h('span'))),
-      Finish.nav()),
+      FreeDraft.is() ? FreeDraft.nav() : Finish.nav()),
     h('div', { id: 'gnote' }),
     h('div', { id: 'general-notes' }),
     h('div', { class: 'shared-settings' }, SECS.filter(s => s.key !== 'shots').map((s, i) => secEl(s, i))),
@@ -1268,7 +1255,7 @@ let LINT = [];
 function paintMarks() {
   if (!READY) return;
   LINT_RULES = isPe() ? (shotOn() ? LINT_BMK : LINT_PE) : LINT_OLD;
-  const sets = { say: [], sfx: [], ph: [], lint: [] };
+  const sets = { say: [], sfx: [], ph: [], lint: [], ainote: [] };
   LINT = [];
   let phN = 0, phFirst = null, changed = false;
   for (const ed of $$('#sheet .ed')) for (const run of runsOf(ed)) {   // AI 写的几区
@@ -1277,6 +1264,15 @@ function paintMarks() {
     each(/<[^<>]*>/g, r => sets.sfx.push(r));
     each(/〔[^〕]*〕/g, r => { sets.ph.push(r); phN++; phFirst = phFirst || r; });
     for (const rule of LINT_RULES) if (!rule.shot) each(rule.re, (r, t) => { sets.lint.push(r); LINT.push({ msg: rule.msg, text: t, range: r }); });
+  }
+  const hits = [];   // AI 批到的那一句现在在哪（全稿找，公用/写稿批注定位.js）：在你写的框里画影子，在 AI 写的行里上底色
+  for (const n of NOTES) {
+    if (!n.find) continue;
+    if (n.state === 'done' && n.to && !NoteSpot.find(n, n.to) && NoteSpot.find(n)) { n.state = null; keepStates(); changed = true; }   // 照改以后你按 Ctrl+Z 撤了：这条批注回到没处理
+    if (n.state) continue;
+    const sp = NoteSpot.find(n);
+    if (!!n.lost !== !sp) { n.lost = !sp; changed = true; }
+    if (sp) { hits.push(sp); if (sp.range) sets.ainote.push(sp.range); }
   }
   if (window.Highlight && window.CSS && CSS.highlights) for (const k in sets) CSS.highlights.set(k, new Highlight(...sets[k]));
   const named = ASSETS.filter(a => refOf(a) && isNamed(a));
@@ -1287,14 +1283,7 @@ function paintMarks() {
     if (shot) for (const a of named) add(new RegExp(reEsc(a.name), 'g'), 'm-nm', mk => { mk.aid = a.path; });
     add(/@(?:图片|视频|音频)[0-9]+/g, 'm-ref', (mk, t) => { const a = assetOfRef(t); if (!a) { LINT.push({ msg: t + ' 还没挂上图', text: '', ta, s: mk.s, e: mk.e }); mk.c = 'm-lint'; return; } mk.aid = a.path; });
     for (const rule of LINT_RULES) if (MODE !== '自由' && (!rule.shot || shot)) add(rule.re, 'm-lint', (mk, t) => { LINT.push({ msg: rule.msg, text: t, ta, s: mk.s, e: mk.e }); });
-    for (const n of NOTES) {
-      if (boxOf(n) !== ta || !n.find) continue;
-      if (n.state === 'done' && n.to && !v.includes(n.to) && v.includes(n.find)) { n.state = null; keepStates(); changed = true; }   // 照改以后你按 Ctrl+Z 撤了：这条批注回到没处理
-      if (n.state) continue;
-      const i = v.indexOf(n.find);
-      if (!!n.lost !== i < 0) { n.lost = i < 0; changed = true; }
-      if (i >= 0) marks.push({ s: i, e: i + n.find.length, c: 'm-ai' });
-    }
+    for (const sp of hits) if (sp.ta === ta) marks.push({ s: sp.s, e: sp.e, c: 'm-ai' });
     paintMirror(ta, marks);
   }
   if (phN) LINT.push({ msg: `还有 ${phN} 处没填的〔 〕，按 Tab 挨个填`, range: phFirst, info: true });
@@ -1538,7 +1527,7 @@ async function loadNotes(st) {
       let saved = {}; try { saved = JSON.parse(localStorage.getItem(stateKey()) || '{}'); } catch (e) { /* 没记过 */ }
       NOTES = r.items.map(n => { const matches = n.find ? DOC.shots.filter(s => s.lines.join('\n').includes(n.find)) : []; return Zone.fixNote({ ...n, ...(matches.length === 1 ? { shotId: matches[0].id } : {}), ...(saved[n.id] || {}) }); }); NOTES_SUM = r.sum;
       if (AI.busy) { AI.busy = false; showRail('ai'); toast(`AI 批了 ${NOTES.length} 条，稿子没动`); }
-      for (const n of NOTES) { const ta = !n.state && boxOf(n), box = ta && (ta.closest('.p-shot') || ta.closest('.sec')); if (box && box.classList.contains('fold')) foldMine(box, false, true); }   // 批到的那一框要是收着，先展开
+      for (const n of NOTES) { const box = !n.state && homeOf(n); if (box && box.classList.contains('fold') && $('.fold-me', box)) foldMine(box, false, true); }   // 挂批注的那一镜（或生成目标）要是收着，先展开
     } catch (e) { toast('批注读不了：' + e.message); }
   }
   setAsk(); renderNotes(); paintMarks(); paintTabs(); paintAi(); paintSteps();
@@ -1551,53 +1540,52 @@ function boxOf(n) {
   if (m) { const el = $$('.p-shot').find(x => parseInt(x.dataset.no, 10) === +m[1]); return el ? Zone.boxFor(el, n) : null; }
   return /本段事件|生成目标/.test(n.where) ? $('[data-sec="event"] .wr-ta') : null;
 }
-function homeOf(n) {   // 批注卡片挂在哪
-  const ta = boxOf(n);
+function homeOf(n) {   // 批注卡片挂在哪：这句在哪一镜就挂哪一镜（「位置」写错了也认得出）；在上面共用的几区里（平时收着）照「位置」挂，卡片上说一声在哪
+  const sp = NoteSpot.find(n, n.state === 'done' ? n.to : undefined), ta = sp && sp.ta && sp.ta.closest('section[data-sec="shots"]') ? sp.ta : boxOf(n);
   if (ta) return ta.closest('.p-shot') || ta.closest('.sec');
   const s = SECS.find(x => n.where.includes(x.name));
   return s ? $('section[data-sec="' + s.key + '"]') : $('#general-notes');
 }
-function findNote(n) { const ta = boxOf(n), i = ta && n.find ? ta.value.indexOf(n.find) : -1; return i < 0 ? null : { ta, s: i, e: i + n.find.length }; }
 function renderNotes() {
   $$('.ainote').forEach(el => el.remove());
-  for (const n of NOTES) { const home = homeOf(n); if (home) home.append(noteEl(n)); }
+  for (const n of NOTES) { const home = homeOf(n); if (home) home.append(noteEl(n, home)); }
 }
-function noteEl(n) {
+function noteEl(n, home) {
   const el = h('div', { class: 'ainote' + (n.state ? ' done' : '') + (n.lv === '提醒' ? ' soft' : ''), 'data-id': n.id });
   if (n.state) {
     el.append((n.state === 'done' ? '已照改：' : n.state === 'ok' ? '看过了：' : '不改：') + n.say, h('button', { class: 'linkb', tabindex: '-1', onclick: () => undoNote(n) }, n.state === 'done' ? '撤回' : '恢复'));
     return el;
   }
-  const can = n.to != null && n.find && boxOf(n);
+  const sp = n.find ? NoteSpot.find(n) : null, can = n.to != null && !!sp, far = NoteSpot.away(sp, home);   // 全稿找，AI 写的几区也算（公用/写稿批注定位.js）
   el.append(h('div', { class: 'an-tag' }, [n.where, n.lv, n.tag].filter(Boolean).join(' · ')), h('div', { class: 'an-say' }, n.say), n.why ? h('div', { class: 'an-why' }, n.why) : null);
-  if (n.find && n.lost) el.append(h('div', { class: 'an-why' }, '这句原文你已经改过了。'), h('div', { class: 'an-acts' }, btn('收起', () => setNote(n, 'skip'), 'ghost')));
+  if (n.find && !sp) el.append(h('div', { class: 'an-why' }, '这句原文你已经改过了。'), h('div', { class: 'an-acts' }, btn('收起', () => setNote(n, 'skip'), 'ghost')));
   else {
+    if (far) el.append(h('div', { class: 'an-why' }, far));
     if (can) el.append(h('div', { class: 'an-diff' }, h('del', null, n.find), n.to ? h('ins', null, n.to) : h('ins', null, '（删掉）')));
     el.append(h('div', { class: 'an-acts' }, can ? [btn('照改', () => applyNote(n), 'dai'), btn('不改', () => setNote(n, 'skip'), 'ghost')] : btn('看过了，收起', () => setNote(n, 'ok'), 'ghost')));   // AI 没给现成改法的：字不动，只收起
   }
-  el.addEventListener('click', e => { if (e.target.closest('button')) return; const f = findNote(n); if (f) go(f); });
+  el.addEventListener('click', e => { if (e.target.closest('button')) return; const f = NoteSpot.find(n); if (f) go(f); });
   return el;
 }
 function afterNotes(msg) { keepStates(); paintMarks(); renderNotes(); paintTabs(); paintAi(); paintAssets(); if (msg) toast(msg); }
 function applyNote(n) {
-  const f = findNote(n);
+  const f = NoteSpot.find(n);
   if (!f) return toast('这句原文已经改过了');
   n.state = 'done'; n.at = f.s;
-  typeInto(f.ta, f.s, f.e, n.to);   // 和你自己打字一样，Ctrl+Z 也撤得回
+  NoteSpot.put(f, n.to);   // 你写的框和你自己打字一样，Ctrl+Z 也撤得回；AI 写的一行整行换上
   afterNotes('照改了，可以撤回');
 }
 function setNote(n, st) { n.state = st; afterNotes(); }
 function undoNote(n) {
   if (n.state === 'done') {
-    const ta = boxOf(n);
-    const i = ta && n.to ? (ta.value.substr(n.at, n.to.length) === n.to ? n.at : ta.value.indexOf(n.to)) : -1;
-    if (i < 0) return toast('这里后来又改过，撤不回了');
-    typeInto(ta, i, i + n.to.length, n.find);
+    const f = n.to ? NoteSpot.find(n, n.to, n.at) : null;
+    if (!f) return toast('这里后来又改过，撤不回了');
+    NoteSpot.put(f, n.find);
   }
   n.state = null; afterNotes();
 }
 let LASTF = null, LAST = null;   // 最后一次光标在哪：文字框（LASTF）或 AI 那几行里的位置（LAST）
-const setAsk = () => { const off = !READY || AI.busy || Finish.busy(); $('#askAll').disabled = off; $('#askAll').textContent = AI.busy ? 'AI 正在看稿…' : '请 AI 批'; };
+const setAsk = () => { const off = !READY || AI.busy || Finish.busy() || Filmed.on(); $('#askAll').disabled = off; $('#askAll').textContent = AI.busy ? 'AI 正在看稿…' : '请 AI 批'; };
 async function askAI() {
   if (AI.busy || !READY) return;
   if (!$$('#sheet .wr-ta').some(t => t.value.trim())) return toast(evName() + '和' + (isPe() ? '事件脚本' : '分镜') + '都还空着，先写一点再请 AI 批');
@@ -1748,13 +1736,13 @@ function unpin() {
   const box = $('#pin'); box.hidden = true; box.replaceChildren();
 }
 function pin(a, list) {
-  if (a.type === '音频') return lightbox(a, list);
+  if (a.type === '音频') return viewAsset(a, list);
   if (a.type === '视频') return pinVideo(a);
-  PIN = a; const box = $('#pin'), img = h('img', { alt: a.name, title: '点击放大', onclick: () => lightbox(a) });
+  PIN = a; const box = $('#pin'), img = h('img', { alt: a.name, title: '点击放大', onclick: () => viewAsset(a) });
   if (PIN_URL) { URL.revokeObjectURL(PIN_URL); PIN_URL = ''; }
   thumbUrl(a).then(u => { img.src = u; }, () => {});
   box.hidden = false;
-  box.replaceChildren(img, h('div', { class: 'pin-n' }, refOf(a) ? h('b', null, refOf(a)) : null, h('span', null, a.name), h('button', { class: 'mini-b', onclick: () => lightbox(a) }, '放大'), h('button', { class: 'mini-b', onclick: unpin }, '取消钉住')));
+  box.replaceChildren(img, h('div', { class: 'pin-n' }, refOf(a) ? h('b', null, refOf(a)) : null, h('span', null, a.name), h('button', { class: 'mini-b', onclick: () => viewAsset(a) }, '放大'), h('button', { class: 'mini-b', onclick: unpin }, '取消钉住')));
 }
 async function pinVideo(a) {
   const box = $('#pin'); PIN = a;
@@ -1767,7 +1755,7 @@ async function pinVideo(a) {
   const v = h('video', { src: url, controls: true, loop: true, autoplay: true, playsinline: true, title: '边写边看；点画面暂停' });
   v.muted = true;
   const speed = [0.5, 1, 2].map(r => h('button', { class: 'mini-b' + (r === 1 ? ' on' : ''), 'data-rate': r, onclick: e => { v.playbackRate = r; $$('[data-rate]', box).forEach(b => b.classList.toggle('on', b === e.currentTarget)); } }, r + '×'));
-  box.replaceChildren(v, h('div', { class: 'pin-n vid' }, h('span', null, refOf(a) ? h('b', null, refOf(a) + '　') : null, a.name), ...speed, h('button', { class: 'mini-b push', onclick: () => lightbox(a) }, '放大'), h('button', { class: 'mini-b', onclick: unpin }, '取消钉住')));
+  box.replaceChildren(v, h('div', { class: 'pin-n vid' }, h('span', null, refOf(a) ? h('b', null, refOf(a) + '　') : null, a.name), ...speed, h('button', { class: 'mini-b push', onclick: () => viewAsset(a) }, '放大'), h('button', { class: 'mini-b', onclick: unpin }, '取消钉住')));
 }
 
 /* ---------- 资产栏：分 关键帧、人物道具、场景、已引用、未引用 几个小页签看（11-20，分类在 公用/写稿资产栏.js）；每一样怎么画在这里 ---------- */
@@ -1794,7 +1782,7 @@ function paintVideoMeta(a) {
 }
 function usedRow(a, list) {
   const n = usage(a), t = a.type === '视频' ? posterEl(a, 'u-th') : thumb(a, 'u-th'), bad = !!OK && a.type === '图片' && !OK.has(a.path);   // 挂上了、可没确认可用的图：标出来
-  t.title = VIEW_TIP[a.type]; t.addEventListener('click', () => lightbox(a, list));
+  t.title = VIEW_TIP[a.type]; t.addEventListener('click', () => viewAsset(a, list));
   return h('div', { class: 'used-row', draggable: 'true', title: a.path, ondragstart: e => drag(e, a) }, t,
     h('div', { class: 'u-n' }, h('b', null, refOf(a)), ' ' + nameOf(a), h('span', { class: (n || a.type !== '图片') && !bad ? '' : 'warn' }, KIND_NAME[a.kind] + ' · ' + (n ? '正文用了 ' + n + ' 处' : a.type === '图片' ? '分镜里还没写到' : '只在素材里') + (bad ? ' · 还没确认可用' : ''))),
     h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'), h('button', { class: 'mini-b', onclick: () => pin(a, list) }, a.type === '音频' ? '听' : '钉住'));
@@ -1803,21 +1791,21 @@ function usedRow(a, list) {
 function videoCard(a, list) {
   const ref = refOf(a), n = ref ? usage(a) : 0;
   return h('div', { class: 'vc', draggable: 'true', title: a.path, ondragstart: e => drag(e, a) },
-    h('div', { class: 'vc-pic', title: '点击放大播放', onclick: () => lightbox(a, list) }, posterEl(a), h('span', { class: 'vc-play' }, '▶'), h('span', { class: 'vc-dur', 'data-vdur': a.path }, a.dur ? a.dur.toFixed(1) + ' 秒' : '')),
+    h('div', { class: 'vc-pic', title: '点击放大播放', onclick: () => viewAsset(a, list) }, posterEl(a), h('span', { class: 'vc-play' }, '▶'), h('span', { class: 'vc-dur', 'data-vdur': a.path }, a.dur ? a.dur.toFixed(1) + ' 秒' : '')),
     h('div', { class: 'vc-info' },
       h('div', { class: 'vc-n' }, ref ? h('b', null, ref) : null, a.name),
       h('div', { class: 'vc-m', 'data-vmeta': a.path }, mediaMeta(a) || (a.cat === '本段' ? AssetPath.KF + ' / ' + SEGDIR : a.cat)),
       ref ? h('div', { class: 'vc-m' + (n ? '' : ' warn') }, n ? '正文用了 ' + n + ' 处' : '已挂上，正文还没写到') : null,
-      h('div', { class: 'vc-acts' }, h('button', { class: 'mini-b', onclick: () => lightbox(a, list) }, '播放'), h('button', { class: 'mini-b', title: '放在右栏最上面，一边写一边看', onclick: () => pin(a) }, '钉住'), h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'))));
+      h('div', { class: 'vc-acts' }, h('button', { class: 'mini-b', onclick: () => viewAsset(a, list) }, '播放'), h('button', { class: 'mini-b', title: '放在右栏最上面，一边写一边看', onclick: () => pin(a) }, '钉住'), h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'))));
 }
 function audioRow(a, list) {
   const ref = refOf(a);
-  return h('div', { class: 'av-row', draggable: 'true', title: a.path + '　点击试听', ondragstart: e => drag(e, a), onclick: e => { if (!e.target.closest('button')) lightbox(a, list); } },
+  return h('div', { class: 'av-row', draggable: 'true', title: a.path + '　点击试听', ondragstart: e => drag(e, a), onclick: e => { if (!e.target.closest('button')) viewAsset(a, list); } },
     h('span', { class: 'av-ic' }, '♪'), h('span', { class: 'av-n' }, a.name), ref ? h('b', null, ref) : null,
-    h('button', { class: 'mini-b', onclick: () => lightbox(a, list) }, '听'), h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a), title: isVoice(a) ? '挂成 @音频N，「素材」里补一句，正文不动' : null }, isVoice(a) ? '挂上' : '插入'));
+    h('button', { class: 'mini-b', onclick: () => viewAsset(a, list) }, '听'), h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a), title: isVoice(a) ? '挂成 @音频N，「素材」里补一句，正文不动' : null }, isVoice(a) ? '挂上' : '插入'));
 }
 function imageTile(a, list, tag) {   // tag：绑在哪一镜（公用/写稿资产栏.js tagOf），名字前面标一行
-  const img = thumb(a), bad = !!OK && !OK.has(a.path); img.title = '点击放大'; img.addEventListener('click', () => lightbox(a, list));   // 挂上了、可没确认可用的：名字标红
+  const img = thumb(a), bad = !!OK && !OK.has(a.path); img.title = '点击放大'; img.addEventListener('click', () => viewAsset(a, list));   // 挂上了、可没确认可用的：名字标红
   return h('div', { class: 'as-t' + (bad ? ' unok' : ''), draggable: 'true', title: a.path + (bad ? '\n还没确认可用' : ''), ondragstart: e => drag(e, a) }, img, refOf(a) ? h('span', { class: 'no' }, refOf(a).slice(1)) : null,
     h('div', { class: 'as-acts' }, h('button', { onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'), h('button', { onclick: () => pin(a) }, '钉住')),
     h('div', { class: 'as-n' }, tag ? h('b', { class: 'as-bind', title: tag.title }, tag.text) : null, (a.sub ? a.sub + ' / ' : '') + a.name));
@@ -1867,52 +1855,18 @@ document.addEventListener('mousemove', e => {
     if (nm && nm.a) showHov(nm.a, nm.rect, nm.a.type === '图片' ? '按住 Ctrl 点一下，看大图' : '按住 Ctrl 点一下，打开'); else hideHov();
   });
 });
-/* 看大图、看视频、听音频：这时才去读原文件。list：同一组里的几个，可以左右翻 */
-let LB = null;   // 开着的大窗
+/* 看大图、看视频、听音频：摆在稿子旁边（公用/写稿看图.js），不盖住字；这时才去读原文件。list：同一组里的几个，可以左右翻 */
 const mbOf = n => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
 const mediaMeta = a => [a.dur ? a.dur.toFixed(1) + ' 秒' : '', a.nw && a.nh ? a.nw + '×' + a.nh : '', a.size ? mbOf(a.size) : ''].filter(Boolean).join(' · ');
-async function lightbox(a, list) {
-  hideHov(); if (LB) LB.close();
+const viewItem = a => ({ type: a.type, get ref() { return refOf(a); }, name: nameOf(a), sub: a.path,
+  load: async () => { const b = await blobOf(a); a.size = b.size; return b; },
+  info: () => [a.path, mediaMeta(a)].filter(Boolean).join('　·　'),
+  loaded: m => { if (a.type === '图片') { a.nw = m.naturalWidth; a.nh = m.naturalHeight; } else if (a.type === '视频') { a.dur = m.duration; a.nw = m.videoWidth; a.nh = m.videoHeight; paintVideoMeta(a); } },
+  insert: () => canInsert() ? insertFromRail(a) : toast('先点一下正文里要插的位置，再来插入') });
+function viewAsset(a, list) {
+  hideHov();
   const items = list && list.length > 1 && list.includes(a) ? list : [a];
-  let i = items.indexOf(a), url = '', turn = 0, media = null;
-  const stage = h('div', { class: 'lb-stage' }), title = h('div', { class: 'lb-title' }), meta = h('div', { class: 'lb-meta' }), acts = h('div', { class: 'lb-acts' });
-  const box = h('div', { class: 'lb', role: 'dialog', 'aria-label': '大图和视频' },
-    h('button', { class: 'lb-x', type: 'button', title: '关闭（Esc）', onclick: () => close() }, '×'),
-    items.length > 1 ? h('button', { class: 'lb-nav prev', type: 'button', title: '上一个（←）', onclick: () => step(-1) }, '‹') : null,
-    items.length > 1 ? h('button', { class: 'lb-nav next', type: 'button', title: '下一个（→）', onclick: () => step(1) }, '›') : null,
-    stage, h('div', { class: 'lb-bar' }, title, meta, acts));
-  box.addEventListener('click', e => { if (e.target === box || e.target === stage) close(); });
-  function close() { if (LB && LB.box === box) LB = null; turn++; box.remove(); if (url) URL.revokeObjectURL(url); url = ''; }
-  function step(d) { i = (i + d + items.length) % items.length; show(); }
-  async function show() {
-    const cur = items[i], mine = ++turn, ref = refOf(cur);
-    media = null; stage.classList.remove('zoom');
-    title.replaceChildren(h('span', null, ref ? h('b', null, ref) : null, nameOf(cur), items.length > 1 ? h('span', { class: 'lb-n' }, (i + 1) + ' / ' + items.length) : null));
-    meta.textContent = '正在打开 ' + cur.path + ' …'; acts.replaceChildren(); stage.replaceChildren();
-    let blob;
-    try { blob = await blobOf(cur); }
-    catch (e) { if (mine !== turn) return; toast('打不开：' + e.message); if (items.length === 1) close(); else meta.textContent = '打不开：' + e.message; return; }
-    if (mine !== turn) return;
-    if (url) URL.revokeObjectURL(url);
-    url = URL.createObjectURL(blob); cur.size = blob.size;
-    const info = () => { if (mine === turn) meta.textContent = [cur.path, mediaMeta(cur)].filter(Boolean).join('　·　'); };
-    if (cur.type === '图片') {
-      media = h('img', { src: url, alt: cur.name, title: '点击放大到原尺寸', onload: e => { cur.nw = e.currentTarget.naturalWidth; cur.nh = e.currentTarget.naturalHeight; info(); } });
-      media.addEventListener('click', e => {   // 点一下放到原尺寸，点哪儿就放大哪儿；再点缩回
-        const r = media.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height, z = stage.classList.toggle('zoom');
-        media.title = z ? '点击缩回' : '点击放大到原尺寸';
-        if (z) { const n = media.getBoundingClientRect(); stage.scrollLeft += n.left + fx * n.width - e.clientX; stage.scrollTop += n.top + fy * n.height - e.clientY; }
-      });
-    } else if (cur.type === '音频') media = h('audio', { src: url, controls: true, autoplay: true });
-    else {
-      media = h('video', { src: url, controls: true, autoplay: true, loop: true, playsinline: true, onloadedmetadata: e => { const v = e.currentTarget; cur.dur = v.duration; cur.nw = v.videoWidth; cur.nh = v.videoHeight; info(); paintVideoMeta(cur); } });
-      acts.append(...[0.5, 1, 2].map(r => h('button', { class: 'lb-b' + (r === 1 ? ' on' : ''), 'data-rate': r, title: '播放速度', onclick: e => { media.playbackRate = r; $$('[data-rate]', acts).forEach(b => b.classList.toggle('on', b === e.currentTarget)); } }, r + '×')));
-    }
-    stage.append(media); info();
-    acts.append(h('button', { class: 'lb-b', onclick: () => { if (!canInsert()) return toast('先点一下正文里要插的位置，再来插入'); insertFromRail(cur); close(); } }, '插入'));
-  }
-  LB = { box, close, step, media: () => media };
-  document.body.append(box); show();
+  WriteView.open(items.map(viewItem), items.indexOf(a));
 }
 
 /* ---------- 接上事件 ---------- */
@@ -1946,9 +1900,9 @@ sheet.addEventListener('focusout', () => closeAt());
 sheet.addEventListener('paste', e => { if (!e.target.closest('.ed')) return; e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData.getData('text/plain') || '').replace(/\s*\r?\n+\s*/g, ' ')); });
 sheet.addEventListener('click', e => {
   const c = e.target.closest('.ref');
-  if (c && A[c.dataset.aid]) return lightbox(A[c.dataset.aid]);
+  if (c && A[c.dataset.aid]) return viewAsset(A[c.dataset.aid]);
   const wt = (e.ctrlKey || e.metaKey) && e.target.closest('.wr-ta'), wm = wt ? markAt(wt, e.clientX, e.clientY) : null;   // 文字框里按住 Ctrl 点 @图片N：看大图（光点一下照旧是放光标）
-  if (wm && wm.a) { hideHov(); return lightbox(wm.a); }
+  if (wm && wm.a) { hideHov(); return viewAsset(wm.a); }
   const nb = e.target.closest('.hn-b');   // AI 写的一行右边的「批注」：写批注（点字是放光标、直接改）
   if (nb) { const blk = nb.closest('.blk'); setGuide(blk.dataset.sec); editHNote(blk); }
 });
@@ -1991,23 +1945,19 @@ document.addEventListener('selectionchange', () => {
   if (ed && ed.isContentEditable) LAST = s.getRangeAt(0).cloneRange();
 });
 document.addEventListener('mousedown', e => { if (AT && !pop.contains(e.target)) closeAt(); }, true);
-document.addEventListener('keydown', e => {   // 大窗开着：Esc 关，左右键翻，空格播放或暂停
-  if (!LB) return;
-  const m = LB.media();
-  if (e.key === 'Escape') { e.preventDefault(); LB.close(); }
-  else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && document.activeElement !== m) { e.preventDefault(); LB.step(e.key === 'ArrowLeft' ? -1 : 1); }
-  else if (e.key === ' ' && m && m.play && document.activeElement !== m && !e.target.closest('button')) { e.preventDefault(); m.paused ? m.play() : m.pause(); }
-});
-addEventListener('pagehide', () => { if (READY && dirty()) rememberDraft(); });
-addEventListener('beforeunload', e => { if (READY && (dirty() || SAVING || CONFLICT)) { rememberDraft(); e.preventDefault(); e.returnValue = ''; } });
+addEventListener('pagehide', () => { if (READY && dirty() && !Filmed.on()) rememberDraft(); });   // 出过片锁着的：没存上的字锁上那一刻已经记好（另存时跟着挪到新的一版），别再记回原稿名下
+addEventListener('beforeunload', e => { if (READY && (dirty() || SAVING || CONFLICT) && !Filmed.on()) { rememberDraft(); e.preventDefault(); e.returnValue = ''; } });
 $('#as-q').addEventListener('input', paintAssets);
 $('#askAll').onclick = () => askAI();
-$('#railBtn').onclick = () => { document.body.classList.toggle('norail'); $('#railBtn').textContent = document.body.classList.contains('norail') ? '展开侧栏' : '收起侧栏'; $$('.wr-ta').forEach(grow); };
+$('#railBtn').onclick = () => { document.body.classList.toggle('norail'); $('#railBtn').textContent = document.body.classList.contains('norail') ? '展开侧栏' : '收起侧栏'; regrow(); };
 $('#previewBtn').onclick = previewDraft;   // 「保存草稿」11-15 去掉了：边写边自动存（touch 停 0.7 秒就存），Ctrl+S 照旧能立刻存
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (READY) { touch(); save(); } } });
 $('#sendNotes').onclick = sendNotes;
 $('#tipX').onclick = () => { $('#tip').hidden = true; try { localStorage.setItem('xiegao:tip', '1'); } catch (e) { /* 记不住就下回再提示 */ } };
-addEventListener('resize', () => $$('.wr-ta').forEach(grow));
+let SHEET_W = 0, REGROW = 0;   // 稿子变宽变窄（窗口、侧栏、旁边摆上参考或看图、拖宽窄）：文字框照新的宽重新撑高，字不被切掉；拖的时候停一下再撑
+function regrow() { clearTimeout(REGROW); REGROW = setTimeout(() => { if (sheet.clientWidth === SHEET_W) return; SHEET_W = sheet.clientWidth; $$('.wr-ta').forEach(grow); }, 60); }
+addEventListener('resize', regrow);
+SideDock.onLayout(regrow);
 
 /* ---------- 打开 ---------- */
 function fail(msg) { setStatus('没打开', true); $('#canvas').replaceChildren(h('div', { class: 'fail' }, h('b', null, '打不开。'), h('p', null, msg), h('p', { class: 'faint small', style: 'margin-top:10px' }, '请从流水线的「提示词」那一步进来写；本机服务要开着。'))); }
@@ -2043,13 +1993,14 @@ async function boot() {
   paintSteps(); setGuide(null); paintTabs();
   let open = [];
   try { open = decodeURIComponent((/[#&]open=([^&]*)/.exec(location.hash) || [])[1] || '').split('/').filter(Boolean); } catch (e) { /* 网址不对 */ }
-  if (open.length < 3 || !Core.RE_VP.test(open[open.length - 1])) {   // 网址里没写开哪一份：自己去找铺好底的稿，只有一份就直接开
+  if (open.length < 3 || !(Core.RE_VP.test(open[open.length - 1]) || open[open.length - 1] === Core.PF_FILE)) {   // 网址里没写开哪一份：自己去找铺好底的稿，只有一份就直接开
     let list;
     try { list = await findDrafts(); } catch (e) { return fail('本机服务连不上：' + e.message); }
     if (list.length === 1) { location.hash = 'open=' + list[0].map(encodeURIComponent).join('/'); return; }   // 网址一变，页面自己重开
     return chooser(list);
   }
   setOpen(open);
+  if (FreeDraft.is()) FreeDraft.init();   // 先写提示词的段的自由稿（公用/写稿自由稿.js）
   try {
     const r = await FS.text(PROMPT);
     MTIME = r.mtime; DOC = parsePrompt(r.text); LASTTEXT = r.text;
@@ -2068,13 +2019,13 @@ async function boot() {
   setStatus(savedText()); setAsk(); paintMarks(); showRail('assets'); paintScript(); Finish.init();
   $('#tip').hidden = true;
   $('#railBtn').textContent = document.body.classList.contains('norail') ? '展开侧栏' : '收起侧栏';
-  await offerRecovery();
+  if (!await Filmed.init()) await offerRecovery();   // 出过片的整页锁着、不恢复草稿（公用/写稿出过片.js）：另存成新的一版以后在那边恢复
   if (draftConflict) reportConflict('文件和分镜草稿有不同的修改，请核对后保存');
   await loadNotes();
   await loadHNotes();
   setInterval(poll, 2500);
   resumeJobs();
-  if (window.RefPic) RefPic.watch(ref => { const a = assetOfRef(ref); return a && a.type === '图片' ? { tip: ref + ' · ' + a.name + '　点开看大图', open: () => lightbox(a, NUM.图片.map(p => A[p]).filter(Boolean)) } : null; }, '.wr, .at-pop, .lb');   // 侧栏、批注里的 @图片N 也能点开看大图（公用/点图.js）；文字框里照旧
+  if (window.RefPic) RefPic.watch(ref => { const a = assetOfRef(ref); return a && a.type === '图片' ? { tip: ref + ' · ' + a.name + '　点开看大图', open: () => viewAsset(a, NUM.图片.map(p => A[p]).filter(Boolean)) } : null; }, '.wr, .at-pop');   // 侧栏、批注里的 @图片N 也能点开看大图（公用/点图.js，摆在稿子旁边）；文字框里照旧
 }
 addEventListener('hashchange', () => location.reload());
 boot();

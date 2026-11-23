@@ -339,6 +339,10 @@ a.wf-home:hover { color: var(--dai); }
 .wf-shell-t { font: 600 15px var(--serif); letter-spacing: .06em; }
 .wf-shell-frame { flex: 1; width: 100%; border: 0; }
 body.wf-covered { overflow: hidden; }
+/* 审片弹窗（11-22，审片弹窗.js）：审片台嵌在里面，四周留一圈看得见底下的提示词那一页 */
+.wf-shell.wf-rv { padding: 18px; background: rgba(28, 24, 20, .42); }
+.wf-rv-box { flex: 1; min-height: 0; display: flex; border-radius: 10px; overflow: hidden; background: var(--paper); box-shadow: 0 14px 44px rgba(0, 0, 0, .32); }
+@media (max-width: 760px) { .wf-shell.wf-rv { padding: 0; } .wf-rv-box { border-radius: 0; } }
 .mdview { max-height: 62vh; overflow: auto; margin: 0; padding: 14px 18px; border-radius: 7px; background: var(--paper); font: 13px/1.85 var(--sans); white-space: pre-wrap; word-break: break-word; }
 
 @media (max-width: 980px) {
@@ -362,10 +366,9 @@ body.wf-covered { overflow: hidden; }
 .ai-ch { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
 .ai-ch-box { display: inline-flex; align-items: center; gap: 12px; }
 .ai-ch-fixed { font-size: 13px; color: var(--ink-2); cursor: help; }
-.ai-ch-sel { padding: 4px 8px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--sheet); font: 13px var(--sans); color: var(--ink); cursor: pointer; }
 
-/* 首页的进度表：一场一行，五格（段落、剧本、资产、提示词、审片） */
-@media (min-width: 981px) { .wf-row { grid-template-columns: minmax(0, 1.5fr) repeat(5, minmax(0, 1fr)); gap: 8px; } }
+/* 首页的进度表：一场一行，段名加四格（剧本、提炼、资产、提示词；11-22 起审片不单算一步） */
+@media (min-width: 981px) { .wf-row { grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, 1fr)); gap: 8px; } }
 .wf-pill { padding: 3px 10px; }
 
 .wf-jobs { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
@@ -392,11 +395,9 @@ body.wf-covered { overflow: hidden; }
 .wf-sf-tab { position: fixed; left: 0; z-index: 25; padding: 14px 7px; border: 1px solid var(--line-2); border-left: 0; border-radius: 0 9px 9px 0; background: var(--sheet); box-shadow: var(--shadow); writing-mode: vertical-rl; font: 14px var(--serif); letter-spacing: .3em; color: var(--ink-2); cursor: pointer; }
 .wf-sf-tab:hover { border-color: var(--ink-4); color: var(--ink); }
 .wf-item { padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); }
-.wf-item.picked { border-color: var(--dai-line); background: #fbfdfc; }
 .wf-item-h { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .wf-item-h b { font: 600 17px/1.5 var(--serif); letter-spacing: .04em; }
-.wf-item-h .sp, .wf-item-task .sp { flex: 1; }
-.wf-item-task { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.wf-item-h .sp { flex: 1; }
 .wf-item .fl-aibox { margin-top: 10px; }
 .wf-item .wf-jobs { margin-top: 10px; }
 select.inp { cursor: pointer; }
@@ -491,13 +492,6 @@ button.as-warn:hover { border-color: var(--zhu); }
 .wf-tick input { margin-top: 5px; flex: none; }
 .wf-tick b { margin-right: 6px; color: var(--zhu); }
 .wf-item-bm .warn { color: var(--zhu); }
-/* 审片页：连起来看（两个播放器轮流，接缝不黑） */
-.wf-stage { position: relative; border-radius: 8px; background: #111; }
-.wf-playlist { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; counter-reset: wfp; }
-.wf-playlist li { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--sheet); font-size: 12.5px; cursor: pointer; counter-increment: wfp; }
-.wf-playlist li::before { content: counter(wfp); font: 600 11px var(--sans); color: var(--ink-3); }
-.wf-playlist li:hover { border-color: var(--dai-line); }
-.wf-playlist li.on { border-color: var(--dai); background: var(--dai-soft); color: var(--dai); }
 
 /* ---------- 拍摄风格（11-14）：步骤条右边那一颗、挑风格的弹窗、设定页的风格分页 ---------- */
 .wf-style { display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 13px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--sheet); cursor: pointer; font: 12.5px var(--sans); color: var(--ink-3); white-space: nowrap; }
@@ -528,9 +522,6 @@ button.as-warn:hover { border-color: var(--zhu); }
 .sty-now dt { color: var(--ink-3); }
 .sty-now dd { margin: 0; color: var(--ink); white-space: pre-wrap; word-break: break-word; }
 .sty-scenes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-.sty-review { margin-top: 10px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); font-size: 12.5px; line-height: 1.8; color: var(--ink-2); }
-.sty-review summary { cursor: pointer; color: var(--dai); }
-.sty-review ol { margin: 6px 0 0; padding-left: 1.4em; }
 @media (max-width: 760px) { .sty-now { grid-template-columns: 1fr; } }
 /* 文生资产（11-14）：资产格子右边眼下该做的那一件（写字、批字、看新图），AI 在做就转圈；看大图时顶上 AI 核图那一句 */
 .fl-asset-ok.go { border-color: var(--zhu-line); background: var(--zhu-soft); color: var(--zhu); }

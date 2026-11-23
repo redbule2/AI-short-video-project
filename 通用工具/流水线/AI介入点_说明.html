@@ -29,12 +29,13 @@
 </head>
 <body>
 <h1>流水线：哪里你做，哪里 AI 做</h1>
-<div class="sub">2026-11-15 · Claude 和 DeepSeek 一起梳理 · 晚上照这张表改了流水线</div>
+<div class="sub">2026-11-15 · Claude 和 DeepSeek 一起梳理 · 晚上照这张表改了流水线 · 11-22 审片那一行照现在的样子改了</div>
 
 <div class="rule">
   <div>一句话：<b>你管「定」</b>——写想法、写批注、拍板、花钱。<b>AI 管「写」</b>——把你写的扩开，照你的批注改。</div>
-  <div>出图、出片叫「做」：复制好话，贴进你自己的 Codex，它去 ChatGPT 出图、去即梦出片。你贴进去，就是你批准了。</div>
-  <div>例外（2026-11-16 他定）：<b>对剧本</b>不复制，项目自己调——片子定稿、写完审片批注时，先本机 Codex 命令行、不行换 DeepSeek 接口，对不上的写成剧本批注。见 回改剧本_说明.html。</div>
+  <div>出图叫「做」：复制好话，贴进你自己的 Codex，它去 ChatGPT 出图。你贴进去，就是你批准了。</div>
+  <div>出片（2026-11-21 改）：不再复制给 Codex。你点「批准出片」就是批准了，流水线自己去即梦传素材、报价、提交、等出完、下载进成片；出了错停下说为什么。</div>
+  <div>对剧本（2026-11-16 加的例外：项目自己调 AI，拿审片批注对剧本）11-22 已拿掉，以后都先写提示词。</div>
   <div class="beat">每道工序都是同一个节奏：
     <span class="you">你写几句</span><span class="arrow">→</span>
     <span class="ai">复制给 AI：写</span><span class="arrow">→</span>
@@ -45,7 +46,7 @@
   <div class="opt" style="margin-top:6px">批注和改可以来回几轮。流水线不再自己调 AI、不转圈等 AI。</div>
 </div>
 
-<h2>五道工序一张表</h2>
+<h2>工序一张表</h2>
 <table>
   <tr><th>工序</th><th>你做</th><th>复制给 AI</th><th>你去做（花钱）</th><th>可选，不自动跑</th></tr>
   <tr><td class="step">一 全片设定</td>
@@ -55,7 +56,7 @@
     <td class="opt">推荐风格</td></tr>
   <tr><td class="step">二 剧本</td>
     <td>写分场段落；批注剧本；点「剧本定稿」</td>
-    <td><span class="tag ai">① 写剧本</span><span class="tag ai">② 照批注改剧本</span><br><span class="opt">先写提示词的场，① 换成「照提示词反推剧本」</span></td>
+    <td><span class="tag ai">① 写剧本</span><span class="tag ai">② 照批注改剧本</span><br><span class="opt">先写提示词的段（11-21）没有剧本：人写自由稿，AI 不写；点「提炼分镜」才交给 AI</span></td>
     <td>—</td>
     <td class="opt">AI 看段落；让 AI 列影响（重新定稿后）</td></tr>
   <tr><td class="step">三 资产</td>
@@ -68,12 +69,13 @@
     <td><span class="tag ai">⑤ AI 写</span><br><span class="opt">你写了的一字不动，空着的和其余几块 AI 写</span><br><span class="tag ai">⑥ 照批注改提示词</span></td>
     <td><span class="tag do">出片</span><br><span class="opt">点「批准出片」，复制，贴进 Codex，它去即梦出</span></td>
     <td class="opt">让 AI 批一批</td></tr>
-  <tr><td class="step">五 审片</td>
-    <td>看片写批注；修改方案逐条定；选定、这一场定稿</td>
-    <td><span class="tag ai">⑦ 出修改方案</span><span class="tag ai">⑧ 照方案改</span></td>
-    <td>再出片</td>
+  <tr><td class="step">审片<br><span class="opt">在「提示词」里</span></td>
+    <td>提示词那一行点「审片」弹出来：只看这一条出的片，写批注；不要的点「这条不要了」</td>
+    <td><span class="tag ai">复制批注</span><br><span class="opt">贴给你自己的 AI 商量怎么改；不出修改方案（11-15 晚拿掉）</span></td>
+    <td>改好另存 _改N，再「批准出片」</td>
     <td class="opt">—</td></tr>
 </table>
+<div class="opt" style="margin-top:6px">11-22：审片不再单独一页，并进「提示词」那一步，步骤条只剩剧本、提炼、资产、提示词四步；删提示词时，它出的样片连批注一起移进历史记录。</div>
 
 <h2>已经改好的（11-15 晚，试验服务上点通）</h2>
 <ul>
@@ -87,7 +89,7 @@
 
 <h2>还没做的</h2>
 <ul>
-  <li>先写提示词的场，头一回剧本定稿时，照你 11-14 定的规矩，还会自动给每条提示词开「AI 写」。现在会一条一个复制框，要不要改成手点，等你说。</li>
+  <li>先写提示词的段（11-21 新做的，换掉 11-14 那种反推剧本的）：不自动开 AI，你点「提炼分镜」「照自由稿，交给 AI 写完」才交；这种段不做「对剧本」。</li>
   <li>直接调 AI 的旧代码还留在服务里（已经用不上），下回顺手删。</li>
 </ul>
 

@@ -15,9 +15,9 @@ const path = require('path');
 
 module.exports = function makeFinish(d) {
   const { fsp, pj, str, fail, segDir, exists, unbom, oneLine, today, TAIL, PromptDraft, Secs, Voice, BmKey, isNarr,
-    readFlow, sceneOf, scriptPath, finalOk, isPeText, vpNeed, vpPath, vpLabel, regOf, vidsOf, framesOf, frameImgs, framePart, bmPart,
+    readFlow, sceneOf, scriptPath, srcPath, isPF, finalOk, isPeText, vpNeed, vpPath, vpLabel, regOf, vidsOf, framesOf, frameImgs, framePart, bmPart,
     geoPart, saveGeo, lookPart, lessonsOf, pePart, PE_FORMAT, PE_DRAMA, sceneImgs, txtsOf, TxtWord, voiceAssets, voiceRule, settingText, sceneText, docText, shotsOf,
-    refsIn, withFileLocks, sideOf, keepCopy, writeFile, resha, putSecs, secsSay, Styles } = d;
+    refsIn, withFileLocks, sideOf, keepCopy, writeFile, resha, putSecs, secsSay, Styles, noFilmed = async () => {} } = d;   // noFilmed：出过片的稿不写（11-22，filmed.js）
   const Z = PromptDraft ? PromptDraft.Zoned : null;
   const PE_HEAD_SET = new Set(PromptDraft ? Object.values(PromptDraft.PE_HEADS) : []);   // sd2.5PE 的几个段名
   /* 人写的那一块：事件脚本（不含最后「声音包括」那一行），一行一项。和写稿页 公用/写稿写完.js 一个算法 */
@@ -52,22 +52,24 @@ module.exports = function makeFinish(d) {
   const anchorOf = doc => doc.refs.filter(l => /@视频\d+|首帧|尾帧|关键帧/.test(l) && !/〔[^〕]*〕/.test(l));
   const anchorKey = l => String(l).replace(/镜头\s*[0-9０-９]+/g, '镜头#').replace(/\s+/g, '');
 
-  /* 能不能写：剧本定稿了、新格式的稿、事件脚本有字。点的时候 prep 就查，当场说清 */
+  /* 能不能写：剧本定稿了（先写提示词的段：分镜定下来了，11-21）、新格式的稿、事件脚本有字。点的时候 prep 就查，当场说清 */
   async function check(j) {
-    const flow = await readFlow(j.项目), s = sceneOf(flow, j.段), sp = scriptPath(j.项目, j.段);
-    if (!s || !(await exists(sp)) || !finalOk(s, Math.floor((await fsp.stat(sp)).mtimeMs))) throw fail('剧本定稿以后才能交给 AI 写完：先到剧本页点「剧本定稿」');
+    await noFilmed(j);   // 出过片的稿不能改（11-22 他定）：要写完先另存成新的一版
+    const flow = await readFlow(j.项目), s = sceneOf(flow, j.段), pf = !!isPF && isPF(s), sp = srcPath ? srcPath(j.项目, s, j.段) : scriptPath(j.项目, j.段);
+    if (!s || !(await exists(sp)) || !finalOk(s, Math.floor((await fsp.stat(sp)).mtimeMs))) throw fail(pf ? '分镜定下来以后才能交给 AI 写完（自由稿改过的，先到「提炼分镜」点「照旧」或「重新提炼」）' : '剧本定稿以后才能交给 AI 写完：先到剧本页点「剧本定稿」');
+    if (pf && !s.定稿) throw fail('分镜定下来以后才能交给 AI 写完：先到「提炼分镜」那一步点「定下来」');
     const raw = unbom(await fsp.readFile(vpPath(j), 'utf8'));
     if (raw.trim() && !isPeText(raw)) throw fail('这一条是旧格式的稿，AI 写完只认新格式的：在写稿页里写批注，交给 AI 改');
     const doc = PromptDraft.parse(raw);
     if (!humanLines(doc).length) throw fail('事件脚本还空着：先写好这几镜里发生什么，再交给 AI 写完');
-    return { flow, s, sp, raw, doc, side: await sideOf(j) };
+    return { flow, s, sp, raw, doc, side: await sideOf(j), pf };
   }
 
   const 写完提示词 = {
     title: j => 'AI 写完 · 第' + j.段 + '段 ' + vpLabel(j), need: ['段'], key: j => j.段 + '/' + j.名, file: j => j.段 + '/' + j.名,
     async prep(j) { await vpNeed(j); if (!PromptDraft || !Z || !Styles) throw fail('读不了 公用/写稿状态.js'); await check(j); },
     async book(j) {
-      const { flow, s, sp, raw, doc, side } = await check(j), split = toSplit(doc, side), p = partsOf(doc);
+      const { flow, s, sp, raw, doc, side, pf } = await check(j), split = toSplit(doc, side), p = partsOf(doc);
       j.拆 = split;
       j.底 = humanKey(doc);   // 交出去的是哪一版：等回来的时候人又改过，就不往里写
       j.已写 = !!(p.event || p.basic || p.keep);   // 写过的：先判断要不要改，对得上就一个字不动
@@ -88,8 +90,10 @@ module.exports = function makeFinish(d) {
       const hasLook = !!p.look, emptyNames = j.空.map(k => NEED.find(x => x[0] === k)[1]);
       const rules = [];
       const add = t => rules.push((rules.length + 1) + '. ' + t);
+      const byList = pf && split && shots && shots.length;   // 先写提示词的段（11-21）：照镜头表拆，戏照自由稿
+      if (byList) add('照镜头表拆：这一条拍镜头表里的镜头 ' + shots.join('、') + '（见下面「这一段」的镜头表），镜头表的一个镜头写成一镜，镜头号从 1 连着编（镜头1 是镜头表的镜头' + shots[0] + '，依次往后），不多拆、不合并；镜头表里别的镜头的戏不写。每一镜照自由稿里写这一镜的那几句来：人写的动作、台词原话、机位、运镜、声音都带上，先后不变；自由稿里没写的事不加。错别字改掉。');
       if (split) {
-        add('照人写的来：人写了的事都要有，先后不变；人没写的事不加。错别字改掉。一镜只讲一两件事；人写的一段里有好几件事、换了机位的，拆成几镜。');
+        if (!byList) add('照人写的来：人写了的事都要有，先后不变；人没写的事不加。错别字改掉。一镜只讲一两件事；人写的一段里有好几件事、换了机位的，拆成几镜。');
         add('写成看得见的：「子弹打光」「耗尽」这类剧情话，写成看得见的动作和结果；照下面「写戏规矩」写。' + Styles.NAME_RULE);
         add('同一组镜头写两份：镜头数、先后、每一镜拍的东西两份都一样，只是写法不同。分区：' + Styles.how('分区') + '合并：' + Styles.how('合并') + '镜头号从 1 连着编。每一镜起个短标题（10 个字以内），只给人看，不进提示词。不写总时长。');
       } else add('人写的【事件脚本】一个字都不改，也不要抄进回复；镜头里的人物、道具、场景照他写的称谓对上素材。');
@@ -109,12 +113,12 @@ module.exports = function makeFinish(d) {
       const judge = j.已写 ? ['0. 回复最前面先写【判断】：第一行只写「对得上」或「要改」，说的是下面「你写过的几块」还要不要改；第二行一句话说为什么（要改就说改哪几块）。对得上的，那几块回「无」；要改的，要改的那几块整块写全，没问题的回「无」，程序照原样留着。'
         + (emptyNames.length ? '还空着的' + emptyNames.join('、') + '不管怎么判断都要写。' : '') + (split ? '分镜是新拆的，不管怎么判断都要写。' : '')] : [];
       return ['# 任务：把人写的视频提示词写完（人只写了事件脚本，剩下的都由你写）', '',
-        '今天 ' + today() + '。这是一个 AI 短视频项目。这一段的剧本已经定稿，人照剧本写了这一条视频提示词的【事件脚本】' + (shots && shots.length ? '（这一条拍镜头表里的镜头 ' + shots.join('、') + '）' : '') + '。请照 sd25-pe 把剩下的写完：'
+        '今天 ' + today() + '。这是一个 AI 短视频项目。' + (pf ? '这一段没有剧本：人先写了一段自由模式的提示词（自由稿，就是下面「定稿的剧本」那一节），照它提炼了镜头表；这一条视频提示词的【事件脚本】是照自由稿备的' : '这一段的剧本已经定稿，人照剧本写了这一条视频提示词的【事件脚本】') + (shots && shots.length ? '（这一条拍镜头表里的镜头 ' + shots.join('、') + '）' : '') + '。请照 sd25-pe 把剩下的写完：'
         + (split ? '先把人写的事件脚本拆成一镜一镜、扩写成分镜（分区、合并两种写法各写一份），再写' : '事件脚本已经是一镜一镜的，镜头一个字不改；写') + '生成目标、素材、基础设定、主体与关系、保持一致' + (hasLook ? '' : '，和事件脚本最后那一行「声音包括……」') + '。',
         ...(j.已写 ? ['', '这一条以前写过几块（见下面「你写过的几块」）。先判断它们和现在的剧本、资产、人写的事件脚本' + (split ? '（拆成的新镜头）' : '') + '还对不对得上：对得上就不用改，程序一个字都不动；对不上才改。'] : []),
         '', '## 要求', ...judge, ...rules, ...eg,
         '', pm.text,
-        '', split ? '## 人写的事件脚本（要拆成分镜的就是它）' : '## 这一条的事件脚本（人写的，一个字都不改）', humanLines(doc).join('\n'),
+        '', split ? (byList ? '## 人写的事件脚本（照自由稿备的；这一条只写上面说的那几镜）' : '## 人写的事件脚本（要拆成分镜的就是它）') : '## 这一条的事件脚本（人写的，一个字都不改）', humanLines(doc).join('\n'),
         '', '## 你写过的几块（对得上的照留）', aiPartsText(doc),
         '', '## 已经挂好的', regs.map(r => r.ref + '：' + r.path + (r.from === '挂图' ? '（人在写稿页挂的）' : '')).join('\n') || '（还没有）',
         '', '## 能用的资产', assets.map(x => x.line).join('\n') || '（没有）', ...(txts.length ? ['', TxtWord.promptPart(txts)] : []), bm,
@@ -135,16 +139,25 @@ module.exports = function makeFinish(d) {
         titles = Styles.titlesIn(got.标题);
       }
       const empty = new Set(Array.isArray(j.空) ? j.空 : []);
-      if (same && !j.拆 && !empty.size) return { 结果: '对得上，没改' + (why ? '：' + why : '') + geoSay, 产出: geoAt ? [geoAt] : [] };
+      const rel = ['提示词', segDir(j.段), j.名];
+      /* 对得上、一字没改的，回的【秒数】也记（11-23 他要）：不记的话，人改过镜头再交给 AI 写完，出片弹窗还是旧秒数、说「估完以后改过」。
+         没回秒数不动旧的；等 AI 的时候镜头又改过的不记（秒数是照交出去那一版估的） */
+      const keepSecs = async () => {
+        if (!Secs || !Secs.parse(text)) return '';
+        if (humanKey(PromptDraft.parse(unbom(await fsp.readFile(vpPath(j), 'utf8')))) !== j.底) return '；等 AI 的时候镜头又改过，秒数没记';
+        return secsSay(await putSecs(j.项目, rel, String(text || '')));
+      };
+      if (same && !j.拆 && !empty.size) return { 结果: '对得上，没改' + (why ? '：' + why : '') + geoSay + await keepSecs(), 产出: geoAt ? [geoAt] : [] };
       const take = k => same && !empty.has(k) ? null : k === 'event' ? clean(blk('生成目标')).join('') : clean(blk({ refs: '素材', basic: '基础设定', seg: '主体与关系', keep: '保持一致' }[k]));   // null：照原样留着
       const gave = { event: take('event'), refs: take('refs'), basic: take('basic'), seg: take('seg'), keep: take('keep') };
       if (gave.basic) gave.basic = gave.basic.filter(l => !PromptDraft.isLook(l));
       for (const k of Object.keys(gave)) if (gave[k] != null && !gave[k].length) gave[k] = null;   // 回「无」、没回的：照原样留着
       const soundL = [...clean(blk('声音')), ...clean(blk('基础设定'))].filter(l => /^声音包括/.test(l)).slice(0, 1);
       const reg = got.素材登记 == null ? '' : got.素材登记, aiRefs = await refsIn(j, reg, j.assets || []);
-      const txt = vpPath(j), sidep = txt.replace(/\.txt$/, '_写稿.json'), rel = ['提示词', segDir(j.段), j.名];
+      const txt = vpPath(j), sidep = txt.replace(/\.txt$/, '_写稿.json');
       let changed = [], style = '', nShots = 0;
       const n = await withFileLocks([txt, sidep], async () => {   // 和写稿页存盘共用文件锁：拿到锁以后照盘上最新的那一份改
+        await noFilmed(j);   // 等 AI 的时候出了片：不写进去
         const doc = PromptDraft.parse(unbom(await fsp.readFile(txt, 'utf8'))), side = await sideOf(j);
         if (humanKey(doc) !== j.底) throw fail('等 AI 的时候事件脚本又改过了，这回没写进去（AI 写的在这个任务的回复里）');
         const human = humanLines(doc), p0 = partsOf(doc);
@@ -188,7 +201,7 @@ module.exports = function makeFinish(d) {
         await resha(j.项目, rel, list);
         return list.length;
       });
-      if (n < 0) return { 结果: '对得上，没改：AI 回的和现在一样' + geoSay, 产出: geoAt ? [geoAt] : [] };
+      if (n < 0) return { 结果: '对得上，没改：AI 回的和现在一样' + geoSay + await keepSecs(), 产出: geoAt ? [geoAt] : [] };
       const secs = await putSecs(j.项目, rel, String(text || ''));
       const say = j.拆 ? '写好了：拆成 ' + nShots + ' 镜（提示词里放的是' + style + '，' + (style === '分区' ? '合并' : '分区') + '的另存一份备选）' + (changed.length ? '，写了' + changed.join('、') : '') + '，你写的那一段留在自由模式里'
         : '写好了：' + (changed.length ? '写了' + changed.join('、') : '') + (same ? '（' + (why || '别的对得上') + '）' : '') + '，你写的镜头没动';

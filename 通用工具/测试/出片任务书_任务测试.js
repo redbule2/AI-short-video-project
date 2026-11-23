@@ -4,7 +4,8 @@
 // 样片名（11-18 他定）：下载下来的样片和提示词同名，4-6.txt 出的叫 4-6.mp4；同一版再出一条 4-6_2.mp4。
 // 页面估价（提示词.html 的 priceOf）和任务书里的估价是同一张表，两边对一遍。
 // 登记照任务书写齐（11-19）：批准出片时参考素材映射里这一条改成和任务书一样，正文指纹和 核对参考素材.py 同一算法，Codex 不再因登记对不上停下。
-// 项目读写都在内存里；即梦核对、认画布节点换成假的，不碰真项目，不调即梦命令行。
+// 出片计划（11-21）：任务书同一回写一份机器读的 出片计划.json；批准出片照任务书的 SHA-256 认出它，交给流水线自己出（jm-video.js，另有 流水线出片_测试.cjs）。
+// 项目读写都在内存里；即梦核对、认画布节点、自己出片换成假的，不碰真项目，不调即梦命令行。
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -15,6 +16,7 @@ const root = path.resolve(__dirname, '__内存测试根__');
 const pjt = (...x) => path.join(root, '项目', '测试', ...x);
 const promptPath = pjt('提示词', '第1-1段', '4-6.txt');
 const taskPath = pjt('提示词', '第1-1段', '4-6_出片任务.txt');
+const DIR = pjt('历史记录', 'AI任务', '20261121-120000_出片任务书_第1-1段');   // 这一回的任务文件夹：出片计划.json 写在这里（11-21）
 const fail = code => Object.assign(new Error(code), { code });
 
 function setup(dirs = {}) {
@@ -37,18 +39,20 @@ function setup(dirs = {}) {
     },
   };
   const jm = Object.assign(async () => ({ nick: '测试号', name: '测试画布' }), { create: async () => { throw Error('测试不新建画布'); } });
+  const gone = [];   // 交给 jm-video.js 出片的
   const box = { module: { exports: {} }, __dirname: path.dirname(backend), Buffer, process, setTimeout, clearTimeout,
     require: name => name === 'fs' ? mockFs : name === 'child_process' ? { spawn() { throw Error('测试不能调用外部命令'); } }
       : name === './jm-check.js' ? () => jm : name === './canvas.js' ? () => ({ versions: async () => [], plan: () => '' })
+      : name === './jm-video.js' ? () => ({ go: async (j, plan, dir) => { gone.push({ j, plan, dir }); return { 结果: '出好了（假的）', 产出: [] }; } })   // 真出片的那一截另有测试（流水线出片_测试.cjs）
       : require(name.startsWith('.') ? path.resolve(path.dirname(backend), name) : name),
   };
   vm.runInNewContext(source, box, { filename: backend });
   const api = box.module.exports({ ROOT: root, TOOLS: path.resolve(__dirname, '..'), log() {}, withFileLocks: async (paths, fn) => fn() });
-  return { K: api.KINDS, files };
+  return { K: api.KINDS, files, gone };
 }
 async function bookOf(参数, dirs) {
   const s = setup(dirs);
-  await s.K.出片任务书.run({ 项目: '测试', 段: '1-1', 名: '4-6.txt', 参数 });
+  await s.K.出片任务书.run({ dir: DIR, 项目: '测试', 段: '1-1', 名: '4-6.txt', 参数 });
   return s.files.get(taskPath).toString('utf8');
 }
 const html = fs.readFileSync(path.join(__dirname, '../流水线/提示词.html'), 'utf8');
@@ -99,7 +103,7 @@ const priceOf = vm.runInNewContext(priceCode + '\npriceOf;', {});
   await check('以前的补片稿照正片出（11-18 他定）：4-6_补1.txt 出的下载成 4-6_补1.mp4，任务书 4-6_出片任务_补1.txt，不剪进样片', async () => {
     const s = setup({ [pjt('成片', '第1-1段')]: ['4-6.mp4', '第1-1段_第4条_4-6_720p.mp4'] });
     s.files.set(pjt('提示词', '第1-1段', '4-6_补1.txt'), s.files.get(promptPath));
-    await s.K.出片任务书.run({ 项目: '测试', 段: '1-1', 名: '4-6_补1.txt', 参数: { 模型: 'Seedance 2.5 样片', 清晰度: '480p', 秒数: 10, 积分上限: 0 } });
+    await s.K.出片任务书.run({ dir: DIR, 项目: '测试', 段: '1-1', 名: '4-6_补1.txt', 参数: { 模型: 'Seedance 2.5 样片', 清晰度: '480p', 秒数: 10, 积分上限: 0 } });
     const book = s.files.get(pjt('提示词', '第1-1段', '4-6_出片任务_补1.txt')).toString('utf8');
     assert.match(book, /第1-1段出一条视频：4-6_补1，/);
     assert.match(book, /下载到 \S*\/成片\/第1-1段\/4-6_补1\.mp4。/);
@@ -109,7 +113,7 @@ const priceOf = vm.runInNewContext(priceCode + '\npriceOf;', {});
   await check('接力稿（11-19）：1_改8_后半条.txt 的任务书叫 1_出片任务_改8_后半条.txt，样片 1_改8_后半条.mp4，出过了接着排 _2', async () => {
     const s = setup({ [pjt('成片', '第1-1段')]: ['1_改7_前半条.mp4', '1_改8_前后接起来.mp4'], [pjt('历史记录', '成片', '第1-1段')]: ['1_改8_后半条.mp4'] });
     s.files.set(pjt('提示词', '第1-1段', '1_改8_后半条.txt'), s.files.get(promptPath));
-    await s.K.出片任务书.run({ 项目: '测试', 段: '1-1', 名: '1_改8_后半条.txt', 参数: { 模型: 'Seedance 2.5 样片', 清晰度: '480p', 秒数: 10, 积分上限: 0 } });
+    await s.K.出片任务书.run({ dir: DIR, 项目: '测试', 段: '1-1', 名: '1_改8_后半条.txt', 参数: { 模型: 'Seedance 2.5 样片', 清晰度: '480p', 秒数: 10, 积分上限: 0 } });
     const book = s.files.get(pjt('提示词', '第1-1段', '1_出片任务_改8_后半条.txt')).toString('utf8');
     assert.match(book, /第1-1段出一条视频：1_改8_后半条，/);
     assert.match(book, /下载到 \S*\/成片\/第1-1段\/1_改8_后半条_2\.mp4。/);   // 移进历史记录的 1_改8_后半条.mp4 也让开
@@ -135,7 +139,7 @@ const priceOf = vm.runInNewContext(priceCode + '\npriceOf;', {});
       { ref: '@图片1', name: '洪七公', path: manAt, sha256: 'e'.repeat(64) },
       { ref: '@图片2', name: '砂锅', path: potAt, sha256: sha(Buffer.from('砂锅图')) },
       { ref: '@图片3', name: '删掉的那张', path: potAt, sha256: 'd'.repeat(64) }], 秒数: { 镜头: { 1: 13 }, 记号: 'k' } });
-    const r = await s.K.出片任务书.run({ 项目: '测试', 段: '1-1', 名: '4-6.txt', 参数: P480 });
+    const r = await s.K.出片任务书.run({ dir: DIR, 项目: '测试', 段: '1-1', 名: '4-6.txt', 参数: P480 });
     const reg = regOf(s), e = reg[key];
     assert.equal(e.prompt_sha256, pyHash(refText));
     assert.notEqual(e.prompt_sha256, sha(s.files.get(promptPath)));   // 不再照原样字节算（带 BOM、CRLF 的稿以前就对不上）
@@ -153,16 +157,66 @@ const priceOf = vm.runInNewContext(priceCode + '\npriceOf;', {});
       { ref: '@图片1', name: '洪七公', path: manAt, sha256: sha(Buffer.from('新换的洪七公图')) },
       { ref: '@图片2', name: '砂锅', path: potAt, sha256: sha(Buffer.from('砂锅图')) }] });
     const before = s.files.get(mapPath);
-    const r = await s.K.出片任务书.run({ 项目: '测试', 段: '1-1', 名: '4-6.txt', 参数: P480 });
+    const r = await s.K.出片任务书.run({ dir: DIR, 项目: '测试', 段: '1-1', 名: '4-6.txt', 参数: P480 });
     assert.equal(s.files.get(mapPath), before);   // 没重写
     assert.doesNotMatch(r.结果, /补好/);
     assert.match(s.files.get(taskPath).toString('utf8'), /登记：资产\/参考素材映射\.json/);
   });
+  await check('出片计划（11-21 起流水线自己出片照它做）：和任务书同一回写在任务文件夹，任务书指纹、节点名、存到、素材都和任务书一样', async () => {
+    const s = withRefs({ prompt_sha256: pyHash(refText), references: [
+      { ref: '@图片1', name: '洪七公', path: manAt, sha256: sha(Buffer.from('新换的洪七公图')) },
+      { ref: '@图片2', name: '砂锅', path: potAt, sha256: sha(Buffer.from('砂锅图')) }] });
+    await s.K.出片任务书.run({ dir: DIR, 项目: '测试', 段: '1-1', 名: '4-6.txt', 参数: { ...P480, 积分上限: 200 } });
+    const book = s.files.get(taskPath), plan = JSON.parse(s.files.get(path.join(DIR, '出片计划.json')).toString('utf8'));
+    assert.equal(plan.任务书SHA, sha(book));   // 出片时照任务书的 SHA-256 认是哪一回排的
+    assert.equal(plan.任务书, '提示词/第1-1段/4-6_出片任务.txt');
+    assert.equal(plan.画布号, '7bec76b5-4184-4d2c-9b1e-a332e7317853');
+    assert.equal(plan.节点名, '第1-1段｜4-6｜样片480p｜10秒');
+    assert.match(book.toString('utf8'), new RegExp('名字写：' + plan.节点名 + '（下称节点A）'));
+    assert.equal(plan.存到, '成片/第1-1段/4-6.mp4');
+    assert.deepEqual([plan.模型, plan.清晰度, plan.秒数, plan.积分上限], ['Seedance 2.5 样片', '480p', 10, 200]);
+    assert.deepEqual(plan.提示词, { 路径: '提示词/第1-1段/4-6.txt', sha256: sha(s.files.get(promptPath)) });
+    assert.deepEqual(plan.素材.map(r => [r.ref, r.name, r.path, r.sha256]), [['@图片1', '洪七公', manAt, sha(Buffer.from('新换的洪七公图'))], ['@图片2', '砂锅', potAt, sha(Buffer.from('砂锅图'))]]);
+    assert.equal(plan.素材[0].节点名, '人物和道具_洪七公');
+  });
   await check('没挂素材的稿：不新建登记，任务书也不写登记那一句', async () => {
     const s = setup();
-    await s.K.出片任务书.run({ 项目: '测试', 段: '1-1', 名: '4-6.txt', 参数: P480 });
+    await s.K.出片任务书.run({ dir: DIR, 项目: '测试', 段: '1-1', 名: '4-6.txt', 参数: P480 });
     assert.equal(s.files.has(mapPath), false);
     assert.doesNotMatch(s.files.get(taskPath).toString('utf8'), /登记：/);
+  });
+  // 出片（11-21 起流水线自己做）：照任务书的 SHA-256 找同一回排的出片计划，交给 jm-video.js；服务重开后接着做
+  const runDir = pjt('历史记录', 'AI任务', '20261121-120100_出片_第1-1段'), ok = { 项目: '测试', 段: '1-1', 名: '4-6_出片任务.txt', 批准: '用户点了批准出片', dir: runDir };
+  const planned = async () => { const s = setup({ [pjt('历史记录', 'AI任务')]: ['20261121-115900_出片任务书_第1-1段', '20261121-120000_出片任务书_第1-1段', '20261121-120000_出图_第1-1段'] }); await s.K.出片任务书.run({ dir: DIR, 项目: '测试', 段: '1-1', 名: '4-6.txt', 参数: P480 }); return s; };
+  await check('批准出片：照任务书指纹认出同一回排的出片计划，交给流水线自己出；记下接着做要的 自己交.json', async () => {
+    const s = await planned();
+    const r = await s.K.出片.run({ ...ok });
+    assert.equal(r.结果, '出好了（假的）');
+    assert.equal(s.gone.length, 1);
+    assert.equal(s.gone[0].plan.任务书SHA, sha(s.files.get(taskPath)));
+    assert.equal(s.gone[0].dir, runDir);
+    const m = JSON.parse(s.files.get(path.join(runDir, '自己交.json')).toString('utf8'));
+    assert.deepEqual([m.方式, m.run, m.本机], ['self', true, true]);
+    assert.equal(s.K.出片.local, true);   // 后台任务里写「流水线」，不写 AI
+  });
+  await check('任务书排好以后又改过、没点批准、试验服务：都不出片', async () => {
+    let s = await planned();
+    s.files.set(taskPath, Buffer.from(s.files.get(taskPath).toString('utf8') + '多一句\n'));
+    await assert.rejects(s.K.出片.run({ ...ok }), /没找到这份任务书排的出片计划/);
+    s = await planned();
+    await assert.rejects(s.K.出片.run({ ...ok, 批准: '' }), /出片要用户在页面上点「批准出片」/);
+    process.env.ANTOU_MOCK_DIR = 'x';
+    try { await assert.rejects(s.K.出片.run({ ...ok }), /这是试验服务：不真出片/); } finally { delete process.env.ANTOU_MOCK_DIR; }
+    assert.equal(s.gone.length, 0);
+  });
+  await check('服务重开后接着做：有 出片进度.json 的交给流水线接着做（不再核账号、不再记出片记录）', async () => {
+    const s = await planned();
+    s.files.set(path.join(runDir, '出片进度.json'), Buffer.from('{}'));
+    await s.K.出片.run({ ...ok, 续: true });
+    assert.equal(s.gone.length, 1);
+    assert.equal(s.gone[0].plan, null);   // 照 出片进度.json 里存的那份
+    assert.equal(s.files.has(pjt('资产', '第1-1段_出片记录.json')), false);
+    // 11-21 以前交给 Codex、重开前还在等它回话的：照旧接着等，任务存盘_测试.cjs 里试
   });
   console.log(tested + ' 项检查通过；真实项目数据未读写。');
 })().catch(e => { console.error(e); process.exitCode = 1; });

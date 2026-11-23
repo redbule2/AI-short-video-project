@@ -43,6 +43,9 @@ const ICON = {
   check: '<path d="M3.6 8.4 6.5 11.3 12.4 4.7"/>',
   grid: '<rect x="2.8" y="2.8" width="4.2" height="4.2" rx=".6"/><rect x="9" y="2.8" width="4.2" height="4.2" rx=".6"/><rect x="2.8" y="9" width="4.2" height="4.2" rx=".6"/><rect x="9" y="9" width="4.2" height="4.2" rx=".6"/>',
   chev: '<path d="M6 4l4 4-4 4"/>',
+  chevL: '<path d="M10 4 6 8l4 4"/>',
+  dockR: '<rect x="2.5" y="3" width="11" height="10" rx="1.6"/><path d="M9.6 3v10"/>',   // 摆到右边（写稿页旁边那一格，公用/写稿旁窗.js）
+  dockB: '<rect x="2.5" y="3" width="11" height="10" rx="1.6"/><path d="M2.5 9.4h11"/>',   // 摆到下面
   play: '<path d="M5 3.4v9.2L12.6 8z" fill="currentColor"/>',
   pause: '<path d="M5.4 3.6v8.8M10.6 3.6v8.8" stroke-width="2.4"/>',
   prev: '<path d="M4 3.8v8.4" stroke-width="1.8"/><path d="M12.4 3.8 6.6 8l5.8 4.2z" fill="currentColor"/>',

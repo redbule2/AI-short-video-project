@@ -6,6 +6,7 @@
         --几遍=N 每句念 N 遍挑最像的（默认看设置里的「每句试几次」）；--引擎 不写就照设置里的「引擎」。
 出：<课的文件夹>/配音_NN.wav（48k 单声道）和 配音_记录.json（每句用的引擎、念了几遍、挑了哪遍、多快、多像）。
 
+音色、设置这套教程自己有就用自己的（课的上一层放 声音参考.wav、配音设置.json，如 Codex教程），没有就用这里的。
 两个引擎，设置在旁边的 配音设置.json（公共的写在外面，各引擎自己的写在同名那一栏里）：
   IndexTTS2.5（D:/Apps/IndexTTS，11-15 起默认）：原声直接当参考；语速靠模型自己放慢（「时长倍数」，
       每念一遍按离「目标字每秒」差多少自动调下一遍），不用事后拉。
@@ -13,6 +14,11 @@
       所以把参考录音放慢了当开头（「参考放慢」），念完再放慢一点、拉长标点处的停顿。
       别在句子前加「(语速放慢…)」这类括号：接着念的模式会把括号里的字当台词念出来。
 每句念几遍：快慢不在「原速字每秒」范围里的扔掉（念漏、念多），剩下的用声纹打分（CAM++），挑最像本人的一遍。
+设置里可选：「起伏让分」比最像那遍差不到这么多的几遍里挑音高起伏最大的（抑扬顿挫，见 pick_take）；
+  「毛刺容差」这几遍里只留电子毛刺不比最干净那遍多太多的（见 fizz）；「压毛刺」元音里的高频沙沙声压几 dB（见 defizz）；
+  「美化」一串 ffmpeg 声音滤镜，挑中后加（见 polish）；「情绪」八个数（只 IndexTTS2.5 认，见 emo_args），
+  11-22 试过：加「高兴」音高抬高、不像本人，起伏也没多，Codex 教程没用；
+  「语气参考」一段别人说话的录音，只借语气不借音色（见 emo_args），11-22 Codex 教程挂真人讲课，起伏多了一成多。
 加载模型在 Windows 上偶尔闪退，外面这一层会自动重来（最多 3 回），已经念好的句子不重念。
 """
 import glob
@@ -29,6 +35,12 @@ VOX = 'D:/Apps/VoxCPM2/models/VoxCPM2'
 IDX = 'D:/Apps/IndexTTS/index-tts'
 HOW = {'VoxCPM2': '放慢的参考录音接着念，拉长停顿', 'IndexTTS2.5': 'IndexTTS2.5 原声参考，模型里放慢'}
 OUT_SR = 48000
+
+
+def series_file(folder, name):
+    """这一套教程自己的文件优先（课的上一层，如 Codex教程 里的 声音参考.wav），没有就用这里（流水线教程）的。"""
+    p = os.path.join(os.path.dirname(os.path.abspath(folder)), name)
+    return p if os.path.exists(p) else os.path.join(ROOT, name)
 
 
 def zh_count(t):
@@ -71,6 +83,105 @@ def tempo(x, sr, k, d):
     subprocess.run([FF, '-hide_banner', '-loglevel', 'error', '-y', '-i', a, '-filter:a', 'atempo=%.3f' % k, b], check=True)
     y, _ = sf.read(b, dtype='float32')
     return y
+
+
+def polish(x, sr, chain, d):
+    """「美化」：配音设置里写一串 ffmpeg 声音滤镜（如去闷、提清晰、轻压缩），挑中的那遍念好后加，加完再统一响度。不写就不动。"""
+    import soundfile as sf
+    if not chain:
+        return x
+    a, b = os.path.join(d, 'p_a.wav'), os.path.join(d, 'p_b.wav')
+    sf.write(a, x, sr, subtype='FLOAT')
+    subprocess.run([FF, '-hide_banner', '-loglevel', 'error', '-y', '-i', a, '-af', chain, '-ar', str(sr), '-ac', '1',
+                    '-c:a', 'pcm_f32le', b], check=True)
+    y, _ = sf.read(b, dtype='float32')
+    return y
+
+
+def emo_args(cfg, norm=None, folder='.'):
+    """IndexTTS2.5 的情绪，两种写法只能用一种，都不写就照参考录音自己的情绪：
+    「情绪」写八个数（高兴 生气 难过 害怕 厌恶 低落 惊讶 平静），norm 是模型自带的校正（各维打个折、总和不过 0.8）；
+    「语气参考」写一段别人说话的录音（文件名先在这套教程里找，再找这里；也可写完整路径，模型只认前 15 秒），
+    音色还是声音参考的，只借这段的语气，「语气参考强度」0～1，默认 0.6，越大越像那段、越不像本人。"""
+    v, a = cfg.get('情绪'), cfg.get('语气参考')
+    if v and a:
+        raise SystemExit('「情绪」和「语气参考」只能写一个')
+    if a:
+        p = a if os.path.isabs(a) else series_file(folder, a)
+        if not os.path.exists(p):
+            raise SystemExit('「语气参考」找不到：%s' % p)
+        k = float(cfg.get('语气参考强度', 0.6))
+        if not 0 < k <= 1:
+            raise SystemExit('「语气参考强度」要在 0～1 之间：%s' % k)
+        return {'emo_audio_prompt': p, 'emo_alpha': k}
+    if not v:
+        return {}
+    if len(v) != 8:
+        raise SystemExit('「情绪」要写八个数（高兴 生气 难过 害怕 厌恶 低落 惊讶 平静）：%s' % v)
+    v = [float(a) for a in v]
+    return {'emo_vector': norm(v) if norm else v}
+
+
+def liveliness(x, sr):
+    """念得有没有起伏：音高换成半音后的标准差，越大越抑扬顿挫（平铺直叙约 2.5，有起伏的 4 上下）。"""
+    import numpy as np
+    import librosa
+    y = librosa.resample(x, orig_sr=sr, target_sr=16000)
+    f0, vf, _ = librosa.pyin(y, fmin=60, fmax=500, sr=16000, frame_length=1024, hop_length=160)
+    v = f0[vf]
+    if len(v) < 20:
+        return 0.0
+    return float((12 * np.log2(v / np.median(v))).std())
+
+
+def fizz(x, sr):
+    """电子毛刺有多重：元音帧（低频响、不是嘶嘶声）里 5–10 千赫比 0.1–4 千赫低多少 dB。
+    真人约 −31，模型念的常在 −27～−21（元音里一层沙沙声），越接近 0 越毛。"""
+    import numpy as np
+    import librosa
+    y = librosa.resample(x, orig_sr=sr, target_sr=22050) if sr != 22050 else x
+    P = np.abs(librosa.stft(y, n_fft=1024, hop_length=256)) ** 2
+    f = librosa.fft_frequencies(sr=22050, n_fft=1024)
+    lo = P[(f >= 100) & (f < 1000)].sum(0)
+    lo_db = 10 * np.log10(lo + 1e-12)
+    v = (lo_db > lo_db.max() - 25) & (lo > P[(f >= 4000) & (f < 10000)].sum(0))
+    if not v.any():
+        return 0.0
+    r = 10 * np.log10(P[(f >= 5000) & (f < 10000)][:, v].mean(0) + 1e-12) - 10 * np.log10(P[(f >= 100) & (f < 4000)][:, v].mean(0) + 1e-12)
+    return float(np.median(r))
+
+
+def defizz(x, sr, cut_db):
+    """「压毛刺」：元音里 3.5 千赫往上压 cut_db（6 千赫往上压满），嘶嘶的辅音（s、sh、x）不动；不写或 0 就不动。
+    一帧一帧看：低频比高频响 20 dB 以上算十足的元音，压满；差得少的压得少，高频比低频响的不压。"""
+    import numpy as np
+    import librosa
+    if not cut_db:
+        return x
+    S = librosa.stft(x, n_fft=2048, hop_length=512)
+    P = np.abs(S) ** 2
+    f = librosa.fft_frequencies(sr=sr, n_fft=2048)
+    lo = P[(f >= 100) & (f < 1000)].sum(0)
+    hi = P[(f >= 4000) & (f < 11000)].sum(0)
+    w = np.clip(10 * np.log10((lo + 1e-12) / (hi + 1e-12)) / 20, 0, 1)
+    w = np.convolve(w, np.ones(5) / 5, mode='same')   # 前后几帧抹匀，别一跳一跳
+    ramp = np.clip((f - 3500) / 2500, 0, 1)
+    g = 1 - np.outer(ramp, w) * (1 - 10 ** (-cut_db / 20))
+    return librosa.istft(S * g, hop_length=512, length=len(x)).astype(np.float32)
+
+
+def pick_take(good, margin, fizz_tol=0):
+    """几遍里挑一遍。每遍是 (声音, 像, 字每秒, 用得上, 起伏, 毛刺)。
+    先看像不像；「起伏让分」大于 0 时，比最像那遍差不到这么多的几遍都算；
+    「毛刺容差」大于 0 时，这几遍里只留毛刺比最干净那遍多不到这么多 dB 的；最后挑起伏最大的。"""
+    best = max(t[1] for t in good)
+    if margin <= 0:
+        return max(good, key=lambda t: t[1])
+    c = [t for t in good if t[1] >= best - margin]
+    if fizz_tol > 0:
+        clean = min(t[5] for t in c)
+        c = [t for t in c if t[5] <= clean + fizz_tol]
+    return max(c, key=lambda t: (t[4], t[1]))
 
 
 PUNCT = '、，,。：:！!？?；;'
@@ -210,17 +321,24 @@ def worker(folder, only, tries_arg, engine):
     import soundfile as sf
     import librosa
     folder = os.path.abspath(folder)
-    allcfg = json.load(open(os.path.join(ROOT, '配音设置.json'), encoding='utf-8'))
+    allcfg = json.load(open(series_file(folder, '配音设置.json'), encoding='utf-8'))
     cfg = {k: v for k, v in allcfg.items() if not isinstance(v, dict) or k == '停顿'}
     cfg.update(allcfg.get(engine, {}))
     lines = [l.strip() for l in open(os.path.join(folder, '解说词.txt'), encoding='utf-8') if l.strip()]
-    ref = os.path.join(ROOT, '声音参考.wav')
-    ref_text = [l for l in open(os.path.join(ROOT, '声音参考.txt'), encoding='utf-8').read().strip().split('\n') if l.strip()][-1].strip()
+    ref = series_file(folder, '声音参考.wav')
+    ref_txt = os.path.splitext(ref)[0] + '.txt'   # 原话只有 VoxCPM2 要，得是同一段录音的
+    ref_text = [l for l in open(ref_txt, encoding='utf-8').read().strip().split('\n') if l.strip()][-1].strip() if os.path.exists(ref_txt) else None
+    if engine == 'VoxCPM2' and not ref_text:
+        raise SystemExit('VoxCPM2 要参考录音的原话：%s' % ref_txt)
     lo, hi = cfg.get('原速字每秒', [3.5, 11.0])
     goal = cfg.get('目标字每秒', 6.0)
     slow_min = cfg.get('最多放慢到', 0.85)
     tries = tries_arg or cfg.get('每句试几次', 3)
-    how = HOW[engine]
+    how = HOW[engine] + ('，情绪 %s' % cfg['情绪'] if engine == 'IndexTTS2.5' and cfg.get('情绪') else '') + (
+        '，语气参考 %s×%s' % (os.path.basename(cfg['语气参考']), cfg.get('语气参考强度', 0.6))
+        if engine == 'IndexTTS2.5' and cfg.get('语气参考') else '') + (
+        '，压毛刺 %s' % cfg['压毛刺'] if cfg.get('压毛刺') else '') + (
+        '，美化 ' + cfg['美化'] if cfg.get('美化') else '')   # 换了情绪、压毛刺、美化，原来念好的也重念
     rec_path = os.path.join(folder, '配音_记录.json')
     rec = json.load(open(rec_path, encoding='utf-8')) if os.path.exists(rec_path) else {}
     d = tempfile.mkdtemp(prefix='tut-tts-')
@@ -243,10 +361,11 @@ def worker(folder, only, tries_arg, engine):
 
         fac = [cfg.get('时长倍数', 1.0)]
         fmin, fmax = cfg.get('时长倍数范围', [0.8, 1.8])
+        emo = emo_args(cfg, tts.normalize_emo_vec, folder)
 
         def say(text):
             f = fac[0]
-            got = tts.infer(spk_audio_prompt=ref, text=spoken(text), output_path=None, lang='ZH', duration_factor=f, verbose=False)
+            got = tts.infer(spk_audio_prompt=ref, text=spoken(text), output_path=None, lang='ZH', duration_factor=f, verbose=False, **emo)
             osr, w = got
             x = trim(np.asarray(w, np.float32).reshape(-1) / 32768, osr)
             x = librosa.resample(x, orig_sr=osr, target_sr=OUT_SR)   # 22.05k 正经重采样到 48k，合成时就不用线性插值
@@ -294,24 +413,31 @@ def worker(folder, only, tries_arg, engine):
             continue   # 上一回念好了（闪退重来时跳过）
         n = zh_count(text)
         takes, log = [], []
+        margin, fizz_tol = cfg.get('起伏让分', 0), cfg.get('毛刺容差', 0)
         for k in range(tries + cfg.get('不够再试', 0)):   # 念够「每句试几次」；一遍都不在范围里的，再多试「不够再试」遍
             x, f = say(text)
             rate = n / (len(x) / sr)
             ok = lo <= rate <= hi
             s = score(x) if ok else 0.0
+            live = liveliness(x, sr) if ok and margin > 0 else 0.0
+            fz = fizz(x, sr) if ok and fizz_tol > 0 else 0.0
             g = {'遍': k + 1, '字每秒': round(rate, 1), '像': round(s, 3), '用得上': ok}
+            if margin > 0 and ok:
+                g['起伏'] = round(live, 2)
+            if fizz_tol > 0 and ok:
+                g['毛刺'] = round(fz, 1)
             if f is not None:
                 g['时长倍数'] = f
             log.append(g)
-            takes.append((x, s, rate, ok))
+            takes.append((x, s, rate, ok, live, fz))
             good = [t for t in takes if t[3]]
             if good and (k + 1 >= tries or (max(t[1] for t in good) >= cfg.get('够像就停', 0.82) and len(good) >= 2)):
                 break
         good = [t for t in takes if t[3]]
         if good:
-            x, s0, rate, _ = max(good, key=lambda t: t[1])
+            x, s0, rate, _, live, fz = pick_take(good, margin, fizz_tol)
         else:   # 一遍都不在范围里：挑快慢离目标最近的，下面再变速往回拉一点
-            x, s0, rate, _ = min(takes, key=lambda t: abs(t[2] - goal))
+            x, s0, rate, _, live, fz = min(takes, key=lambda t: abs(t[2] - goal))
             if abs(rate - goal) / goal > 0.35:
                 print('第%02d句 念不好（一秒 %.1f 字），跳过：%s' % (i, rate, text), flush=True)
                 continue
@@ -321,7 +447,7 @@ def worker(folder, only, tries_arg, engine):
         pauses = []
         if cfg.get('拉长停顿', True):
             x, pauses = stretch_pauses(x, sr, text, cfg.get('停顿', {}))
-        x = level(x, sr)
+        x = level(polish(defizz(x, sr, cfg.get('压毛刺', 0)), sr, cfg.get('美化'), d), sr)
         s1 = score(x)
         was = rec.get(str(i), {})
         if (os.path.exists(out) and was.get('字') == text and was.get('做法') == how and was.get('念的字', text) == said and was.get('像', 0) >= s1
@@ -332,6 +458,10 @@ def worker(folder, only, tries_arg, engine):
         rec[str(i)] = {'字': text, '念的字': said, '引擎': engine, '做法': how, '秒': round(len(x) / sr, 2), '字每秒': round(n / (len(x) / sr), 1),
                        '像': round(s1, 3), '原速像': round(s0, 3), '原速字每秒': round(rate, 1), '放慢到': round(k, 2),
                        '停顿': pauses, '几遍': log}
+        if margin > 0:
+            rec[str(i)]['起伏'] = round(live, 2)
+        if fizz_tol > 0 or cfg.get('压毛刺'):
+            rec[str(i)]['毛刺'] = {'挑中那遍': round(fz, 1), '成品': round(fizz(x, sr), 1)}
         json.dump(rec, open(rec_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
         print('第%02d句  %.1f 秒  一秒 %.1f 字  像 %.2f（挑中那遍 %.2f）  念了 %d 遍  %s' % (
             i, len(x) / sr, n / (len(x) / sr), s1, s0, len(log), text), flush=True)
@@ -339,7 +469,8 @@ def worker(folder, only, tries_arg, engine):
 
 def main():
     args = sys.argv[1:]
-    cfg = json.load(open(os.path.join(ROOT, '配音设置.json'), encoding='utf-8'))
+    pos = [a for a in args if not a.startswith('--')]
+    cfg = json.load(open(series_file(pos[0] if pos else '.', '配音设置.json'), encoding='utf-8'))
     engine = next((a.split('=', 1)[1] for a in args if a.startswith('--引擎=')), cfg.get('引擎', 'IndexTTS2.5'))
     if engine not in PY:
         raise SystemExit('不认识的引擎：%s（只有 %s）' % (engine, '、'.join(PY)))

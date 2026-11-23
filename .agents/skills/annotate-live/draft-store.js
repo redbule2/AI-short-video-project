@@ -15,7 +15,7 @@ const decode = buf => buf.toString('utf8');
 const mtime = st => Math.floor(st.mtimeMs);
 const pickEditor = (side, more = []) => Object.fromEntries([...EDITOR_FIELDS, ...more].filter(k => own(side, k)).map(k => [k, side[k]]));
 
-module.exports = function makeDraftStore({ ROOT, io = fs.promises, now = () => new Date(), RE_VP = require(path.join(__dirname, '..', '..', '..', '通用工具', '公用', '核心.js')).RE_VP }) {   // RE_VP：视频提示词的名字，和页面共用 公用/核心.js
+module.exports = function makeDraftStore({ ROOT, io = fs.promises, now = () => new Date(), RE_VP = require(path.join(__dirname, '..', '..', '..', '通用工具', '公用', '核心.js')).RE_VP, PF_FILE = '', frozen = async () => '' }) {   // RE_VP：视频提示词的名字，和页面共用 公用/核心.js；PF_FILE：先写提示词的段的自由稿（11-21），也走这里存；frozen(abs)：出过片的稿给拦下的话（11-22，filmed.js），正文、挂图不许改
   const pending = new Map();
   const keyOf = p => path.resolve(p).toLowerCase();
 
@@ -32,7 +32,7 @@ module.exports = function makeDraftStore({ ROOT, io = fs.promises, now = () => n
 
   function pathsFor(abs) {
     const parts = path.relative(ROOT, abs).split(path.sep);
-    if (parts.length !== 5 || parts[0] !== '项目' || !parts[1] || parts[2] !== '提示词' || !/^第[0-9]+(?:-[0-9]+)*段$/.test(parts[3]) || !RE_VP.test(parts[4])) {
+    if (parts.length !== 5 || parts[0] !== '项目' || !parts[1] || parts[2] !== '提示词' || !/^第[0-9]+(?:-[0-9]+)*段$/.test(parts[3]) || !(RE_VP.test(parts[4]) || (!!PF_FILE && parts[4] === PF_FILE))) {
       throw error(400, '草稿保存只支持 项目/项目名/提示词/第N段/ 里的视频提示词（照镜头号起名的 1-5.txt，照修改方案改出来的 1-5_改1.txt；老稿 视频提示词.txt、视频提示词_02.txt，老名字 4-6_补1.txt……）');
     }
     return { side: abs.replace(/\.txt$/i, '_写稿.json'), hist: path.join(ROOT, '项目', parts[1], '历史记录', ...parts.slice(2, -1)) };
@@ -95,6 +95,7 @@ module.exports = function makeDraftStore({ ROOT, io = fs.promises, now = () => n
       const merged = { ...current, ...body.sidePatch };
       const newText = Buffer.from(body.text), newSide = Buffer.from(JSON.stringify(merged, null, 2) + '\n');
       const textChanged = !oldText.equals(newText), sideChanged = oldSide === null || !oldSide.equals(newSide);
+      if (textChanged || !isDeepStrictEqual(current.挂图 || {}, merged.挂图 || {})) { const why = await frozen(abs); if (why) throw error(423, why); }   // 出过片的稿：出它的那一份字、那几张图不许动（11-22 他定：只能另存新的一版）
       if (!textChanged && !sideChanged) return { mtime: mtime(await io.stat(abs)), sideMtime: mtime(await io.stat(sidePath)), side: merged };
       let textTmp, sideTmp, textCommitted = false;
       try {

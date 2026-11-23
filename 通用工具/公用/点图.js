@@ -8,12 +8,13 @@
      它给 undefined 是不归它管，接着问 watch 给的；给 null 是归它管、可认不出，这处照旧是字。
    RefPic.scan()：认图的资料（参考素材映射、挂图）读好了、换了，再扫一遍整页。
    RefPic.show(图的地址或 Promise, 标题, 小字)：这一页没有自己的看大图，用这个：黑底、大图、标题；点一下或按 Esc 关。
+   RefPic.useViewer(fn)：这一页有自己摆图的地方，show 交给它 fn(图的地址或 Promise, 标题, 小字)（2026-11-22 写稿页：摆在稿子旁边，不盖住字，公用/写稿看图.js）。
    ============================================================ */
 'use strict';
 (function () {
   const RE = /@图片\s*([0-9]+)/g;
   const BASE_SKIP = 'textarea, input, select, option, script, style, svg, [contenteditable], .rl, .rf, .ref, .tk-ref, .rl-box, .fl-hov, [data-no-ref]';
-  let RES = null, SKIP = BASE_SKIP, MO = null, BOX = null;
+  let RES = null, SKIP = BASE_SKIP, MO = null, BOX = null, VIEW = null;
   const EXTRA = [];
   const on = () => !!RES || EXTRA.length > 0;
   function style() {
@@ -98,7 +99,9 @@
     if (BOX.url && BOX.own) URL.revokeObjectURL(BOX.url);
     BOX = null;
   }
+  function useViewer(fn) { VIEW = typeof fn === 'function' ? fn : null; }
   function show(src, title, sub) {
+    if (VIEW) return VIEW(src, title, sub);
     style(); close();
     const img = document.createElement('img'), cap = document.createElement('figcaption'), fig = document.createElement('figure'), el = document.createElement('div');
     img.alt = title || '';
@@ -117,5 +120,5 @@
       me.url = u; me.own = typeof src !== 'string' && /^blob:/.test(u); img.src = u;
     }).catch(err => { cap.append(document.createElement('br'), '打不开：' + (err && err.message || err)); });
   }
-  window.RefPic = { watch, also, scan, show, close };
+  window.RefPic = { watch, also, scan, show, close, useViewer };
 })();

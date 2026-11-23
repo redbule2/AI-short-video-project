@@ -167,16 +167,6 @@ test('几条提示词摆的先后（vpSort）：照原稿名排，4-6 在 4-6_�
   assert.deepEqual(['1_改6_后半条.txt', '1_改6_前半条.txt'].sort(Core.vpSort), ['1_改6_前半条.txt', '1_改6_后半条.txt']);
 });
 
-test('审片锁不锁（11-18：3-4 镜头1 改3 出了片，别的几条提示词待核对，审片整页锁住看不了）：有样片就能审', () => {
-  assert.equal(Core.reviewLock(5, 7, 'you'), '');   // 提示词待核对：不挡已经出好的样片
-  assert.equal(Core.reviewLock(5, 7, 'ai'), '');    // AI 在写提示词：也不挡
-  assert.equal(Core.reviewLock(5, 7, 'ok'), '');
-  assert.equal(Core.reviewLock(5, 0, 'ok'), '');    // 没样片、提示词都好了：照旧进得去（页面说「还没有样片」）
-  assert.equal(Core.reviewLock(5, 0, 'you'), 'stale');   // 没样片：照旧先回提示词那一步
-  assert.equal(Core.reviewLock(5, 0, 'ai'), 'ai');
-  assert.equal(Core.reviewLock(0, 3, 'you'), 'none');    // 还没有提示词：锁
-});
-
 test('剧本可以没有段头（11-16 晚：直接从正文写）：没写场景、人物不算毛病；写回去再读出来，正文、备注照旧', async () => {
   const doc = Core.newScriptDoc('1-1', '吃白食');
   doc.sections[1].blocks = [{ id: 'b0', text: '△ 老李端上一碗面。' }, { id: 'b1', text: '老李（小声）：吃吧。' }];
@@ -221,4 +211,17 @@ test('改名记录：记一回、接着改、改回去；旧名又有了新的�
   assert.deepEqual(Core.vpWas(m, '2-3.txt', cur), ['2-5.txt']);
   assert.deepEqual(Core.vpRenamed('乱写的', []), {});
   assert.equal(Core.vpNow(null, 'a.txt'), 'a.txt');
+});
+
+test('这一条的第几版叫什么（vpVerName，11-22 出过片的另存下一版用）：改几在前半条、后半条前面，补几的接在后面', () => {
+  const cases = [['11.txt', 1, '11_改1.txt'], ['11-13_改2.txt', 3, '11-13_改3.txt'], ['1_改6_前半条.txt', 9, '1_改9_前半条.txt'], ['1_前半条.txt', 2, '1_改2_前半条.txt'],
+    ['4-6_补1.txt', 1, '4-6_补1_改1.txt'], ['4-6_补1_改2.txt', 3, '4-6_补1_改3.txt'], ['视频提示词_02.txt', 1, '视频提示词_02_改1.txt'], ['11_改4.txt', 0, '11.txt']];
+  for (const [n, k, want] of cases) {
+    const got = Core.vpVerName(n, k);
+    assert.equal(got, want, n + ' ' + k);
+    assert.ok(Core.RE_VP.test(got), got);
+    assert.equal(Core.vpVer(got), k, got);
+    assert.equal(Core.vpBase(got), Core.vpBase(n), got);   // 还是同一条
+  }
+  assert.equal(Core.vpVerName('9.txt', 1), '9_改1.txt');   // 名字里有 .txt 以外的点也不乱换
 });

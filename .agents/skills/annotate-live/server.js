@@ -17,7 +17,7 @@ const ROOT = process.env.ANTOU_ROOT ? path.resolve(process.env.ANTOU_ROOT) : pat
 const TOOLS = process.env.ANTOU_TOOLS ? path.resolve(process.env.ANTOU_TOOLS) : path.join(ROOT, '通用工具');   // 页面放在这里；ANTOU_TOOLS：总文件夹用试验的、页面用正式的时候用
 const PAGE = process.env.ANTOU_PAGE || path.join(TOOLS, '项目管理.html');   // ANTOU_PAGE：试新版页面时用
 const PORT = Number(process.env.ANTOU_PORT) || 8766;
-const VERSION = 20;            // 20：交给 AI 写完（11-21 他定：没有 AI 铺底，人写好事件脚本，生成目标、分镜、素材这些 AI 一次写完；直接铺底、整理分镜并成「写完提示词」，pe-finish.js；新稿分镜一律先放分区）；19：写稿页分镜两种写法（合并、分区都留着，提示词里放挑中的那种；「AI 整理成分镜」「照X重写Y」两种任务，写稿资料记「镜头写法」；shot-styles.js）；18：批准出片时参考素材映射这一条照任务书写齐（正文指纹和 核对参考素材.py 同一算法），Codex 不再因登记对不上停下；17：写稿页「参考」（/api/prompts：各项目现在的、历史记录里的视频提示词，能按字找；prompt-lib.js）；16：认接力稿（一个镜头拆成前后两条出片：1_改6_前半条.txt、1_改8_后半条.txt，前半条、后半条各算一条，比整条稿新就不再摆整条稿；名字规则在 公用/核心.js）；15：照片子改剧本（对剧本写的批注带「改成」，项目自己照着改，剧本定稿照旧算数；写提示词时整镜删掉的，镜头表跟着删；script-check.js）；14：剧本「与AI继续沟通」（先和人商量，他说定稿才写回来；script-talk.js）；13：对剧本（定稿、审片批注和剧本对不上，自动写剧本批注；先 Codex 命令行，不行 DeepSeek 接口）；12：流水线不直接调 AI，一律给我提示词（11-15 他定）；11：用 AI 的地方都有两种（「AI 用」里选「给我提示词」，或者直接调；直接调 Claude、DeepSeek 开看得见的窗口，handoff.js）；10：资产页「从电脑里找」（/api/pc，pc-files.js）；9：自己交给 AI（任务复制出来贴进自己开的对话，回复写进 回复.md 或跑 reply 命令）；8：审片以后让 AI 出修改方案、照方案改（另存 _改N）；7：流水线「网盘」那一页（/api/wangpan/）；6：双模式草稿的冲突保护与正文/写稿记录联合保存；5：AI 任务
+const VERSION = 24;            // 24：出过片的「另存成改N」不再照抄，交给 AI 照审片批注改出新的一版（11-23 他定；照审片批注另存，review-fork.js），照抄另存的口子 POST /api/filmed 拿掉了；23：拿掉对剧本（11-22 他定：以后都先写提示词；script-check.js、/api/builtin-ai、顶栏「内置 AI」都删了），新加的段一律先写提示词；22：出过片的提示词不能改，只能另存新的一版（11-22 他定；/api/filmed，filmed.js：存稿、PUT、DELETE、交给 AI 写完拦下，按批注改另存成下一版）；21：先写提示词的段（11-21 他定：没有剧本，先写自由稿，AI 照它提炼分镜、照镜头表写完；prompt-first.js）；20：交给 AI 写完（11-21 他定：没有 AI 铺底，人写好事件脚本，生成目标、分镜、素材这些 AI 一次写完；直接铺底、整理分镜并成「写完提示词」，pe-finish.js；新稿分镜一律先放分区）；19：写稿页分镜两种写法（合并、分区都留着，提示词里放挑中的那种；「AI 整理成分镜」「照X重写Y」两种任务，写稿资料记「镜头写法」；shot-styles.js）；18：批准出片时参考素材映射这一条照任务书写齐（正文指纹和 核对参考素材.py 同一算法），Codex 不再因登记对不上停下；17：写稿页「参考」（/api/prompts：各项目现在的、历史记录里的视频提示词，能按字找；prompt-lib.js）；16：认接力稿（一个镜头拆成前后两条出片：1_改6_前半条.txt、1_改8_后半条.txt，前半条、后半条各算一条，比整条稿新就不再摆整条稿；名字规则在 公用/核心.js）；15：照片子改剧本（对剧本写的批注带「改成」，项目自己照着改，剧本定稿照旧算数；写提示词时整镜删掉的，镜头表跟着删；script-check.js）；14：剧本「与AI继续沟通」（先和人商量，他说定稿才写回来；script-talk.js）；13：对剧本（定稿、审片批注和剧本对不上，自动写剧本批注；先 Codex 命令行，不行 DeepSeek 接口）；12：流水线不直接调 AI，一律给我提示词（11-15 他定）；11：用 AI 的地方都有两种（「AI 用」里选「给我提示词」，或者直接调；直接调 Claude、DeepSeek 开看得见的窗口，handoff.js）；10：资产页「从电脑里找」（/api/pc，pc-files.js）；9：自己交给 AI（任务复制出来贴进自己开的对话，回复写进 回复.md 或跑 reply 命令）；8：审片以后让 AI 出修改方案、照方案改（另存 _改N）；7：流水线「网盘」那一页（/api/wangpan/）；6：双模式草稿的冲突保护与正文/写稿记录联合保存；5：AI 任务
 const STATIC = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png' };   // 通用工具 里只发这几种
 const ONLINE_MS = 15 * 60e3;   // 这么久之内 AI 来等过，就算它在
 const WAIT_MS = 4 * 60e3;      // 一次最多挂这么久，没有就让等的那头再来一次
@@ -33,8 +33,9 @@ const online = k => [...waiters].some(w => w.kinds.includes(k)) || Date.now() - 
 const log = (...a) => console.log(new Date().toLocaleTimeString('zh-CN', { hour12: false }), ...a);
 const httpErr = (status, msg) => Object.assign(new Error(msg), { status });
 const Core = require(path.join(TOOLS, '公用', '核心.js'));   // 视频提示词的名字（RE_VP）：和页面、jobs.js 共用一份
-const drafts = require('./draft-store.js')({ ROOT, RE_VP: Core.RE_VP });
-const jobs = require('./jobs.js')({ ROOT, TOOLS, log, withFileLocks: drafts.withLocks });   // AI 任务与页面共用文件锁
+const drafts = require('./draft-store.js')({ ROOT, RE_VP: Core.RE_VP, PF_FILE: Core.PF_FILE, frozen: abs => filmed.frozen(abs) });
+const filmed = require('./filmed.js')({ ROOT, TOOLS, log, live: () => jobs.liveJobs(), withLocks: drafts.withLocks });   // 出过片的提示词不能改，只能另存新的一版（11-22 他定）
+const jobs = require('./jobs.js')({ ROOT, TOOLS, log, withFileLocks: drafts.withLocks, filmed });   // AI 任务与页面共用文件锁
 const pc = require('./pc-files.js')({ ROOT, log, resolveParts, withLocks: drafts.withLocks });   // 资产页「从电脑里找」：整台电脑找图、复制进项目（11-14 加）
 const lib = require('./prompt-lib.js')({ ROOT, TOOLS, log });   // 写稿页「参考」：各项目现在的、历史记录里的视频提示词，挑一条摆在旁边（11-19 加）
 /* 流水线「网盘」那一页：项目文件夹在阿里云网盘上的那一份（通用工具\网盘同步\网盘管理.js）。没装好不碍别的 */
@@ -95,6 +96,8 @@ async function onFs(req, res, url) {
   if (req.method === 'PUT') {
     const buf = await readBody(req, 200 * 1024 * 1024);
     return drafts.withLocks([abs], async () => {
+      const why = await filmed.frozen(abs);   // 出过片的视频提示词：字一样的照存，改了的拦下（11-22）
+      if (why && !(await fsp.readFile(abs).catch(() => Buffer.alloc(0))).equals(buf)) throw httpErr(423, why);
       await fsp.mkdir(path.dirname(abs), { recursive: true });
       const tmp = abs + '.antou-tmp';   // 先写在旁边，写完再换上，原处不会留半截文件
       try {
@@ -136,6 +139,8 @@ async function onFs(req, res, url) {
       return json(res, { ok: true });
     }
     if (!st.isFile()) throw httpErr(400, '只删文件');
+    const why = await filmed.frozen(abs);   // 出过片的视频提示词不删（11-22）
+    if (why) throw httpErr(423, why);
     await fsp.unlink(abs);
     return json(res, { ok: true });
   }
@@ -189,9 +194,10 @@ async function handle(req, res) {
       if (url.pathname === '/api/ping') return json(res, { root: path.basename(ROOT), v: VERSION, abs: ROOT, draftSave: true, wangpan: !!wangpan });
       if (url.pathname === '/api/fs' || url.pathname.startsWith('/api/fs/')) return await onFs(req, res, url);
       if (url.pathname.startsWith('/api/ai')) return await onAi(req, res, url);
-      if (url.pathname === '/api/job' || url.pathname.startsWith('/api/job/') || url.pathname === '/api/jimeng' || url.pathname === '/api/builtin-ai') return await jobs.handle(req, res, url, { json, readBody, httpErr });
+      if (url.pathname === '/api/job' || url.pathname.startsWith('/api/job/') || url.pathname === '/api/jimeng') return await jobs.handle(req, res, url, { json, readBody, httpErr });
       if (url.pathname === '/api/pc') return await pc.handle(req, res, url, { json, readBody });
       if (url.pathname === '/api/prompts') return await lib.handle(req, res, url, { json });
+      if (url.pathname === '/api/filmed') return await filmed.handle(req, res, url, { json });
       if (url.pathname.startsWith('/api/wangpan/')) { if (!wangpan) throw httpErr(404, '网盘那一页没装上，看服务的输出'); return await wangpan.handle(req, res, url); }
       throw httpErr(404, '没有这个接口');
     }

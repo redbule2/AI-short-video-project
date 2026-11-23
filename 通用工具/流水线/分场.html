@@ -228,8 +228,10 @@ window.addEventListener('resize', pzPin);
 async function distill(s) {
   if (!AI.ok) { toast('本机服务是旧的，重开一次才能让 AI 提炼', 'err'); return; }
   const n = noteCount(s), note = segName(s.段) + '_提炼_批注.md';
-  if (hasParas(s) && !(await confirmDlg({ title: '让 AI 重新提炼', body: 'AI 照定稿的剧本，在现在的提炼上面改：剧本没变的照抄，改了的只改那几镜，镜头号留着（提示词、关键帧都认号）' + (n ? '；你写的批注一起交给 AI 照改' : '') + '。换之前流水线留一版在历史记录。', ok: '重新提炼' }))) return;
+  const pf = C.isPF(s);   // 先写提示词的段（11-21）：照自由稿
+  if (hasParas(s) && !(await confirmDlg({ title: '让 AI 重新提炼', body: (pf ? 'AI 照你写的自由稿，在现在的分镜上面改：没变的照抄' : 'AI 照定稿的剧本，在现在的提炼上面改：剧本没变的照抄') + '，改了的只改那几镜，镜头号留着（提示词、关键帧都认号）' + (n ? '；你写的批注一起交给 AI 照改' : '') + '。换之前流水线留一版在历史记录。', ok: '重新提炼' }))) return;
   if (s.定稿) { s.定稿 = ''; touch(); }
+  if (pf && scriptState(s).st !== 'final') { s.剧本定稿 = nowText(); touch(); }   // 提炼以后自由稿又改过：照现在这一版提炼
   await flush();   // AI 照流水线里现在的全片设定提炼，先存上
   if (F.err) return;
   if (n) {   // 还没交的批注存成一份，跟着交（11-18：原来重新提炼不带批注，并进来时批注被清掉了）
@@ -738,12 +740,13 @@ function pzPage(s, mode) {
     setTimeout(() => ta.focus(), 0);
     return [h('div', { class: 'fl-pop-h' }, '整体批注 · 第' + seg + '段'), h('div', { style: 'padding:0 14px 6px' }, ta), h('div', { class: 'fl-pop-f' }, h('button', { class: 'btn sm ink', type: 'button', onclick: close }, '写好了'))];
   });
-  const acts = edit && has ? [allBtn, h('button', { class: 'btn sm ghost', type: 'button', title: 'AI 照定稿的剧本重新提炼，出场的、镜头表换掉', onclick: () => distill(s) }, 'AI 重新提炼'), fixBtn, doneBtn]
+  const pf = C.isPF(s), src = pf ? '自由稿' : '定稿的剧本';   // 先写提示词的段（11-21）：照自由稿提炼
+  const acts = edit && has ? [allBtn, h('button', { class: 'btn sm ghost', type: 'button', title: 'AI 照' + src + '重新提炼：没变的照抄，改了的只改那几镜，号留着', onclick: () => distill(s) }, 'AI 重新提炼'), fixBtn, doneBtn]
     : edit ? [h('button', { class: 'btn sm ink', type: 'button', onclick: () => distill(s) }, '让 AI 提炼')]
     : mode === 'done' ? [h('button', { class: 'btn sm ghost', type: 'button', title: '回到能改、能写批注的样子', onclick: () => { s.定稿 = ''; touch(); swapCard(s); } }, '再改'),
-      h('button', { class: 'btn sm ink', type: 'button', onclick: () => go('资产', { s: seg }) }, '下一步：资产 →')] : [];
+      pf && paraState(s).edited ? null : h('button', { class: 'btn sm ink', type: 'button', onclick: () => go('资产', { s: seg }) }, '下一步：资产 →')].filter(Boolean) : [];   // 自由稿改过、还没核对：资产锁着，先照旧或重新提炼
   const state = mode === 'ai' ? h('span', { class: 'fs-state' }, 'AI 在做') : mode === 'done' ? h('span', { class: 'fs-state ok', title: '定下来的时间：' + s.定稿 }, icon('check'), '定了 ' + s.定稿.slice(5, 16))
-    : mode === 'lock' ? h('span', { class: 'fs-state' }, '剧本定稿以后再看要不要重新提炼') : h('span', { class: 'fs-state' }, has ? '还在改' : '还没提炼');
+    : mode === 'lock' ? h('span', { class: 'fs-state' }, pf ? '点了「提炼分镜」以后再看要不要重新提炼' : '剧本定稿以后再看要不要重新提炼') : h('span', { class: 'fs-state' }, has ? '还在改' : '还没提炼');
   const head = h('div', { class: 'pz-head' }, h('div', { class: 'fs-h' }, h('span', { class: 'fs-no' }, mode === 'lock' ? '现在的' : '第' + seg + '段'),
     h('div', { class: 'fs-title' }, mode === 'lock' ? '' : s.名.trim() || h('span', { class: 'faint' }, '没起名')), state, acts.length ? h('div', { class: 'pz-acts' }, acts) : null), tabs);
   function paintHead() {
@@ -771,8 +774,11 @@ function pzPage(s, mode) {
     pzPin();
   }
   const bad = edit ? (jobFailed('提炼', seg) || jobFailed('提炼按批注改', seg)) : null;
-  const under = mode === 'ai' && job ? h('div', { class: 'pz-under' }, jobLine(job), h('span', { class: 'fn-note' }, job.事 === '提炼' ? 'AI 照定稿的剧本在提炼，好了这里自动出现。' : 'AI 照你的批注在改，改好这里自动换上，改过的地方标红。'))
-    : edit && (bad || !has) ? h('div', { class: 'pz-under' }, bad, has ? null : h('span', { class: 'fn-note' }, '剧本定稿了。让 AI 照剧本提炼：全片梗概、这一段出场的人物场景道具（连描写）、这一段的镜头表。提炼好以后你可以直接改，也可以写批注交给 AI 改。'))
+  const under = mode === 'ai' && job ? h('div', { class: 'pz-under' }, jobLine(job), h('span', { class: 'fn-note' }, job.事 === '提炼' ? 'AI 照' + src + '在提炼，好了这里自动出现。' : 'AI 照你的批注在改，改好这里自动换上，改过的地方标红。'))
+    : pf && paraState(s).edited ? h('div', { class: 'pz-warn' }, '提炼以后自由稿又改过。看一眼：分镜还对得上，点「照旧」；对不上，点「重新提炼」：只动改到的镜头，号不变。',
+      h('div', null, h('button', { class: 'btn sm', type: 'button', title: '分镜不用改，照现在这一版自由稿算', onclick: () => { s.剧本定稿 = nowText(); if (s.定稿) s.定稿 = nowText(); touch(); swapCard(s); } }, '照旧'),
+        h('button', { class: 'btn sm ink', type: 'button', onclick: () => distill(s) }, '重新提炼')))   // 11-21 他定（丙 A）
+    : edit && (bad || !has) ? h('div', { class: 'pz-under' }, bad, has ? null : h('span', { class: 'fn-note' }, pf ? '自由稿写好了。让 AI 照它提炼：全片梗概、这一段出场的人物场景道具（连描写）、这一段的镜头表。提炼好以后你可以直接改，也可以写批注交给 AI 改。' : '剧本定稿了。让 AI 照剧本提炼：全片梗概、这一段出场的人物场景道具（连描写）、这一段的镜头表。提炼好以后你可以直接改，也可以写批注交给 AI 改。'))
     : mode === 'done' && paraStale(s) ? h('div', { class: 'pz-warn' }, '剧本后来重新定稿了，这些是照以前的剧本提炼的。看一眼：还对得上，点「照旧」；对不上，让 AI 照新剧本重新提炼。',
       h('div', null, h('button', { class: 'btn sm', type: 'button', title: '不用改，照旧定下来', onclick: () => { s.定稿 = nowText(); touch(); swapCard(s); } }, '照旧'),
         h('button', { class: 'btn sm ink', type: 'button', onclick: () => distill(s) }, '让 AI 照新剧本重新提炼'))) : null;
@@ -794,7 +800,9 @@ async function finalize(s) {
   if (!pickCount(s) && !(await confirmDlg({ title: '没选出场的', body: '这一段没有出场的人物、场景、道具，资产那一步就没东西可出。就这样定下来？', ok: '就这样定', cancel: '回去选' }))) { swapCard(s); return; }
   for (const x of s.段落) { delete x.AI改; delete x.批注; }   // 红批、批注到这里为止
   s.提炼改 = {}; s.提炼批 = {}; s.提炼总批 = '';
-  s.定稿 = nowText(); touch();
+  s.定稿 = nowText();
+  if (C.isPF(s) && scriptState(s).st !== 'final') s.剧本定稿 = s.定稿;   // 先写提示词的段：自由稿改过、看完直接定下来，也算核对过（11-21）
+  touch();
   OPEN.shot = null; OPEN.cast = '';
   await flush();
   if (!F.err) FS.write(at([F.name, '历史记录', '定稿的剧本', '流水线__' + stampNow() + '.json']), C.encodeText(F.text)).catch(() => {});   // 每定一场留一版
@@ -805,7 +813,8 @@ async function finalize(s) {
 
 /* 剧本还没定稿：先去写剧本。以前就有镜头表的（老项目、剧本定稿以后又改过），照旧摆出来看 */
 function lockView(s) {
-  return [h('div', { class: 'wf-lock' }, '剧本定稿以后，AI 照剧本提炼梗概、出场的人物场景道具和镜头表。先到「剧本」那一步写好剧本、点「剧本定稿」。', h('button', { class: 'btn ink', onclick: () => go('剧本', { s: s.段 }) }, '← 去写剧本')),
+  const pf = C.isPF(s);   // 先写提示词的段（11-21）
+  return [h('div', { class: 'wf-lock' }, pf ? '先写好自由稿、点「提炼分镜」，AI 照它提炼梗概、出场的人物场景道具和镜头表。' : '剧本定稿以后，AI 照剧本提炼梗概、出场的人物场景道具和镜头表。先到「剧本」那一步写好剧本、点「剧本定稿」。', h('button', { class: 'btn ink', onclick: () => go('剧本', { s: s.段 }) }, pf ? '← 去写自由稿' : '← 去写剧本')),
     hasParas(s) || pickCount(s) ? pzPage(s, 'lock') : null];
 }
 /* 「镜头 1、2、3、4、7 没写作用」缩成「镜头 1～4、7 没写作用」：十几段都没写时，那行小字别太长 */

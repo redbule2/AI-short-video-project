@@ -323,6 +323,25 @@ const sideData = () => ({ 写法: '分镜', 分镜稿: structured, 自由稿: '�
     assert.equal(t.raw(), PromptDraft.serialize(d));   // 只写了生成目标，别的照原样
     assert.match(r.结果, /^写好了：写了生成目标（都对得上），你写的镜头没动/);
   });
+  await check('交给 AI 写完（11-23）：对得上、一字没改的，回的【秒数】也记；没回秒数不动旧的；等 AI 的时候镜头又改过的不记', async () => {
+    const s = setupFin(), j = await booked(s);
+    await s.K.写完提示词.apply(j, finReply);
+    const edited = s.raw().replace('乙接过。', '乙双手接过。');   // 人照批注改了一镜，再交给 AI 写完
+    s.files.set(promptPath, Buffer.from(edited)); s.files.set(sidePath, Buffer.from(JSON.stringify({ ...s.side(), 分镜稿: edited })));
+    const sec = () => JSON.parse(s.files.get(mapPath).toString()).prompts['提示词/第1段/视频提示词.txt'].秒数;
+    assert.equal(Secs.state(sec(), edited).st, 'changed');
+    const j2 = await booked(s), r = await s.K.写完提示词.apply(j2, '【判断】\n对得上\n只改了镜头2\n【生成目标】\n无\n【秒数】\n镜头1：2\n镜头2：4');
+    assert.equal(s.raw(), edited);   // 稿子一字不动
+    assert.deepEqual(sec().镜头, { 1: 2, 2: 4 }); assert.equal(Secs.state(sec(), edited).st, 'fresh');   // 出片弹窗不再说「估完以后改过」
+    assert.equal(r.结果, '对得上，没改：只改了镜头2；每镜秒数估好了，共 6 秒');
+    const j3 = await booked(s), n = s.writes.length;
+    assert.equal((await s.K.写完提示词.apply(j3, '【判断】\n对得上\n都对得上')).结果, '对得上，没改：都对得上');   // 没回秒数：旧的照留，不多说
+    assert.equal(s.writes.length, n);
+    const j4 = await booked(s);
+    s.files.set(promptPath, Buffer.from(edited.replace('甲递书。', '甲把书递过去。')));   // 等 AI 的时候人又改了镜头
+    const r4 = await s.K.写完提示词.apply(j4, '【判断】\n对得上\n都对得上\n【秒数】\n镜头1：9\n镜头2：9');
+    assert.match(r4.结果, /秒数没记$/); assert.deepEqual(sec().镜头, { 1: 2, 2: 4 });
+  });
   await check('交给 AI 写完：回的不全、写稿资料坏了、关键帧句被改、等的时候人改了镜头，都不存；关键帧句只改了第几镜的照存', async () => {
     const s = setupFin(), j = await booked(s);
     await assert.rejects(s.K.写完提示词.apply(j, '【素材】\n无'), /AI 没写全（缺生成目标、基础设定、保持一致）/);

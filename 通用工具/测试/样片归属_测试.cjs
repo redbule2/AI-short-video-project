@@ -130,3 +130,60 @@ test('改过名的：旧名字出的样片照 was 认回来，出片记录写旧
   assert.deepEqual(C.madeOf(e, ['2-3_改1.mp4', '2-3.mp4', '1.mp4'], ls, {}), ['2-3_改1.mp4']);
   assert.deepEqual(C.namesOf(P('1.txt'), '1.txt'), ['1.txt']);   // 没改过名的只认自己
 });
+
+/* 2026-11-22 他定提示词和它出的样片一一绑定：删提示词，它出的样片一起进历史记录；审片弹窗只摆这一条的 */
+const DIR = ['11-12_改1.mp4', '11-12_改1_批注.md', '11-12_改1_批注截图', '11-13_改2.mp4', '11-13_改2_2.mp4', '11-13_改2_2_对照.jpg',
+  '11-13_改2_批注.md', '11-13_改2_批注截图', '11.mp4', '8-9_改2.mp4', '8-9_改2_后期补.mp4', '8-9_改2_后期补_批注.md', '第3-4段_第13条_镜头6-7_720p.mp4'];
+const L4 = [P('11-12.txt', '11-12_改1.txt', '11-12_改2.txt'), P('11-13.txt', '11-13_改1.txt', '11-13_改2.txt'), P('13b-15b.txt'), P('8-9.txt', '8-9_改1.txt', '8-9_改2.txt')];
+
+test('跟着样片的：批注、截图、后期补的片子算；同一版再出的第 2 条、别的版本、收进历史记录的旧一份不算', () => {
+  assert.deepEqual(C.kinOf('11-13_改2.mp4', [...DIR, '11-13_改2__20261122-101010.mp4', '11-13_改2_改1.mp4']), ['11-13_改2_批注.md', '11-13_改2_批注截图']);
+  assert.deepEqual(C.ownKin('11-13_改2_2.mp4', DIR), ['11-13_改2_2_对照.jpg']);
+  assert.deepEqual(C.kinOf('8-9_改2.mp4', DIR), ['8-9_改2_后期补.mp4', '8-9_改2_后期补_批注.md']);
+  assert.deepEqual(C.ownKin('8-9_改2.mp4', DIR), []);   // 后期补那条片子的批注跟着那条片子
+  assert.deepEqual(C.kinOf('11.mp4', DIR), []);   // 「11-12_……」不跟「11」
+});
+
+test('片子后来做的（后期补的）算它那一版的；老名字不算', () => {
+  assert.equal(C.kinCarries('8-9_改2_后期补.mp4', '8-9_改2.txt'), true);
+  assert.equal(C.kinCarries('8-9_改2_后期补.mp4', '8-9.txt'), false);
+  assert.equal(C.kinCarries('1_改12_前后接起来.mp4', '1.txt'), false);
+  assert.equal(C.kinCarries('11-13_改2_2.mp4', '11-13_改2.txt'), false);   // 再出的第 2 条照 clipTake 认
+  assert.equal(C.kinCarries('11-13_改2_2_后期.mp4', '11-13_改2.txt'), true);
+  assert.equal(C.kinCarries('8-9_改2__20261122-101010.mp4', '8-9_改2.txt'), false);
+  assert.equal(C.kinCarries('第3-4段_第13条_镜头6-7_720p.mp4', '镜头6-7.txt'), false);
+});
+
+test('这一版自己出的：只认名字，不照「只有一条提示词」猜', () => {
+  assert.deepEqual(C.ownOf(L4[1], '11-13_改2.txt', DIR), ['11-13_改2.mp4', '11-13_改2_2.mp4']);
+  assert.deepEqual(C.ownOf(L4[1], '11-13_改1.txt', DIR), []);
+  assert.deepEqual(C.ownOf(P('1.txt'), '1.txt', ['随便起的名字.mp4', '1.mp4', '1_批注.md']), ['1.mp4']);
+  const e = { key: '2-4.txt', name: '2-4_改1.txt', vers: ['2-4.txt', '2-4_改1.txt'], was: { '2-4_改1.txt': ['2-3_改1.txt'] } };
+  assert.deepEqual(C.ownOf(e, '2-4_改1.txt', ['2-3_改1.mp4', '2-4_改1_2.mp4', '2-4.mp4']), ['2-3_改1.mp4', '2-4_改1_2.mp4']);   // 改名以前的名字也认
+});
+
+test('审片弹窗摆的：这一条几版出的都摆，成片在前、新版在前；别的提示词的、删掉那一版的不摆', () => {
+  const olds = ['11-13.mp4', '11-13_批注.md', '11-13_改1.mp4', '11-13_改1__20261122-101010.mp4', '11-12_改1_2.mp4'];
+  const of = e => C.ofPrompt(e, L4, {}, DIR, olds, null).map(x => [x.vid, x.ver, x.old]);
+  assert.deepEqual(of(L4[1]), [['11-13_改2.mp4', '11-13_改2.txt', false], ['11-13_改2_2.mp4', '11-13_改2.txt', false],
+    ['11-13_改1.mp4', '11-13_改1.txt', true], ['11-13.mp4', '11-13.txt', true]]);
+  assert.deepEqual(of(L4[0]), [['11-12_改1.mp4', '11-12_改1.txt', false], ['11-12_改1_2.mp4', '11-12_改1.txt', true]]);
+  assert.deepEqual(of(L4[2]), []);
+  assert.deepEqual(of(L4[3]), [['8-9_改2.mp4', '8-9_改2.txt', false], ['8-9_改2_后期补.mp4', '8-9_改2.txt', false]]);
+  const one = P('1.txt', '1_改1.txt');   // 只有一条提示词：成片里认不出名字的也算它的（和「已出片」一样），历史记录里的只认名字
+  assert.deepEqual(C.ofPrompt(one, [one], {}, ['随便起的名字.mp4'], ['也是随便起的.mp4', '1.mp4'], null).map(x => [x.vid, x.ver, x.old]),
+    [['随便起的名字.mp4', '', false], ['1.mp4', '1.txt', true]]);
+  const sel = { '11-12.txt': '11.mp4' };   // 选定过的照选定的
+  assert.deepEqual(C.ofPrompt(L4[0], L4, sel, DIR, [], null).map(x => x.vid), ['11-12_改1.mp4', '11.mp4']);
+});
+
+test('删一版时样片跟着走：和提示词同一个时间，批注、截图、后期补的照新名字起', () => {
+  assert.deepEqual(C.retireAs(C.ownOf(L4[1], '11-13_改2.txt', DIR), DIR, '20261122-180000'), [
+    ['11-13_改2.mp4', '11-13_改2__20261122-180000.mp4'], ['11-13_改2_批注.md', '11-13_改2__20261122-180000_批注.md'],
+    ['11-13_改2_批注截图', '11-13_改2__20261122-180000_批注截图'], ['11-13_改2_2.mp4', '11-13_改2_2__20261122-180000.mp4'],
+    ['11-13_改2_2_对照.jpg', '11-13_改2_2__20261122-180000_对照.jpg']]);
+  assert.deepEqual(C.retireAs(C.ownOf(L4[3], '8-9_改2.txt', DIR), DIR, '20261122-180000'), [
+    ['8-9_改2.mp4', '8-9_改2__20261122-180000.mp4'], ['8-9_改2_后期补.mp4', '8-9_改2_后期补__20261122-180000.mp4'],
+    ['8-9_改2_后期补_批注.md', '8-9_改2_后期补__20261122-180000_批注.md']]);
+  assert.deepEqual(C.retireAs([], DIR, '20261122-180000'), []);
+});

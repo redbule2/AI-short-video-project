@@ -1141,6 +1141,7 @@ const RE_VP = new RegExp('(?:(?:^|_)视频提示词(?:_[0-9]+)?|^' + SHOT_CODE +
 const RE_VER = new RegExp('_改([0-9]+)((?:' + VP_HALF + ')?\\.txt)$', 'i');   // 改几：接力稿的在前半条、后半条前面
 const vpVer = name => +((RE_VER.exec(String(name)) || [])[1] || 0);   // 改的第几版；原稿是 0
 const vpBase = name => String(name).replace(RE_VER, '$2');   // 这一条的原稿名：1_改6_前半条.txt → 1_前半条.txt
+const vpVerName = (name, k) => { const b = vpBase(name); return k > 0 ? b.replace(new RegExp('((?:' + VP_HALF + ')?\\.txt)$', 'i'), '_改' + k + '$1') : b; };   // 这一条的第 k 版叫什么：11.txt、3 → 11_改3.txt；1_改6_前半条.txt、9 → 1_改9_前半条.txt；0 是原稿（出过片另存下一版用，11-22）
 const RE_HALF = new RegExp('(' + VP_HALF + ')(\\.txt)$', 'i');
 const vpHalf = name => { const m = RE_HALF.exec(String(name)); return m ? m[1].slice(1) : ''; };   // 接力稿是「前半条」还是「后半条」；不是接力稿给 ''
 const vpWhole = name => String(name).replace(RE_HALF, '$2');   // 去掉前半条、后半条：同一镜头的整条稿（1_改6_前半条.txt → 1_改6.txt）
@@ -1202,27 +1203,25 @@ function vpRenamed(map, pairs) {
   for (const k of Object.keys(m)) if (m[k] === k) delete m[k];
   return m;
 }
-/* 审片那一步锁不锁（11-18 他定：出好的样片随时能审）。n：这一场几条提示词；vids：几条样片；st：提示词那一步的状态（ok、ai AI 在写、you 待核对）。
-   有样片就不锁：提示词待核对、AI 在写都不挡，待核对标在那条样片上。没提示词锁（'none'）；没样片时提示词那一步没好也锁（'ai'、'stale'）。不锁给 '' */
-const reviewLock = (n, vids, st) => !n ? 'none' : vids || st === 'ok' ? '' : st === 'ai' ? 'ai' : 'stale';
 
-/* 剧本定稿了没有（服务、页面共用）：点过「剧本定稿」（fin），之后剧本没再动；或者之后只是照定稿的片子改过（back：那一回改完的时间，11-18 他定「照片子改剧本」不用重新定稿）。
+/* 剧本定稿了没有（服务、页面共用）：点过「剧本定稿」（fin），之后剧本没再动；或者之后只是照定稿的片子改过（back：那一回改完的时间，11-18 他定「照片子改剧本」不用重新定稿；11-22 随对剧本删了，老数据照认）。
    时间写成「2026-11-18 03:00:00」，剧本文件时间到毫秒：比的时候让一秒 */
+const textTime = v => { const n = Date.parse(String(v || '').trim().replace(' ', 'T')); return isNaN(n) ? 0 : n; };   // 「2026-11-18 03:00:00」→ 毫秒，认不出给 0
 function scriptFinal(fin, back, mtime) {
-  const t = v => { const n = Date.parse(String(v || '').trim().replace(' ', 'T')); return isNaN(n) ? 0 : n; };
-  const f = t(fin), b = t(back);
+  const f = textTime(fin), b = textTime(back);
   return !!f && (f + 999 >= mtime || (b >= f && b + 999 >= mtime));
 }
-/* 照片子改剧本以后，这一场跟着记（页面用，对剧本.js）：list 是对剧本记录，nos 是镜头表各镜的号。
-   最新一笔「照片子改剧本」改之前剧本是定稿的、比这一场记的「回填」新：记上「回填」，删掉的镜头从镜头表拿掉（号先写死，后面的不挪号）。改了给 true */
-function applyBack(s, list, nos) {
-  const t = v => { const n = Date.parse(String(v || '').trim().replace(' ', 'T')); return isNaN(n) ? 0 : n; };
-  const r = (Array.isArray(list) ? list : []).filter(x => x && x.事 === '照片子改剧本' && x.定稿照旧).pop();
-  if (!s || !r || t(r.时间) <= t(s.回填)) return false;
-  s.回填 = r.时间;
-  const gone = new Set((Array.isArray(r.删镜头) ? r.删镜头 : []).map(String));
-  if (gone.size && Array.isArray(s.段落)) { s.段落.forEach((x, i) => { if (x && nos && nos[i]) x.号 = nos[i]; }); s.段落 = s.段落.filter(x => !gone.has(String(x && x.号))); }
-  return true;
+/* 先写提示词的段（2026-11-21 他定，服务、页面共用）：没有剧本，人先在写稿页写一段自由模式的提示词，存成 提示词/第N段/自由稿.txt。
+   流水线.json 这一段记着「先写提示词: true」；「剧本定稿」记的是人点「提炼分镜」的时间，之后自由稿没再动就算数（和剧本定稿一个算法） */
+const PF_FILE = '自由稿.txt';
+const isPF = s => !!s && s.先写提示词 === true;
+/* 一个项目的段全是先写提示词的（总览的表头换成自由稿、提炼分镜、写完出片，11-21 他要）；一段都没有不算 */
+const pfAll = list => Array.isArray(list) && list.length > 0 && list.every(isPF);
+/* 先写提示词的段，自由稿走到哪了（页面用，11-21）。f：自由稿文件 { mtime, size }，没有给 null；fin：这一场的「剧本定稿」（点「提炼分镜」的时间）。
+   none 还没写：没有这个文件，或者建了还没写字（0 字节；不知道大小的照写了算）。final 提炼过、之后没再改；ok 写了还没提炼，again：提炼以后又改过 */
+function pfState(f, fin) {
+  if (!f || f.size === 0) return { st: 'none' };
+  return scriptFinal(fin, null, f.mtime || 0) ? { st: 'final' } : { st: 'ok', again: !!textTime(fin) };
 }
 
 /* ---------- 深拷贝 / 复制 ---------- */
@@ -1243,9 +1242,9 @@ const Core = {
   parsePrompt, serializePrompt, splitWithEol, joinLines, wrapPara, isBlank, edgeRange, ensureTrailingBlank, promptTemplate, promptSectionKey, promptShotTitle, renumberPromptShots, newPromptShot, PROMPT_SKELETON,
   lintPrompt, lintScript, lintShots, decodeText, hasBom, encodeText, cloneDoc,
   units, redline, diffChars, notesToMd, parseNotes,
-  nameOk, sceneStem, NO_IMG_KINDS, noImgList, noImg, setNoImg, noGeo, setNoGeo, SHOT_CODE, RE_VP, vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, vpFams, vpSort, RE_TASK, vpTask, taskVp, RE_CLIP, clipOld, clipTake, clipName, vpNow, vpWas, vpRenamed, reviewLock,
+  nameOk, sceneStem, NO_IMG_KINDS, noImgList, noImg, setNoImg, noGeo, setNoGeo, SHOT_CODE, RE_VP, vpVer, vpBase, vpVerName, vpNo, vpCode, vpLabel, vpTok, vpFams, vpSort, RE_TASK, vpTask, taskVp, RE_CLIP, clipOld, clipTake, clipName, vpNow, vpWas, vpRenamed,
 };
-Core.scriptFinal = scriptFinal; Core.applyBack = applyBack;
+Core.scriptFinal = scriptFinal; Core.PF_FILE = PF_FILE; Core.isPF = isPF; Core.pfAll = pfAll; Core.pfState = pfState;
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;
 G.Core = Core;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

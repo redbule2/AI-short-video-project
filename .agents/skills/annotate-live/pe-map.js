@@ -5,7 +5,8 @@
    11-15 定的照旧：不另存副本，技能更新了跟着变）。
    地图指的节在技能里找不到的（小标题改了、重名、地图写错），或者 sd25-pe 升级过、地图还没重核（地图里记的指纹对不上），
    都列进 missing：任务书里写明这回要通读整份，任务结果里也报一句。
-   测试：通用工具/测试/sd25-pe地图_测试.cjs（拿真的地图和真的 SKILL.md 查） */
+   测试：通用工具/测试/sd25-pe地图_测试.cjs（拿真的地图和真的 SKILL.md 查）
+   切节的办法也给 GEO 底稿用：贴进任务书时去掉给人核对的几节（geoForBook，测试：通用工具/测试/GEO底稿进任务书_测试.cjs） */
 
 const fs = require('fs');
 const path = require('path');
@@ -85,5 +86,19 @@ function check(skillText, md) {
   const ls = linesOf(skillText), hs = headsOf(ls);
   return parse(md).flatMap(r => r.节.filter(n => !rangeOf(ls, hs, n.t, n.开头)).map(n => r.块 + '：' + nameOf(n)));
 }
+/* 去掉小标题合 skip 的几节，连下面的小节（到下一个同级或更高一级的小标题之前）；一节没去就原样返回 */
+function dropSections(text, skip) {
+  const ls = linesOf(text), hs = headsOf(ls), cut = new Set();
+  hs.forEach((h, k) => {
+    if (!skip(h)) return;
+    const next = hs.slice(k + 1).find(x => x.lv <= h.lv);
+    for (let i = h.i; i < (next ? next.i : ls.length); i++) cut.add(i);
+  });
+  return cut.size ? ls.filter((_, i) => !cut.has(i)).join('\n') : text;
+}
+/* GEO 底稿贴进写提示词的任务书（jobs.js 的 geoPart）：给人核对的几节不贴（11-23 他定）。
+   「依据」「来源」列的是 Blender 工程、几何数据、旧脚本，写提示词用不上，AI 点进去白费工夫；标了「只给人看」「不喂给模型」的也不贴 */
+const GEO_HUMAN = /^(?:[一二三四五六七八九十]+、\s*)?(?:依据|来源)|只给人看|不喂给模型/;
+const geoForBook = text => dropSections(text, h => GEO_HUMAN.test(h.t));
 
-module.exports = { MAP_FILE, SKILL_FILE, OWN, WHEN, parse, pickRows, bookRef, check, printOf, checkedPrint };
+module.exports = { MAP_FILE, SKILL_FILE, OWN, WHEN, parse, pickRows, bookRef, check, printOf, checkedPrint, dropSections, geoForBook };

@@ -26,7 +26,7 @@ class MemoryFS {
   async rename(from, to) { if (this.hook) await this.hook('rename', from, to); const b = await this.readFile(from); this.put(to, b); this.files.delete(from); }
   async link(from, to) { if (this.files.has(to)) throw this.fail('EEXIST'); this.put(to, await this.readFile(from)); }
   async unlink(p) { if (!this.files.delete(p)) throw this.fail('ENOENT'); }
-  async stat(p) { if (!this.files.has(p)) throw this.fail('ENOENT'); return { mtimeMs: this.files.get(p).mtimeMs }; }
+  async stat(p) { if (!this.files.has(p)) throw this.fail('ENOENT'); return { mtimeMs: this.files.get(p).mtimeMs, isFile: () => true, isDirectory: () => false }; }
   async mkdir() {}
   text(p) { return this.files.get(p)?.buf.toString('utf8'); }
   side() { return JSON.parse(this.text(SIDE)); }
@@ -176,12 +176,12 @@ test('普通写入与草稿保存共享同一个路径锁', async () => {
   const result = await saving; assert.deepEqual(result.side.关键词, { 1: ['排队更新'] }); io.noTemps();
 });
 
-function routeFor(io) {
+function routeFor(io, frozen = async () => '') {   // frozen：出过片的稿给拦下的话（11-22，filmed.js），默认都没出过片
   const serverPath = path.join(ROOT, '.agents', 'skills', 'annotate-live', 'server.js');
   const src = fs.readFileSync(serverPath, 'utf8').split('const [cmd, arg] = process.argv.slice(2);')[0] + '\nmodule.exports = handle;';
   const context = { module: { exports: {} }, Buffer, URL, JSON, console: { log() {}, error() {} }, __dirname: path.dirname(serverPath),
     process: { env: { ANTOU_ROOT: ROOT, ANTOU_PORT: '18761' } },
-    require: name => name === 'fs' ? { promises: io } : name === './jobs.js' || name === './pc-files.js' || name === './prompt-lib.js' ? () => ({}) : name === './draft-store.js' ? opts => makeStore({ ...opts, io }) : require(name) };
+    require: name => name === 'fs' ? { promises: io } : name === './jobs.js' || name === './pc-files.js' || name === './prompt-lib.js' ? () => ({}) : name === './filmed.js' ? () => ({ frozen }) : name === './draft-store.js' ? opts => makeStore({ ...opts, io }) : require(name) };
   vm.runInNewContext(src, context, { filename: serverPath });
   return async (url, payload, headers = {}, method = 'POST') => {
     const req = Readable.from([Buffer.from(typeof payload === 'string' ? payload : JSON.stringify(payload))]);
@@ -207,4 +207,14 @@ test('HTTP 条件创建：已有文件 412，缺失文件原样写入，均无�
   assert.equal((await call(newApi, '新建\r\n', { 'if-none-match': '*' }, 'PUT')).status, 200);
   assert.equal(io.text(path.join(path.dirname(TARGET), '段落2_视频提示词.txt')), '新建\r\n');
   assert.equal([...io.files.keys()].some(p => p.endsWith('.antou-tmp')), false);
+});
+test('HTTP 出过片的稿（11-22）：PUT 改了字回 423、字一样照存，DELETE 回 423，草稿保存改字回 423；文件都不动', async () => {
+  const io = new MemoryFS(), call = routeFor(io, async abs => abs === TARGET ? '这一版出过片，原稿不能改' : ''), before = io.snapshot();
+  const put = await call(API, '改了', {}, 'PUT');
+  assert.equal(put.status, 423); assert.match(String(put.body), /出过片/);
+  assert.equal((await call(API, '', {}, 'DELETE')).status, 423);
+  assert.equal((await call(API + '?draft', body())).status, 423);
+  io.unchanged(before);
+  assert.equal((await call(API, '原文', {}, 'PUT')).status, 200);   // 字一样：照存
+  assert.equal(io.text(TARGET), '原文');
 });

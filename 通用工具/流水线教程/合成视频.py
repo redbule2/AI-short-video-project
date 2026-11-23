@@ -5,8 +5,10 @@
 课的文件夹里要有：
     解说词.txt   一行一句，配音照它念
     配音_NN.wav  每句一个（配音.py 出的），第 NN 句
-    画面.json    每句配什么画面、什么时候框哪里、点哪里（见下面 Scene 那几种）
-    框.json、截图_*.png   截图.js 出的
+    画面.json    每句配什么画面、什么时候框哪里、点哪里（见下面 Scene 那几种）；
+                 框的标签放哪「标位」：上（默认）、下、左、右；点在框里哪儿「点位」：[横, 竖] 比例，默认 [0.5, 0.55]；
+                 片头印章上的字「印」，默认「案」；「角标」（如「飞拓内训」）每一帧左下角都有，不写就没有
+    框.json、截图_*.png   截图.js（网页）或 截窗口.ps1（桌面软件）出的
 出：<课名>.mp4（课名是文件夹名），和合好的整条配音 配音.wav。
 """
 import glob
@@ -177,6 +179,36 @@ def label_img(text, size=30):
     return im
 
 
+def label_side(text, side='右', size=30):
+    """放在框旁边的标签：side='右' 尖朝左（标签在框右边），'左' 尖朝右（标签在框左边）。"""
+    f = font(size, True)
+    tw = int(f.getlength(text))
+    pad, hh = 16, size + 22
+    bw = tw + pad * 2
+    im = Image.new('RGBA', (bw + 12, hh), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    x0 = 12 if side == '右' else 0
+    d.rounded_rectangle([x0, 0, x0 + bw - 1, hh - 1], 10, fill=HL + (255,))
+    if side == '右':
+        d.polygon([(13, hh / 2 - 10), (13, hh / 2 + 10), (1, hh / 2)], fill=HL + (255,))
+    else:
+        d.polygon([(bw - 2, hh / 2 - 10), (bw - 2, hh / 2 + 10), (bw + 10, hh / 2)], fill=HL + (255,))
+    d.text((x0 + pad, 7), text, font=f, fill=(255, 255, 255, 255))
+    return im
+
+
+def badge_img(text, size=30):
+    """角标：红底白字的小牌子（如「飞拓内训」），放在画面左下角。"""
+    f = font(size, True)
+    tw = int(f.getlength(text))
+    pad, hh = 14, size + 18
+    im = Image.new('RGBA', (tw + pad * 2, hh), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle([0, 0, tw + pad * 2 - 1, hh - 1], 8, fill=SEAL + (255,))
+    d.text((pad, hh / 2), text, font=f, fill=(255, 255, 255, 255), anchor='lm')
+    return im
+
+
 # ---------------- 场景 ----------------
 class Lesson:
     def __init__(self, folder, trial=False):
@@ -191,6 +223,7 @@ class Lesson:
         self.plain = make_background(False)   # 片头、片尾用：没有窗口的影子
         self.wmask = rounded_mask(WW, WH, 16)
         self.cur = cursor_img()
+        self.badge = badge_img(self.plan['角标']) if self.plan.get('角标') else None
         self.cache = {}
         self.build_audio(trial)
         self.build_scenes()
@@ -270,7 +303,7 @@ class Lesson:
                 if act.get('清'):
                     cur['hl'].append((t, [], None, None))
                 if '点' in act:
-                    cur['click'].append((t, act['点']))
+                    cur['click'].append((t, act['点'], act.get('点位', [0.5, 0.55])))   # 点位：点在框里的哪儿（横、竖的比例），别挡住要看的字
                     self.add_click(t)
                 if '出' in act:
                     cur['ev'][str(act['出'])] = t
@@ -408,10 +441,17 @@ class Lesson:
                         li.paste(li2.crop((0, 0, li2.width, li2.height - 12)), (0, 12))
                         ImageDraw.Draw(li).polygon([(li.width // 2 - 10, 13), (li.width // 2 + 10, 13), (li.width // 2, 1)], fill=HL + (255,))
                         lx, ly = (r[0] + r[2]) / 2 - li.width / 2, r[3] + 4
+                    elif pos in ('右', '左'):   # 一排挨得很紧的（如模型列表），标在旁边，不压上下那几行
+                        li = label_side(lab, pos)
+                        lx = r[2] + 4 if pos == '右' else r[0] - li.width - 4
+                        ly = (r[1] + r[3]) / 2 - li.height / 2
                     else:
                         lx, ly = (r[0] + r[2]) / 2 - li.width / 2, r[1] - li.height - 2
                     lx = min(max(lx, 8), WW - li.width - 8)
-                    ly += (1 - la) * (8 if pos != '下' else -8)
+                    if pos in ('右', '左'):
+                        lx += (1 - la) * (8 if pos == '右' else -8)
+                    else:
+                        ly += (1 - la) * (8 if pos != '下' else -8)
                     if la < 1:
                         al = li.getchannel('A').point(lambda p: int(p * la))
                         li.putalpha(al)
@@ -423,9 +463,9 @@ class Lesson:
             if t >= first_t:
                 pos = None
                 prev_pt = None
-                for i, (tc, bn) in enumerate(cl):
+                for i, (tc, bn, fp) in enumerate(cl):
                     x, y, w, h = self.box(s['img'], bn)
-                    pt = (x + w * 0.5, y + h * 0.55)
+                    pt = (x + w * fp[0], y + h * fp[1])
                     if prev_pt is None:
                         prev_pt = (pt[0] + 150, pt[1] + 110)
                     if t <= tc:
@@ -437,10 +477,10 @@ class Lesson:
                 px, py = self.to_win(v, *pos)
                 fa = ease((t - first_t) / 0.25)
                 # 点下去的圈
-                for tc, bn in cl:
+                for tc, bn, fp in cl:
                     if 0 <= t - tc < 0.5:
                         x, y, w, h = self.box(s['img'], bn)
-                        cx, cy = self.to_win(v, x + w * 0.5, y + h * 0.55)
+                        cx, cy = self.to_win(v, x + w * fp[0], y + h * fp[1])
                         g = (t - tc) / 0.5
                         rad = 12 + 36 * g
                         ov = Image.new('RGBA', (WW, WH), (0, 0, 0, 0))
@@ -450,7 +490,7 @@ class Lesson:
                 if fa < 1:
                     c = c.copy()
                     c.putalpha(c.getchannel('A').point(lambda p: int(p * fa)))
-                press = any(0 <= t - tc < 0.12 for tc, _ in cl)
+                press = any(0 <= t - c_[0] < 0.12 for c_ in cl)
                 if press:
                     c = c.resize((int(c.width * 0.9), int(c.height * 0.9)))
                 win.paste(c, (int(px - 4), int(py - 4)), c)
@@ -563,7 +603,7 @@ class Lesson:
         dy = (1 - a) * 24
         # 印章
         d.rounded_rectangle([W / 2 - 46, 250 + dy, W / 2 + 46, 342 + dy], 14, fill=SEAL)
-        d.text((W / 2, 296 + dy), '案', font=font(58, True), fill=(255, 255, 255), anchor='mm')
+        d.text((W / 2, 296 + dy), plan.get('印', '案'), font=font(58, True), fill=(255, 255, 255), anchor='mm')
         d.text((W / 2, 420 + dy), plan.get('系列', '流水线教程') + '  ·  ' + plan['课'], font=font(40), fill=SUB, anchor='mm')
         d.text((W / 2, 530 + dy), plan['标题'], font=font(96, True), fill=INK, anchor='mm')
         d.line([W / 2 - 60, 620 + dy, W / 2 + 60, 620 + dy], fill=SEAL, width=4)
@@ -645,6 +685,9 @@ class Lesson:
                 col = tuple(int(BG[j] + (INK[j] - BG[j]) * al) for j in range(3))
                 d.text((W / 2, WY + WH + (H - WY - WH) / 2 + 2), txt, font=font(46, True), fill=col, anchor='mm')
                 break
+        # 角标：左下角，和窗口左边对齐、和字幕同一行高
+        if self.badge:
+            fr.paste(self.badge, (WX, int(WY + WH + (H - WY - WH) / 2 - self.badge.height / 2)), self.badge)
         # 收尾淡出
         if t > self.total - 0.5:
             fr = Image.blend(fr, self.plain, ease((t - (self.total - 0.5)) / 0.5))

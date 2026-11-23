@@ -246,7 +246,7 @@ test('场景图（11-17）：图名告诉 AI；标过了、场景图一镜都没
 test('流水线的页面：读 流水线.js 的都先读 公用/资产归类.js（不然并进 AI 提炼的会丢掉每一镜出场的）', () => {
   const dir = path.resolve(__dirname, '../流水线');
   const pages = fs.readdirSync(dir).filter(f => f.endsWith('.html')).map(f => [f, fs.readFileSync(path.join(dir, f), 'utf8')]).filter(([, t]) => t.includes('流水线.js"'));
-  assert.ok(pages.length >= 9);
+  assert.ok(pages.length >= 8);   // 11-22 审片那一页删了（审片改成提示词那一步的弹窗）
   for (const [f, t] of pages) {
     const at = t.indexOf('../公用/资产归类.js"');
     assert.ok(at >= 0 && at < t.indexOf('流水线.js"'), f + ' 没先读 公用/资产归类.js');

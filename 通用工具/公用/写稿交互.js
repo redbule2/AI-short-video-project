@@ -77,7 +77,7 @@ function modeControls() {   // 摆在左栏最上面（2026-11-15）；说明收
     h('button', { id: 'importStructured', class: 'mini-b', title: '把分镜模式里各镜的文字接到自由稿后面', onclick: () => { const ta = $('#freeText'); typeInto(ta, ta.value.length, ta.value.length, (ta.value ? '\n\n' : '') + PromptDraft.shotText(collect())); } }, '带入分镜文字'));
 }
 function renderFree() {
-  const wr = writer('free', 12, isPe() ? '在这里自由写这一条的戏：谁做什么、说什么，先后照剧本来，一大段也行。\n\n写好点上面「交给 AI 写完」：AI 拆成一镜一镜，生成目标、素材这些一起写好。' : '在这里自由写分镜……\n\n可以写一整段，也可以自己分行、分镜。\n素材、基础设定等统一使用上方的设置。', FREE);
+  const wr = writer('free', 12, window.FreeDraft && FreeDraft.is() ? FreeDraft.HINT : isPe() ? '在这里自由写这一条的戏：谁做什么、说什么，先后照剧本来，一大段也行。\n\n写好点上面「交给 AI 写完」：AI 拆成一镜一镜，生成目标、素材这些一起写好。' : '在这里自由写分镜……\n\n可以写一整段，也可以自己分行、分镜。\n素材、基础设定等统一使用上方的设置。', FREE);
   $('.wr-ta', wr).id = 'freeText';
   $('.wr-ta', wr).setAttribute('aria-label', '自由提示词');
   $('#shot-editor').replaceChildren(Zone.bar() || '', WHOLE ? h('div', { class: 'whole-note' }, '这份稿是整页写的老格式，认不出分区：这里照原样整页改，存的时候一字不添。') : '', h('div', { class: 'free-section' },
@@ -181,6 +181,7 @@ function reportConflict(message) {
   $('#canvas').prepend(box);
 }
 async function saveEditor() {
+  if (window.Filmed && Filmed.on()) return true;   // 出过片的锁着（公用/写稿出过片.js）：不存，也不挡着离开
   if (!READY || CONFLICT || RECOVERY_PENDING) return false;
   if (PULLING) { clearTimeout(ST); ST = setTimeout(save, 300); return false; }
   if (SAVE_PROMISE) { AGAIN = true; return SAVE_PROMISE; }
@@ -195,6 +196,7 @@ async function saveEditor() {
       try {
         const r = await fetch(api(PROMPT, '?draft'), { method: 'POST', headers: { ...HDR, 'Content-Type': 'application/json' }, body: JSON.stringify({ text, baseText: LASTTEXT, sidePatch: snapshot, baseEditor: BASE_EDITOR, archive: !ARCHIVED }) });
         if (r.status === 409) { reportConflict('检测到其他修改，当前草稿已保留'); ok = false; break; }
+        if (r.status === 423 && window.Filmed) { rememberDraft(); await Filmed.hit(await r.text()); ok = false; break; }   // 这一版刚出了片：锁上，字留在恢复草稿里
         if (!r.ok) throw new Error((await r.text()) || String(r.status));
         const result = await r.json();
         if (!result.side || typeof result.mtime !== 'number') throw new Error('服务尚未支持新的保存方式，请更新本机服务');

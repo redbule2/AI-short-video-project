@@ -410,5 +410,5 @@ module.exports = function makeCanvas({ HOME, JM, run, log, AP = require(path.res
     }
     return json(res, { 状态: job.状态, 进度: job.进度, 错误: job.错误 || '', 时间: job.时间, ...(job.结果 || {}) });
   }
-  return { handle, versions, plan };
+  return { handle, versions, plan, each };   // each：流水线自己出片（jm-video.js）几个名字一起查也用它
 };

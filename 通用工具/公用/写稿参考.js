@@ -5,6 +5,7 @@
      按字找（项目名、段、名字、正文，几个词空格隔开）。↑↓ 换一行，回车摆上，Esc 关。窄的时候范围摆成一排在上面。
    摆好以后（顶上的「参考」藏起来：换一条、拿掉都在参考自己的标题栏上，要按的只放一处）：
      宽的时候摆在稿子右边、窄的时候摆在下面（标题栏上换边；中间那条能拖宽窄）；「收起」只留标题栏。
+     摆在稿子旁边那一格（公用/写稿旁窗.js），和看图共用：点开看图，图先盖在参考上，收起图参考回来。
      头一排是它挂的素材（图出小图，视频、声音点了放）；字里的 @图片N 停上去出小图、点开看大图（照那一条自己的登记，认法在 公用/历史记录.js）。
      「跟着写」：光标到哪一块（生成目标、素材、基础设定、事件脚本……），参考就滚到它那一块、第几镜，那一块标「正在写这一块」。
      每一段停上去浮出「插入」（放到稿子里光标停的地方，Ctrl+Z 撤得回）、「复制」；选中参考里的几个字，浮出同样两个钮。
@@ -13,7 +14,7 @@
    字一个不改，只上色：镜头N 标出来，找的字标黄。
    记在这台电脑的浏览器里：这份稿参考的是哪一条（下回打开接着摆）、最近参考过的几条、挑的范围、摆在哪、多宽、跟不跟着写。
    只读别人的稿子，不改。各项目的提示词由本机服务列（/api/prompts，.agents\skills\annotate-live\prompt-lib.js）。
-   要先引 公用/核心.js、底座.js、界面.js、点图.js、找旧版.js、历史记录.js；样式在 公用/写稿参考.css。
+   要先引 公用/核心.js、底座.js、界面.js、点图.js、找旧版.js、历史记录.js、写稿旁窗.js；样式在 公用/写稿参考.css（摆在旁边那一格、标题栏在 写稿旁窗.css）。
    ============================================================ */
 (function () {
 'use strict';
@@ -25,14 +26,12 @@ const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else 
 const mineKey = () => KEY.mine + (typeof OPENPATH === 'string' && OPENPATH ? OPENPATH : decodeURIComponent(location.hash));
 const idOf = it => it.p + '/' + it.file;
 const stemOf = p => String(p).split('/').pop().replace(/\.[^.]+$/, '');
-const R = { cur: null, text: '', refs: [], doc: null, note: '', err: '', fold: false, maps: new Map(), target: null, dock: null, split: null, sel: null, menu: null, list: null, scroll: 0, fresh: false };
+const R = { cur: null, text: '', refs: [], doc: null, note: '', err: '', fold: false, maps: new Map(), target: null, dock: null, sel: null, menu: null, list: null, scroll: 0, fresh: false };
 const D = Object.assign({ mode: 'auto', side: 0.42, bottom: 0.42, follow: true }, lsGet(KEY.dock, {}));   // 摆在哪（auto 照宽窄定）、占多宽多高、跟不跟着写
 const saveDock = () => lsSet(KEY.dock, { mode: D.mode, side: D.side, bottom: D.bottom, follow: D.follow });
 
 /* ---------- 小东西：图标、项目的颜色点、时间 ---------- */
-const PATHS = Object.assign({}, UI.ICON || {}, {
-  dockR: '<rect x="2.5" y="3" width="11" height="10" rx="1.6"/><path d="M9.6 3v10"/>',
-  dockB: '<rect x="2.5" y="3" width="11" height="10" rx="1.6"/><path d="M2.5 9.4h11"/>',
+const PATHS = Object.assign({}, UI.ICON || {}, {   // 换边的 dockR、dockB 在 公用/界面.js
   fold: '<path d="M4.2 6.4 8 10.2l3.8-3.8"/>',
   unfold: '<path d="M4.2 9.6 8 5.8l3.8 3.8"/>',
   insert: '<path d="M12.6 3.4v4.4a2 2 0 0 1-2 2H3.8"/><path d="M6.4 6.9 3.8 9.8l2.6 2.8"/>',
@@ -283,39 +282,12 @@ function jump(key) {
   if (box) { body.scrollTo({ top: box.offsetTop, behavior: 'smooth' }); paintTabs(key); }
 }
 
-/* ---------- 摆在旁边 ---------- */
-const modeNow = () => D.mode !== 'auto' ? D.mode : R.split && R.split.clientWidth >= 880 ? 'side' : 'bottom';
-function layout() {
-  if (!R.split) return;
-  const m = modeNow(), on = !!R.dock;
-  R.split.classList.toggle('side', on && m === 'side'); R.split.classList.toggle('bottom', on && m === 'bottom'); R.split.classList.toggle('fold', on && R.fold);
-  R.split.style.setProperty('--rf-size', Math.round((m === 'side' ? D.side : D.bottom) * 1000) / 10 + '%');
-  const sw = R.dock && R.dock.querySelector('.rf-swap');
-  if (sw && sw.dataset.m !== m) { sw.dataset.m = m; sw.title = m === 'side' ? '摆到稿子下面' : '摆到稿子右边'; sw.replaceChildren(icon(m === 'side' ? 'dockB' : 'dockR')); }
+/* ---------- 摆在旁边：那一格（左右、上下、拖宽窄、换边）在 公用/写稿旁窗.js，和看图共用 ---------- */
+const DOCK = { st: D, save: saveDock, fold: () => R.fold,
+  onLayout: m => { if (R.dock) R.dock.classList.toggle('short', m === 'bottom' && !R.fold && R.dock.clientHeight < 360); } };   // 矮：素材缩小，多露几行字
+function paintBtn() {   // 摆着的时候换一条、拿掉都在参考的标题栏上：顶上这个先藏起来（看图盖着也算摆着）
   const btn = document.getElementById('refBtn');
-  if (btn) btn.classList.toggle('rf-hide', on);   // 摆着的时候换一条、拿掉都在参考的标题栏上：顶上这个先藏起来
-  if (R.dock) R.dock.classList.toggle('short', m === 'bottom' && !R.fold && R.dock.clientHeight < 360);   // 矮：素材缩小，多露几行字
-}
-function mount() {
-  const canvas = document.getElementById('canvas');
-  if (!canvas) return false;
-  if (!R.split) {
-    R.split = h('div', { class: 'rf-split' });
-    canvas.before(R.split); R.split.append(canvas);
-    new ResizeObserver(() => layout()).observe(R.split);
-  }
-  return true;
-}
-function grip() {
-  const g = h('div', { class: 'rf-grip', title: '拖动改宽窄', role: 'separator' });
-  g.addEventListener('pointerdown', ev => {
-    ev.preventDefault(); g.setPointerCapture(ev.pointerId);
-    const box = R.split.getBoundingClientRect(), m = modeNow();
-    const move = e => { D[m] = Math.min(0.72, Math.max(0.2, m === 'side' ? (box.right - e.clientX) / box.width : (box.bottom - e.clientY) / box.height)); layout(); };
-    const up = () => { g.removeEventListener('pointermove', move); g.removeEventListener('pointerup', up); saveDock(); };
-    g.addEventListener('pointermove', move); g.addEventListener('pointerup', up);
-  });
-  return g;
+  if (btn) btn.classList.toggle('rf-hide', !!R.dock);
 }
 const verName = v => v.old ? (v.when || v.name) + ' 的版本' : '现在用的';
 const verShort = v => v.old ? (v.when ? v.when.split(' ')[0] : '老') + ' 的版本' : '现在用的';   // 标题栏上挤：只写哪天
@@ -325,7 +297,7 @@ function versionsOf(it) {   // 摆着的这一条一共几版（现在用的在�
   return vs.some(v => idOf(v) === idOf(it)) ? vs : [];
 }
 function dockHead(it) {
-  const clips = it.clips || [], vs = versionsOf(it), m = modeNow();
+  const clips = it.clips || [], vs = versionsOf(it);
   return h('div', { class: 'rf-head' },
     h('div', { class: 'rf-id', title: it.p + ' / ' + it.file },
       h('span', { class: 'rf-badge' }, '参考'),
@@ -337,7 +309,7 @@ function dockHead(it) {
       clips.length ? h('button', { class: 'rf-chip clip', type: 'button', title: '它出过的样片：' + clips.map(c => stemOf(c.file)).join('、'), onmousedown: keepFocus, onclick: ev => clips.length === 1 ? play(it, clips[0]) : clipMenu(ev.currentTarget, it) }, icon('play'), '样片 ' + clips.length) : null,
       h('label', { class: 'rf-switch', title: '光标到哪一块，参考就滚到它那一块、第几镜' },
         h('input', { type: 'checkbox', checked: !!D.follow, onchange: ev => { D.follow = ev.target.checked; saveDock(); if (D.follow && R.target) follow(R.target.el); } }), h('i'), '跟着写'),
-      h('button', { class: 'rf-ib rf-swap', type: 'button', 'data-m': m, title: m === 'side' ? '摆到稿子下面' : '摆到稿子右边', onmousedown: keepFocus, onclick: () => { D.mode = modeNow() === 'side' ? 'bottom' : 'side'; saveDock(); layout(); } }, icon(m === 'side' ? 'dockB' : 'dockR'))),
+      SideDock.swapBtn('ref', D)),
     h('div', { class: 'rf-win' },
       h('button', { class: 'rf-mini', type: 'button', title: '挑别的一条参考', onclick: () => pick() }, '换一条'),
       ib(R.fold ? 'unfold' : 'fold', R.fold ? '展开' : '收起，只留标题栏', () => { R.fold = !R.fold; paintDock(); }),
@@ -347,7 +319,7 @@ const tip = () => h('div', { class: 'rf-tip' }, icon('insert'),
   h('span', null, '鼠标停在一段上，点「插入」放到稿子里光标停的地方，选中几个字也行。光标挪到哪一块，这边跟到哪一块。'),
   ib('x', '知道了', ev => { lsSet(KEY.hint, 1); ev.currentTarget.parentElement.remove(); }));
 function paintDock() {
-  if (!R.cur || !mount()) return;
+  if (!R.cur || !SideDock.ready()) return;
   const it = R.cur, secs = R.doc || [], old = R.dock && R.dock.querySelector('.rf-body');
   if (old && old.dataset.id === idOf(it)) R.scroll = old.scrollTop;
   const nav = secs.length > 1 ? hwheel(h('div', { class: 'rf-nav', role: 'tablist' }, secs.map(s => h('button', { class: 'rf-tab', type: 'button', role: 'tab', 'data-key': s.key, onmousedown: keepFocus, onclick: () => jump(s.key) }, s.name)))) : null;
@@ -362,9 +334,9 @@ function paintDock() {
   body.addEventListener('scroll', () => { hideSel(); hidePeek(); spy(body); }, { passive: true });
   const el = h('aside', { class: 'rf-dock' + (R.fresh ? ' rf-enter' : ''), id: 'rf-dock', 'aria-label': '参考的提示词' }, dockHead(it), R.fold ? null : [nav, body]);
   R.fresh = false;
-  if (R.dock) R.dock.replaceWith(el); else R.split.append(grip(), el);
   R.dock = el;
-  layout();
+  SideDock.put('ref', el, DOCK);   // 原来摆着的换掉（看图盖着的，还在看图底下）
+  paintBtn();
   if (!R.fold) {
     if (R.scroll) body.scrollTop = R.scroll;
     requestAnimationFrame(() => { if (nav) edges(nav); spy(body); const on = body.querySelector('.rf-on'); if (on) paintTabs(on.dataset.key); });
@@ -384,6 +356,7 @@ async function openDock(it, quiet) {
   lsSet(mineKey(), keep);
   lsSet(KEY.recent, [keep, ...lsGet(KEY.recent, []).filter(x => idOf(x) !== idOf(it))].slice(0, 8));
   paintDock();
+  if (!quiet) SideDock.raise('ref');   // 自己挑的这一条：看图盖着也翻到上面来
   if (!quiet && R.target) follow(R.target.el);
   if (!R.list) fetchList('').then(l => {   // 打开写稿页接着摆的：补上这一条有几版、样片换没换
     R.list = l; PCOL = null;
@@ -395,9 +368,9 @@ async function openDock(it, quiet) {
 }
 function closeDock(forget) {
   hideSel(); closeMenu(); hidePeek();
-  if (R.dock) { const g = R.dock.previousElementSibling; if (g && g.classList.contains('rf-grip')) g.remove(); R.dock.remove(); }
+  SideDock.drop('ref');
   R.dock = null; R.cur = null;
-  layout();
+  paintBtn();
   if (forget) lsSet(mineKey(), null);
 }
 

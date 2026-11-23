@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>先写提示词模式 · 流程图</title>
+<style>
+:root { --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --line: #d6cab6; --zhu: #a83a2c; --dai: #3e5c5e; --huang: #fff4c9; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.85 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif; }
+main { max-width: 780px; margin: 0 auto; padding: 32px 22px 120px; }
+h1 { margin: 0 0 4px; font: 600 26px/1.4 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .08em; }
+.sub { margin: 0 0 20px; font-size: 14.5px; color: var(--ink-2); }
+h2 { margin: 34px 0 10px; font: 600 19px/1.5 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .1em; }
+.fig { padding: 10px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); }
+.key { margin: 8px 4px 0; font-size: 13px; color: var(--ink-3); line-height: 2; }
+.key i { display: inline-block; width: 14px; height: 10px; margin: 0 4px 0 12px; border: 1px solid; border-radius: 3px; vertical-align: -1px; }
+.key i.pill { width: 22px; border-radius: 6px; }
+.key i.dash { width: 22px; height: 0; border: 0; border-top: 1.5px dashed var(--zhu); border-radius: 0; vertical-align: 3px; }
+svg { display: block; width: 100%; height: auto; }
+svg text { font-family: 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif; }
+.th { font-size: 14px; font-weight: 600; fill: var(--ink); }
+.ts { font-size: 12px; fill: var(--ink-2); }
+.tl { font-size: 12.5px; font-weight: 600; fill: var(--ink-2); }
+.tn { font-size: 11px; fill: var(--ink-3); }
+.tr { font-size: 11px; fill: var(--zhu); }
+.arr { stroke: var(--ink-3); stroke-width: 1.5; fill: none; }
+.back { stroke: var(--zhu); stroke-width: 1.2; fill: none; stroke-dasharray: 5 4; }
+.me rect { fill: #fdf3e3; stroke: #b9822f; } .me .th { fill: #6b4a12; } .me .ts { fill: #8a6420; }
+.ai rect { fill: #fbf8f1; stroke: var(--line); }
+.ok rect { fill: #e3efec; stroke: var(--dai); } .ok .th { fill: #24403f; }
+.tg text { font-size: 11.5px; font-weight: 600; }
+.tg.new rect { fill: #eef3fb; stroke: #5b7aa6; } .tg.new text { fill: #2c4466; }
+.tg.old rect { fill: #e3efec; stroke: var(--dai); } .tg.old text { fill: #24403f; }
+.tg.mod rect { fill: var(--huang); stroke: #b9822f; } .tg.mod text { fill: #6b4a12; }
+.card { margin: 12px 0; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+.card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 600; }
+.card h3 .no { display: inline-block; min-width: 1.7em; color: var(--dai); }
+.card p { margin: 3px 0; color: var(--ink-2); }
+.opts { margin: 8px 0 2px; }
+.opts label { display: block; margin: 5px 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opts label:hover { background: #faf5ea; }
+.opts input { margin-right: 8px; }
+.opts .rec { color: var(--dai); font-size: 13px; margin-left: 4px; }
+textarea { display: block; width: 100%; margin-top: 8px; min-height: 2.6em; padding: 7px 10px; border: 1px dashed #c8b99f; border-radius: 8px; background: #fffef9; font: 15px/1.7 'Noto Sans SC', 'Microsoft YaHei', sans-serif; color: var(--ink); resize: vertical; }
+textarea:focus { outline: none; border-style: solid; border-color: var(--dai); background: #fff; }
+textarea.has { border-style: solid; border-color: #b9822f; background: var(--huang); }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; background: rgba(255,253,249,.96); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; justify-content: center; font-size: 14px; }
+.bar button { padding: 6px 14px; border: 1px solid var(--dai); border-radius: 8px; background: #fff; color: var(--dai); font: inherit; cursor: pointer; }
+.bar button:hover { background: #eef5f3; }
+#st { color: var(--ink-2); }
+.foot { margin-top: 26px; font-size: 13px; color: var(--ink-3); }
+/* 两种模式并排 */
+.modes { padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); }
+.modes .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; font-size: 14px; }
+.modes .lab { width: 8.5em; color: var(--ink-3); font-size: 13px; }
+.modes .chip { padding: 2px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.modes .chip.new { background: #eef3fb; border-color: #5b7aa6; color: #2c4466; font-weight: 600; }
+.modes .chip.mod { background: var(--huang); border-color: #b9822f; color: #6b4a12; }
+.modes .to { color: #b0a698; }
+.modes .say { margin: 8px 0 0; font-size: 13.5px; color: var(--ink-2); }
+/* 举个例子：四格 */
+.eg4 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.eg4 > div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); font-size: 13.5px; line-height: 1.8; }
+.eg4 b { display: block; margin-bottom: 4px; font-size: 14.5px; }
+.eg4 b .n { color: var(--dai); margin-right: 4px; }
+.eg4 .free { padding: 6px 10px; border-radius: 8px; background: #fdf3e3; color: #4a3a22; }
+.eg4 .ln { padding: 1px 0; border-bottom: 1px dotted #e5dccd; }
+.eg4 .ln:last-child { border-bottom: 0; }
+.eg4 .s { color: var(--ink-3); font-size: 12.5px; }
+.eg4 .y { color: var(--dai); font-weight: 600; }
+.eg4 .x { color: var(--zhu); font-weight: 600; }
+.eg4 .w { color: #8a6420; font-weight: 600; }
+.eg4 .sec { color: var(--dai); }
+.eg4 .why { margin-top: 4px; color: var(--ink-3); font-size: 12.5px; }
+@media (max-width: 640px) { .eg4 { grid-template-columns: 1fr; } .modes .lab { width: 100%; } }
+</style>
+</head>
+<body>
+<main>
+<h1>先写提示词模式 · 流程图</h1>
+<p class="sub" id="sub"></p>
+
+<h2>一张图看完</h2>
+<div class="fig">
+<svg viewBox="0 0 740 900" role="img" aria-label="先写提示词模式流程图">
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#887e74" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<marker id="arrowr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#a83a2c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+</defs>
+
+<!-- 入口 -->
+<g class="ai">
+<rect x="190" y="14" width="360" height="48" rx="24"/>
+<text class="th" x="370" y="31" text-anchor="middle" dominant-baseline="central">添加剧本时选「先写提示词」</text>
+<text class="tn" x="370" y="50" text-anchor="middle" dominant-baseline="central">另一种照旧：先写剧本</text>
+</g>
+<g class="tg new"><rect x="606" y="27" width="76" height="22" rx="11"/><text x="644" y="38" text-anchor="middle" dominant-baseline="central">新</text></g>
+<line class="arr" x1="370" y1="62" x2="370" y2="84" marker-end="url(#arrow)"/>
+
+<!-- ① -->
+<g class="me">
+<rect x="150" y="86" width="440" height="60" rx="8"/>
+<text class="th" x="370" y="105" text-anchor="middle" dominant-baseline="central">① 你写一段提示词（自由模式）</text>
+<text class="ts" x="370" y="127" text-anchor="middle" dominant-baseline="central">一大段：谁、在哪、做什么。不分镜、不挂图、不管格式</text>
+</g>
+<g class="tg new"><rect x="606" y="105" width="76" height="22" rx="11"/><text x="644" y="116" text-anchor="middle" dominant-baseline="central">新</text></g>
+<line class="arr" x1="370" y1="146" x2="370" y2="170" marker-end="url(#arrow)"/>
+
+<!-- ② -->
+<g class="ai">
+<rect x="150" y="172" width="440" height="60" rx="8"/>
+<text class="th" x="370" y="191" text-anchor="middle" dominant-baseline="central">② AI 提炼分镜</text>
+<text class="ts" x="370" y="213" text-anchor="middle" dominant-baseline="central">镜头表（拍什么、作用、几秒）＋出场的人物、场景、道具</text>
+</g>
+<g class="tg mod"><rect x="606" y="191" width="76" height="22" rx="11"/><text x="644" y="202" text-anchor="middle" dominant-baseline="central">改一点</text></g>
+<line class="arr" x1="370" y1="232" x2="370" y2="256" marker-end="url(#arrow)"/>
+<g class="me">
+<rect x="150" y="258" width="440" height="50" rx="8"/>
+<text class="th" x="370" y="275" text-anchor="middle" dominant-baseline="central">你改、批注，点「定下来」</text>
+<text class="ts" x="370" y="295" text-anchor="middle" dominant-baseline="central">顺手挑拍摄风格，也能以后再定</text>
+</g>
+<g class="tg old"><rect x="606" y="272" width="76" height="22" rx="11"/><text x="644" y="283" text-anchor="middle" dominant-baseline="central">现成</text></g>
+<line class="arr" x1="370" y1="308" x2="370" y2="342" marker-end="url(#arrow)"/>
+
+<!-- ③④ 资产这一页 -->
+<rect x="40" y="356" width="660" height="234" rx="12" fill="none" stroke="#887e74" stroke-dasharray="5 5"/>
+<rect x="250" y="344" width="240" height="24" rx="12" fill="#fffdf9" stroke="#887e74"/>
+<text class="tl" x="370" y="356" text-anchor="middle" dominant-baseline="central">资产这一页 · 现成</text>
+<line class="arr" x1="370" y1="368" x2="370" y2="384" marker-end="url(#arrow)"/>
+<g class="ai">
+<rect x="150" y="386" width="440" height="56" rx="8"/>
+<text class="th" x="370" y="404" text-anchor="middle" dominant-baseline="central">③ 找资产：照出场的名单找已有的图</text>
+<text class="ts" x="370" y="424" text-anchor="middle" dominant-baseline="central">资产文件夹、即梦画布、删掉的旧图；同名的自动挂上</text>
+</g>
+<path class="arr" d="M370 442 L370 456 L200 456 L200 486" marker-end="url(#arrow)"/>
+<path class="arr" d="M370 456 L540 456 L540 486" marker-end="url(#arrow)"/>
+<text class="tn" x="210" y="472" dominant-baseline="central">找到了</text>
+<text class="tn" x="550" y="472" dominant-baseline="central">没找到</text>
+<g class="me">
+<rect x="70" y="488" width="260" height="56" rx="8"/>
+<text class="th" x="200" y="506" text-anchor="middle" dominant-baseline="central">你点「确认可用」</text>
+<text class="ts" x="200" y="526" text-anchor="middle" dominant-baseline="central">确认过的图，别的段不用再确认</text>
+</g>
+<g class="ai">
+<rect x="410" y="488" width="260" height="56" rx="8"/>
+<text class="th" x="540" y="506" text-anchor="middle" dominant-baseline="central">④ 补资产（每样三选一）</text>
+<text class="ts" x="540" y="526" text-anchor="middle" dominant-baseline="central">AI 出图 · 只用文字 · 从电脑里找</text>
+</g>
+<line class="arr" x1="410" y1="516" x2="333" y2="516" marker-end="url(#arrow)"/>
+<text class="tn" x="370" y="506" text-anchor="middle" dominant-baseline="central">出好图</text>
+<path class="arr" d="M200 544 L200 566 L370 566 L370 612" marker-end="url(#arrow)"/>
+<path class="arr" d="M540 544 L540 566 L370 566"/>
+<text class="tn" x="548" y="578" dominant-baseline="central">只用文字的直接往下</text>
+
+<!-- ⑤ -->
+<g class="ai">
+<rect x="150" y="614" width="440" height="60" rx="8"/>
+<text class="th" x="370" y="633" text-anchor="middle" dominant-baseline="central">⑤ AI 写完提示词</text>
+<text class="ts" x="370" y="655" text-anchor="middle" dominant-baseline="central">照定下来的分镜和图，写成正式稿；你那段原话留着</text>
+</g>
+<g class="tg mod"><rect x="606" y="633" width="76" height="22" rx="11"/><text x="644" y="644" text-anchor="middle" dominant-baseline="central">改一点</text></g>
+<line class="arr" x1="370" y1="674" x2="370" y2="698" marker-end="url(#arrow)"/>
+<g class="me">
+<rect x="150" y="700" width="440" height="50" rx="8"/>
+<text class="th" x="370" y="717" text-anchor="middle" dominant-baseline="central">你看一眼，点「批准出片」</text>
+<text class="ts" x="370" y="737" text-anchor="middle" dominant-baseline="central">一段太长，勾镜头分几条（和现在一样）</text>
+</g>
+<g class="tg old"><rect x="606" y="714" width="76" height="22" rx="11"/><text x="644" y="725" text-anchor="middle" dominant-baseline="central">现成</text></g>
+<line class="arr" x1="370" y1="750" x2="370" y2="774" marker-end="url(#arrow)"/>
+
+<!-- ⑥ -->
+<g class="me">
+<rect x="150" y="776" width="440" height="56" rx="8"/>
+<text class="th" x="370" y="794" text-anchor="middle" dominant-baseline="central">⑥ 审片：这一条上点「审片」弹出来</text>
+<text class="ts" x="370" y="814" text-anchor="middle" dominant-baseline="central">只看这一条出的片、写批注；满意的留着，不满意回头改</text>
+</g>
+<g class="tg old"><rect x="606" y="793" width="76" height="22" rx="11"/><text x="644" y="804" text-anchor="middle" dominant-baseline="central">现成</text></g>
+<line class="arr" x1="370" y1="832" x2="370" y2="852" marker-end="url(#arrow)"/>
+<g class="ok">
+<rect x="290" y="854" width="160" height="32" rx="16"/>
+<text class="th" x="370" y="870" text-anchor="middle" dominant-baseline="central">这一段完成</text>
+</g>
+
+<!-- 回头改：红虚线 -->
+<path class="back" d="M150 804 H22 V116 H147" marker-end="url(#arrowr)"/>
+<path class="back" d="M22 283 H147" marker-end="url(#arrowr)"/>
+<path class="back" d="M22 414 H147" marker-end="url(#arrowr)"/>
+<path class="back" d="M22 644 H147" marker-end="url(#arrowr)"/>
+<text class="tr" x="86" y="106" text-anchor="middle" dominant-baseline="central">戏不对：改那段字</text>
+<text class="tr" x="86" y="273" text-anchor="middle" dominant-baseline="central">分镜不对</text>
+<text class="tr" x="94" y="404" text-anchor="middle" dominant-baseline="central">图不对</text>
+<text class="tr" x="86" y="634" text-anchor="middle" dominant-baseline="central">写法不对</text>
+<text class="tr" x="86" y="794" text-anchor="middle" dominant-baseline="central">不满意</text>
+</svg>
+<p class="key"><i style="background:#fdf3e3;border-color:#b9822f"></i>你来做　<i style="background:#fbf8f1;border-color:#d6cab6"></i>AI 做　<i class="pill" style="background:#eef3fb;border-color:#5b7aa6"></i>新做的　<i class="pill" style="background:#fff4c9;border-color:#b9822f"></i>现成的，改一点　<i class="pill" style="background:#e3efec;border-color:#3e5c5e"></i>现成的　<i class="dash"></i>不满意时回到哪一步，你定</p>
+</div>
+
+<template id="fig-eg">
+<div class="eg4">
+<div><b><span class="n">①</span>你写的那段字</b>
+<div class="free">夜里，城中村的面摊。老周把一碗热面推到小男孩面前。男孩先凑上去闻了闻，抬头冲老周笑。巷口一辆电动车开过，车灯扫过两人的脸。老周低头擦桌子，嘴角也笑了。</div>
+<div class="why">就这么一段，不分镜、不挂图。</div></div>
+<div><b><span class="n">②</span>AI 提炼出的分镜</b>
+<div class="ln">镜1　老周把面推到男孩面前　<span class="s">交代 · 3 秒</span></div>
+<div class="ln">镜2　男孩闻面，抬头笑　<span class="s">铺垫 · 3 秒</span></div>
+<div class="ln">镜3　电动车开过，车灯扫过两人　<span class="s">转折 · 2 秒</span></div>
+<div class="ln">镜4　老周擦桌子，嘴角笑了　<span class="s">收尾 · 3 秒</span></div>
+<div class="why">只拆你写的，不加戏。你改好点「定下来」。</div></div>
+<div><b><span class="n">③④</span>出场的 · 找图、补图</b>
+<div class="ln">人物　老周　<span class="y">✓ 找到了</span></div>
+<div class="ln">人物　小男孩　<span class="x">✗ 没有</span> → AI 出图</div>
+<div class="ln">场景　城中村面摊　<span class="y">✓ 找到了</span></div>
+<div class="ln">道具　一碗面、电动车　<span class="w">✎ 只用文字</span></div>
+<div class="why">面和电动车各只出现一镜，不用出图。</div></div>
+<div><b><span class="n">⑤</span>AI 写完的正式稿</b>
+<div class="ln"><span class="sec">【生成目标】</span>一句话</div>
+<div class="ln"><span class="sec">【人物】</span>老周、小男孩挂图</div>
+<div class="ln"><span class="sec">【场景】</span>面摊挂图　<span class="sec">【道具】</span>面、电动车写字</div>
+<div class="ln"><span class="sec">【动作与声音】</span>机位、声音照你写的</div>
+<div class="ln"><span class="sec">【事件脚本】</span>镜头1～4，一镜一镜</div>
+<div class="why">合计 11 秒，批准出片时自动填上。</div></div>
+</div>
+</template>
+
+<template id="fig-cmp">
+<div class="modes">
+<div class="row"><span class="lab">现在 · 先写剧本</span><span class="chip">剧本</span><span class="to">→</span><span class="chip">提炼</span><span class="to">→</span><span class="chip">资产</span><span class="to">→</span><span class="chip">提示词</span></div>
+<div class="row"><span class="lab">新的 · 先写提示词</span><span class="chip new">自由稿</span><span class="to">→</span><span class="chip mod">提炼分镜</span><span class="to">→</span><span class="chip">资产</span><span class="to">→</span><span class="chip mod">写完出片</span></div>
+<p class="say">还是四步，审片在最后一步里（11-22 起每条提示词上点「审片」弹出来）。不一样的就三处：第一步写提示词，不写剧本（新）；提炼读你那段字（改一点）；第四步不从头写，照分镜把你那段字写完（改一点）。资产、审片照旧。</p>
+</div>
+</template>
+
+<div id="sections"></div>
+<h2>别的意见</h2>
+<div class="card"><textarea data-k="其他" placeholder="上面没说到的，写在这里（可以不写）"></textarea></div>
+<p class="foot" id="foot"></p>
+</main>
+<div class="bar"><span id="st">在每一块下面的虚线框里写批注，自动存。</span><button id="copy">复制批注</button></div>
+<script>
+/* ===== 内容（改内容只改这一块；怎么摆、怎么存批注在 公用/说明页.js） ===== */
+const ROUND = 1;
+const SUB = '不写剧本。你先写一大段提示词，AI 从里面拆出分镜，再照分镜找图、补图，最后写成正式稿出片。后面几步都用现成的页面。11-21 已照你批的（甲乙丙都选 A）做进流水线，本机服务重开以后能用。';
+const FOOT = '2026-11-21 Claude 照流水线现在的样子拟的。和 11-14 那版「先写提示词」不一样：那版最后要 AI 倒推出剧本、你再定稿；这一版没有剧本，分镜定下来就算数。11-22 审片不再单独一页，改成每条提示词上的弹窗，图里 ⑥ 和步骤条照改了。';
+const SECTIONS = [
+  { h: '每一步做什么', cards: [
+    { id: 's1', no: '①', t: '你写一段提示词', p: [
+      '添加剧本时选「先写提示词」，直接进写稿页的自由模式。',
+      '写一大段：谁、在哪、做什么、看到什么、听到什么。想怎么拍，也可以写进去。',
+      '不用分镜，不用挂图，不用管格式。用到已有的人，写他的名字就行。',
+      '写好点「提炼分镜」。' ] },
+    { id: 's2', no: '②', t: 'AI 提炼分镜，你定下来', p: [
+      'AI 读你这段字，拆出三样：镜头表（一镜一行：拍什么、作用、几秒），出场的人物、场景、道具，一两句梗概。',
+      '只拆不加戏：先后照你写的，你没写的事不加。长相你没写，AI 补一句，标红给你看。',
+      '你在提炼页直接改，或写批注交给 AI 改（和现在一样）。满意了点「定下来」。' ] },
+    { id: 's3', no: '③', t: '找资产', p: [
+      '定下来以后，资产页照出场的名单找已有的图：资产文件夹、即梦画布、删掉的旧图。',
+      '名字一样的自动挂上。你看一眼，点「确认可用」。' ] },
+    { id: 's4', no: '④', t: '补资产', p: [
+      '没找到的，每样你挑一条路：AI 出图（先写字，你看过再出图）；只用文字（只出现一两镜的）；从电脑里找（别处有现成的图）。',
+      '和现在的资产页一样。' ] },
+    { id: 's5', no: '⑤', t: 'AI 写完提示词，你批准出片', p: [
+      '回写稿页点「交给 AI 写完」：AI 照定下来的分镜、挂好的图，把你那段字写成正式稿，估好每镜秒数。你那段原话留着。',
+      '分镜照镜头表拆，不重新拆。你写的机位、声音、原话，照搬进正式稿。',
+      '图没齐也能写：没图的先用文字，图到了标「待核对」，点一下补上（和现在一样）。',
+      '你看一眼，点「批准出片」。' ] },
+    { id: 's6', no: '⑥', t: '审片', p: [
+      '在「写完出片」那一步，每条提示词上点「审片」弹出来：只摆这一条出的片，换不到别的提示词。看片、写批注，「复制批注」贴给你的 AI 商量。',
+      '满意的片留在成片里；不要的点「这条不要了」，移进历史记录。不满意，回哪一步你定：戏不对改那段字，分镜不对改镜头表，图不对换图，写法不对改正式稿。' ] },
+  ] },
+  { h: '举个例子', note: '瞎编的，不是哪个项目的稿。', fig: 'fig-eg' },
+  { h: '和现在的「先写剧本」比', fig: 'fig-cmp' },
+  { h: '要你定的', cards: [
+    { id: 'd1', no: '甲', t: '在哪选这个模式', p: [
+      '同一部片子，有的段你心里已经有画面，直接写提示词快；有的段戏多，先写剧本稳。' ],
+      opts: [ { v: 'A', t: '每一段自己选：添加剧本时选「先写剧本」或「先写提示词」', rec: true }, { v: 'B', t: '一个项目只用一种' } ] },
+    { id: 'd2', no: '乙', t: '什么时候能出资产图', p: [
+      '现在的规矩是剧本定稿才出图。新模式没有剧本，要换一个关口。' ],
+      opts: [ { v: 'A', t: '分镜「定下来」就能出：出场的人物、场景、道具这时就定了', rec: true }, { v: 'B', t: '正式稿写完、你看过再出' } ] },
+    { id: 'd3', no: '丙', t: '定下来以后又改了那段字，分镜怎么办', p: [
+      '分镜你可能手改过，自动重拆会冲掉你改的。' ],
+      opts: [ { v: 'A', t: '分镜标「待核对」，你点「照旧」或「重新提炼」；重新提炼只动改到的镜头，号不变', rec: true }, { v: 'B', t: '改了字就自动重新提炼' } ] },
+  ] },
+  { h: '跟着要改的', note: '11-21 都已照改。', cards: [
+    { id: 'c1', no: '1', t: '流水线页面', p: [
+      '添加剧本多一个选项。这种段的步骤条：自由稿 → 提炼分镜 → 资产 → 写完出片（11-22 起审片在这一步弹出来），没有剧本那一页。',
+      '写稿页：第一步只摆一个大框和「提炼分镜」；第四步「交给 AI 写完」照镜头表拆。' ] },
+    { id: 'c2', no: '2', t: '交给 AI 的话（要重开 8766）', p: [
+      '提炼：读你那段字，不读剧本；人物表里有的人，换个叫法也认成同一个。',
+      '写完：照定下来的镜头表拆分镜，不自己重拆；机位、声音从你那段字里搬。' ] },
+    { id: 'c3', no: '3', t: '规矩（你点头了再改）', p: [
+      'AGENTS.md 两条加一句例外：「剧本定稿才出资产图」「定稿的剧本要有剧本和镜头表」，先写提示词的段以分镜定下来为准。',
+      '你那段字存成 提示词\\第N段\\自由稿.txt；正式稿照旧用镜头号起名，如 1-4.txt。' ] },
+    { id: 'c4', no: '4', t: '工序图', p: [
+      '项目\\工序图.html 加一条「先写提示词」的路。' ] },
+  ] },
+];
+window.DOC = { 名: '先写提示词模式_流程图', 题: '先写提示词模式流程图', 存: 'antou:prompt-first', 轮: ROUND, 副题: SUB, 脚注: FOOT, 段: SECTIONS };
+</script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="../公用/说明页.js"></script>
+</body>
+</html>

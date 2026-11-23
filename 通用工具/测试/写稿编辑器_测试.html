@@ -536,7 +536,7 @@ async function run() {
       const row = doc.querySelector('#as-list .used-row');
       assert(row && row.textContent.includes('老李_候选') && row.textContent.includes('还没确认可用'), '挂上没确认的图没标出来：' + (row ? row.textContent : '没有「已引用」'));
     });
-    await check('资产页签「关键帧」：图片在前、白模视频单独成块按镜头号排，别的视频、音频在「人物道具」；点封面开大窗播放，左右键翻、Esc 关；点图放大、再点缩回', async () => {
+    await check('资产页签「关键帧」：图片在前、白模视频单独成块按镜头号排，别的视频、音频在「人物道具」；点开摆在稿子旁边（不盖字）播放，左右键翻、Esc 收，正在写字时按键归字；点图放大、再点缩回；× 收起', async () => {
       reset();
       const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
       const mp4 = new Uint8Array([0, 0, 0, 24, 102, 116, 121, 112, 109, 112, 52, 50]), mp3 = new Uint8Array([73, 68, 51, 3, 0, 0, 0, 0]);
@@ -544,8 +544,9 @@ async function run() {
       add('关键帧/第1段/镜头10-12_白模.mp4', mp4, 'video/mp4'); add('关键帧/第1段/镜头1-5_白模.mp4', mp4, 'video/mp4'); add('关键帧/第1段/镜头1_首帧.png', png, 'image/png');
       add('人物和道具/跑步测试.mp4', mp4, 'video/mp4'); add('人物和道具/老李_音色.mp3', mp3, 'audio/mpeg'); add('人物和道具/大刀.png', png, 'image/png');
       await openEditor(); evalIn('document.body.classList.remove("norail"); showRail("assets")');
-      const doc = frame.contentDocument, win = frame.contentWindow, key = k => doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: k, bubbles: true }));
+      const doc = frame.contentDocument, win = frame.contentWindow, key = (k, on) => (on || doc).dispatchEvent(new win.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
       const tab = k => doc.querySelector('#as-tabs [data-tab="' + k + '"]'), heads = () => [...doc.querySelectorAll('#as-list .as-h > span')].map(n => n.textContent);
+      const head = () => (doc.querySelector('.vw .rf-head') || {}).textContent || '';
       await waitFor(() => tab('人物道具'), '资产页签没有分类的小页签');
       assert(!tab('场景'), '没有场景图时不该摆「场景」页签');
       tab('人物道具').click();
@@ -553,23 +554,31 @@ async function run() {
       assert(equal(heads(), ['图片', '视频', '人物音色']), '「人物道具」的块顺序不对：' + heads().join('、'));
       assert(equal([...doc.querySelectorAll('#as-list .vc .vc-n')].map(n => n.textContent), ['跑步测试']) && !doc.querySelector('#as-list .as-grid .av-row'), '别的视频、音频没有单独成块');
       doc.querySelector('#as-list .av-row').click();
-      await waitFor(() => doc.querySelector('.lb audio[src^="blob:"]'), '点音频行没有开出试听');
+      await waitFor(() => doc.querySelector('.vw audio[src^="blob:"]'), '点音频行没有开出试听');
       key('Escape');
+      assert(!doc.querySelector('.vw'), 'Esc 没有收起试听');
       tab('关键帧').click();
       await waitFor(() => doc.querySelectorAll('#as-list .vc').length === 2, '「关键帧」没有列出两张白模视频卡');
       assert(equal(heads(), ['图片', '白模视频']), '「关键帧」的块顺序不对：' + heads().join('、'));
       assert(equal([...doc.querySelectorAll('#as-list .vc .vc-n')].map(n => n.textContent), ['镜头1-5_白模', '镜头10-12_白模']), '白模视频没有按镜头号排');
       assert(doc.querySelector('#as-list .as-grid.wide') && ![...doc.querySelectorAll('#as-list .as-grid .as-t')].some(n => /\.mp4|白模/.test(n.textContent)), '关键帧的图该是两列宽图，也不该混进视频');
       doc.querySelector('#as-list .vc .vc-pic').click();
-      await waitFor(() => doc.querySelector('.lb video[src^="blob:"]'), '点封面没有开出播放大窗');
-      assert(doc.querySelector('.lb-title').textContent.includes('镜头1-5_白模') && doc.querySelector('.lb-title').textContent.includes('1 / 2'), '大窗标题不对：' + doc.querySelector('.lb-title').textContent);
-      assert([...doc.querySelectorAll('.lb [data-rate]')].map(b => b.textContent).join(',') === '0.5×,1×,2×', '大窗没有播放速度按钮');
+      await waitFor(() => doc.querySelector('.vw video[src^="blob:"]'), '点封面没有在稿子旁边放出来');
+      const c = doc.querySelector('#canvas').getBoundingClientRect(), v = doc.querySelector('.vw').getBoundingClientRect();
+      assert(v.width > 0 && v.height > 0 && (v.left >= c.right - 1 || v.top >= c.bottom - 1), '看图盖住了稿子：稿子 ' + [c.left, c.top, c.right, c.bottom].map(Math.round) + '，看图 ' + [v.left, v.top, v.right, v.bottom].map(Math.round));
+      assert(head().includes('镜头1-5_白模') && head().includes('1 / 2'), '看图的标题不对：' + head());
+      assert([...doc.querySelectorAll('.vw [data-rate]')].map(b => b.textContent).join(',') === '0.5×,1×,2×', '看视频没有播放速度按钮');
+      const ta = [...doc.querySelectorAll('#sheet .wr-ta')].find(t => t.offsetParent); win.focus(); ta.focus();
+      assert(doc.activeElement === ta, '没能把光标放进文字框');
+      key('ArrowRight', ta); key('Escape', ta);
+      assert(doc.querySelector('.vw') && head().includes('1 / 2'), '光标在字里时，左右键、Esc 该归字，不该翻图、收起');
+      ta.blur();
       key('ArrowRight');
-      await waitFor(() => doc.querySelector('.lb-title').textContent.includes('2 / 2') && doc.querySelector('.lb video[src^="blob:"]'), '右键没有翻到下一个视频');
+      await waitFor(() => head().includes('2 / 2') && doc.querySelector('.vw video[src^="blob:"]'), '右键没有翻到下一个视频');
       key('ArrowLeft');
-      await waitFor(() => doc.querySelector('.lb-title').textContent.includes('1 / 2'), '左键没有翻回来');
+      await waitFor(() => head().includes('1 / 2'), '左键没有翻回来');
       key('Escape');
-      assert(!doc.querySelector('.lb') && evalIn('LB') === null, 'Esc 没有关掉大窗');
+      assert(!doc.querySelector('.vw') && evalIn('WriteView.isOpen()') === false, 'Esc 没有收起看图');
       doc.querySelector('#as-list .vc .mini-b[title^="放在右栏"]').click();
       await waitFor(() => doc.querySelector('#pin video[src^="blob:"]'), '钉住视频后右栏最上面没有播放器');
       assert(!doc.querySelector('#pin').hidden && evalIn('PIN.name') === '镜头1-5_白模', '钉住的不是点的那一个');
@@ -579,13 +588,13 @@ async function run() {
       assert(doc.querySelector('#pin').hidden && evalIn('PIN') === null && !doc.querySelector('#pin video'), '取消钉住没有收掉播放器');
       const tile = [...doc.querySelectorAll('#as-list .as-t img')].find(n => n.alt === '镜头1_首帧');
       assert(tile, '这一段的图没有列在「关键帧」里'); tile.click();
-      await waitFor(() => doc.querySelector('.lb img[src^="blob:"]'), '点图没有开出大图');
-      doc.querySelector('.lb-stage img').click();
-      assert(doc.querySelector('.lb-stage').classList.contains('zoom'), '点图没有放到原尺寸');
-      doc.querySelector('.lb-stage img').click();
-      assert(!doc.querySelector('.lb-stage').classList.contains('zoom'), '再点图没有缩回');
-      doc.querySelector('.lb').click();
-      assert(!doc.querySelector('.lb'), '点黑底没有关掉大窗');
+      await waitFor(() => doc.querySelector('.vw img[src^="blob:"]'), '点图没有在稿子旁边开出大图');
+      doc.querySelector('.vw-stage img').click();
+      assert(doc.querySelector('.vw-stage').classList.contains('zoom'), '点图没有放到原尺寸');
+      doc.querySelector('.vw-stage img').click();
+      assert(!doc.querySelector('.vw-stage').classList.contains('zoom'), '再点图没有缩回');
+      doc.querySelector('.vw .rf-win .x').click();
+      assert(!doc.querySelector('.vw') && doc.querySelector('.rf-split').className === 'rf-split', '× 没有收起看图');
       assert(!requestLog.some(line => line.startsWith('POST ') || line.startsWith('PUT ')), '看资产不该写任何文件');
     });
     await check('资产页签「关键帧」：只摆这一条拍的镜头绑的（只认流水线里的关键帧绑定、不看文件名），别的搜得到；图上标绑在哪一镜，一张没绑的镜头说一句', async () => {
@@ -755,6 +764,30 @@ async function run() {
       assert(zbox(0, '切点').value === '门把手刚一动就切。' && zbox(0, '机位/景别/角度').value === '中景，平视。', '照改没改在切点那一栏');
       clickText(note(), '撤回');
       assert(zbox(0, '切点').value === '门把手一动时切。', '撤回没找回切点那一栏');
+    });
+    await check('AI 批注全稿找（11-22）：位置写错了也找得到；AI 写的几区（「声音包括」那一行、保持一致）也能照改、撤回；全稿都没有才说改过了', async () => {
+      reset(); put(pePath, peText);
+      const item = (no, where, find, to) => ['', '## ' + no, '- 位置：' + where, '- 级别：要改', '- 类别：写法', '- 原文：' + find, '- 批注：第' + no + '条。', '- 原因：试验。', '- 改成：' + to];
+      put(pePath.replace(/\.txt$/, '_AI批注.md'), ['总评：试四条。', ...item(1, '镜头2', '声音包括脚步声、钟声。', '声音包括沉重的脚步声、钟声。'),
+        ...item(2, '镜头1', '门外来人，屋里的老李抬头。', '门外来了邻居，屋里的老李抬头。'), ...item(3, '保持一致', '老李穿灰布衫。', '老李穿灰布衫，袖口挽起。'),
+        ...item(4, '镜头1', '这句稿子里没有。', '随便。'), ''].join('\n'));
+      await openEditor(peSource);
+      const doc = frame.contentDocument, note = id => doc.querySelector('.ainote[data-id="' + id + '"]');
+      await waitFor(() => doc.querySelectorAll('.ainote').length === 4, '四条批注没摆出来');
+      assert(note('1').closest('.p-shot') === cardAt(1) && note('1').textContent.includes('这句在「基础设定」里') && !note('1').textContent.includes('改过了'), '「声音包括」那条（位置写成镜头2）没挂在镜头2、没说在基础设定里，或者还说改过了');
+      assert(note('2').closest('.p-shot') === cardAt(0) && note('2').textContent.includes('这句在「生成目标」里'), '生成目标里的那条（位置写成镜头1）没说在哪');
+      assert(note('3').closest('[data-sec="keep"]') && [...note('3').querySelectorAll('button')].some(b => b.textContent === '照改'), '保持一致那条没挂在保持一致，或者没有照改');
+      assert(note('4').textContent.includes('这句原文你已经改过了') && ![...note('4').querySelectorAll('button')].some(b => b.textContent === '照改'), '全稿都没有的没说改过了');
+      for (const id of ['1', '2', '3']) clickText(note(id), '照改');
+      await saveNow();
+      const changed = peText.replace('声音包括脚步声、钟声。', '声音包括沉重的脚步声、钟声。').replace('门外来人，屋里的老李抬头。', '门外来了邻居，屋里的老李抬头。').replace('老李穿灰布衫。', '老李穿灰布衫，袖口挽起。');
+      assert(textAt(pePath) === changed, '照改存进去的字不对：\n' + textAt(pePath));
+      assert(evalIn('NOTES.filter(n => n.state === "done").length') === 3 && note('1').textContent.includes('已照改'), '照改以后没标已照改');
+      for (const id of ['1', '3', '2']) clickText(note(id), '撤回');
+      await saveNow();
+      assert(textAt(pePath) === peText, '撤回没回到原样：\n' + textAt(pePath));
+      note('1').querySelector('.an-say').click();
+      assert(!doc.querySelector('[data-sec="basic"]').hidden, '点卡片没跳到基础设定');
     });
     await check('合并写的老稿照一镜一段摆、不记写法；新稿还没镜头的一律先用分区（11-21），别的条拨成合并的不跟着，记下来', async () => {
       reset();

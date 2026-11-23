@@ -1,19 +1,7 @@
-/* 写稿页 · 参考：挑一条别的视频提示词摆在稿子旁边边写边看（公用/写稿参考.js）。配色照写稿页：青＝你、选中；金＝历史记录；靛＝样片 */
+/* 写稿页 · 参考：挑一条别的视频提示词摆在稿子旁边边写边看（公用/写稿参考.js）。配色照写稿页：青＝你、选中；金＝历史记录；靛＝样片。摆在旁边那一格、标题栏、小钮和看图共用，在 写稿旁窗.css */
 .rf-hide { display: none !important; }
-.rf-ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .rf-dot { flex: none; display: inline-block; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255, 255, 255, .7); }
 @keyframes rfin { from { opacity: 0; } }
-
-/* 小按钮 */
-.rf-mini { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--sheet); cursor: pointer; font: 12px/1 var(--sans); color: var(--ink-2); white-space: nowrap; transition: background .12s, border-color .12s, color .12s; }
-.rf-mini:hover { border-color: var(--ink-4); background: var(--paper); color: var(--ink); }
-.rf-mini.ink { border-color: var(--qing-line); color: var(--qing); }
-.rf-mini.ink:hover { background: var(--qing-soft); }
-.rf-mini .rf-ic { width: 13px; height: 13px; }
-.rf-ib { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 7px; background: none; cursor: pointer; color: var(--ink-3); transition: background .12s, color .12s; }
-.rf-ib:hover { background: rgba(40, 36, 30, .07); color: var(--ink); }
-.rf-ib .rf-ic { width: 15px; height: 15px; }
-.rf-ib.x:hover { background: var(--zhu-soft); color: var(--zhu); }
 .rf-chip { flex: none; display: inline-flex; align-items: center; gap: 5px; max-width: 220px; height: 26px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--sheet); cursor: pointer; font: 12px/1 var(--sans); color: var(--ink-2); white-space: nowrap; transition: background .12s, border-color .12s; }
 .rf-chip span { overflow: hidden; text-overflow: ellipsis; }
 .rf-chip:hover { border-color: var(--ink-4); background: var(--paper); color: var(--ink); }
@@ -23,43 +11,6 @@
 .rf-chip.clip:hover { background: rgba(74, 83, 166, .14); }
 .rf-chip.clip .rf-ic { fill: currentColor; stroke: none; }
 .rf-chip.still { cursor: default; }
-
-/* 摆在旁边：稿子和参考分一左一右（宽）或一上一下（窄） */
-.rf-split { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-.rf-split > .canvas { flex: 1 1 auto; min-width: 0; min-height: 0; }
-.rf-split.side { flex-direction: row; }
-.rf-split.side > .rf-dock { flex: 0 0 var(--rf-size, 42%); min-width: 320px; max-width: 72%; border-left: 1px solid var(--line); }
-.rf-split.bottom > .rf-dock { flex: 0 0 var(--rf-size, 42%); min-height: 170px; max-height: 72%; border-top: 1px solid var(--line); }
-.rf-split.fold { flex-direction: column; }
-.rf-split.fold > .rf-dock { flex: none; min-width: 0; min-height: 0; max-width: none; border-left: 0; border-top: 1px solid var(--line); box-shadow: 0 -6px 18px -12px rgba(30, 26, 20, .25); }
-.rf-split.fold > .rf-grip { display: none; }
-.rf-grip { flex: none; position: relative; z-index: 2; background: var(--paper-2); transition: background .15s; touch-action: none; }
-.rf-split.side > .rf-grip { width: 6px; cursor: col-resize; }
-.rf-split.bottom > .rf-grip { height: 6px; cursor: row-resize; }
-.rf-grip:hover, .rf-grip:active { background: var(--qing-line); }
-.rf-split.side > .rf-grip::after, .rf-split.bottom > .rf-grip::after { content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 2px; background: var(--ink-4); }
-.rf-split.side > .rf-grip::after { width: 2px; height: 28px; }
-.rf-split.bottom > .rf-grip::after { width: 28px; height: 2px; }
-
-.rf-dock { container: rfdock / inline-size; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #fbfaf7; }
-.rf-dock.rf-enter { animation: rf-in-r .22s ease-out; }
-.rf-split.bottom > .rf-dock.rf-enter, .rf-split.fold > .rf-dock.rf-enter { animation-name: rf-in-up; }
-@keyframes rf-in-r { from { opacity: 0; transform: translateX(14px); } }
-@keyframes rf-in-up { from { opacity: 0; transform: translateY(14px); } }
-
-/* 标题栏：窄的时候两行（谁、几个钮），宽的时候一行 */
-.rf-head { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "id win" "tools tools"; align-items: center; gap: 6px 8px; padding: 8px 8px 8px 12px; background: var(--sheet); border-bottom: 1px solid var(--line); }
-@container rfdock (min-width: 540px) { .rf-head { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "id tools win"; } }
-.rf-split.fold .rf-head { grid-template-areas: "id win"; border-bottom: 0; }
-.rf-id { grid-area: id; display: flex; align-items: center; gap: 9px; min-width: 0; }
-.rf-badge { flex: none; display: inline-grid; place-items: center; height: 22px; padding: 0 8px; border-radius: 6px; background: var(--qing); color: #fff; font: 600 11.5px/1 var(--sans); letter-spacing: .14em; }
-.rf-title { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.rf-title b { font: 600 14px/1.35 var(--sans); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rf-title small { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11.5px; line-height: 1.4; color: var(--ink-3); }
-.rf-title small span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rf-tools { grid-area: tools; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
-.rf-win { grid-area: win; display: flex; align-items: center; gap: 2px; }
-.rf-win .rf-mini { margin-right: 4px; }
 .rf-switch { flex: none; position: relative; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 6px; border-radius: 6px; cursor: pointer; font: 12px/1 var(--sans); color: var(--ink-2); white-space: nowrap; user-select: none; }
 .rf-switch:hover { background: rgba(40, 36, 30, .05); }
 .rf-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }

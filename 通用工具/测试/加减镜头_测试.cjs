@@ -16,6 +16,8 @@ const from = html.indexOf('/* ---------- 写稿页里加减镜头（'), to = htm
 assert.ok(from > 0 && to > from, '提示词.html 里找不到「写稿页里加减镜头」那一段');
 const ownLine = /^const own = .*$/m.exec(html);
 assert.ok(ownLine, '提示词.html 里找不到 own');
+const retitle = /^function retitleWrite\([\s\S]*?^\}$/m.exec(fs.readFileSync(path.join(__dirname, '../流水线/流水线.js'), 'utf8'));   // 写稿页顶上那一行换名字（流水线.js，11-22 挪过去和另存共用）
+assert.ok(retitle, '流水线.js 里找不到 retitleWrite');
 
 const DIR = '试片/提示词/第1-1段/', MAP = '试片/资产/参考素材映射.json';
 const KEY = n => '提示词/第1-1段/' + n;
@@ -66,7 +68,7 @@ function world(opt = {}) {
     document: { querySelector: q => q === '.wf-write .wf-shell-t' ? W.title : null },
     window: { Core },
   });
-  vm.runInContext(ownLine[0] + '\n' + html.slice(from, to), ctx, { filename: page });
+  vm.runInContext(retitle[0] + '\n' + ownLine[0] + '\n' + html.slice(from, to), ctx, { filename: page });
   W.api = ctx.window.PromptShots;
   W.X = ctx.X;
   W.has = nm => mem.has(DIR + nm);
