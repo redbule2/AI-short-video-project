@@ -490,10 +490,10 @@ function jobBody(line, ch) {
   if (/^写完提示词 /.test(line)) return { ...base, 事: '写完提示词' };   // 交给 AI 写完：拆分镜、写其余几块（公用/写稿写完.js）
   if ((m = /^按批注修改 (.+)$/.exec(line))) return { 渠道: ch, 项目: PJ, 事: '按批注改提示词', 批注: m[1] };
   if ((m = Zone.jobBody(line, base))) return m;   // 另写一种（公用/写稿分区.js）
-  if ((m = Filmed.jobBody(line, base))) return m;   // 出过片的另存：交给 AI 照审片批注改（公用/写稿出过片.js）
   return null;
 }
 async function tellAI(line) {   // 交给谁：照流水线顶栏「AI 用」选的
+  if (Filmed.pending()) throw new Error(Filmed.pending());   // 出过片的另存还没存成：AI 改的是新的一版，先存成了再交（公用/写稿出过片.js）
   if (SVC == null) { try { SVC = (await (await fetch('/api/ping', { headers: HDR })).json()).v || 0; } catch (e) { SVC = 0; } }
   const now = SVC >= 5 ? await channelNow() : '';
   const body = SVC >= 5 ? jobBody(line, now) : null;

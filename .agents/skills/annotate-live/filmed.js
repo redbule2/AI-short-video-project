@@ -4,19 +4,25 @@
      或者这一版正在出片（出片任务书、出片排着或在做）。
    本机服务这头拦：写稿页、提示词页存稿（draft-store.js）、PUT、DELETE（server.js）、交给 AI 写完（pe-finish.js）；
      按批注改提示词照改，改好另存成下一版，原稿不动（jobs.js）。加减镜头改名照旧能改（改名记录认得回来）。
-   另存成下一版（fork）：只在 AI 照批注改好以后另存（按批注改提示词、照审片批注另存，jobs.js、review-fork.js）。
-     2026-11-23 他定：「另存成改N」不许原样照抄一份，要交给 AI 照批注改；页面上照抄的那个口子（POST /api/filmed）拿掉了。
+   另存成下一版（fork）：带着新的一版的字来另存；字和素材都和这一版一样的不另存（回 422）。
+     2026-11-23 他定「另存成改N」不许原样照抄；当晚又定：另存不看审片、批注，「另存以后…如果发现提示词、素材都没有变，则不允许保存」。
+     写稿页改了，头一回存就另存（POST /api/filmed，公用/写稿出过片.js）；按批注改提示词、照审片批注另存是 AI 改好以后另存（jobs.js、review-fork.js）。
      名字接着这一条最新那一版往下排（_改N），让开已经有的、出过片的、改名记录里的名字。
-     正文、写稿资料先照抄（马上换成改好的字）；参考素材映射这一条抄到新名字下；AI 批注挪过去；人写的批注留在原稿旁边（照它改完收进历史记录）。
+     写稿资料：写稿页给的那几样（写法、分镜稿、挂图……）换上，别的照原稿抄；AI 改的不给，整份照抄。参考素材映射这一条抄到新名字下；AI 批注挪过去；人写的批注留在原稿旁边。
      只有一条的最新那一版能另存（不然新的一版会盖住更新的那一版）；正在出片的等出完。
+   另存出来的那一版接着存（twin：draft-store.js、server.js 的 PUT 问）：字和素材又和上一版（出过片的）一模一样了，也不存（回 422）。
+   一样不一样：字不算开头的 BOM、换行的写法、行尾的空格、头尾的空行；素材是 @图片N、@视频N、@音频N 各对哪个文件，
+     参考素材映射里登记的在前，写稿页挂的补没登记的号（写稿页也这么认）。
    批注：写给这一版的几份（项目里的相对路径）：它出的样片旁边的审片批注（成片里的在前、再是历史记录里的），加上这一版提示词上写的批注。
    接口（server.js 查过 X-Antou）：
      GET  /api/filmed?p=项目&s=段          这一段出过片的几版：{ 版: { 名字: { 名, 出过片, 片, 历史, 在出, 下一版, 最新, 不能另存, 批注 } } }，没出过片的不列
      GET  /api/filmed?p=项目&s=段&n=名字   这一版：{ 名, 出过片, 片, 历史, 在出, 下一版, 最新, 不能另存, 批注 }
+     POST /api/filmed?p=项目&s=段&n=名字   { text, side }（写稿页的字、写稿资料那几样）：另存成下一版，给 { 名, mtime, sideMtime, side, 挪了, 没挪 }
    测试：node --test 通用工具/测试/出过片_测试.cjs */
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
+const { checkSide } = require('./draft-store.js');   // 页面能存的写稿资料那几样：和存稿同一套查法
 
 module.exports = function makeFilmed({ ROOT, TOOLS, live = () => [], withLocks = (paths, fn) => fn(), log = () => {} }) {
   const Core = require(path.join(TOOLS, '公用', '核心.js'));
@@ -32,6 +38,7 @@ module.exports = function makeFilmed({ ROOT, TOOLS, live = () => [], withLocks =
   const SHOTS = '_批注截图', NOTE = '_批注.md';
   const segOk = s => /^[0-9]+(?:-[0-9]+)*$/.test(s);
   const vpOk = n => Core.nameOk(n) && Core.RE_VP.test(n);
+  const REF_RE = /^@(图片|视频|音频)[0-9]+$/;
 
   /* 总文件夹里的路径是不是 项目/项目名/提示词/第N段/ 里的视频提示词：是给 { p, s, n }，不是给 null */
   function promptAt(abs) {
@@ -69,6 +76,8 @@ module.exports = function makeFilmed({ ROOT, TOOLS, live = () => [], withLocks =
   const clipsOf = (st, n) => { const ns = namesOf(st, n); return st.clips.filter(c => ns.some(m => ClipOf.carries(c.name, m))); };
   const filming = (st, n) => st.jobs.some(j => (j.事 === '出片任务书' && j.名 === n) || (j.事 === '出片' && Core.taskVp(str(j.名)) === n));
   const famOf = (st, n) => { const b = Core.vpBase(n); return [...st.files].filter(x => vpOk(x) && Core.vpBase(x) === b).sort((a, c) => Core.vpVer(a) - Core.vpVer(c)); };
+  /* 这一条里比 n 早的最近一版：另存出来的一版，上一版就是它出自的那一版 */
+  const prevOf = (st, n) => { const v = Core.vpVer(n), lower = famOf(st, n).filter(x => Core.vpVer(x) < v); return lower[lower.length - 1] || ''; };
   /* 下一版叫什么：接着最新那一版往下排；名字已经有人用（文件、写稿资料、批注）、改名记录里有、以前同名的一版出过片的，让开 */
   function nextOf(st, n) {
     const fam = famOf(st, n);
@@ -104,7 +113,7 @@ module.exports = function makeFilmed({ ROOT, TOOLS, live = () => [], withLocks =
     if (f.在出) return '这一版正在出片，不能改：出完以后另存成新的一版再改';
     const vids = [...f.片, ...f.历史.map(v => v + '（历史记录里）')];
     return '这一版出过片（' + vids.slice(0, 3).join('、') + (vids.length > 3 ? ' 等 ' + vids.length + ' 条' : '') + '），原稿不能改，只能另存成新的一版：'
-      + (f.下一版 ? '先审片写批注，再点「另存成「' + f.下一版 + '」」，AI 照批注改' : f.不能另存);
+      + (f.下一版 ? '点「另存成「' + f.下一版 + '」」照它改，改了提示词或素材才存成新的一版' : f.不能另存);
   }
   /* 存盘前问一声（draft-store.js、server.js 的 PUT、DELETE）：abs 是出过片的视频提示词，给拦下的话；别的给 '' */
   async function frozen(abs) {
@@ -114,17 +123,63 @@ module.exports = function makeFilmed({ ROOT, TOOLS, live = () => [], withLocks =
     return say(await state(at.p, at.s, at.n));
   }
 
+  /* ---------- 两份稿一样不一样：字和素材 ---------- */
+  const plainText = t => unbom(String(t)).split(/\r\n|\n|\r/).map(l => l.trimEnd()).join('\n').trim();
+  const slash = p => String(p || '').replace(/\\/g, '/');
+  async function readSide(p, s, n) {   // 这一版的写稿资料；没有给 {}
+    let raw;
+    try { raw = await fsp.readFile(pj(p, '提示词', segDir(s), stemOf(n) + '_写稿.json'), 'utf8'); } catch (e) { if (e.code === 'ENOENT') return {}; throw e; }
+    let side;
+    try { side = JSON.parse(unbom(raw)); } catch (e) { throw err(409, '「' + stemOf(n) + '_写稿.json」读不了（' + e.message + '），这回没存'); }
+    return side && typeof side === 'object' && !Array.isArray(side) ? side : {};
+  }
+  async function readMap(p) {   // 参考素材映射；没有给 null
+    let raw;
+    try { raw = await fsp.readFile(pj(p, '资产', '参考素材映射.json'), 'utf8'); } catch (e) { if (e.code === 'ENOENT') return null; throw e; }
+    try { return JSON.parse(unbom(raw)); } catch (e) { throw err(409, '参考素材映射读不了（' + e.message + '），这回没存'); }
+  }
+  const regOf = (map, s, n) => { const ps = map && map.prompts, k = ['提示词', segDir(s), n].join('/'); return own(ps, k) ? ps[k] : null; };
+  /* 素材：@图片N 这些各对哪个文件。登记的在前，挂图补没登记的号 */
+  function refsOf(reg, side) {
+    const out = new Map(), hung = side && side.挂图 && typeof side.挂图 === 'object' && !Array.isArray(side.挂图) ? side.挂图 : {};
+    for (const it of reg && Array.isArray(reg.references) ? reg.references : []) if (it && REF_RE.test(it.ref) && !out.has(it.ref)) out.set(it.ref, slash(it.path));
+    for (const [ref, p] of Object.entries(hung)) if (REF_RE.test(ref) && !out.has(ref)) out.set(ref, slash(p));
+    return JSON.stringify([...out].sort());
+  }
+  const same = (a, b) => plainText(a.text) === plainText(b.text) && refsOf(a.reg, a.side) === refsOf(b.reg, b.side);   // a、b：{ text, side, reg }
+  const sameSay = n => '提示词和素材都和出过片的「' + n + '」一样：一处没改的不存成新的一版。改了提示词或换了素材再存';
+  /* 存稿前再问一声（draft-store.js、server.js 的 PUT）：abs 是另存出来的一版（上一版出过片），这回要存的字和素材又和上一版一模一样，给拦下的话；别的给 ''。
+     side：要存的写稿资料（不给就照文件里的）。读不了上一版、映射的不拦（拦下要有把握） */
+  async function twin(abs, text, side) {
+    const at = promptAt(abs);
+    if (!at || !Core.vpVer(at.n)) return '';   // 原稿（不带 _改N）没有上一版
+    try {
+      const st = await segState(at.p, at.s), prev = prevOf(st, at.n);
+      if (!prev || !stateOf(st, prev).出过片) return '';
+      const map = await readMap(at.p);
+      const was = { text: await fsp.readFile(pj(at.p, '提示词', segDir(at.s), prev), 'utf8'), side: await readSide(at.p, at.s, prev), reg: regOf(map, at.s, prev) };
+      return same({ text, side: side || await readSide(at.p, at.s, at.n), reg: regOf(map, at.s, at.n) }, was) ? sameSay(prev) : '';
+    } catch (e) { log('比上一版没比成（' + at.n + '）：' + e.message); return ''; }
+  }
+
   async function writeAtomic(p, text) {
     const tmp = p + '.antou-tmp';
     await fsp.writeFile(tmp, text);
     try { await fsp.rename(tmp, p); } catch (e) { await fsp.unlink(tmp).catch(() => {}); throw e; }
   }
-  async function copyKeep(a, b) {   // 照抄，修改时间照旧（待核对、秒数照它算，新的一版和原稿一样）
+  async function writeNew(p, text) {   // 新建：先写在旁边再挂上去，那里已经有了不盖
+    const tmp = p + '.antou-tmp';
+    await fsp.writeFile(tmp, text);
+    try { await fsp.link(tmp, p); }
+    catch (e) { if (e.code === 'EEXIST') throw err(409, '「' + path.basename(p) + '」刚有了：刷新再试'); throw e; }
+    finally { await fsp.unlink(tmp).catch(() => {}); }
+  }
+  async function copyKeep(a, b) {   // 照抄，修改时间照旧（AI 改的另存：写稿资料和原稿一样）
     const st = await fsp.stat(a);
     await fsp.copyFile(a, b, fs.constants.COPYFILE_EXCL);
     await fsp.utimes(b, st.atimeMs / 1000, st.mtimeMs / 1000);
   }
-  /* 参考素材映射：这一条的登记抄到新名字下（正文一样，指纹、秒数都照用）。没有映射、没登记的不抄；映射读不了就不另存 */
+  /* 参考素材映射：这一条的登记抄到新名字下（指纹、秒数照抄，批准出片时照新的字补）。没有映射、没登记的不抄；映射读不了就不另存 */
   async function cloneReg(p, s, n, to) {
     const mp = pj(p, '资产', '参考素材映射.json');
     let raw;
@@ -137,9 +192,12 @@ module.exports = function makeFilmed({ ROOT, TOOLS, live = () => [], withLocks =
     await writeAtomic(mp, JSON.stringify(map, null, 2) + '\n');
     return true;
   }
-  /* 另存成下一版：这一版出过片、是这一条最新的一版、没在出片。只在 AI 照批注改好以后调（jobs.js），抄过去马上换成改好的字 */
-  async function fork(p, s, n) {
+  /* 另存成下一版：这一版出过片、是这一条最新的一版、没在出片。text：新的一版的字；side：写稿页给的写稿资料那几样（AI 改的不给，整份照抄原稿的）。
+     字和素材都和这一版一样的不另存（422） */
+  async function fork(p, s, n, { text, side = null } = {}) {
     if (!Core.nameOk(p) || !segOk(s) || !vpOk(n)) throw err(400, '项目、段、提示词的名字不对');
+    if (typeof text !== 'string') throw err(400, '另存要带上新的一版的字');
+    if (side !== null) checkSide(side, '另存');
     const first = await state(p, s, n);
     if (!first.出过片) throw err(409, '这一版还没出片，直接改就行');
     if (first.不能另存) throw err(409, first.不能另存);
@@ -147,10 +205,13 @@ module.exports = function makeFilmed({ ROOT, TOOLS, live = () => [], withLocks =
     return withLocks([P(n), P(A + '_写稿.json'), P(to), P(B + '_写稿.json'), pj(p, '资产', '参考素材映射.json')], async () => {   // 和存稿、改登记共用一把锁
       const st = await segState(p, s), f = stateOf(st, n);   // 拿到锁以后再看一遍
       if (f.不能另存 || f.下一版 !== to) throw err(409, f.不能另存 || '这一条刚有了新的一版：刷新再试');
+      const old = await readSide(p, s, n), reg = regOf(await readMap(p), s, n), mine = side ? { ...old, ...side } : null;   // mine：写稿页给的那几样换上，别的照原稿
+      if (same({ text, side: mine || old, reg }, { text: await fsp.readFile(P(n), 'utf8'), side: old, reg })) throw err(422, sameSay(n));
       const made = [];
       try {
-        await copyKeep(P(n), P(to)); made.push(P(to));
-        if (st.files.has(A + '_写稿.json')) { await copyKeep(P(A + '_写稿.json'), P(B + '_写稿.json')); made.push(P(B + '_写稿.json')); }
+        await writeNew(P(to), text); made.push(P(to));
+        if (mine) { await writeNew(P(B + '_写稿.json'), JSON.stringify(mine, null, 2) + '\n'); made.push(P(B + '_写稿.json')); }
+        else if (st.files.has(A + '_写稿.json')) { await copyKeep(P(A + '_写稿.json'), P(B + '_写稿.json')); made.push(P(B + '_写稿.json')); }
         await cloneReg(p, s, n, to);
       } catch (e) {
         for (const x of made.reverse()) await fsp.unlink(x).catch(() => {});
@@ -159,12 +220,14 @@ module.exports = function makeFilmed({ ROOT, TOOLS, live = () => [], withLocks =
       const moved = [], left = [];
       const mv = async (lab, work) => { try { await work(); moved.push(lab); } catch (e) { left.push(lab); log('另存时' + lab + '没挪过去：' + e.message); } };
       if (st.files.has(A + '_AI批注.md')) await mv('AI 批注', () => fsp.rename(P(A + '_AI批注.md'), P(B + '_AI批注.md')));
-      log('出过片，另存成新的一版：' + [p, '提示词', segDir(s), n].join('/') + ' → ' + to + (moved.length ? '（' + moved.join('、') + '跟着挪过去）' : ''));
-      return { 名: to, 挪了: moved, 没挪: left };
+      log('出过片，另存成新的一版：' + [p, '提示词', segDir(s), n].join('/') + ' → ' + to + (mine ? '（写稿页改的）' : '') + (moved.length ? '（' + moved.join('、') + '跟着挪过去）' : ''));
+      const out = { 名: to, 挪了: moved, 没挪: left };
+      if (mine) Object.assign(out, { side: mine, mtime: Math.floor((await fsp.stat(P(to))).mtimeMs), sideMtime: Math.floor((await fsp.stat(P(B + '_写稿.json'))).mtimeMs) });   // 写稿页照它接着存
+      return out;
     });
   }
 
-  async function handle(req, res, url, { json }) {
+  async function handle(req, res, url, { json, readBody }) {
     const q = url.searchParams, p = str(q.get('p')), s = str(q.get('s')), n = q.has('n') ? str(q.get('n')) : null;
     if (!Core.nameOk(p) || !segOk(s) || (n !== null && !vpOk(n))) throw err(400, '要写项目 p、段 s，一版的名字 n');
     if (req.method === 'GET') {
@@ -174,7 +237,15 @@ module.exports = function makeFilmed({ ROOT, TOOLS, live = () => [], withLocks =
       for (const x of st.files) if (vpOk(x)) { const f = stateOf(st, x); if (f.出过片) 版[x] = f; }
       return json(res, { 版 });
     }
-    throw err(405, '只能问，不能照抄另存：另存成改N 交给 AI 照批注改（照审片批注另存）');
+    if (req.method === 'POST' && n !== null && readBody) {   // 写稿页另存：带着改好的字、写稿资料那几样
+      let body;
+      try { body = JSON.parse((await readBody(req, 8 * 1024 * 1024)).toString('utf8')); }
+      catch (e) { if (e.status) throw e; throw err(400, '另存的请求不是有效 JSON'); }
+      const side = body && body.side;
+      if (!body || typeof body.text !== 'string' || !side || typeof side !== 'object' || Array.isArray(side)) throw err(400, '另存要带上 text、side');
+      return json(res, await fork(p, s, n, { text: body.text, side }));
+    }
+    throw err(405, '只能问，或者带着改好的字另存（POST，写 n）');
   }
-  return { promptAt, state, say, frozen, fork, handle };
+  return { promptAt, state, say, frozen, twin, fork, handle };
 };

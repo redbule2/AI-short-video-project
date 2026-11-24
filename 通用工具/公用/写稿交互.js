@@ -192,14 +192,23 @@ async function saveEditor() {
     do {
       AGAIN = false;
       const version = VER, snapshot = editorSnapshot(), text = activeText();
-      if (!dirty() && JSON.stringify(snapshot) === JSON.stringify(BASE_EDITOR)) break;
+      const fork = !!(window.Filmed && Filmed.pending());   // 出过片的另存还没存成：这一回存就另存成下一版（公用/写稿出过片.js）；没改过的不存
+      if (!dirty() && JSON.stringify(snapshot) === (fork ? Filmed.base() : JSON.stringify(BASE_EDITOR))) break;   // 另存的：和点另存那一刻比（页面读进来时补的几样不算改过）
       try {
-        const r = await fetch(api(PROMPT, '?draft'), { method: 'POST', headers: { ...HDR, 'Content-Type': 'application/json' }, body: JSON.stringify({ text, baseText: LASTTEXT, sidePatch: snapshot, baseEditor: BASE_EDITOR, archive: !ARCHIVED }) });
+        const r = fork ? await Filmed.post(text, snapshot) : await fetch(api(PROMPT, '?draft'), { method: 'POST', headers: { ...HDR, 'Content-Type': 'application/json' }, body: JSON.stringify({ text, baseText: LASTTEXT, sidePatch: snapshot, baseEditor: BASE_EDITOR, archive: !ARCHIVED }) });
+        if (r.status === 422) {   // 提示词、素材都和出过片的那一版一样（11-23 晚他定）：不存，也不挡着离开；页面上的字都在出过片的那一版里
+          SAVEDVER = version;
+          try { localStorage.removeItem(draftKey()); } catch (e) { /* 下次打开会比较内容 */ }
+          setStatus((await r.text()) || '提示词和素材都没变：没存', true);
+          break;
+        }
+        if (r.status === 409 && fork) { rememberDraft(); await Filmed.miss(await r.text()); ok = false; break; }   // 下一版的名字刚被占了……：照新排的名字接着另存
         if (r.status === 409) { reportConflict('检测到其他修改，当前草稿已保留'); ok = false; break; }
         if (r.status === 423 && window.Filmed) { rememberDraft(); await Filmed.hit(await r.text()); ok = false; break; }   // 这一版刚出了片：锁上，字留在恢复草稿里
         if (!r.ok) throw new Error((await r.text()) || String(r.status));
         const result = await r.json();
         if (!result.side || typeof result.mtime !== 'number') throw new Error('服务尚未支持新的保存方式，请更新本机服务');
+        if (fork) Filmed.made(result);   // 另存成了：这一页换成新的一版，下面照常记下存好的
         LASTTEXT = text; MTIME = result.mtime; SIDE_MT = result.sideMtime; BASE_EDITOR = structuredClone(editorPart(result.side));
         const pendingBindings = SIDE.挂图; SIDE = result.side;
         if (VER !== version) SIDE.挂图 = { ...SIDE.挂图, ...pendingBindings };

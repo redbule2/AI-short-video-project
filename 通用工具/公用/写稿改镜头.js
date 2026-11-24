@@ -7,7 +7,8 @@
    出过片、改过几版的也能改（2026-11-20 他定：不加限制）：前几版一起改名，以前的样片照流水线.json 里记的「改名」认回这一条。只有 AI 正在做这一条时等一等。
    事件脚本里的镜头不跟着加减（一镜可以拆几刀写，镜头卡和镜头表不一一对应），自己加减。
    单独打开的写稿页（不在流水线里）只看不改。用的是写稿页的东西（STEM、OPENPATH、save、PULLING……），只在画页签、点的时候用。
-   写稿页过了 1500 行，新功能放这里，页面只挂几处：标题旁的 link()、画镜头表时的 opts()、换名字用的 setOpen()
+   写稿页过了 1500 行，新功能放这里，页面只挂几处：标题旁的 link()、画镜头表时的 opts()、换名字用的 setOpen()。
+   retarget（这一页换成新名字接着写，不重开）也给出过片另存成了下一版的用（公用/写稿出过片.js，11-23 晚）
    ============================================================ */
 (function () {
   'use strict';
@@ -95,5 +96,5 @@
     toast('改好了：这一条拍 镜' + Core.vpCode(r.name) + '，名字改成 ' + r.name + (r.vers > 1 ? '（前几版一起改了名）' : '') + (r.warn ? '。' + r.warn : ''));
     return true;
   }
-  window.ShotEdit = Object.freeze({ link, opts, lock });
+  window.ShotEdit = Object.freeze({ link, opts, lock, retarget });
 })();

@@ -19,7 +19,7 @@ const textOf = node => typeof node === 'string' ? node : Array.isArray(node) ? n
 const labelOf = b => b.attrs.class === 'fl-ib' ? '⋯' : textOf(b);
 
 /* made：这一版出过的样片；task：上回排过任务书；filmed：本机服务说这一版出过片（11-22，原稿不能改，只能另存） */
-function promptButtons(draft, busy, side, made = [], task = false, filmed = null, v = 24) {   // v：本机服务第几版
+function promptButtons(draft, busy, side, made = [], task = false, filmed = null, v = 25) {   // v：本机服务第几版
   const calls = [], fails = [], pops = [];
   const empty = () => [];
   const none = () => null;
@@ -27,7 +27,8 @@ function promptButtons(draft, busy, side, made = [], task = false, filmed = null
     h: (tag, attrs, ...children) => ({ tag, attrs: attrs || {}, children: children.flat(Infinity).filter(x => x != null) }),
     taskOf: () => '出片任务.txt', promptStale: () => false, PromptDraft: require('../公用/写稿状态.js'),
     X: { tasks: new Set(task ? ['出片任务.txt'] : []), notes: new Map(), side: new Map(side ? [['1-5.txt', side]] : []), filmed: new Map(filmed ? [['1-5.txt', filmed]] : []) },
-    vpVer: require('../公用/核心.js').vpVer, forkPrompt: (...args) => calls.push(['另存', ...args]),
+    vpVer: require('../公用/核心.js').vpVer, vpLabel: require('../公用/核心.js').vpLabel, forkPrompt: (...args) => calls.push(['另存', ...args]),
+    reviewFork: (...args) => calls.push(['照批注改', ...args]), chName: () => '我的 AI',
     AI: { ok: true, jobs: busy ? [{ 段: '1', 名: '1-5.txt', 标题: '正在写' }] : [] }, LINK: { v },
     jobLive: () => true, bmStale: () => false,
     vidRefs: empty, frameWs: empty, frameRefsOf: empty, framesOf: empty,
@@ -48,7 +49,7 @@ function promptButtons(draft, busy, side, made = [], task = false, filmed = null
   vm.runInContext(rowCode, context, { filename: page });
   const scene = { 段: '1' }, entry = { name: '1-5.txt', label: '镜头1-5', draft };
   const row = context.rowOf(scene, entry, made), buttons = buttonsOf(row);
-  return { buttons, calls, scene, entry, row, fails, pops };
+  return { buttons, calls, scene, entry, row, fails, pops, context };
 }
 
 test('提示词页面脚本语法有效，页面说明不再引导点击已移除的按钮', () => {
@@ -101,7 +102,8 @@ test('出过片的那一版（11-22 他定：原稿不能改，只能另存）�
     assert.deepEqual(buttons.map(labelOf), ['另存成改1', '打开看、写批注', '批准出片', '看任务书', '审片', '⋯']);
     const fork = buttons[0];
     assert.equal(fork.attrs.disabled, false);
-    assert.match(fork.attrs.title, /出过片（1-5\.mp4）.*照样片「1-5」的审片批注、提示词上写的批注改，改好的另存成「1-5_改1\.txt」。不许原样照抄.*原稿和它出的样片都不动/);   // 11-23 他定：不照抄，交给 AI 照批注改
+    assert.match(fork.attrs.title, /出过片（1-5\.mp4）.*点了打开写稿页照它接着改：改了提示词或素材才存成「1-5_改1\.txt」，一处没改就不另存；原稿和它出的样片都不动/);   // 11-23 晚他定：另存不看审片、批注
+    assert.doesNotMatch(fork.attrs.title, /批注/);
     fork.attrs.onclick();
     assert.deepEqual(calls.at(-1), ['另存', scene, entry]);
     buttons[1].attrs.onclick();
@@ -110,14 +112,58 @@ test('出过片的那一版（11-22 他定：原稿不能改，只能另存）�
     assert.equal(buttons[4].attrs.disabled, false);   // 审片照旧能点
   }
   assert.equal(promptButtons(true, true, { 手写: true }, ['1-5.mp4'], false, fz).buttons[0].attrs.disabled, true);   // AI 正在做这一条：等做完
-  const bare = promptButtons(true, false, { 手写: true }, ['1-5.mp4'], false, { ...fz, 批注: [] }).buttons[0];   // 还没写批注：没东西照着改，点不了
-  assert.equal(labelOf(bare), '另存成改1'); assert.equal(bare.attrs.disabled, true); assert.match(bare.attrs.title, /还没写批注：先点「审片」/);
-  const oldSvc = promptButtons(true, false, { 手写: true }, ['1-5.mp4'], false, fz, 23).buttons[0];   // 本机服务还是第 23 版：没有照审片批注另存
+  const bare = promptButtons(true, false, { 手写: true }, ['1-5.mp4'], false, { ...fz, 批注: [] }).buttons[0];   // 还没写批注：照样能另存（11-23 晚）
+  assert.equal(labelOf(bare), '另存成改1'); assert.equal(bare.attrs.disabled, false);
+  const oldSvc = promptButtons(true, false, { 手写: true }, ['1-5.mp4'], false, fz, 24).buttons[0];   // 本机服务还是第 24 版：另存不会带着写稿页改的字
   assert.equal(oldSvc.attrs.disabled, true); assert.match(oldSvc.attrs.title, /本机服务是旧的/);
   const old = promptButtons(false, false, null, ['1-5.mp4'], false, { ...fz, 下一版: '', 不能另存: '这一条已经有更新的「1-5_改2.txt」了：去改那一版' }).buttons;
   assert.equal(labelOf(old[0]), '另存'); assert.equal(old[0].attrs.disabled, true); assert.match(old[0].attrs.title, /更新的/);
   grey(old[2], /^这一版出过片了，不再出$/);
   grey(promptButtons(true, false, { 手写: true }, [], false, { ...fz, 片: [], 在出: true, 下一版: '', 不能另存: '这一版正在出片：出完再另存成新的一版' }).buttons[2], /正在出片/);
+});
+
+test('出过片的那一版：「⋯」里多一样「照审片批注交给 AI 改」（11-23 晚从另存按钮挪过来），没写批注、AI 在做、服务旧的点不了', () => {
+  const fz = { 出过片: true, 片: ['1-5.mp4'], 历史: [], 在出: false, 下一版: '1-5_改1.txt', 最新: '1-5.txt', 不能另存: '', 批注: ['成片/第1段/1-5_批注.md', '提示词/第1段/1-5_批注.md'] };
+  const menu = (busy, f, v) => {
+    const r = promptButtons(true, busy, { 手写: true }, ['1-5.mp4'], false, f, v);
+    const more = r.buttons.find(b => labelOf(b) === '⋯');
+    more.attrs.onclick({ currentTarget: more });
+    const items = buttonsOf(r.pops[0].el);
+    return { ...r, more, items, labels: items.map(b => textOf(b.children[0].children[0])), tips: items.map(b => textOf(b.children[0].children[1])) };
+  };
+  const m = menu(false, fz);
+  assert.deepEqual(m.labels, ['照审片批注交给 AI 改', '出关键帧…', '删除']);
+  assert.match(m.more.attrs.title, /^照审片批注交给 AI 改、出关键帧…、删除$/);
+  assert.equal(m.items[0].attrs.disabled, false);
+  assert.match(m.tips[0], /把样片「1-5」的审片批注、提示词上写的批注交给 我的 AI，改好的另存成「镜头1-5 改1」；AI 一处没改就不另存/);
+  m.items[0].attrs.onclick();
+  assert.deepEqual(m.calls.at(-1), ['照批注改', m.scene, m.entry]);
+  const bare = menu(false, { ...fz, 批注: [] });
+  assert.equal(bare.items[0].attrs.disabled, true); assert.match(bare.tips[0], /还没写批注：先点「审片」/);
+  const busy = menu(true, fz);
+  assert.equal(busy.items[0].attrs.disabled, true); assert.match(busy.tips[0], /AI 正在做这一条/);
+  const old = menu(false, fz, 24);
+  assert.equal(old.items[0].attrs.disabled, true); assert.match(old.tips[0], /本机服务是旧的/);
+  const top = menu(false, { ...fz, 下一版: '', 不能另存: '这一条已经有更新的「1-5_改2.txt」了：去改那一版' });
+  assert.equal(top.items[0].attrs.disabled, true); assert.match(top.tips[0], /更新的/);
+  assert.equal(promptButtons(true, false).buttons.find(b => labelOf(b) === '⋯').attrs.title, '出关键帧…、删除');   // 没出片的照旧
+});
+
+test('点「另存成改N」：打开写稿页照这一版接着改，带上下一版的名字；「照审片批注交给 AI 改」开「照审片批注另存」的任务', async () => {
+  const fz = { 出过片: true, 片: ['1-5.mp4'], 历史: [], 在出: false, 下一版: '1-5_改1.txt', 最新: '1-5.txt', 不能另存: '', 批注: [] };
+  const start = script.indexOf('function forkPrompt('), end = script.indexOf('\n}\n', script.indexOf('async function reviewFork(')) + 3;
+  assert.ok(start > 0 && end > start);
+  const r = promptButtons(true, false, { 手写: true }, ['1-5.mp4'], false, fz), jobs = [];
+  Object.assign(r.context, { startJob: async j => { jobs.push(j); return true; }, rerender: () => r.calls.push(['重画']) });
+  vm.runInContext(script.slice(start, end), r.context);
+  r.context.forkPrompt(r.scene, r.entry);
+  assert.deepEqual(r.calls.at(-1), ['编辑', '1', '1-5.txt', false, '1-5_改1.txt']);
+  await r.context.reviewFork(r.scene, r.entry);   // 没写批注：不开
+  assert.deepEqual(jobs, []);
+  r.context.X.filmed.set('1-5.txt', { ...fz, 批注: ['成片/第1段/1-5_批注.md'] });
+  await r.context.reviewFork(r.scene, r.entry);
+  assert.deepEqual(jobs.map(j => ({ ...j })), [{ 事: '照审片批注另存', 段: '1', 名: '1-5.txt' }]);   // vm 里建的对象：先摊开再比
+  assert.deepEqual(r.calls.at(-1), ['重画']);
 });
 
 test('只有「已出片」标签、本机服务不算出过片的（老名字的样片认到这一条上）：批准出片照常能点', () => {

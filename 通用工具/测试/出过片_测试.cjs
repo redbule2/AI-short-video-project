@@ -1,7 +1,8 @@
 'use strict';
 /* 出过片的提示词不能改，只能另存成新的一版（2026-11-22 他定；.agents/skills/annotate-live/filmed.js）：
    哪一版出过片、下一版叫什么、写给它的批注、另存、存稿拦下（draft-store.js）、按批注改另存成下一版、交给 AI 写完不写（jobs.js、pe-finish.js）；
-   照审片批注另存（11-23 他定：「另存成改N」不许原样照抄，交给 AI 照批注改；review-fork.js）。
+   照审片批注另存（11-23 他定：「另存成改N」不许原样照抄，交给 AI 照批注改；review-fork.js）；
+   写稿页另存（11-23 晚他定：另存不看审片、批注，提示词、素材都没变的不存）：POST /api/filmed 带着改好的字、twin 拦另存出来的一版改回原样。
    读写都在临时文件夹里，不碰真项目。node --test 通用工具/测试/出过片_测试.cjs */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -94,15 +95,16 @@ test('正在出片的也算出过片：等出完才能另存', async t => {
   const f = await F.state('试', '1', '14.txt');
   assert.equal(f.出过片, true); assert.equal(f.在出, true); assert.match(f.不能另存, /正在出片/);
   assert.equal((await F.state('试', '1', '7.txt')).在出, true);
-  await assert.rejects(F.fork('试', '1', '14.txt'), e => e.status === 409 && /正在出片/.test(e.message));
+  await assert.rejects(F.fork('试', '1', '14.txt', { text: '改了' }), e => e.status === 409 && /正在出片/.test(e.message));
 });
 
-test('另存成下一版（AI 照批注改好以后调）：正文、写稿资料先照抄，参考素材登记抄过去，AI 批注挪过去，人写的批注留在原稿旁边', async t => {
+const NEW = '【事件脚本】\r\n甲慢慢走进来。\r\n';
+test('另存成下一版（AI 照批注改好以后调，只给字）：写新的字，写稿资料照抄，参考素材登记抄过去，AI 批注挪过去，人写的批注留在原稿旁边', async t => {
   const { F, P, read, has } = await setup(t);
-  const r = await F.fork('试', '1', '11.txt');
+  const r = await F.fork('试', '1', '11.txt', { text: NEW });
   assert.deepEqual(r, { 名: '11_改1.txt', 挪了: ['AI 批注'], 没挪: [] });
-  assert.equal(read('提示词/第1段/11_改1.txt'), read('提示词/第1段/11.txt'));
-  assert.equal(Math.floor(fs.statSync(P('提示词', '第1段', '11_改1.txt')).mtimeMs), T0);
+  assert.equal(read('提示词/第1段/11_改1.txt'), NEW);
+  assert.equal(read('提示词/第1段/11.txt'), '【事件脚本】\r\n甲走进来。\r\n');   // 原稿不动
   assert.equal(Math.floor(fs.statSync(P('提示词', '第1段', '11_改1_写稿.json')).mtimeMs), T0 + 5000);
   assert.deepEqual(JSON.parse(read('提示词/第1段/11_改1_写稿.json')).挂图, { '@图片1': '资产/人物和道具/甲.png' });
   const ps = JSON.parse(read('资产/参考素材映射.json')).prompts;
@@ -112,21 +114,100 @@ test('另存成下一版（AI 照批注改好以后调）：正文、写稿资�
   assert.ok(has('提示词/第1段/11_出片任务.txt') && !has('提示词/第1段/11_改1_出片任务.txt'));   // 任务书是原稿那一回的
   assert.equal((await F.state('试', '1', '11.txt')).不能另存.includes('11_改1.txt'), true);   // 原稿还是出过片、已经有了更新的一版
   assert.equal((await F.state('试', '1', '11_改1.txt')).出过片, false);
-  await assert.rejects(F.fork('试', '1', '11_改1.txt'), e => e.status === 409 && /还没出片/.test(e.message));
+  await assert.rejects(F.fork('试', '1', '11_改1.txt', { text: 'x' }), e => e.status === 409 && /还没出片/.test(e.message));
 });
 
-test('页面上照抄另存的口子拿掉了（11-23 他定：另存成改N 不许原样照抄）：POST /api/filmed 不收，什么都不建', async t => {
-  const { F, has } = await setup(t);
-  await assert.rejects(F.handle({ method: 'POST' }, null, new URL('http://x/api/filmed?p=' + encodeURIComponent('试') + '&s=1&n=11.txt&notes=1'), { json() {} }), e => e.status === 405);
+test('另存要带上字；字和素材都和这一版一样的不另存（只差 BOM、换行写法、行尾空格、头尾空行也算一样）', async t => {
+  const { F, read, has } = await setup(t);
+  await assert.rejects(F.fork('试', '1', '11.txt'), e => e.status === 400);
+  for (const text of [read('提示词/第1段/11.txt'), String.fromCharCode(0xFEFF) + '【事件脚本】\n甲走进来。  \n\n'])
+    await assert.rejects(F.fork('试', '1', '11.txt', { text }), e => e.status === 422 && /都和出过片的「11\.txt」一样/.test(e.message));
+  assert.ok(!has('提示词/第1段/11_改1.txt') && has('提示词/第1段/11_AI批注.md'));
+});
+
+/* 写稿页另存（11-23 晚他定：另存不看审片、批注；「另存以后…如果发现提示词、素材都没有变，则不允许保存」） */
+async function post(F, n, body) {
+  let out = null;
+  await F.handle({ method: 'POST' }, null, new URL('http://x/api/filmed?p=' + encodeURIComponent('试') + '&s=1&n=' + encodeURIComponent(n)),
+    { json: (res, o) => { out = o; }, readBody: async () => Buffer.from(typeof body === 'string' ? body : JSON.stringify(body)) });
+  return out;
+}
+test('写稿页另存（POST /api/filmed）：提示词、素材都没变回 422，什么都不建；没写批注也能另存', async t => {
+  const { F, put, read, has } = await setup(t);
+  await put('提示词/第1段/8-9_改2_写稿.json', JSON.stringify({ 写法: '分镜' }));
+  assert.deepEqual((await F.state('试', '1', '8-9_改2.txt')).批注, []);   // 一份批注都没有
+  const text = read('提示词/第1段/8-9_改2.txt');
+  await assert.rejects(post(F, '8-9_改2.txt', { text, side: { 写法: '分镜', 分镜稿: text } }), e => e.status === 422);
+  await assert.rejects(post(F, '8-9_改2.txt', { text: text + '\r\n', side: { 写法: '自由', 镜头信息: [] } }), e => e.status === 422);   // 只换了页面上的写法、多个空行：不算改
+  assert.ok(!has('提示词/第1段/8-9_改3.txt') && !has('提示词/第1段/8-9_改3_写稿.json'));
+  const r = await post(F, '8-9_改2.txt', { text: text + '多一句', side: { 写法: '分镜', 分镜稿: text + '多一句' } });
+  assert.equal(r.名, '8-9_改3.txt');
+  assert.equal(read('提示词/第1段/8-9_改3.txt'), text + '多一句');
+  assert.equal(read('提示词/第1段/8-9_改2.txt'), text);
+});
+test('写稿页另存：素材换了也算改（挂上一张新的）；登记过的号照登记认，和写稿页一样', async t => {
+  const { F, P, read, has } = await setup(t);
+  const text = read('提示词/第1段/11.txt'), 挂图 = { '@图片1': '资产/人物和道具/甲.png' };
+  await assert.rejects(post(F, '11.txt', { text, side: { 挂图: { '@图片1': '资产\\人物和道具\\乙.png' } } }), e => e.status === 422);   // @图片1 登记的是甲：写稿页也照登记显示
+  const r = await post(F, '11.txt', { text, side: { 写法: '分镜', 挂图: { ...挂图, '@图片2': '资产/场景/街.png' } } });
+  assert.equal(r.名, '11_改1.txt');
+  assert.equal(read('提示词/第1段/11_改1.txt'), text);   // 字没改，素材多了一张
+  const side = JSON.parse(read('提示词/第1段/11_改1_写稿.json'));
+  assert.deepEqual(side, { 写法: '分镜', 挂图: { ...挂图, '@图片2': '资产/场景/街.png' } });
+  assert.deepEqual(r.side, side);   // 写稿页照它接着存
+  assert.equal(r.mtime, Math.floor(fs.statSync(P('提示词', '第1段', '11_改1.txt')).mtimeMs));
+  assert.equal(r.sideMtime, Math.floor(fs.statSync(P('提示词', '第1段', '11_改1_写稿.json')).mtimeMs));
+  assert.deepEqual(r.挪了, ['AI 批注']);
+  assert.ok(has('提示词/第1段/11_批注.md'));   // 人写的批注留在原稿旁边
+  const ps = JSON.parse(read('资产/参考素材映射.json')).prompts;
+  assert.deepEqual(ps['提示词/第1段/11_改1.txt'], ps['提示词/第1段/11.txt']);
+});
+test('写稿页另存：请求不对的不收（不是 JSON、缺字或写稿资料、写稿资料里有页面不能改的、没写哪一版）', async t => {
+  const { F, read, has } = await setup(t);
+  const text = read('提示词/第1段/11.txt') + '改';
+  await assert.rejects(post(F, '11.txt', '{坏的'), e => e.status === 400);
+  await assert.rejects(post(F, '11.txt', { text }), e => e.status === 400);
+  await assert.rejects(post(F, '11.txt', { side: {} }), e => e.status === 400);
+  await assert.rejects(post(F, '11.txt', { text, side: { AI建议: [] } }), e => e.status === 400);
+  await assert.rejects(post(F, '11.txt', { text, side: { 写法: '乱写' } }), e => e.status === 400);
+  await assert.rejects(F.handle({ method: 'POST' }, null, new URL('http://x/api/filmed?p=' + encodeURIComponent('试') + '&s=1'), { json() {}, readBody: async () => Buffer.from('{}') }), e => e.status === 405);
+  await assert.rejects(post(F, '7.txt', { text, side: {} }), e => e.status === 409 && /还没出片/.test(e.message));
   assert.ok(!has('提示词/第1段/11_改1.txt'));
 });
 
 test('另存不了的：没出片、不是最新一版、名字不对', async t => {
   const { F } = await setup(t);
-  await assert.rejects(F.fork('试', '1', '7.txt'), e => e.status === 409);
-  await assert.rejects(F.fork('试', '1', '8-9_改1.txt'), e => e.status === 409 && /8-9_改2/.test(e.message));
-  await assert.rejects(F.fork('试', '1', '../x.txt'), e => e.status === 400);
-  await assert.rejects(F.fork('试', '1', '11_写稿.json'), e => e.status === 400);
+  await assert.rejects(F.fork('试', '1', '7.txt', { text: 'x' }), e => e.status === 409);
+  await assert.rejects(F.fork('试', '1', '8-9_改1.txt', { text: 'x' }), e => e.status === 409 && /8-9_改2/.test(e.message));
+  await assert.rejects(F.fork('试', '1', '../x.txt', { text: 'x' }), e => e.status === 400);
+  await assert.rejects(F.fork('试', '1', '11_写稿.json', { text: 'x' }), e => e.status === 400);
+});
+
+test('另存出来的一版接着存（twin）：字和素材又改回和出过片的上一版一样，给拦下的话；改得不一样、原稿、上一版没出片的给空', async t => {
+  const { F, P, read } = await setup(t);
+  const orig = read('提示词/第1段/11.txt');
+  await F.fork('试', '1', '11.txt', { text: NEW });
+  const at = P('提示词', '第1段', '11_改1.txt');
+  assert.match(await F.twin(at, orig), /都和出过片的「11\.txt」一样/);
+  assert.match(await F.twin(at, orig.replace(/\r\n/g, '\n') + '\n\n'), /一样/);
+  assert.equal(await F.twin(at, NEW), '');
+  assert.equal(await F.twin(at, orig, { 挂图: { '@图片1': '资产/人物和道具/甲.png', '@图片2': '资产/场景/街.png' } }), '');   // 素材多了一张
+  assert.equal(await F.twin(P('提示词', '第1段', '11.txt'), orig), '');   // 原稿：没有上一版
+  assert.match(await F.twin(P('提示词', '第1段', '8-9_改2.txt'), read('提示词/第1段/8-9_改1.txt')), /出过片的「8-9_改1.txt」/);   // 上一版 8-9_改1 出过片：改回它那样也拦
+  assert.equal(await F.twin(P('提示词', '第1段', '8-9_改2.txt'), '8-9_改2 又改了'), '');
+  assert.equal(await F.twin(P('提示词', '第1段', '7.txt'), '没出过片'), '');
+});
+test('另存出来的一版存稿（draft-store）：改回和出过片的上一版一样回 422、文件不动；改得不一样照存', async t => {
+  const { F, P, read } = await setup(t);
+  const orig = read('提示词/第1段/11.txt');
+  await F.fork('试', '1', '11.txt', { text: NEW });
+  const store = makeStore({ ROOT: path.dirname(path.dirname(P())), frozen: abs => F.frozen(abs), twin: (abs, text, side) => F.twin(abs, text, side) });
+  const side = JSON.parse(read('提示词/第1段/11_改1_写稿.json')), base = { 写法: side.写法, 挂图: side.挂图 };
+  const save = text => store.save(P('提示词', '第1段', '11_改1.txt'), { text, baseText: read('提示词/第1段/11_改1.txt'), sidePatch: { ...base }, baseEditor: { ...base } });
+  await assert.rejects(save(orig), e => e.status === 422 && /都和出过片的「11\.txt」一样/.test(e.message));
+  assert.equal(read('提示词/第1段/11_改1.txt'), NEW);
+  await save(NEW + '又改了');
+  assert.equal(read('提示词/第1段/11_改1.txt'), NEW + '又改了');
 });
 
 test('存稿前问一声（frozen）：出过片的视频提示词给拦下的话，别的给空', async t => {

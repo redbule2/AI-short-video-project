@@ -89,6 +89,8 @@
      同一天又定：出过片的那一版「批准出片」灰掉（不再是红的），要再出先另存成新的一版。照本机服务认的「出过片」算，不照「已出片」标签（老名字的样片标签会认到新稿上）。
    2026-11-23 他定：「另存成改N」不许原样照抄（11-12_改3 照抄成改4，又出了一样的片）。点了交给 AI（照例复制给你自己的 AI）：照这一版样片的审片批注、
      这一版提示词上写的批注改，改好的另存成下一版（本机服务 review-fork.js）。一份批注都没有点不了；AI 一处没改就不另存。原稿、样片、审片批注都不动。
+     当晚又定：「另存成改N」不看审片、批注，点了打开写稿页照它接着改（公用/写稿出过片.js）；改了提示词或素材才存成新的一版，一处没改不另存（本机服务比，filmed.js）。
+     交给 AI 照审片批注改挪进那一行的「⋯」（reviewFork）。
    2026-11-22 他定：审片改成弹窗（流水线/审片弹窗.js），不再单独一页（第五步「审片」拿掉了）。「审片」最新这一版出过片才能点（成片、历史记录里的都算）；
      当晚又定：前几版出过、最新这一版没出的也灰掉。弹窗里摆这一条几版出的样片、能换着看，进去以后换不到别的提示词；复制批注、这条不要了也在弹窗里。
    共用的东西（读写流水线.json、顶栏、步骤条、AI 任务）在 流水线.js。
@@ -139,12 +141,18 @@ async function loadExtra() {
   X.filmed = filmed;
   await loadFrameWords(s);
 }
-/* 出过片的一版另存成下一版（11-22 他定；11-23 又定：不许原样照抄，「给出的是提示词，AI 根据提示词改」）：
-   交给 AI 照这一版的批注（样片旁边的审片批注、这一版提示词上写的，本机服务 filmed.js 认）改，改好的另存成「X_改N」，原稿和它出的样片不动（review-fork.js）。
-   改好以后新的一版自己出现在列表里；没写批注的点不了（按钮在 forkBtn），AI 一处没改就不另存 */
-async function forkPrompt(s, e) {
+/* 出过片的一版另存成下一版（11-22 他定；11-23 晚又定：另存不看审片、批注）：打开写稿页照这一版接着改，
+   改了提示词或素材才存成「X_改N」，一处没改就不另存（公用/写稿出过片.js、本机服务 filmed.js）。原稿和它出的样片不动。按钮在 forkBtn */
+function forkPrompt(s, e) {
   const fz = X.filmed.get(e.name);
   if (!fz || forkWhy(fz, false)) return;
+  openWrite(s.段, e.name, false, fz.下一版);
+}
+/* 照审片批注交给 AI 改（11-23 他定：「AI 根据提示词改」，不许原样照抄；当晚挪进那一行的「⋯」）：
+   交给 AI 照这一版的批注（样片旁边的审片批注、这一版提示词上写的）改，改好的另存成「X_改N」（review-fork.js），自己出现在列表里；AI 一处没改就不另存 */
+async function reviewFork(s, e) {
+  const fz = X.filmed.get(e.name);
+  if (!fz || reviewWhy(fz, false)) return;
   if (await startJob({ 事: '照审片批注另存', 段: s.段, 名: e.name })) rerender();
 }
 
@@ -1089,7 +1097,7 @@ function rowOf(s, e, made, list) {
         : bmLost ? '挂的白模文件不在了：先去掉或者放回去' : stale ? '这一条待核对：先看一眼，点「沿用」或者改好' : bmOld ? '白模改过：先看一眼，点「还对得上」或者改好' : '选好怎么出（模型、清晰度、秒数、积分上限），页面排好任务书，流水线就照它去即梦出一条样片。要花积分', !!fz || busy || !AI.ok || stale || bmOld || bmLost),
       hasTask ? h('button', { class: 'fl-link', type: 'button', title: '上回批准出片时排的任务书：' + tf, onclick: () => showText(at([...dirOf(s), tf])) }, '看任务书') : null,
       ReviewPop.btn(s, e, list || promptsOf(s.段)),
-      h('button', { class: 'fl-ib', type: 'button', title: '出关键帧…、删除', 'aria-label': '更多：出关键帧、删除', onclick: ev => moreMenu(ev.currentTarget, s, e, busy) }, icon('more'))),
+      h('button', { class: 'fl-ib', type: 'button', title: (fz ? '照审片批注交给 AI 改、' : '') + '出关键帧…、删除', 'aria-label': '更多：出关键帧、删除', onclick: ev => moreMenu(ev.currentTarget, s, e, busy) }, icon('more'))),
     imp ? h('p', { class: 'fn-note warn', style: 'margin:8px 0 0' }, '剧本改了：' + imp.为什么) : null,
     ed.length ? assetLine(s, e, ed, busy) : null,
     verLine(s, e),
@@ -1103,26 +1111,32 @@ function rowOf(s, e, made, list) {
 }
 /* 不常用的收进「⋯」（11-21 他定：那一行只摆 接着写、批准出片、看任务书、审片） */
 function moreMenu(anchor, s, e, busy) {
+  const fz = X.filmed.get(e.name), no = fz ? reviewWhy(fz, busy) : '';   // 出过片的：多一样「照审片批注交给 AI 改」（11-23 晚）
   popover(anchor, close => {
-    const item = (label, tip, fn) => h('button', { type: 'button', class: 'fl-pi', onclick: () => { close(); fn(); } }, h('span', { class: 'pn' }, h('b', null, label), h('small', null, tip)));
+    const item = (label, tip, fn, off) => h('button', { type: 'button', class: 'fl-pi', disabled: !!off, onclick: () => { close(); fn(); } }, h('span', { class: 'pn' }, h('b', null, label), h('small', null, off || tip)));
     return h('div', { class: 'fl-pl', style: 'padding-top:6px' },
+      fz ? item('照审片批注交给 AI 改', no ? '' : '把' + fz.批注.map(noteSay).join('、') + '交给 ' + chName() + '，改好的另存成「' + vpLabel(fz.下一版) + '」；AI 一处没改就不另存', () => reviewFork(s, e), no) : null,
       item('出关键帧…', '定取哪一刻，AI 照分镜先写字，你批过再出图', () => outFrameDlg(s, e)),
       item('删除', busy ? 'AI 正在做这一条，做完再删' : '移进历史记录，不是彻底删掉', () => removePrompt(s, e)));
   });
 }
 /* 你来写的稿（11-19 又能写了）：认法在 公用/写稿状态.js（写稿页同一条）。没有写稿资料的是 AI 写的初稿 */
 const isHandDraft = e => !!e.draft && PromptDraft.isHand(X.side.get(e.name));
-/* 出过片的那一版「另存成改N」（11-23 他定：不许原样照抄，交给 AI 照批注改，forkPrompt）。现在点不了的原因，点得了给 '' */
-const FORK_V = 24;   // 本机服务第 24 版起有「照审片批注另存」
+/* 出过片的那一版「另存成改N」（forkPrompt）、「照审片批注交给 AI 改」（reviewFork）现在点不了的原因，点得了给 ''。
+   11-23 晚他定：另存不看审片、批注；交给 AI 改的才要有批注 */
+const FORK_V = 25;   // 本机服务第 25 版起另存带着写稿页改好的字（filmed.js）
 function forkWhy(fz, busy) {
-  return busy ? 'AI 正在做这一条：做完再另存' : !fz.下一版 ? fz.不能另存 : LINK.v < FORK_V || !AI.ok ? '本机服务是旧的：重开一次，「另存成改N」才会交给 AI 照批注改'
-    : !(fz.批注 || []).length ? '这一版出过片（' + [...fz.片, ...fz.历史].join('、') + '），还没写批注：先点「审片」，边看边写哪里不对（或者「打开看、写批注」在提示词上写），再点这里' : '';
+  return busy ? 'AI 正在做这一条：做完再另存' : !fz.下一版 ? fz.不能另存 : LINK.v < FORK_V ? '本机服务是旧的：重开一次才能另存' : '';
+}
+function reviewWhy(fz, busy) {
+  return forkWhy(fz, busy) || (!AI.ok ? '本机服务是旧的：重开一次才能交给 AI'
+    : !(fz.批注 || []).length ? '还没写批注：先点「审片」，边看边写哪里不对（或者「打开看、写批注」在提示词上写），再交给 AI' : '');
 }
 const noteSay = r => r.startsWith('提示词/') ? '提示词上写的批注' : '样片「' + r.split('/').pop().replace(/_批注\.md$/, '') + '」的审片批注';
 function forkBtn(s, e, fz, busy, btn) {
   const why = forkWhy(fz, busy);
   return btn(fz.下一版 ? '另存成改' + vpVer(fz.下一版) : '另存', () => forkPrompt(s, e), 'ink', why
-    || '这一版出过片（' + [...fz.片, ...fz.历史].join('、') + '），原稿不能改。点了把要交代的话给你，复制给你自己的 AI：照' + fz.批注.map(noteSay).join('、') + '改，改好的另存成「' + fz.下一版 + '」。不许原样照抄，AI 一处没改就不另存；原稿和它出的样片都不动', !!why);
+    || '这一版出过片（' + [...fz.片, ...fz.历史].join('、') + '），原稿不能改。点了打开写稿页照它接着改：改了提示词或素材才存成「' + fz.下一版 + '」，一处没改就不另存；原稿和它出的样片都不动', !!why);
 }
 /* ---------- 筛选（11-16）：全部 / 已出片 / 没出片。选的记在这台电脑的浏览器里，各段、各项目都照它；钉在步骤条下面 ---------- */
 const PF_KEY = 'antou:flow:prompt-filter';

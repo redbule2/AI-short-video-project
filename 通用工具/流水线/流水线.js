@@ -745,11 +745,12 @@ const openImage = (file, extra) => openShell(at([F.name, ...file.split('/')]), b
    写完点「回到流水线」，没存的字先存上。
    页头不盖（2026-11-15 他要的：写提示词时也得看得见「AI 用」选的是谁、能换）：从页头下面盖起（wf-write）；
    写稿页交 AI 的活现读页头选的 AI、模型、推理（同一份本机记录）。点页头去别的页、换项目，也先把写稿页存上（SHELL.leave，go、pickProject 里调）。
-   hand：你来写的稿（11-19 又能写了），顶上写「接着写」，提醒写好事件脚本点「交给 AI 写完」（11-21） */
-function openWrite(seg, name, hand) {
+   hand：你来写的稿（11-19 又能写了），顶上写「接着写」，提醒写好事件脚本点「交给 AI 写完」（11-21）。
+   fork：出过片的那一版点「另存成改N」（11-23 晚）：给下一版的名字，写稿页一打开就照它接着改（网址带 fork=1，公用/写稿出过片.js），改了提示词或素材才存成这一版 */
+function openWrite(seg, name, hand, fork) {
   closePop(); hideHov();
   if (SHELL) SHELL.remove();
-  const frame = h('iframe', { class: 'wf-shell-frame', title: '写提示词', src: encodeURI('/通用工具/项目管理_写稿试用.html') + '#open=' + [F.name, '提示词', segName(seg), name].map(encodeURIComponent).join('/') });
+  const frame = h('iframe', { class: 'wf-shell-frame', title: '写提示词', src: encodeURI('/通用工具/项目管理_写稿试用.html') + '#open=' + [F.name, '提示词', segName(seg), name].map(encodeURIComponent).join('/') + (fork ? '&fork=1' : '') });
   const keep = async () => {   // 写稿页没存的字先存上；存不上返回 false，留在写稿页
     try {
       const w = frame.contentWindow;
@@ -766,8 +767,8 @@ function openWrite(seg, name, hand) {
   };
   SHELL = h('div', { class: 'wf-shell wf-write' },
     h('div', { class: 'wf-shell-h' }, h('button', { class: 'btn sm ink', type: 'button', onclick: close }, '← 回到流水线'),
-      h('span', { class: 'wf-shell-t' }, '第' + seg + '段 · ' + (name === C.PF_FILE ? '自由稿' : vpLabel(name)) + (hand ? ' · 接着写' : ' · 进去改')), h('span', { class: 'sp' }),
-      h('span', { class: 'fn-note' }, name === C.PF_FILE ? '这一段的戏你来写：谁在哪、做什么、说什么，想好的机位、声音也写上。写好点「提炼分镜」，AI 照它分镜头、列出场的人物场景道具。' : hand ? '你来写的稿：在自由模式写好事件脚本，点「交给 AI 写完」，AI 拆成分镜，生成目标、素材这几块一起写好。' : '这一条是 AI 写的，在这里自己改。改过以后，AI 估的每镜秒数可能不准，出片时会提醒。')),
+      h('span', { class: 'wf-shell-t' }, '第' + seg + '段 · ' + (name === C.PF_FILE ? '自由稿' : vpLabel(fork || name)) + (fork ? ' · 另存' : hand ? ' · 接着写' : ' · 进去改')), h('span', { class: 'sp' }),
+      h('span', { class: 'fn-note' }, fork ? '「' + vpLabel(name) + '」出过片，原稿不动。照它改，改了提示词或素材才存成「' + vpLabel(fork) + '」；一处没改就不另存，回来也不会多出一版。' : name === C.PF_FILE ?'这一段的戏你来写：谁在哪、做什么、说什么，想好的机位、声音也写上。写好点「提炼分镜」，AI 照它分镜头、列出场的人物场景道具。' : hand ? '你来写的稿：在自由模式写好事件脚本，点「交给 AI 写完」，AI 拆成分镜，生成目标、素材这几块一起写好。' : '这一条是 AI 写的，在这里自己改。改过以后，AI 估的每镜秒数可能不准，出片时会提醒。')),
     frame);
   SHELL.leave = keep;
   document.body.append(SHELL); document.body.classList.add('wf-covered');

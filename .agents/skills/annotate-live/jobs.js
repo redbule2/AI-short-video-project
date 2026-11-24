@@ -1668,7 +1668,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         if ((was || opt.must) && sameText(out, raw)) throw fail(opt.must || '改出来和原稿一字不差：出过片的要改出新的一版，原样照抄不算（11-23 他定），这回没另存');
         if (was) {
           if (f.不能另存) throw fail(f.在出 ? '这一版正在出片：出完再交给 AI 改' : '这一版出过片，原稿不能改，也另存不了：' + f.不能另存);
-          try { j.名 = (await filmed.fork(j.项目, j.段, j.名)).名; } catch (e) { throw fail('这一版出过片，要另存成新的一版，没存成：' + e.message); }
+          try { j.名 = (await filmed.fork(j.项目, j.段, j.名, { text: out })).名; } catch (e) { throw fail('这一版出过片，要另存成新的一版，没存成：' + e.message); }   // 带着改好的字另存（filmed.js 再比一遍，和原稿一样的不另存）
           rel[2] = j.名;
         } else await keepCopy(j.项目, rel);
         await writeFile(vpPath(j), out);

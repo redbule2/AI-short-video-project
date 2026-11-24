@@ -176,12 +176,12 @@ test('普通写入与草稿保存共享同一个路径锁', async () => {
   const result = await saving; assert.deepEqual(result.side.关键词, { 1: ['排队更新'] }); io.noTemps();
 });
 
-function routeFor(io, frozen = async () => '') {   // frozen：出过片的稿给拦下的话（11-22，filmed.js），默认都没出过片
+function routeFor(io, frozen = async () => '', twin = async () => '') {   // frozen：出过片的稿给拦下的话（11-22，filmed.js），默认都没出过片；twin：另存出来的一版改回和出过片的上一版一样（11-23 晚），默认都不一样
   const serverPath = path.join(ROOT, '.agents', 'skills', 'annotate-live', 'server.js');
   const src = fs.readFileSync(serverPath, 'utf8').split('const [cmd, arg] = process.argv.slice(2);')[0] + '\nmodule.exports = handle;';
   const context = { module: { exports: {} }, Buffer, URL, JSON, console: { log() {}, error() {} }, __dirname: path.dirname(serverPath),
     process: { env: { ANTOU_ROOT: ROOT, ANTOU_PORT: '18761' } },
-    require: name => name === 'fs' ? { promises: io } : name === './jobs.js' || name === './pc-files.js' || name === './prompt-lib.js' ? () => ({}) : name === './filmed.js' ? () => ({ frozen }) : name === './draft-store.js' ? opts => makeStore({ ...opts, io }) : require(name) };
+    require: name => name === 'fs' ? { promises: io } : name === './jobs.js' || name === './pc-files.js' || name === './prompt-lib.js' ? () => ({}) : name === './filmed.js' ? () => ({ frozen, twin }) : name === './draft-store.js' ? opts => makeStore({ ...opts, io }) : require(name) };
   vm.runInNewContext(src, context, { filename: serverPath });
   return async (url, payload, headers = {}, method = 'POST') => {
     const req = Readable.from([Buffer.from(typeof payload === 'string' ? payload : JSON.stringify(payload))]);
@@ -217,4 +217,15 @@ test('HTTP 出过片的稿（11-22）：PUT 改了字回 423、字一样照存�
   io.unchanged(before);
   assert.equal((await call(API, '原文', {}, 'PUT')).status, 200);   // 字一样：照存
   assert.equal(io.text(TARGET), '原文');
+});
+test('HTTP 另存出来的一版（11-23 晚）：PUT、草稿保存改回和出过片的上一版一样回 422，文件不动；字没变的 PUT 照存', async () => {
+  const SAME = '提示词和素材都和出过片的「视频提示词」一样：一处没改的不存成新的一版';
+  const io = new MemoryFS(), call = routeFor(io, async () => '', async (abs, text) => abs === TARGET && text === '出过片那样' ? SAME : ''), before = io.snapshot();
+  const put = await call(API, '出过片那样', {}, 'PUT');
+  assert.equal(put.status, 422); assert.match(String(put.body), /一处没改的不存/);
+  assert.equal((await call(API + '?draft', body({ text: '出过片那样' }))).status, 422);
+  io.unchanged(before);
+  assert.equal((await call(API, '原文', {}, 'PUT')).status, 200);
+  assert.equal((await call(API + '?draft', body())).status, 200);   // 改得不一样：照存
+  assert.equal(io.text(TARGET), '新文');
 });
