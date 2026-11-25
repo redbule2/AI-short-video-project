@@ -1,9 +1,11 @@
 /* 写稿页：出过片的提示词锁住（2026-11-22 他定：「已经出片的提示词不能改，只能新增提示词」）。
    打开时问本机服务（/api/filmed，.agents/skills/annotate-live/filmed.js）这一版出没出过片。出过片的这一页锁着：能看、能翻，不能改字、挂图、交给 AI；
+   看图照常（11-24 他说「放开看图」）：右栏点图、钉住照常，插入、挂上的钮藏起来；正文里点 @图片N 小牌子、按住 Ctrl 点字里的 @图片N 看大图，停在上面出小图（relay）。
    顶上一条说出了哪几条样片。点「另存成「X_改N」」（2026-11-23 晚他定：另存不看审片、批注）：这一页放开，照这一版接着改；
      改了提示词或素材，头一回存就另存成下一版（POST /api/filmed），这一页换成新的一版接着写（写稿改镜头.js 的 retarget，不重开）。原稿、样片不动。
      提示词、素材都没变的不存（本机服务比，回 422）：回到流水线也不会多出一版。还没存成以前，交给 AI 的几样等存成了再交；请 AI 批、交给 AI 改、加减镜头关着。
      流水线那一行点「另存成改N」打开的（网址带 fork=1）：一打开就是这样。
+     流水线那一行点「进去看」打开的（11-24 他定：出过片的也能进来，只是不能改）：锁着；在这里点「另存」放开时，流水线顶上「只能看」换成「另存」。
    存稿时服务回 423（刚出了片）：一样锁上，没存上的字留在浏览器恢复草稿里，另存以后在新的一版上点「恢复到页面」。
    按批注改提示词、照审片批注另存（流水线那一行「⋯」里交的）做完，改好另存成了下一版：也换到那一版。
    写稿页过了 1500 行，新功能放这里；用写稿页的 PJ、SEGDIR、STEM、OPENPATH、HDR、JOBS、draftKey、offerRecovery、setAsk、paintSend……。写稿页里调 window.Filmed：
@@ -14,7 +16,7 @@
   const S = { f: null, pend: '', shown: '', base: '' };   // f：服务给的这一版 { 出过片, 片, 历史, 在出, 下一版, 最新, 不能另存, 批注 }；pend：正在另存成哪一版（还没存成）；shown：流水线顶上那一行写的哪一版；base：点另存那一刻的写稿资料（JSON）
   const KINDS = ['按批注改提示词', '照审片批注另存'], FORK_V = 25;   // KINDS：做完会另存成下一版的任务；FORK_V：本机服务第 25 版起带着改好的字另存（filmed.js）
   const NOTE_KEY = 'xiegao:filmed-note';   // 另存好了换页以后，在新的一版上说一句
-  const LOCK = ['#sheet', '#editor-mode', '#pane-assets', '#pane-ai', '#pane-lint', '#pane-shots'], OFF = ['#askAll', '#sendNotes'];
+  const LOCK = ['#sheet', '#editor-mode', '#pane-ai', '#pane-lint', '#pane-shots'], OFF = ['#askAll', '#sendNotes'];   // 资产栏不锁：插入、挂上的钮带 data-ins，锁着时藏起来（mark），写稿页 insertFromRail 也拦
   const HOLD = ['#pane-shots'];   // 另存还没存成：加减镜头（要改名字）存成了再做；OFF 那两个也关着
   const segNo = () => SEGDIR.replace(/^第|段$/g, '');
   const me = () => STEM + '.txt';
@@ -27,6 +29,7 @@
     for (const s of OFF) { const b = $(s); if (b && !b.disabled) b.disabled = true; }
   }
   const unlock = list => { for (const s of list) { const el = $(s); if (el && el.inert) el.inert = false; } };
+  const mark = () => { const b = document.body; if (b) b.classList.toggle('filmed-ro', on()); };   // 锁着：藏起插入、挂上的钮
   let mo = null;
   function watch() {
     if (mo || typeof MutationObserver !== 'function') return;
@@ -36,7 +39,8 @@
   function style() {
     if ($('#filmed-css')) return;
     document.head.append(h('style', { id: 'filmed-css' }, '.filmed-bar{margin:0 0 16px;padding:13px 16px;border:1px solid var(--qing-line);border-radius:6px;background:var(--qing-soft);color:var(--ink-2);font:13px/1.8 var(--sans)}'
-      + '.filmed-bar b{color:var(--qing)}.filmed-bar .btn{margin:8px 8px 0 0}.filmed-bar small{display:block;color:var(--ink-3)}'));
+      + '.filmed-bar b{color:var(--qing)}.filmed-bar .btn{margin:8px 8px 0 0}.filmed-bar small{display:block;color:var(--ink-3)}'
+      + '.filmed-ro [data-ins]{display:none!important}.filmed-ro #canvas.filmed-pic{cursor:zoom-in}'));
   }
   async function ask(n) {
     const r = await fetch('/api/filmed' + q(n), { headers: HDR, cache: 'no-store' });
@@ -64,8 +68,10 @@
     unlock(LOCK.filter(s => !HOLD.includes(s)));
     paint();
     setStatus('另存成「' + short(S.pend) + '」：改了才存');
+    if (!fromUrl) retitle(me(), me());   // 流水线那一行「进去看」开的（11-24）：顶上「只能看」换成「另存」
     return true;
   }
+  const retitle = (a, b) => { try { if (parent !== window && typeof parent.retitleWrite === 'function') parent.retitleWrite(a, b); } catch (e) { /* 不是流水线里开的 */ } };   // 流水线顶上那一行（流水线.js）
   function buttons(f, no) {
     if (f.下一版) {
       const b = h('button', { class: 'btn sm ink', type: 'button', onclick: () => { if (start(false)) offerRecovery(); }, title: no || '这一页放开，照这一版接着改：改了提示词或素材才存成「' + f.下一版 + '」，一处没改就不另存；原稿和它出的样片都不动' }, '另存成「' + short(f.下一版) + '」');
@@ -75,6 +81,7 @@
     return f.最新 && f.最新 !== me() ? [h('button', { class: 'btn sm', type: 'button', onclick: () => go(f.最新) }, '打开最新的「' + short(f.最新) + '」')] : [];
   }
   function paint() {
+    mark();
     let bar = $('#filmedBar');
     if (!S.f || !S.f.出过片) { if (bar) bar.remove(); return; }
     lock();
@@ -97,7 +104,7 @@
   function go(n, say) {
     const next = [...OPENPATH.split('/').slice(0, -1), n];
     try { if (say) sessionStorage.setItem(NOTE_KEY, say); } catch (e) { /* 存不了就不说 */ }
-    try { if (parent !== window && typeof parent.retitleWrite === 'function') parent.retitleWrite(me(), n); } catch (e) { /* 不是流水线里开的 */ }
+    retitle(me(), n);
     location.hash = 'open=' + next.map(encodeURIComponent).join('/');
   }
   /* 另存：带着这一页的字和写稿资料那几样。本机服务比过和这一版不一样才存成下一版，一样回 422 */
@@ -106,9 +113,9 @@
   function made(r) {
     const from = me(), shown = S.shown;
     ShotEdit.retarget(r.名, OPENPATH);
-    try { if (shown && shown !== r.名 && parent !== window && typeof parent.retitleWrite === 'function') parent.retitleWrite(shown, r.名); } catch (e) { /* 不是流水线里开的 */ }
+    if (shown && shown !== r.名) retitle(shown, r.名);
     S.f = null; S.pend = ''; S.shown = ''; S.base = '';
-    unlock(LOCK);
+    unlock(LOCK); mark();
     const bar = $('#filmedBar'); if (bar) bar.remove();
     setAsk(); paintSend(); Finish.paint();   // 请 AI 批、交给 AI 改、交给 AI 写完照新的一版重新算
     toast('另存成「' + short(r.名) + '」了：原稿「' + short(from) + '」和它出的样片都不动，接着在这里写');
@@ -141,5 +148,24 @@
     go(j.名, j.结果);
     return true;
   }
+  /* 锁着也能看图（11-24 他说「放开看图」）：正文整块 inert，鼠标点、停都落到底下的 #canvas 上，写稿页认不出是哪张图。
+     照位置找出鼠标底下的文字框、@图片N 小牌子，把这一下照样转给它，照写稿页自己的走：点小牌子看大图、按住 Ctrl 点字里的 @图片N 看大图、停在上面出小图。
+     只转点和移动：按键、拖放、选字都不转，字照旧改不了 */
+  const inBox = (b, x, y) => x >= b.left && x <= b.right && y >= b.top && y <= b.bottom;
+  function under(x, y) {   // 文字框盖在影子上面，先找文字框
+    for (const sel of ['#sheet .wr-ta', '#sheet .ref']) for (const el of $$(sel)) for (const b of el.getClientRects()) if (inBox(b, x, y)) return el;
+    return null;
+  }
+  function relay(e) {
+    const cv = $('#canvas'), sh = $('#sheet');
+    if (!e.isTrusted || !on() || !cv || e.target !== cv || !sh || !sh.inert || (e.type === 'mousemove' && e.buttons)) return;
+    const el = under(e.clientX, e.clientY);
+    if (e.type === 'mousemove') cv.classList.toggle('filmed-pic', !!el && el.matches('.ref'));   // 小牌子上和写稿页一样是放大镜
+    if (!el) return;
+    e.stopPropagation();   // 落在 #canvas 上的这一下不往下走：写稿页会当成鼠标不在图上，把小图收掉
+    el.dispatchEvent(new MouseEvent(e.type, { bubbles: true, cancelable: true, view: window, detail: e.detail, screenX: e.screenX, screenY: e.screenY, clientX: e.clientX, clientY: e.clientY,
+      ctrlKey: e.ctrlKey, shiftKey: e.shiftKey, altKey: e.altKey, metaKey: e.metaKey, button: e.button, buttons: e.buttons }));
+  }
+  if (typeof addEventListener === 'function') for (const t of ['click', 'mousemove']) addEventListener(t, relay, true);
   window.Filmed = Object.freeze({ init, on, pending, base: () => S.base, post, made, miss, paint, hit, done });
 })();

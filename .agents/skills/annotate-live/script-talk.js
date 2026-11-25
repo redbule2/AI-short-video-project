@@ -4,7 +4,7 @@
    复制要交代的话，贴进自己开的 AI 对话，和它商量着改；他说「定稿」，AI 才把改好的整份剧本写进回复文件，
    这里照固定格式查过，写回 第N段_剧本.docx（旧的进历史记录），页面换上红批。
    没写批注也能点；写了的一起带上，改完批注收进历史记录。商量下来不改：回复只写「不改」，剧本、批注都不动。
-   jobs.js 把这里的 KINDS 并进去；交给 AI 的话（selfMsg）、弹窗上那一句（handSay）也从这里拿。
+   jobs.js 把这里的 KINDS 并进去；交给 AI 的话（selfMsg）、弹窗上那一句（handSay；豆包工作这种贴进去的用 handNext）也从这里拿。
    ============================================================ */
 module.exports = function makeTalk({ fsp, pj, str, fail, exists, unbom, nameOk, docText, writeDoc, archive, body, today, mmdd }) {
   const NO_CHANGE = /^\s*不改\s*[。.！!]?\s*$/;
@@ -61,7 +61,8 @@ module.exports = function makeTalk({ fsp, pj, str, fail, exists, unbom, nameOk, 
         '读完先在对话里跟我说你的看法，我们一起商量。等我说「定稿」，再把改好的整份剧本（照任务书里「回复的格式」）一次写进下面这个文件，用 UTF-8；商量下来不用改，就只写「不改」两个字。我没说「定稿」之前别写它：一写，项目马上就收走。除了它，别的文件一律不改、不新建：', files.reply,
         ...tell].join('\n');
     },
-    handSay: '复制下面的话，贴进你自己的 AI 对话（Claude、Codex、DeepSeek 都行），和它商量着改。商量好了跟它说「定稿」，它把剧本写回项目，这里自动换上，改动的地方显示成红批。',
+    handSay: '复制下面的话，贴进你自己的 AI 对话（Codex、豆包工作、DeepSeek 都行），和它商量着改。商量好了跟它说「定稿」，它把剧本写回项目，这里自动换上，改动的地方显示成红批。',
+    handNext: '和它商量着改。商量好了跟它说「定稿」，它把剧本写回项目，这里自动换上，改动的地方显示成红批；商量下来不改，跟它说「不改」。',   // 看得见的对话（豆包工作）贴进去以后怎么做（11-24）
   };
   return { KINDS: { 与AI沟通剧本 } };
 };

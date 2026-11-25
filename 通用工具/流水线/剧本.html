@@ -50,7 +50,10 @@
 <script src="../公用/文字描写.js"></script>
 <script src="../公用/资产改过.js"></script>
 <script src="../公用/资产归类.js"></script>
+<script src="../公用/资产照的.js"></script>
+<script src="../公用/资产认图.js"></script>
 <script src="流水线.js"></script>
+<script src="资产旧图.js"></script>
 <script>
 /* ============================================================
    流水线 · 剧本（一场的第一步，工序一。2026-11-16 他定：第一步直接写剧本，梗概、人物、场景、道具剧本定稿以后再提炼）
@@ -68,7 +71,7 @@ let FRAME_KEY = '';   // 右边那一块现在摆的是什么：剧本的路径�
 const swapCard = () => rerender();
 const ED_TALK = '与AI沟通剧本';   // 右边剧本里点「与AI继续沟通」开的任务（11-17 他定：先和自己的 AI 商量，他说定稿才写回来）
 /* 剧本定稿：只记一个时间。剧本以后再改，或者这一场重新定过，这个定稿就不算了，要再点一次。
-   定过稿、后来剧本又改过（自己改、批注改）再定稿：AI 对一遍新旧剧本，列影响清单（哪些资产、提示词要再看、为什么；2026-11-14 文生资产流程图「中途改剧本」） */
+   定过稿、后来剧本又改过（自己改、批注改）再定稿：AI 对一遍新旧剧本，列影响清单（哪几条提示词要再看、为什么；资产 11-23 起不归它管；2026-11-14 文生资产流程图「中途改剧本」） */
 async function finalScript(s) {
   await flush();
   if (F.err) return;
@@ -319,19 +322,19 @@ function barEls(s) {
   else out.push(barNote(again ? '定稿以后又改过。看完没问题，再定一次。' : '要改，点下面剧本右上角的「与AI继续沟通」，或者点「自己改」。没问题了就定稿；定稿以后 AI 提炼人物、场景、道具和镜头表。', again), sp(), mine('自己改'), fin('剧本定稿', 'ink'));
   return out;
 }
-/* 重新定稿以后的影响清单：AI 在列、列好了（资产几样、提示词几条要再看）、没列成 */
+/* 重新定稿以后的影响清单：AI 在列、列好了（提示词几条要再看）、没列成。资产 11-23 起不归它管：哪张图照的描写、镜头变了，资产那一步自己标 */
 function impactNote(s) {
   const job = jobOf('影响清单', s.段), v = impactOf(s);
-  if (jobLive(job)) return [jobLine(job), barNote('AI 在对新旧剧本，列哪些资产、提示词要再看。')];
+  if (jobLive(job)) return [jobLine(job), barNote('AI 在对新旧剧本，列哪几条提示词要再看。')];
   if (v) {
-    const a = impactTodo(s, v).length, p = v.提示词.length;
-    return barNote('剧本改了' + (v.总 ? '：' + v.总 : '') + '。' + (a || p ? [a ? '资产 ' + a + ' 样' : '', p ? '提示词 ' + p + ' 条' : ''].filter(Boolean).join('、') + '要再看，没列上的照旧。' : 'AI 说别的都不受影响。'), !!(a || p));
+    const p = v.提示词.length;
+    return barNote('剧本改了' + (v.总 ? '：' + v.总 : '') + '。' + (p ? '提示词 ' + p + ' 条要再看，没列上的照旧。' : 'AI 说提示词都不受影响。'), !!p);
   }
   const failed = jobFailed('影响清单', s.段);
   if (failed) return failed;
   const prev = s.影响上回;   // 重新定稿时记下的上回定稿时间：AI 拿它找改之前那一版
   if (!AI.ok || !prev || timeOf(prev) + 999 >= timeOf(s.剧本定稿) || !s.剧本定稿) return null;
-  return barNote(h('span', null, '剧本重新定稿了，提炼、资产、提示词都标成待核对。', h('button', { class: 'btn sm ghost', type: 'button', title: '可选：让 AI 对一遍新旧剧本，列出哪几样资产、提示词真要再看，没列上的照旧', onclick: async () => { await startJob({ 事: '影响清单', 段: s.段, 参数: { 上回: prev } }); swapCard(s); } }, '让 AI 列影响')));
+  return barNote(h('span', null, '剧本重新定稿了，提炼、提示词都标成待核对；资产图照的描写变了的，资产那一步自己标出来。', h('button', { class: 'btn sm ghost', type: 'button', title: '可选：让 AI 对一遍新旧剧本，列出哪几条提示词真要再看，没列上的照旧', onclick: async () => { await startJob({ 事: '影响清单', 段: s.段, 参数: { 上回: prev } }); swapCard(s); } }, '让 AI 列影响')));
 }
 /* ---------- 先写提示词的段（2026-11-21 他定）：没有剧本，第一步在写稿页写一段自由模式的提示词（提示词/第N段/自由稿.txt）。
    这一页摆自由稿（只看），点「写自由稿」「接着写」把写稿页盖上来写；写好点「提炼分镜」（这里、写稿页顶上都有）：

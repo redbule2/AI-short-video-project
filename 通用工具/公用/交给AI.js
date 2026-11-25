@@ -4,9 +4,12 @@
      给我提示词   要交代的话摆出来、复制，贴进自己开的对话（Codex、Claude、DeepSeek 都行；出图要贴进 Codex。11-21 起出片由流水线自己做，不经这里）。
                   AI 做完把回复写进项目、跑一句命令告诉项目，这里自动接着做；它写不了文件的，把回复贴回来。
      Claude 桌面版 项目已经开了新对话、任务填好，等你按发送；没看到就「再开一次」，或者复制这段话自己贴。
+     Codex        出图、照批注改图（11-23）：项目开一个 Codex 新对话、话自动发进去，人在里面聊，说「定稿」就接上；「去 Codex 看」切到那个对话。
+                  没发进去（Codex 没开这类）改成给我提示词：弹出来复制，贴进 Codex 新对话。
+     豆包工作     （11-24）项目已经把话复制好、把豆包工作叫到前面：弹出来告诉你点「新工作任务」、按 Ctrl+V、回车，对话名改成什么；没看到就「再叫一次」。
    用法：HandAI.wait(任务) 等服务把话备好再弹；HandAI.open(任务) 直接弹（同时有几个就排队，一个一个弹）；
         HandAI.buttons(任务, 刷新) 任务那一行后面的小按钮（交给 AI 的话、再开一次）；HandAI.SELF 是「给我提示词」的渠道号。
-   接口：GET /api/job/<号>?msg、POST /api/job/<号>?reply（贴回来的回复）、POST /api/job/<号>?reopen（Claude 再开一次）
+   接口：GET /api/job/<号>?msg、POST /api/job/<号>?reply（贴回来的回复）、POST /api/job/<号>?reopen（Claude 再开一次）、POST /api/job/<号>?codex（去 Codex 看）
    ============================================================ */
 (function () {
   if (window.HandAI) return;
@@ -79,8 +82,12 @@
     ta.remove();
     return ok;
   }
-  /* 这个任务现在是不是在等人：给我提示词（等你贴）、Claude 桌面版（等你按发送 / 在做） */
+  /* 这个任务现在是不是在等人：给我提示词（等你贴）、Claude 桌面版（等你按发送 / 在做）、Codex（在往里发 / 你在里面聊） */
   const waiting = j => !!j && !!j.交给 && (j.状态 === '在做' || j.状态 === '排队');
+  const sending = j => !!j && !!j.交给 && j.交给.方式 === 'codex' && j.交给.等 === '发送';
+  async function see(id) {   // 去 Codex 看：切到自动发进去的那个对话
+    try { await req('POST', '/api/job/' + id + '?codex'); tip('切到 Codex 里那个对话了'); } catch (e) { tip('没切过去：' + e.message); }
+  }
   const queue = [];
   let showing = null;
 
@@ -104,11 +111,16 @@
     let m;
     try { m = await req('GET', '/api/job/' + job.id + '?msg'); }
     catch (e) { tip('交给 AI 的话没读到：' + e.message); return; }
-    const how = m.方式 || 'self';
+    const how = m.方式 || 'self', cx = how === 'codex', db = how === 'doubao';
+    const sayCx = (等, name) => 等 === '发送' ? '在往 Codex 里发：开一个新对话，把下面的话发进去，一个十几秒，前面有排着的要多等一会儿。'
+      : '已经发进 Codex 的新对话「' + (name || '') + '」：点「去 Codex 看」切过去。要改就在那个对话里说，满意了说「定稿」，这里自动换上。';
     const say = how === 'claude'
       ? (m.等 === '发送' ? '项目已经在 Claude 桌面版开了一个新对话，任务填好了：到 Claude 窗口里按发送（Claude 规定外面带进来的话要你按一下）。没看到那个对话，就点「再开一次」，或者复制下面的话，贴进 Claude 的新对话。' : 'Claude 已经在做了，在 Claude 窗口里看。它做完会告诉项目，这里自动接着做。')
       : how === 'deepseek' ? 'DeepSeek 在它自己的窗口里做，做完自动接上。'
-      : m.说 || '复制下面的话，贴进你自己在 Codex、Claude 或 DeepSeek 里新开的对话' + (m.要Codex ? '（这件事要贴进 Codex：要用它的出图工具或者操作即梦）' : '') + '。它做完会把回复写进项目、告诉这边，这里自动接着做，不用回来点。';
+      : db ? '下面的话已经复制好，豆包工作也叫到前面了：在豆包工作里点「新工作任务」，按 Ctrl+V、回车；再把这个对话的名字改成「' + (m.对话名 || '') + '」。' + (m.接着 || '它做完会把回复写进项目、告诉这边，这里自动接着做。') + '没看到豆包工作，点「再叫一次」。'
+      : cx ? sayCx(m.等, m.对话名)
+      : m.没发出 ? '没自动发进 Codex（' + m.没发出 + '）：复制下面的话，贴进 Codex 的新对话发出去。在那个对话里聊，满意了说「定稿」，这里自动换上。'
+      : m.说 || '复制下面的话，贴进你自己在 Codex、豆包工作或 DeepSeek 里新开的对话' + (m.要Codex ? '（这件事要贴进 Codex：要用它的出图工具或者操作即梦）' : '') + '。它做完会把回复写进项目、告诉这边，这里自动接着做，不用回来点。';
     return new Promise(resolve => {
       const ta = el('textarea', { placeholder: 'AI 写不了文件的话（比如 Codex 只读）：把它的回复整段贴在这里，点「交回复」', spellcheck: 'false' });
       const err = el('div', { class: 'hai-err' });
@@ -128,8 +140,11 @@
         close();
         tip(r && r.状态 === '做完' ? (r.结果 || '做完了') : '交上去了，这里接着做');
       };
+      const copied = async (text, ok, no) => {   // 复制成功就关上弹窗（任务接着等），底下冒一句小提示；复制不了留着弹窗，让人自己选了复制（11-24 他要）
+        if (await copy(text)) { close(); tip(ok); } else err.textContent = no;
+      };
       const reopen = async () => {
-        try { await req('POST', '/api/job/' + job.id + '?reopen'); tip('又开了一次：到 Claude 窗口里看'); }
+        try { await req('POST', '/api/job/' + job.id + '?reopen'); tip(db ? '又复制了一遍、叫出了豆包工作：点「新工作任务」，Ctrl+V、回车' : '又开了一次：到 Claude 窗口里看'); }
         catch (e) { err.textContent = '没开成：' + e.message; }
       };
       const sayEl = el('p', { class: 'hai-say' }, say);
@@ -141,9 +156,12 @@
         if (j.状态 !== '在做' && j.状态 !== '排队') { close(); return; }
         if (!j.交给) { sayEl.textContent = '回复收到了，在接着做，做完这个框自己关上。'; box.classList.add('got'); }
         else if (how === 'claude' && j.交给.等 === '做') sayEl.textContent = 'Claude 已经在做了，在 Claude 窗口里看。它做完会告诉项目，这里自动接着做。';
+        else if (cx && j.交给.方式 !== 'codex') sayEl.textContent = '没自动发进 Codex：复制下面的话，贴进 Codex 的新对话发出去。在那个对话里聊，满意了说「定稿」，这里自动换上。';
+        else if (cx && !sending(j)) { sayEl.textContent = sayCx(j.交给.等, m.对话名); if (j.交给.会话) seeBtn.style.display = ''; }
       }, 2000);
+      const seeBtn = el('button', { class: 'hai-btn', type: 'button', style: cx && m.会话 ? null : 'display:none', onclick: () => see(job.id) }, '去 Codex 看');
       const box = el('div', { class: 'hai-box', role: 'dialog' },
-        el('div', { class: 'hai-h' }, el('b', null, how === 'self' ? '给我提示词' : how === 'claude' ? '交给 Claude' : '交给 DeepSeek'), el('span', null, m.标题 || job.标题 || ''), countEl),
+        el('div', { class: 'hai-h' }, el('b', null, how === 'self' ? '给我提示词' : how === 'claude' ? '交给 Claude' : cx ? '交给 Codex' : db ? '交给豆包工作' : '交给 DeepSeek'), el('span', null, m.标题 || job.标题 || ''), countEl),
         sayEl,
         el('pre', { class: 'hai-msg' }, m.话 || '（还没备好，等一两秒再点）'),
         el('div', { class: 'hai-back' }, ta, el('div', { class: 'hai-foot' }, el('span', { class: 'sp' }), el('button', { class: 'hai-btn', type: 'button', onclick: give }, '交回复'))),
@@ -153,7 +171,10 @@
           el('span', { class: 'sp' }),
           el('button', { class: 'hai-btn ghost', type: 'button', onclick: close }, '关上（接着等）'),
           how === 'claude' && m.等 === '发送' ? el('button', { class: 'hai-btn', type: 'button', onclick: reopen }, '再开一次') : null,
-          el('button', { class: 'hai-btn ink hai-copy', type: 'button', onclick: async () => { if (await copy(m.话 || '')) tip(how === 'self' ? '复制好了：贴进你自己的 AI 的新对话' : '复制好了'); else err.textContent = '复制不了：在上面框里全选、Ctrl+C'; } }, '复制')));
+          db ? el('button', { class: 'hai-btn hai-copy', type: 'button', onclick: reopen }, '再叫一次') : null,
+          db ? el('button', { class: 'hai-btn hai-copy', type: 'button', onclick: () => copied(m.对话名 || '', '对话名复制成功：在豆包工作里改名时贴上', '复制不了：照上面那句手打') }, '复制对话名') : null,
+          cx ? seeBtn : null,
+          el('button', { class: 'hai-btn ink hai-copy', type: 'button', onclick: () => copied(m.话 || '', how === 'self' ? '复制成功：贴进你自己的 AI 的新对话' : db ? '复制成功：在豆包工作里点「新工作任务」，Ctrl+V、回车' : '复制成功', '复制不了：在上面框里全选、Ctrl+C') }, '复制')));
       const mask = el('div', { class: 'hai-mask', onclick: e => { if (e.target === mask) close(); } }, box);
       const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
       document.addEventListener('keydown', onKey, true);
@@ -161,14 +182,17 @@
     });
   }
   /* 给我提示词：开了任务以后，等服务把要交代的话备好（一般一两秒），再弹。返回最新的任务。
-     Claude 桌面版的不弹：Claude 窗口自己会跳到新对话；没看到的，任务那一行有「再开一次」 */
+     Claude 桌面版的不弹：Claude 窗口自己会跳到新对话；没看到的，任务那一行有「再开一次」。
+     自动发进 Codex 的（出图）：排着队、在往里发的接着等（一次勾几样的，一个一个发），发进去了不弹；没发进去改成给我提示词，弹出来复制 */
   async function wait(job, after) {
-    let j = job;
-    for (let i = 0; i < 90 && j && (j.状态 === '排队' || j.状态 === '在做') && !j.交给; i++) {
-      await new Promise(r => setTimeout(r, 400));
+    let j = job, quiet = Date.now() + 36e3;
+    const end = Date.now() + 30 * 60e3;
+    while (j && (j.状态 === '排队' || j.状态 === '在做') && (!j.交给 || sending(j)) && Date.now() < end && (j.交给 || j.状态 === '排队' || Date.now() < quiet)) {
+      if (j.状态 === '排队') quiet = Date.now() + 36e3;   // 排着队的不算：开起来以后再等它备好话
+      await new Promise(r => setTimeout(r, j.交给 || j.状态 === '排队' ? 2000 : 400));
       try { j = await req('GET', '/api/job/' + j.id); } catch (e) { break; }
     }
-    if (j && j.交给 && j.交给.方式 === 'self') open(j, after);
+    if (j && j.交给 && (j.交给.方式 === 'self' || j.交给.方式 === 'doubao')) open(j, after);   // 豆包工作：弹出来告诉你按 Ctrl+V、回车，对话名改成什么
     else if (j && !j.交给 && (j.状态 === '没成' || j.状态 === '停了')) tip((j.标题 || '') + ' 没成：' + (j.错误 || j.状态));
     return j;
   }
@@ -177,6 +201,7 @@
     if (!waiting(job)) return [];
     style();
     const out = [el('button', { class: 'hai-mini', type: 'button', title: '再看一遍要交给 AI 的话；AI 写不了文件的，也在那里把它的回复贴回来', onclick: () => open(job, refresh) }, '交给 AI 的话')];
+    if (job.交给.方式 === 'codex' && job.交给.会话) out.push(el('button', { class: 'hai-mini', type: 'button', title: '切到 Codex 里那个对话：要改就在那里说，满意了说「定稿」', onclick: () => see(job.id) }, '去 Codex 看'));
     if (job.交给.方式 === 'claude' && job.交给.等 === '发送') out.push(el('button', { class: 'hai-mini', type: 'button', title: '没看到 Claude 里新开的对话：再开一次', onclick: async () => { try { await req('POST', '/api/job/' + job.id + '?reopen'); tip('又开了一次：到 Claude 窗口里看'); } catch (e) { tip('没开成：' + e.message); } } }, '再开一次'));
     return out;
   }

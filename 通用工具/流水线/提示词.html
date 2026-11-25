@@ -29,7 +29,10 @@
 <script src="../公用/文字描写.js"></script>
 <script src="../公用/资产改过.js"></script>
 <script src="../公用/资产归类.js"></script>
+<script src="../公用/资产照的.js"></script>
+<script src="../公用/资产认图.js"></script>
 <script src="流水线.js"></script>
+<script src="资产旧图.js"></script>
 <script src="资产详情.js"></script>
 <script src="../公用/样片归属.js"></script>
 <script src="../公用/历史记录.js"></script>
@@ -48,7 +51,7 @@
        （公用/写稿写完.js，本机服务 pe-finish.js；以前的「AI 铺底」「AI 整理成分镜」并进来了）。
        写稿资料里记「手写」，列表上标「手写稿」、按钮是「接着写」（11-15 以前从这里开的老稿记的是「流水线」，也算）。
      「AI 先写一版」照 sd25-pe 只写勾的那几个镜头，可另外写要求；本机服务照名字认这一条拍哪几个镜头。
-       点「复制任务，自己交给 AI」，贴进你自己开的对话。写好以后打开看、写批注交给 AI 改；也能「进去改」自己动手改字（他要留着）。
+       点「复制任务，自己交给 AI」，贴进你自己开的对话。写好以后「进去改」自己动手改字（11-24 起没有「打开看、写批注」了）。
    每镜几秒（2026-11-15 他定）：AI 写稿、照批注改稿、交给 AI 写完时顺手估每一镜几秒，记在参考素材映射这一条的「秒数」（公用/秒数.js）；
      点「批准出片」时时长自动填合计，下面列每镜几秒。估完以后稿子又改过（进去改的），弹窗提醒秒数是改之前估的。
    写好并确认满意后，点「批准出片」，选好怎么出，页面排好任务书，流水线就照它去即梦出样片（11-21 起自己做，不再交给 Codex；出了错停下说为什么）。
@@ -67,24 +70,27 @@
      2026-11-22 起它出的样片也跟着走（他定：提示词和它出的样片一一绑定），见下面删除那一节。
    2026-11-14 AI 写的稿（没有写稿资料的）也能「进去改」（他问「我想进去改为什么做不到」）：直接用写稿页打开；回到流水线时写稿页替它建写稿资料（原文先留一版在历史记录），以后就是手写稿（接着写）。
      2026-11-14 在副本上试过：只改一镜，别的字一个不动。
-     原来只给「打开看、写批注」（批注交给 AI 改），这个入口还在。
+     原来只给「打开看、写批注」（批注交给 AI 改），11-24 他定拿掉。
    2026-11-14 白模＋关键帧和普通写法分开（他定：照官方《Seedance 2.5 提示词指南》「粗粒度白模 + 阶段关键帧」的例子）：一条同时挂了白模和关键帧，
      素材里不用 sd25-pe 的关键帧锚点句和白模那一句，换成「以@视频1作为整支视频唯一的运镜……参考」「@图片A至@图片B是各镜头的关键帧……」「所有画面照对应的关键帧……」三句；
      事件脚本每一镜开头写它在白模里的整秒和参考哪张（「镜头1：0-4秒，首帧参考@图片1。」）。秒数照白模旁边「_说明.md」里的切点（一镜一行「镜头1：0-4秒」），没有说明留〔起〕〔止〕。
      新建、挂白模、改关键帧、去掉白模都照这个换；还是普通写法的标「要换成白模＋关键帧写法」，排任务书时本机服务拦下。句子和校对在 公用/白模关键帧写法.js（写稿页、本机服务同一套）。
    2026-11-15 他定：白模只当普通素材，可以只管其中几秒，上面这一套不再用。挂白模只补它自己的两句（多一个〔用在哪几秒〕），去掉白模只删它自己的句子（事件脚本里提到它的那一处换成〔〕），
      关键帧照普通写法；页面不再换写法、不标、不拦。已经一镜一镜写参考哪张的老稿（「@图片…是各镜头的关键帧」）照旧能用，「改关键帧」不替它重排，进去自己改。
-   2026-11-14 加了「出关键帧…」（文生资产流程图 ⑧，他定关键帧在这一步做）：每一条都能出，取哪一刻、参考哪几张图你定，AI 照这一条的分镜写字，你批过点「照这个出图」；
+   2026-11-14 加了「出关键帧…」（文生资产流程图 ⑧，他定关键帧在这一步做）：每一条都能出，取哪一刻、参考哪几张图你定，AI 照这一条的分镜写字，你批过点「在 Codex 里出图」（11-23 起和资产一样：开一个 Codex 对话聊，满意了说「定稿」）；
      用到的人物、场景、道具图确认可用了才出。挂了白模的，截白模那一刻当第一张参考图。这一条后来改过、参考图换过，标「看一眼」。做法在下面「出关键帧」那一节。
    2026-11-16 加了筛选（第3-4段提示词多，他看不出哪些出过片）：列表上面「全部 / 已出片 / 没出片」，钉在步骤条下面，选的记在这台电脑的浏览器里。
      已出片＝成片/第N段 里有这一条现在这一版出的样片，认法和「审片」弹窗同一套（公用/样片归属.js）：名字里带这一版的记号（提示词01、镜头1-5改6），
-     或者以前在审片页选定过它，或者这一段只有一条；审完移进历史记录的不算。出过片的那一条标「已出片 第几条」。
+     或者以前在审片页选定过它，或者这一段只有一条。出过片的那一条标「已出片 第几条」。
+     11-24 他问「没有出片的提示词为什么会有审片按钮」（11-12_改5、13b-14_改2 的片审完收进了历史记录，筛选算没出片，审片却能点）：
+     筛选和标签改成和「审片」能不能点同一套（ReviewPop.madeOf）：历史记录/成片 里的也算，全在历史记录里的标「已出片 · 片在历史记录」。
    2026-11-19 筛选那一排最右边加「历史记录」（他要的：默认不摆，点了只看历史记录里收进去的视频提示词：看字、@图片 能点开、和现在的比；流水线/历史记录.js）。
-   2026-11-21 他定：一条提示词那一行只摆 接着写（AI 写的稿是 进去改、打开看、写批注）、批准出片、看任务书、审片。
+   2026-11-21 他定：一条提示词那一行只摆 接着写（AI 写的稿是 进去改）、批准出片、看任务书、审片。
      审片：这一版出过片才能点（没出是灰的），直接到审片那一步、打开这条样片对照看、写批注；这一版出了几条，先挑一条。
      出关键帧…、删除 收进最右边的「⋯」；挂白模、挂关键帧 到写稿页右栏「资产」里点「插入」；看排好的 拿掉了。
    2026-11-22 他定：已经出片的提示词不能改，只能新增提示词（本机服务 filmed.js 认、拦）。这一版出过片（成片、历史记录里有它出的样片，或者正在出片），
-     那一行的「接着写」「进去改」换成「另存成改N」：原稿和样片不动，另存成下一版（11-23 起不照抄，见下面）；还能「打开看、写批注」交给 AI 改（改好另存成下一版）。
+     那一行的「接着写」「进去改」换成「另存成改N」：原稿和样片不动，另存成下一版（11-23 起不照抄，见下面）。
+     11-24 他定：「打开看、写批注」拿掉，换成「进去看」：打开写稿页，锁着只能看（写稿页顶上那一条也能另存）。
      挂白模的「去掉」、关键帧的「改…」不摆。写稿页打开出过片的那一版也锁着（公用/写稿出过片.js）。
      同一天又定：出过片的那一版「批准出片」灰掉（不再是红的），要再出先另存成新的一版。照本机服务认的「出过片」算，不照「已出片」标签（老名字的样片标签会认到新稿上）。
    2026-11-23 他定：「另存成改N」不许原样照抄（11-12_改3 照抄成改4，又出了一样的片）。点了交给 AI（照例复制给你自己的 AI）：照这一版样片的审片批注、
@@ -526,7 +532,12 @@ async function newPrompt(s) {
   const sum = h('span', { class: 'np-sum', 'aria-live': 'polite' });
   const viaSelf = chNow() === SELF_CH;   // 顶栏选的就是「给我提示词」：只摆复制这一个
   const cancel = h('button', { class: 'btn ghost', type: 'button' }, '取消');
-  const nextBtn = h('button', { class: 'btn ink', type: 'button', onclick: () => go(2) }, '下一步：怎么写');
+  let usedWhy = '';   // 勾出来的名字以前用过（改名走了、还有样片认它）：往下排成 _改N，这里记为什么
+  const nextBtn = h('button', { class: 'btn ink', type: 'button', onclick: async () => {
+    const f = await freshName(s, SB.codeOf(shotNumbers(), nos));   // 回到第 1 步再点：照勾的镜头重新起
+    if (!f.名) { toast('「' + vpLabel(name) + '」' + f.用过 + '，也起不出新名字：换几个镜头', 'err'); return; }
+    name = f.名; usedWhy = f.用过; go(2);
+  } }, '下一步：怎么写');
   const backBtn = h('button', { class: 'btn ghost', type: 'button', onclick: () => go(1) }, '‹ 改镜头');
   const okBtn = h('button', { class: 'btn ink', type: 'button' }, '开始写');
   const selfBtn = h('button', { class: 'btn', type: 'button', title: '不在这里调 AI：把任务复制出来，贴进你自己在 Codex、Claude 里开的对话。它写好，这里自动出现' }, '复制任务，自己交给 AI');
@@ -551,7 +562,8 @@ async function newPrompt(s) {
     if (step === 1) lead.replaceChildren(h('p', { class: 'np-lead' }, '一条提示词出一条视频，一般 15 秒，最长 30 秒。写几条，这段戏就分几条。'));
     else {
       const rows = pickedRows(), pk = Why.pickSay(rows), line = rows.map(x => x.写什么 || '内容待填写').join(' → ');
-      lead.replaceChildren(h('div', { class: 'np-got', title: line }, h('b', null, name.replace(/\.txt$/i, '')), line + (pk.say ? ' · ' + pk.say : '')));
+      lead.replaceChildren(h('div', { class: 'np-got', title: line }, h('b', null, name.replace(/\.txt$/i, '')), line + (pk.say ? ' · ' + pk.say : '')),
+        usedWhy ? h('p', { class: 'fn-note warn' }, '「' + SB.codeOf(shotNumbers(), nos).replace(/\.txt$/i, '') + '」这个名字用过（' + usedWhy + '），这一条存成 ' + name + '，免得旧样片算到它头上') : null);
       const keep = bm ? bm.value : '', n = X.vids.filter(v => cover(v).length).length;
       bm = bmSelect(null, keep, cover); bmBox.replaceChildren(bm);
       bmHint.textContent = n ? '管到这几镜的 ' + n + ' 段排在最前' : ''; bmHint.hidden = !n;
@@ -839,7 +851,13 @@ function notesBox(s, e, note) {
       x.find ? h('div', { class: 'faint small' }, '原文：' + x.find) : null,
       x.why ? h('div', { class: 'faint small' }, '原因：' + x.why) : null,
       x.to ? h('div', { class: 'small', style: 'color:var(--dai)' }, '改成：' + x.to) : null))) : null,
-    open ? h('p', { class: 'faint small', style: 'margin-top:6px;font-family:var(--sans)' }, e.draft ? '点「' + (isHandDraft(e) ? '接着写' : '进去改') + '」，在右边一条一条照改或者不采纳。' : '要照哪一条改：点「打开看、写批注」，在那一行写批注，再交给 AI 改。') : null);
+    open ? h('p', { class: 'faint small', style: 'margin-top:6px;font-family:var(--sans)' }, notesHow(e)) : null);
+}
+/* 照 AI 的批注改从哪进去：出过片的另存成下一版再照改（原稿锁着），你来写的接着写，AI 写的进去改（11-24「打开看、写批注」拿掉了） */
+function notesHow(e) {
+  const fz = X.filmed.get(e.name);
+  if (fz) return fz.下一版 ? '点「另存成改' + vpVer(fz.下一版) + '」，在右边一条一条照改或者不采纳：改了才存成新的一版，原稿不动。' : (fz.不能另存 || '这一版出过片，原稿不能改') + '。';
+  return '点「' + (isHandDraft(e) ? '接着写' : '进去改') + '」，在右边一条一条照改或者不采纳。';
 }
 /* 这一条挂的白模：看、去掉；白模改过要你看一眼 */
 function bmLine(s, e) {
@@ -862,7 +880,7 @@ function frameLine(s, e, skip) {   // skip：下面「出关键帧」那一块�
     e.draft && !X.filmed.has(e.name) ? h('button', { class: 'fl-link mute', type: 'button', title: '多挂几张、去掉几张：素材里的关键帧句子跟着重排', onclick: () => framesDlg(s, e) }, '改…') : null);   // 出过片的不改（11-22）
 }
 /* ---------- 出关键帧（2026-11-14 文生资产流程图 ⑧，他定的：关键帧在这一步做）：哪一条要关键帧，就在那一条最右边的「⋯」里点「出关键帧…」，定取哪一刻。
-   AI 照这一条的分镜写字 → 你批字 → 点「照这个出图」（用到的人物、场景、道具图都确认可用了才出）→ AI 核图 → 你批图 → 确认可用。
+   AI 照这一条的分镜写字 → 你批字 → 点「在 Codex 里出图」（用到的人物、场景、道具图都确认可用了才出）→ 在 Codex 里聊到满意说「定稿」→ 换上、算确认可用。
    字：提示词/第N段/图名_提示词.txt；图：资产/关键帧/第N段/图名.png。名字带首帧、尾帧、关键帧，资产那一步「关键帧」一块也自动有它；挂到这一条上：写稿页右栏「资产」里点「插入」，挂过的点「改…」。
    这一条挂了白模的：截白模这一刻的画面当第一张参考图（资产/关键帧/第N段/图名_白模帧.png，过程文件，放在关键帧旁边），构图、机位、站位照它。
    哪一张是哪一条的：资产清单里记的「提示词」、字开头「用途」里写的，都没有就看名字开头的「第N条_」。
@@ -974,7 +992,7 @@ async function outFrameDlg(s, e) {
   sync(); paintG();
   const r = await dialog(close => {
     okBtn.onclick = () => { if (!okBtn.disabled) close({ name: name.value.trim(), req: req.value.trim(), refs: [...picks], bm: !!(useBm && useBm.checked), sec: sec ? Math.max(0, +sec.value || 0) : 0, moment: moment.get(), shot: shot.value }); };
-    const el = dlgShell('出关键帧 · ' + e.label, '这一条视频里的一刻。AI 照这一条的分镜先写字，你批过点「照这个出图」才出图。',
+    const el = dlgShell('出关键帧 · ' + e.label, '这一条视频里的一刻。AI 照这一条的分镜先写字，你批过点「在 Codex 里出图」：开一个 Codex 对话，聊到满意说「定稿」。',
       [h('div', { class: 'fld' }, h('span', null, '取哪一刻'), h('div', { style: 'display:flex;gap:10px;align-items:center;flex-wrap:wrap' }, moment)), h('div', { class: 'fld' }, h('span', null, '镜头表哪一镜'), shot, h('em', null, '出好的图绑在这一镜的这一刻上，写提示词时照这个告诉 AI 它放在哪')),
         field('这一刻画什么', req, '可以不填'),
         pool.length ? h('div', { class: 'fld' }, h('span', null, '参考图'), h('div', { class: 'fl-apick', style: 'max-height:30vh' }, grid), count) : h('p', { class: 'fn-note warn' }, '这一段还没有挂上的图：参考图要先在资产那一步出好'),
@@ -1020,7 +1038,7 @@ function kfChip(s, e, w, ref) {
   const tx = [ref ? '挂在 ' + ref : '', bindSay(s, w.img), chipTx(null, w) || (has ? '' : wordTx(w))].filter(Boolean).join(' · ');
   const open = () => openWord(s, w);   // 弹出这一帧的弹窗（资产详情.js）：字、图、AI 做过什么都在那里，这一页不动
   const el = h('div', { class: 'fl-asset k-zhen wd-' + w.step + (has ? '' : ' todo') + (ok ? ' ok' : ''), 'data-img': w.img, role: 'button', tabindex: '0',
-    title: w.img + (w.need ? '\n要撑住：' + w.need : '') + (w.checkImg ? '\nAI 核图：' + w.checkImg : '') + '\n点一下弹出来：看字、批字、批准出图、看图' },
+    title: w.img + (w.need ? '\n要撑住：' + w.need : '') + (w.checkImg ? '\nAI 核图：' + w.checkImg : '') + '\n点一下弹出来：看字、批字、在 Codex 里出图、看图' },
     has ? thumbImg(w.img) : h('span', { class: 'ph' }, w.hasTxt ? '有字' : '待写'),
     h('span', { class: 'nm' }, w.stem, h('small', null, h('b', { class: 'k-w' }, '关键帧'), tx ? ' · ' + tx : '')));
   el.addEventListener('click', open);
@@ -1042,11 +1060,12 @@ function frameWordLine(s, e, ws, edit) {   // edit：上面那一行没摆（挂
       edit && e.draft && hung.size && !X.filmed.has(e.name) ? h('button', { class: 'fl-link mute', type: 'button', title: '多挂几张、去掉几张：素材里的关键帧句子跟着重排', onclick: () => framesDlg(s, e) }, '改…') : null),
     h('div', { class: 'wf-grid' }, ws.map(w => kfChip(s, e, w, hung.get(w.img) || ''))));
 }
-/* 出过片的那一条标出来：哪几条样片（悬停看名字） */
+/* 出过片的那一条标出来：哪几条样片（悬停看名字）。made：ReviewPop.madeOf 给的 [{ vid, old }]，审完收进历史记录的也算（11-24），全在历史记录里的写明 */
 function madeTag(made) {
   if (!made.length) return null;
-  const nos = [...new Set(made.map(ClipOf.noOf).filter(Boolean))].sort((a, b) => a - b);
-  return h('span', { class: 'fs-state ok', title: '成片 里有这一版出的样片：\n' + made.join('\n') }, icon('check'), '已出片' + (nos.length ? ' 第' + nos.join('、') + '条' : ''));
+  const here = made.filter(x => !x.old), nos = [...new Set(here.map(x => ClipOf.noOf(x.vid)).filter(Boolean))].sort((a, b) => a - b);
+  return h('span', { class: 'fs-state ok', title: '这一版出的样片：\n' + made.map(x => x.vid + (x.old ? '（在历史记录里）' : '')).join('\n') }, icon('check'),
+    '已出片' + (!here.length ? ' · 片在历史记录' : nos.length ? ' 第' + nos.join('、') + '条' : ''));
 }
 /* 资产改了（11-17，公用/资产改过.js）：这一条写好以后又改了哪几样，一键交给 AI 照着改。
    11-17 晚他问「资产改了，怎么没有按钮更新提示词」：以前只有改过的字给按钮，换图、换音色、换出场的写「要你自己看」；现在哪一种都给 */
@@ -1071,7 +1090,7 @@ async function fixByAssets(s, e, ed) {
   await startJob({ 事: '按批注改提示词', 段: s.段, 批注: ['项目', F.name, ...rel].join('/') });
   rerender();
 }
-/* 一条提示词那一行。made：这一版出过的样片；list：这一段的几条（审片弹窗认样片用） */
+/* 一条提示词那一行。made：这一版出过的样片（ReviewPop.madeOf：[{ vid, old }]，历史记录里的也算）；list：这一段的几条（审片弹窗认样片用） */
 function rowOf(s, e, made, list) {
   const tf = taskOf(e.name), stale = promptStale(s, e.name), hasTask = X.tasks.has(tf), imp = stale ? impactPrompt(s, e.name) : null;   // imp：影响清单说这一条要再看
   const ed = stale && typeof AssetEdit === 'object' ? AssetEdit.after(assetEdits(s), promptSince(s, e.name)) : [];   // 资产改了（11-17）：这一条写好以后又改了哪几样
@@ -1079,7 +1098,7 @@ function rowOf(s, e, made, list) {
   const note = X.notes.get(e.name), busy = jobs.length > 0, bmOld = bmStale(s, e), bmLost = vidRefs(e).some(r => !vidOf(r.path));
   const kws = frameWs(s, e), inStrip = new Set(kws.map(w => w.img)), restFr = frameRefsOf(s, e).filter(r => !inStrip.has(r.path));   // 这一条的关键帧（出关键帧那一套）
   const btn = (label, fn, cls, title, off) => h('button', { class: 'btn sm ' + (cls || ''), type: 'button', title: title || null, disabled: !!off, onclick: fn }, label);
-  const see = () => openShell(at([...dirOf(s), e.name]), '第' + s.段 + '段 · ' + e.label), hand = isHandDraft(e), fz = X.filmed.get(e.name);   // fz：这一版出过片（11-22），原稿不能改
+  const hand = isHandDraft(e), fz = X.filmed.get(e.name);   // fz：这一版出过片（11-22），原稿不能改
   return h('div', { class: 'wf-item', 'data-name': e.name },
     h('div', { class: 'wf-item-h' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), madeTag(made),
       hand ? h('span', { class: 'fs-state', title: '你来写的稿：在写稿页接着写事件脚本，写好点「交给 AI 写完」，分镜和生成目标、素材这几块由 AI 写' }, '手写稿')
@@ -1087,12 +1106,11 @@ function rowOf(s, e, made, list) {
       stale ? [h('span', { class: 'fs-state', style: 'color:var(--zhu);border-color:var(--zhu-line)', title: imp ? '剧本重新定稿了，AI 对新旧剧本说这一条要再看：' + imp.为什么 : ed.length ? '这一条写好以后，这几样资产又改了：' + AssetEdit.say(ed) + '。点下面「照新资产改」交给 AI 对一遍；打开看一眼还对得上就沿用' : '这一条写好以后，前面（剧本、资产、拍摄风格）又动过。打开看一眼还对得上' }, imp ? '剧本改了，待核对' : ed.length ? '资产改了，待核对' : '待核对'),
         h('button', { class: 'fl-link', type: 'button', title: '看过了，还对得上，就用这一版', onclick: () => { keepAsIs(s, '提示词/' + e.name); rerender(); } }, '还对得上，沿用')] : null,
       h('span', { class: 'sp' }),
-      fz ? [forkBtn(s, e, fz, busy, btn),
-          btn('打开看、写批注', see, '', '出过片的这一版只能看：点一段写批注，交给 AI 改，改好另存成新的一版，原稿不动')]
+      fz ? [forkBtn(s, e, fz, busy, btn),   // 11-24 他定：「打开看、写批注」拿掉；出过片的也能进写稿页，只是锁着不能改
+          btn('进去看', () => openWrite(s.段, e.name, hand, false, true), '', '打开写稿页看这一版：出过片的原稿锁着，不能改。要改点「' + (fz.下一版 ? '另存成改' + vpVer(fz.下一版) : '另存') + '」，改了才存成新的一版')]
       : hand ? btn('接着写', () => openWrite(s.段, e.name, true), 'ink', '打开写稿页接着写：写好事件脚本，点「交给 AI 写完」，AI 拆成分镜、写好其余几块；右栏看资产（挂白模、关键帧点「插入」）、AI 批注、校对和剧本')
         : e.draft ? btn('进去改', () => openWrite(s.段, e.name), 'ink', '在写稿页里打开，自己改字；右栏看资产（挂白模、关键帧点「插入」）、AI 批注、校对和剧本')
-        : [btn('进去改', () => openWrite(s.段, e.name), 'ink', 'AI 写的稿也能自己改：在写稿页里打开，改完点「回到流水线」就存好。改过以后，AI 估的每镜秒数可能不准，出片时会提醒'),
-          btn('打开看、写批注', see, '', '在这里看提示词、点一段写批注，再交给 AI 改；@图片 点一下能看图')],
+        : btn('进去改', () => openWrite(s.段, e.name), 'ink', 'AI 写的稿也能自己改：在写稿页里打开，改完点「回到流水线」就存好。改过以后，AI 估的每镜秒数可能不准，出片时会提醒'),
       btn('批准出片', () => approve(s, e), fz ? '' : 'zhu', fz ? (fz.在出 ? '这一版正在出片：出完到「审片」看' : '这一版出过片了，不再出' + (fz.下一版 ? '：要再出，先点「另存成改' + vpVer(fz.下一版) + '」，改好以后批准新的一版' : ''))   // 出过片的灰掉（11-22 他定）
         : bmLost ? '挂的白模文件不在了：先去掉或者放回去' : stale ? '这一条待核对：先看一眼，点「沿用」或者改好' : bmOld ? '白模改过：先看一眼，点「还对得上」或者改好' : '选好怎么出（模型、清晰度、秒数、积分上限），页面排好任务书，流水线就照它去即梦出一条样片。要花积分', !!fz || busy || !AI.ok || stale || bmOld || bmLost),
       hasTask ? h('button', { class: 'fl-link', type: 'button', title: '上回批准出片时排的任务书：' + tf, onclick: () => showText(at([...dirOf(s), tf])) }, '看任务书') : null,
@@ -1124,13 +1142,20 @@ function moreMenu(anchor, s, e, busy) {
 const isHandDraft = e => !!e.draft && PromptDraft.isHand(X.side.get(e.name));
 /* 出过片的那一版「另存成改N」（forkPrompt）、「照审片批注交给 AI 改」（reviewFork）现在点不了的原因，点得了给 ''。
    11-23 晚他定：另存不看审片、批注；交给 AI 改的才要有批注 */
+/* 新建一条叫什么（11-23）：问本机服务这个名字用过没有（filmed.js），用过的往下排 _改N。问不到照勾出来的名字 */
+const FRESH_V = 26;
+async function freshName(s, n) {
+  if (LINK.v < FRESH_V) return { 名: n, 用过: '' };
+  try { return await (await LINK.req('GET', '/api/filmed?p=' + encodeURIComponent(F.name) + '&s=' + encodeURIComponent(s.段) + '&n=' + encodeURIComponent(n) + '&new=1')).json(); }
+  catch (e) { return { 名: n, 用过: '' }; }
+}
 const FORK_V = 25;   // 本机服务第 25 版起另存带着写稿页改好的字（filmed.js）
 function forkWhy(fz, busy) {
   return busy ? 'AI 正在做这一条：做完再另存' : !fz.下一版 ? fz.不能另存 : LINK.v < FORK_V ? '本机服务是旧的：重开一次才能另存' : '';
 }
 function reviewWhy(fz, busy) {
   return forkWhy(fz, busy) || (!AI.ok ? '本机服务是旧的：重开一次才能交给 AI'
-    : !(fz.批注 || []).length ? '还没写批注：先点「审片」，边看边写哪里不对（或者「打开看、写批注」在提示词上写），再交给 AI' : '');
+    : !(fz.批注 || []).length ? '还没写批注：先点「审片」，边看边写哪里不对，再交给 AI' : '');
 }
 const noteSay = r => r.startsWith('提示词/') ? '提示词上写的批注' : '样片「' + r.split('/').pop().replace(/_批注\.md$/, '') + '」的审片批注';
 function forkBtn(s, e, fz, busy, btn) {
@@ -1151,14 +1176,14 @@ function filterBar(list, made, pf, hn) {   // hn：历史记录里有几版（�
   setTimeout(pfPin, 0);   // 画上去以后再量钉在哪
   return h('div', { class: 'wf-filter', id: 'wf-filter' }, h('span', { class: 'faint small' }, '只看'),
     pfOn ? window.UI.chips(PF.map(([v, t]) => [v, t + ' ' + cnt[v]]), pf, pfSet) : null,
-    !pfOn ? null : h('span', { class: 'faint small', title: '成片 / 第N段 里的样片，名字和这一条现在这一版对得上（如「1-5_改1.mp4」，老名字里带「镜头1-5改6」「提示词01」），或者以前在审片页选定过它，或者这一段只有一条提示词。\n审完移进历史记录的样片不算；样片名是自己起的、对不上的，认不出来，算没出片。' }, '照成片里这一版的样片算'),
+    !pfOn ? null : h('span', { class: 'faint small', title: '和「审片」能不能点同一套：成片 / 第N段、历史记录 / 成片 / 第N段 里有这一版出的样片，名字和这一版对得上（如「1-5_改1.mp4」，老名字里带「镜头1-5改6」「提示词01」）。成片里的还认以前在审片页选定过的、这一段只有一条提示词的。\n审完收进历史记录的也算出过片；删提示词时带「__时间」挪走的不算。样片名是自己起的、对不上的，认不出来，算没出片。' }, '成片、历史记录里有这一版的样片就算'),
     h('span', { class: 'sp' }), HistView.chip(hn, () => rerender(), '视频提示词'));
 }
 function render() {
   const s = sceneNow(), seg = s.段;   // 不等资产：什么时候写你自己定（没图的写的时候用文字锁）
   const list = promptsOf(seg).sort((a, b) => ((vpNo(a.name) || 1e9) - (vpNo(b.name) || 1e9)) || window.Core.vpSort(a.key, b.key)), stale = list.filter(e => promptStale(s, e.name));   // 第1条、第2条……在前，别的按原稿名排：4-6 在 4-6_补1 前面，接力稿前半条在后半条前面（公用/核心.js）
   const writing = AI.jobs.filter(j => j.事 === '写提示词' && j.段 === seg && jobLive(j) && !list.some(e => e.name === j.名));
-  const cl = ClipOf.scene(s), made = new Map(list.map(e => [e.name, cl.made(e, list)])), pf = list.length > 1 ? pfNow() : '全部';   // 只有一条不摆筛选
+  const made = new Map(list.map(e => [e.name, ReviewPop.madeOf(s, e, list)])), pf = list.length > 1 ? pfNow() : '全部';   // 只有一条不摆筛选。made：和「审片」能不能点同一套（11-24）
   const shown = pf === '全部' ? list : list.filter(e => (made.get(e.name).length > 0) === (pf === '已出片'));
   const hc = HistView.prompts(s), hn = HistView.count(hc);   // 历史记录里收进去的（11-19）：点「历史记录」只看它们
   ShotFloat.paint(s);  // 左边的镜头表（镜头表浮窗.js）

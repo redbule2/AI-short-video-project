@@ -1,7 +1,7 @@
 'use strict';
 // node 通用工具/测试/任务存盘_测试.cjs
 // 11-18 他说：后台任务不能刷新就丢。本机服务的任务记进各项目的 历史记录/AI任务/任务清单.json，服务重开时读回来；
-// 交给 AI 等回复的出片（还有改图、记着有没有图的出图）重开后接着等，同一个号。项目读写都在内存里，不碰真项目、不调外部程序。
+// 交给 AI 等回复的出片（还有 11-23 起在 Codex 里聊着的出图、改图）重开后接着等，同一个号。项目读写都在内存里，不碰真项目、不调外部程序。
 // 11-21 起出片由流水线自己做（重开后照 出片进度.json 接着做，见 出片任务书_任务测试.js、流水线出片_测试.cjs）；这里的出片是 11-21 以前交给 Codex、重开前还在等它回话的那种。
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -157,7 +157,7 @@ async function restartTests() {
   // 更早一回重开就断了的出片：清单里没记着还在等，不接（多半已经在别处重出过，接回来挂成「等你交给 AI」会让人再贴一回、再扣积分）
   const oldDir = pj(P, '历史记录', 'AI任务', stampOf(new Date(now.getTime() - 26 * 3600e3)) + '_出片_第1-1段');
   F.put(path.join(oldDir, '自己交.json'), JSON.stringify({ id: 'cp0', 项目: P, 建: now.getTime() - 26 * 3600e3, 开始: now.getTime() - 26 * 3600e3, 请求: { 事: '出片', 段: '1-1', 名: '4-6_出片任务.txt', 批准: '用户点了批准出片' }, 渠道: '自己交给 AI', 方式: 'self', 开: 0, 回复: path.join(oldDir, '回复.md'), run: true }));
-  // 11-18 以前交出去的出图：没记当初有没有图，接不上
+  // 11-23 以前交出去的出图（一次出一张，任务书不一样了）：接不上
   F.put(path.join(imgDir, '自己交.json'), JSON.stringify({ id: 'ct1', 项目: P, 建, 开始: 建, 请求: { 事: '出图', 段: '1-1', 类别: '道具', 名: '砂锅' }, 渠道: '自己交给 AI', 方式: 'self', 开: 建, 回复: path.join(imgDir, '回复.md'), run: true }));
   const snap = (id, 事, 状态, more) => ({ id, 事, 渠道: '自己交给 AI', 项目: P, 段: '1-1', 标题: 事 + ' · 第1-1段', 状态, 步骤: '', 建: 建 - 1000, 开始: 建 - 1000, 结束: 0, 错误: '', 结果: '', 产出: [], 记录: '', 交给: null, ...more });
   F.put(LIST(P), JSON.stringify({ 任务: [
@@ -181,7 +181,7 @@ async function restartTests() {
   assert.equal(by('cp1').状态, '在做'); assert.deepEqual(by('cp1').交给, { 方式: 'self', 等: '你' }, '出片接着等 Codex 的回复，同一个号');
   assert.equal(by('ok1').状态, '做完'); assert.equal(by('ok1').结果, '照批注改好了');
   assert.equal(by('tl1').状态, '没成'); assert.match(by('tl1').错误, /本机服务重开过/);
-  assert.equal(by('ct1').状态, '没成', '没记当初有没有图的出图接不上：写明要重点一次'); assert.match(by('ct1').错误, /要的话再点一次/);
+  assert.equal(by('ct1').状态, '没成', '以前一次出一张的出图接不上：写明要重点一次'); assert.match(by('ct1').错误, /要的话再点一次/);
   assert.ok(!F.files.has(pj(P, '资产', '第1-1段_出片记录.json')), '接着等的出片不再记一笔出片记录');
   assert.ok(!F.json(path.join(cutDir, '自己交.json')).结束);
   assert.match(F.files.get(path.join(cutDir, '交给AI的话.txt')).toString(), /请照 .*4-6_出片任务\.txt 执行。/);
@@ -201,31 +201,36 @@ async function restartTests() {
   console.log('任务存盘：重开后出片接着等、别的摆回去 ✓');
 }
 
-/* ---------- 三、出图接着等：当初已经有图，新图存成候选。重开时候选已经存上了，不能当「上一张没用上的」收走 ---------- */
+/* ---------- 三、在 Codex 里聊着的出图接着等（11-23）：认出原来那个对话、不再发一回；聊出来的候选不能当「上一张没用上的」收走；说定稿就换上 ---------- */
 async function imageTests() {
-  const F = memFs(), P = '测试';
+  const F = memFs(), P = '测试', thread = '019a0000-1111-2222-3333-444455556666';
   const now = new Date(), 建 = now.getTime() - 3 * 60e3, dir = pj(P, '历史记录', 'AI任务', stampOf(new Date(建)) + '_出图_第1-1段');
   F.put(pj(P, '定稿的剧本', '流水线.json'), JSON.stringify({ 场: [{ 段: '1-1', 剧本定稿: nowText(now) }] }));
   F.put(pj(P, '定稿的剧本', '第1-1段', '第1-1段_剧本.docx'), '剧本');
   F.put(pj(P, '提示词', '全局资产', '道具', '砂锅_提示词.txt'), '一只旧砂锅，黑褐色，锅沿有豁口。');
   F.put(pj(P, '资产', '人物和道具', '砂锅.png'), '旧图');
-  F.put(pj(P, '资产', '人物和道具', '砂锅_候选.png'), '重开前 Codex 刚存上的新图');
-  F.put(path.join(dir, '自己交.json'), JSON.stringify({ id: 'im1', 项目: P, 建, 开始: 建, 请求: { 事: '出图', 段: '1-1', 类别: '道具', 名: '砂锅' }, 渠道: '自己交给 AI', 方式: 'self', 开: 建, 回复: path.join(dir, '回复.md'), run: true, 接着: { 有图: true } }));
-  F.put(LIST(P), JSON.stringify({ 任务: [{ id: 'im1', 事: '出图', 项目: P, 段: '1-1', 标题: '出图 · 砂锅', 状态: '在做', 建, 开始: 建, 交给: { 方式: 'self', 等: '你' } }] }));
+  F.put(pj(P, '资产', '人物和道具', '砂锅_候选.png'), '重开前在 Codex 里聊出来的新图');
+  F.put(path.join(dir, '自己交.json'), JSON.stringify({ id: 'im1', 项目: P, 建, 开始: 建, 请求: { 事: '出图', 段: '1-1', 类别: '道具', 名: '砂锅' }, 渠道: '自己交给 AI', 方式: 'codex', 聊: true, 会话: thread, 开: 建, 回复: path.join(dir, '回复.md'), run: true }));
+  F.put(LIST(P), JSON.stringify({ 任务: [{ id: 'im1', 事: '出图', 项目: P, 段: '1-1', 标题: '出图 · 砂锅', 状态: '在做', 建, 开始: 建, 交给: { 方式: 'codex', 等: '你', 会话: thread } }] }));
   const { call } = boot(F);
   let j = null;
   for (let i = 0; i < 100 && !(j && j.交给); i++) { await sleep(30); j = (await call('GET', '/api/job')).jobs.find(x => x.id === 'im1'); }
-  assert.ok(j && j.状态 === '在做' && j.交给 && j.交给.等 === '你', '记着有没有图的出图：重开后接着等');
+  assert.ok(j && j.状态 === '在做', '在 Codex 里聊着的出图：重开后接着等');
+  assert.deepEqual(j.交给, { 方式: 'codex', 等: '你', 会话: thread }, '认出原来那个对话，不再发一回');
   assert.ok(F.files.get(path.join(dir, '交给AI的话.txt')).toString().startsWith('【测试 · 出图 · 砂锅】先给这个对话改名'), '名字短的项目照写');
-  assert.equal(F.files.get(pj(P, '资产', '人物和道具', '砂锅_候选.png')).toString(), '重开前 Codex 刚存上的新图', '候选没被收进历史记录');
+  assert.equal(F.files.get(pj(P, '资产', '人物和道具', '砂锅_候选.png')).toString(), '重开前在 Codex 里聊出来的新图', '候选没被收进历史记录');
   assert.ok(![...F.files.keys()].some(p => p.includes(path.join('历史记录', '资产'))), '什么都没收走');
-  assert.deepEqual(F.json(path.join(dir, '自己交.json')).接着, { 有图: true }, '接着等时照旧记着');
-  F.put(path.join(dir, '回复.md'), '核图：没看出问题\n存好了。');
+  F.put(path.join(dir, '回复.md'), '定稿\n核图：没看出问题\n改了什么：没改\n出图提示词：没改');
   const r = await call('POST', '/api/job/im1?reply', '');
   assert.equal(r.状态, '做完', r.错误);
-  assert.match(r.结果, /^新图出好了，先当候选/);
-  assert.deepEqual(r.产出, ['资产/人物和道具/砂锅_候选.png']);
-  console.log('任务存盘：重开后出图接着等、候选不收走 ✓');
+  assert.match(r.结果, /^在 Codex 里定稿了，换上了，算确认可用（旧图收进了历史记录）/);
+  assert.deepEqual(r.产出, ['资产/人物和道具/砂锅.png']);
+  assert.equal(F.files.get(pj(P, '资产', '人物和道具', '砂锅.png')).toString(), '重开前在 Codex 里聊出来的新图', '定下来的那张换成正式的图');
+  assert.ok(!F.files.has(pj(P, '资产', '人物和道具', '砂锅_候选.png')), '候选换走了');
+  assert.ok([...F.files.keys()].some(p => p.startsWith(pj(P, '历史记录', '资产', '人物和道具', '砂锅__')) && F.files.get(p).toString() === '旧图'), '旧图收进历史记录');
+  assert.ok(F.json(pj(P, '定稿的剧本', '流水线.json')).可用['资产/人物和道具/砂锅.png'], '算确认可用');
+  assert.equal(F.files.get(pj(P, '提示词', '全局资产', '道具', '砂锅_提示词.txt')).toString(), '一只旧砂锅，黑褐色，锅沿有豁口。', '样子没改：出图提示词不动');
+  console.log('任务存盘：重开后在 Codex 里聊着的出图接着等、定稿就换上 ✓');
 }
 
 (async () => {

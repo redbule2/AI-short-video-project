@@ -18,10 +18,13 @@ function rowFor(x, cell, k) {   // k：给哪一类挑的（人物和道具文�
   if (!K) return null;
   return (cell && cell.类别 === K.key ? entryOf(K.key, cell.名称) : null) || F.doc[K.key].find(r => r.资产.includes(x.文件)) || F.doc[K.key].find(r => r.名 === tokenOf(x) || r.名 === x.名称) || null;
 }
+/* 你自己挑上的图，挑上就算确认可用（2026-11-25 他要：自带的图不用再一张张点「可用」），顺手记下它照的是现在哪一句。
+   已经确认过、也没旧的不动；关键帧不走这里，照旧在提示词那一步确认 */
+function pickedOk(file) { if (!file || !IMG_RE.test(file) || fileOk(file)) return; setMark(file, true, 0); noteSrc(file, srcOfFile(file)); }
 /* 这一段文件夹里的一张图，这一场当 k 用：只这一场用，不挂表里哪一行（原来当别的用的，挪过来） */
 function useSeg(s, k, x) {
   const was = segKind(s, x.文件);
-  putSeg(s, k, x.文件); orderCast(s); touch();
+  putSeg(s, k, x.文件); if (k !== '关键帧') pickedOk(x.文件); orderCast(s); touch();
   return '「' + x.名称 + '」这一段当' + k + '用上了' + (was && was !== k ? '（原来当' + was + '）' : '') + '，只这一段用';
 }
 /* 这一场用上一张全片的图：人物、道具的图挂到 rowFor 找到的那一行（找不到就照叫法加一行），这一场选上；场景图加进全片和这一场 */
@@ -30,7 +33,7 @@ function useImage(s, x, cell, k) {
   if (isSceneImg(x)) {
     if (!F.doc.场景图.includes(file)) F.doc.场景图.push(file);
     if (!s.场景图.includes(file)) s.场景图.push(file);
-    orderCast(s); touch();
+    pickedOk(file); orderCast(s); touch();
     return '场景图「' + x.名称 + '」这一段用上了';
   }
   const K = listFor(x, (cell && cell.类别) || k);
@@ -44,7 +47,7 @@ function useImage(s, x, cell, k) {
   if (Array.isArray(e.不用)) { e.不用 = e.不用.filter(f => f !== file); if (!e.不用.length) delete e.不用; }
   if (e.不用时) { delete e.不用时[file]; if (!Object.keys(e.不用时).length) delete e.不用时; }
   if (!s[K.key].includes(e.名)) s[K.key].push(e.名);
-  orderCast(s); touch();
+  pickedOk(file); orderCast(s); touch();
   return K.key + '「' + e.名 + '」' + (fresh ? '加进了' + K.key + '表，' : '') + '挂上了这张图，这一段也选上了';
 }
 /* 删掉的图：历史记录/资产/人物和道具（场景）/原名__时间.后缀（「图不要了」移过去的） */
@@ -189,8 +192,8 @@ function pbAct(o, it) {
     return { text: (swap ? '换成这张，' : '') + '挂给「' + label + '」', run: () => doIt(it.x) };
   }
   if (o.mode === 'text') {
-    const toImg = file => { useSceneImg(s, o.text, file); return '场景「' + sceneLabel(o.text) + '」这一段改用这张图了（全片设定里那一句还在）'; };
-    if (it.kind === 'seg') return { text: '这一段改用这张图', run: async () => { s.场景文字 = uniq(s.场景文字).filter(t => t !== o.text); putSeg(s, '场景', it.file); orderCast(s); touch(); return '场景「' + sceneLabel(o.text) + '」这一段改用「' + it.name + '」了，只这一段用'; } };
+    const toImg = file => { useSceneImg(s, o.text, file); pickedOk(file); return '场景「' + sceneLabel(o.text) + '」这一段改用这张图了（全片设定里那一句还在）'; };
+    if (it.kind === 'seg') return { text: '这一段改用这张图', run: async () => { s.场景文字 = uniq(s.场景文字).filter(t => t !== o.text); putSeg(s, '场景', it.file); pickedOk(it.file); orderCast(s); touch(); return '场景「' + sceneLabel(o.text) + '」这一段改用「' + it.name + '」了，只这一段用'; } };
     if (it.kind === 'del') return { text: '放回来，这一段改用它', run: async () => { const x = await restoreDeleted(it.x); return x ? toImg(x.文件) : null; } };
     return { text: '这一段改用这张图', run: async () => toImg(it.file) };
   }

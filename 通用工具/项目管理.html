@@ -1525,7 +1525,7 @@ async function aiJob(body) {
   catch (e) { toast('没交上：' + e.message, 'err'); return; }
   const line = h('span', null, ''), btns = h('span', { style: 'pointer-events:auto' }), chip = h('div', { class: 'toast' }, h('i', { class: 's' }), line, btns), t0 = Date.now();
   document.getElementById('toasts').append(chip);
-  if (b.渠道 === CH.SELF && window.HandAI) HandAI.wait(j, () => {});   // 给我提示词（流水线顶栏「AI 用」选的）：话备好就弹出来给你复制
+  if (window.HandAI) HandAI.wait(j, () => {});   // 给我提示词、豆包工作：话备好就弹出来；选的 AI 开不起来、服务改成给我提示词的也弹（11-24）
   let hs = '';
   for (;;) {
     const sec = Math.round((Date.now() - t0) / 1000);
