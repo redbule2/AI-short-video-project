@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录</title>
+<style>
+:root { --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --line: #d6cab6; --zhu: #a83a2c; --dai: #3e5c5e; --lv: #2f6b3a; }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.8 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif; display: flex; align-items: center; justify-content: center; }
+.card { width: 380px; padding: 30px 32px 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--sheet); box-shadow: 0 6px 24px rgba(60, 40, 20, .07); }
+h1 { margin: 0 0 2px; font: 600 24px/1.4 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .08em; text-align: center; }
+.sub { margin: 0 0 18px; color: var(--ink-3); font-size: 14px; text-align: center; }
+.tabs { display: flex; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
+.tabs button { flex: 1; padding: 6px 0 8px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-3); font: inherit; cursor: pointer; }
+.tabs button.on { color: var(--dai); border-bottom-color: var(--dai); font-weight: 600; }
+label { display: block; margin: 10px 0 0; font-size: 14px; color: var(--ink-2); }
+input { display: block; width: 100%; margin-top: 4px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font: inherit; color: var(--ink); }
+input:focus { outline: none; border-color: var(--dai); }
+.reg[hidden] { display: none; }
+label small { display: block; color: var(--ink-3); font-size: 13px; line-height: 1.5; margin-top: 3px; }
+.msg { min-height: 1.8em; margin: 12px 0 4px; font-size: 14px; color: var(--zhu); }
+.msg.ok { color: var(--lv); }
+.go { display: block; width: 100%; padding: 9px 0; border: 1px solid var(--dai); border-radius: 8px; background: var(--dai); color: #fff; font: inherit; letter-spacing: .1em; cursor: pointer; }
+.go:disabled { opacity: .6; cursor: default; }
+.foot { margin: 14px 0 0; font-size: 13px; color: var(--ink-3); text-align: center; }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script src="../../公用/底座.js"></script>
+<script src="../../公用/界面.js"></script>
+<script>
+/* 桌面版登录页：用 video8.online 的账号登录，也能注册。规矩：账号、密码不许空；注册要再输一遍密码，还要填对一个团队（注册完是这个团队的成员）。
+   账号密码经 window.desk（preload.js）交给壳子去问 video8.online，页面自己不联网、不存密码；只记上回的账号名。 */
+(function () {
+'use strict';
+const { h } = window.UI;
+const desk = window.desk;
+const LAST = 'antou:desk:lastUser';
+let mode = 'login', busy = false;
+
+const why = (() => { try { return decodeURIComponent((location.hash.match(/why=([^&]*)/) || [])[1] || ''); } catch (e) { return ''; } })();
+const user = h('input', { type: 'text', autocomplete: 'username', maxlength: '64', value: localStorage.getItem(LAST) || '' });
+const pass = h('input', { type: 'password', autocomplete: 'current-password', maxlength: '128' });
+const again = h('input', { type: 'password', autocomplete: 'new-password', maxlength: '128' });
+const againRow = h('label', { class: 'reg', hidden: true }, '再输一遍密码', again);
+const team = h('input', { type: 'text', autocomplete: 'off', maxlength: '64', placeholder: '团队负责人的账号' });
+const teamRow = h('label', { class: 'reg', hidden: true }, '团队', team, h('small', null, '问你的团队负责人要。填对了才能注册，注册完就是这个团队的成员。'));
+const msg = h('p', { class: 'msg' }, why);
+const go = h('button', { type: 'submit', class: 'go' }, '登录');
+const tabLogin = h('button', { type: 'button', class: 'on', onclick: () => setMode('login') }, '登录');
+const tabReg = h('button', { type: 'button', onclick: () => setMode('register') }, '注册');
+
+function say(text, ok) { msg.textContent = text || ''; msg.className = 'msg' + (ok ? ' ok' : ''); }
+
+/* 换登录、注册只换样子，框里的字不动 */
+function setMode(m) {
+  if (busy || m === mode) return;
+  mode = m;
+  tabLogin.className = m === 'login' ? 'on' : '';
+  tabReg.className = m === 'register' ? 'on' : '';
+  againRow.hidden = teamRow.hidden = m !== 'register';
+  pass.setAttribute('autocomplete', m === 'register' ? 'new-password' : 'current-password');
+  go.textContent = m === 'register' ? '注册并登录' : '登录';
+  say('');
+  (user.value.trim() ? pass : user).focus();
+}
+
+async function submit(e) {
+  e.preventDefault();
+  if (busy) return;
+  if (!desk) { say('这一页要在桌面软件里打开'); return; }
+  const u = user.value.trim();
+  if (!u) { say('请输入账号'); user.focus(); return; }
+  if (!pass.value) { say('请输入密码'); pass.focus(); return; }
+  if (mode === 'register' && !again.value) { say('请再输一遍密码'); again.focus(); return; }
+  if (mode === 'register' && again.value !== pass.value) { say('两次输入的密码不一致'); again.focus(); return; }
+  if (mode === 'register' && !team.value.trim()) { say('请输入团队'); team.focus(); return; }
+  busy = true;
+  go.disabled = true;
+  say(mode === 'register' ? '正在注册…' : '正在登录…', true);
+  let r;
+  try { r = mode === 'register' ? await desk.register(u, pass.value, again.value, team.value.trim()) : await desk.login(u, pass.value); }
+  catch (err) { r = { ok: false, message: '没办成：' + (err && err.message || err) }; }
+  busy = false;
+  go.disabled = false;
+  if (r && r.ok) {
+    localStorage.setItem(LAST, u);
+    pass.value = again.value = '';
+    say((mode === 'register' ? '注册好了' : '登录好了') + '，正在打开流水线…', true);
+    go.disabled = true;
+    return;
+  }
+  say((r && r.message) || '没办成，再试一次');
+  pass.focus();
+}
+
+document.getElementById('app').append(
+  h('form', { class: 'card', onsubmit: submit, novalidate: true },
+    h('h1', null, 'AI短视频流水线'),
+    h('p', { class: 'sub' }, '用 video8.online 的账号登录'),
+    h('div', { class: 'tabs' }, tabLogin, tabReg),
+    h('label', null, '账号', user),
+    h('label', null, '密码', pass),
+    againRow,
+    teamRow,
+    msg,
+    go,
+    h('p', { class: 'foot' }, '账号和 video8.online 网站通用。')));
+(user.value ? pass : user).focus();
+})();
+</script>
+</body>
+</html>

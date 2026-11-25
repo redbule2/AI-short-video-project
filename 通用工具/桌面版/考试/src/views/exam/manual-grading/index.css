@@ -1,0 +1,1032 @@
+/* ============================================================
+   人工阅卷 · 逐题工作台（砚·校样台语言）
+   布局：紧凑抬头 → 进度条 → 左「当前题」/ 右「评分面板(sticky)」→ 底部操作坞(sticky)。
+   语义色：朱砂 = 人的评分笔迹与最终提交；蓝绿 = 已完成；靛青 = 机器(AI/参考)。
+   全局引入（非 scoped），子组件类名一并在此收口，避免同一页色板分散两处。
+   ============================================================ */
+
+/* 【sticky 在本外壳里失效，实测记录】
+   pure-admin 外壳的 .el-scrollbar__view 是 overflow:hidden 且永不滚动，
+   它就成了 sticky 的最近滚动视口 ⇒ 页内任何 position:sticky 都不会贴住
+   （1280×560 实测 padMoved=0 / deckMoved=0，面板与操作坞直接被推出视口）。
+   对策见文件末尾「工作台版式」媒体查询：够宽够高时本页自己收成一屏，
+   只让阅读列滚动，抬头/进度/操作坞常驻；窗口偏矮时退回常规文档流。 */
+.manual-grading-page.exam-page {
+  overflow-x: clip;
+}
+
+.manual-grading-page .manual-grading-sheet {
+  max-width: 1280px;
+}
+
+/* ---------- 抬头（一屏只留第一眼必读信息） ---------- */
+.manual-grading-page .mg-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.manual-grading-page .mg-head-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.manual-grading-page .mg-head-copy .exam-link {
+  justify-self: start;
+  padding-left: 0;
+}
+
+.manual-grading-page .mg-head-copy .exam-subtitle {
+  margin: 0;
+}
+
+.manual-grading-page .mg-head-stage {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+}
+
+.manual-grading-page .mg-seal {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--vermilion-deep);
+}
+
+.manual-grading-page .mg-seal.is-unlocked {
+  color: var(--jade);
+}
+
+.manual-grading-page .mg-seal > svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+}
+
+/* ---------- 进度条 ---------- */
+.manual-grading-page .mg-progress {
+  display: grid;
+  grid-template-columns: auto minmax(160px, 1fr) auto auto;
+  gap: 10px 18px;
+  align-items: center;
+  padding: 10px 14px;
+  margin: 14px 0 16px;
+  border: 1px solid var(--field-edge);
+  border-radius: 5px;
+}
+
+.manual-grading-page .mg-progress-cell {
+  display: grid;
+  gap: 2px;
+}
+
+.manual-grading-page .mg-progress-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--graphite);
+}
+
+.manual-grading-page .mg-progress-value {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.manual-grading-page .mg-progress-value small {
+  margin: 0 3px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--graphite);
+}
+
+.manual-grading-page .mg-progress-cell.is-total .mg-progress-value {
+  color: var(--vermilion-deep);
+}
+
+.manual-grading-page .mg-progress-cell.is-ai .mg-progress-value {
+  font-size: 15px;
+  color: var(--azure);
+}
+
+.manual-grading-page .mg-progress-bar {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.manual-grading-page .mg-progress-track {
+  height: 7px;
+  overflow: hidden;
+  background: var(--field);
+  border: 1px solid var(--field-edge);
+  border-radius: 999px;
+}
+
+.manual-grading-page .mg-progress-fill {
+  height: 100%;
+  background: var(--jade);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.manual-grading-page .mg-progress-counts {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+}
+
+.manual-grading-page .mg-count {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: var(--graphite);
+}
+
+.manual-grading-page .mg-count::before {
+  width: 8px;
+  height: 8px;
+  content: "";
+  border-radius: 2px;
+}
+
+.manual-grading-page .mg-count.is-scored::before {
+  background: var(--jade);
+}
+
+.manual-grading-page .mg-count.is-unscored::before {
+  border: 1px dashed var(--graphite);
+}
+
+.manual-grading-page .mg-count b {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* ---------- 主体：左题面 / 右评分 ---------- */
+.manual-grading-page .mg-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 348px;
+  gap: 18px;
+  align-items: start;
+}
+
+.manual-grading-page .mg-main {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* 右栏本身只负责撑满行高；真正吸顶的是里面的 .mg-pad（见下方桌面端块）。
+   注意 .mg-body 是 align-items:start 的 grid——直接把 grid 项设成 sticky，
+   它的约束矩形会被压成自身高度，等于不吸顶；所以由外层 stretch + 内层 sticky 完成。 */
+.manual-grading-page .mg-side {
+  min-width: 0;
+}
+
+/* ---------- 当前题 ---------- */
+.manual-grading-page .mg-question {
+  padding: 18px 20px;
+  background: rgb(255 255 255 / 12%);
+  border: 1px solid var(--paper-edge);
+  border-radius: 5px;
+
+  /* 切题后 scrollIntoView 的落点补偿，题号不会贴死视口顶沿 */
+  scroll-margin-top: 16px;
+}
+
+.manual-grading-page .mg-question-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.manual-grading-page .mg-question-no {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  place-items: center;
+  color: var(--paper-hi);
+  background: var(--ink);
+  border-radius: 50%;
+}
+
+.manual-grading-page .mg-question-seq {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--vermilion-deep);
+}
+
+.manual-grading-page .mg-question-max {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--graphite);
+}
+
+.manual-grading-page .mg-question-stem {
+  margin: 10px 0 12px;
+  font-family: var(--exam-serif);
+  font-size: 16px;
+  line-height: 1.85;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+.manual-grading-page .mg-images,
+.manual-grading-page .mg-answer-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.manual-grading-page .mg-images img,
+.manual-grading-page .mg-answer-files img {
+  display: block;
+  width: 176px;
+  height: 128px;
+  object-fit: cover;
+  background: var(--field);
+  border: 1px solid var(--field-edge);
+  border-radius: 4px;
+}
+
+.manual-grading-page .mg-answer {
+  padding: 14px 16px;
+  margin-top: 12px;
+  background: var(--paper-hi);
+  border: 1px solid var(--field-edge);
+  border-left: 4px solid var(--vermilion);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 18%);
+}
+
+/* 作答抬头：标签在左、一键复制在右（提示词要整段拿去生图，手选容易漏行） */
+.manual-grading-page .mg-answer-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.manual-grading-page .mg-answer-label {
+  display: block;
+  font-family: var(--exam-serif);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--vermilion-deep);
+}
+
+.manual-grading-page .mg-answer p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+/* ---------- 复核依据（次要信息，默认折叠） ---------- */
+.manual-grading-page .mg-reference {
+  background: rgb(44 95 124 / 6%);
+  border: 1px solid rgb(44 95 124 / 22%);
+  border-left: 4px solid var(--azure);
+  border-radius: 4px;
+}
+
+.manual-grading-page .mg-reference-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 14px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.manual-grading-page .mg-reference-toggle:hover {
+  background: rgb(44 95 124 / 8%);
+}
+
+.manual-grading-page .mg-reference-toggle:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: -2px;
+}
+
+.manual-grading-page .mg-reference-title {
+  font-family: var(--exam-serif);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: var(--azure);
+}
+
+.manual-grading-page .mg-reference-hint {
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.manual-grading-page .mg-reference-caret {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--azure);
+}
+
+.manual-grading-page .mg-reference-body {
+  display: grid;
+  gap: 10px;
+  padding: 2px 14px 14px;
+}
+
+.manual-grading-page .mg-reference-row {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  font-size: 13px;
+}
+
+.manual-grading-page .mg-reference-row > span {
+  color: var(--azure);
+}
+
+.manual-grading-page .mg-reference-row p {
+  margin: 0;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.manual-grading-page .mg-reference-row.is-ai {
+  padding-top: 9px;
+  border-top: 1px dashed rgb(44 95 124 / 28%);
+}
+
+/* ---------- 评分面板 ---------- */
+.manual-grading-page .mg-pad {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  background: linear-gradient(178deg, var(--paper-hi) 0%, var(--paper) 70%);
+  border: 1px solid var(--paper-edge);
+  border-top: 3px solid var(--vermilion);
+  border-radius: 6px;
+  box-shadow: 0 10px 26px rgb(0 0 0 / 30%);
+}
+
+.manual-grading-page .mg-pad-readout {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--field-edge);
+}
+
+.manual-grading-page .mg-pad-label {
+  font-family: var(--exam-serif);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  color: var(--graphite);
+}
+
+.manual-grading-page .mg-pad-value {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  margin: 0;
+}
+
+.manual-grading-page .mg-pad-value strong {
+  font-size: 46px;
+  font-weight: 500;
+  line-height: 1.05;
+  color: var(--vermilion);
+}
+
+/* 未评分占位：破折号要明显小于分数字号，否则 46px 的「—」看着像一根进度条 */
+.manual-grading-page .mg-pad-value strong.is-empty {
+  font-size: 30px;
+  color: var(--graphite);
+  opacity: 0.45;
+}
+
+.manual-grading-page .mg-pad-value small {
+  font-size: 17px;
+  color: var(--graphite);
+}
+
+.manual-grading-page .mg-pad-state {
+  font-size: 12px;
+  color: var(--jade);
+}
+
+.manual-grading-page .mg-pad-state.is-empty {
+  color: var(--vermilion-deep);
+}
+
+/* 分数按钮阵：命中区 ≥44px，点一下即评分。
+   列数由组件按「每行至多 6 个 + 摊平行数」算好后经 --mg-score-cols 下发，
+   用 auto-fit 会出现最后一行只剩一个孤儿按钮。 */
+.manual-grading-page .mg-score-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--mg-score-cols, 5), minmax(0, 1fr));
+  gap: 8px;
+}
+
+.manual-grading-page .mg-score-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 46px;
+  min-height: 46px;
+  font-size: 16px;
+  color: var(--ink-body);
+  cursor: pointer;
+  background: var(--paper-hi);
+  border: 1px solid var(--field-edge);
+  border-radius: 5px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.manual-grading-page .mg-score-btn:hover:not(:disabled) {
+  color: var(--vermilion-deep);
+  background: rgb(200 68 43 / 10%);
+  border-color: var(--vermilion);
+}
+
+.manual-grading-page .mg-score-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.manual-grading-page .mg-score-btn:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+.manual-grading-page .mg-score-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* 选中态 = 朱砂实底 + 深描边 + 轻微抬起，一眼可辨 */
+.manual-grading-page .mg-score-btn.is-active {
+  font-weight: 500;
+  color: var(--paper-hi);
+  background: var(--vermilion);
+  border-color: var(--vermilion-deep);
+  box-shadow: 0 2px 8px rgb(200 68 43 / 42%);
+}
+
+.manual-grading-page .mg-score-btn.is-active:hover:not(:disabled) {
+  color: var(--paper-hi);
+  background: var(--vermilion-deep);
+  border-color: var(--vermilion-deep);
+}
+
+/* 大满分：滑块 + 常用分快捷键 */
+.manual-grading-page .mg-score-slider {
+  display: grid;
+  gap: 12px;
+}
+
+.manual-grading-page .mg-slider {
+  padding: 0 6px;
+}
+
+.manual-grading-page .mg-slider .el-slider__runway {
+  height: 8px;
+  background: var(--field);
+  border: 1px solid var(--field-edge);
+}
+
+.manual-grading-page .mg-slider .el-slider__bar {
+  height: 8px;
+  background: var(--vermilion);
+}
+
+.manual-grading-page .mg-slider .el-slider__button {
+  width: 22px;
+  height: 22px;
+  background: var(--paper-hi);
+  border: 3px solid var(--vermilion);
+}
+
+/* 精调（±1）与常用分各占一排，宽度均分，不出现被撑宽的孤儿按钮 */
+.manual-grading-page .mg-score-step {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.manual-grading-page .mg-score-quick {
+  display: grid;
+  grid-template-columns: repeat(var(--mg-score-cols, 4), minmax(0, 1fr));
+  gap: 8px;
+}
+
+.manual-grading-page .mg-step-btn,
+.manual-grading-page .mg-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 8px;
+  font-size: 14px;
+  color: var(--ink-body);
+  cursor: pointer;
+  background: var(--paper-hi);
+  border: 1px solid var(--field-edge);
+  border-radius: 5px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.manual-grading-page .mg-step-btn {
+  font-size: 15px;
+  color: var(--graphite);
+}
+
+.manual-grading-page .mg-step-btn:hover:not(:disabled),
+.manual-grading-page .mg-quick-btn:hover:not(:disabled) {
+  color: var(--vermilion-deep);
+  background: rgb(200 68 43 / 10%);
+  border-color: var(--vermilion);
+}
+
+.manual-grading-page .mg-step-btn:active:not(:disabled),
+.manual-grading-page .mg-quick-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.manual-grading-page .mg-step-btn:focus-visible,
+.manual-grading-page .mg-quick-btn:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+.manual-grading-page .mg-step-btn:disabled,
+.manual-grading-page .mg-quick-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.manual-grading-page .mg-quick-btn.is-active {
+  color: var(--paper-hi);
+  background: var(--vermilion);
+  border-color: var(--vermilion-deep);
+}
+
+/* 人工批语：次要操作，默认折叠成一行 */
+.manual-grading-page .mg-pad-comment {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--field-edge);
+}
+
+.manual-grading-page .mg-comment-toggle {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px;
+  cursor: pointer;
+  background: rgb(255 255 255 / 22%);
+  border: 1px dashed var(--field-edge);
+  border-radius: 5px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.manual-grading-page .mg-comment-toggle:hover {
+  background: rgb(255 255 255 / 42%);
+  border-color: var(--graphite);
+}
+
+.manual-grading-page .mg-comment-toggle:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: -2px;
+}
+
+.manual-grading-page .mg-comment-name {
+  font-size: 13px;
+  color: var(--ink-body);
+}
+
+.manual-grading-page .mg-comment-name em {
+  margin-left: 5px;
+  font-size: 11px;
+  font-style: normal;
+  color: var(--graphite);
+}
+
+.manual-grading-page .mg-comment-state {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.manual-grading-page .mg-comment-caret {
+  font-size: 12px;
+  color: var(--azure);
+}
+
+/* 输入框底色/描边走 exam-shared.css 的 EP 纸面桥接（单一事实源），这里只补字号与字数角标 */
+.manual-grading-page .mg-comment-input .el-textarea__inner {
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.manual-grading-page .mg-comment-input .el-input__count {
+  background: transparent;
+}
+
+/* ---------- 底部操作坞（题号导航 + 切题 + 提交，位置恒定） ---------- */
+.manual-grading-page .mg-deck {
+  position: sticky;
+  bottom: 12px;
+  z-index: 4;
+  display: grid;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-top: 18px;
+  background: color-mix(in srgb, var(--paper-hi) 95%, transparent);
+  border: 1px solid var(--field-edge);
+  border-radius: 6px;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 32%);
+  backdrop-filter: blur(8px);
+}
+
+.manual-grading-page .mg-nav {
+  display: flex;
+  gap: 8px 14px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.manual-grading-page .mg-nav-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-width: 0;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.manual-grading-page .mg-nav-chip {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 34px;
+  font-size: 13px;
+  color: var(--graphite);
+  cursor: pointer;
+  background: var(--paper-hi);
+  border: 1px dashed var(--graphite);
+  border-radius: 4px;
+  transition:
+    transform 0.12s ease,
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.manual-grading-page .mg-nav-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 22%);
+}
+
+.manual-grading-page .mg-nav-chip:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 1px;
+}
+
+.manual-grading-page .mg-nav-chip.is-scored {
+  color: #eef1e9;
+  background: var(--jade);
+  border: 1px solid var(--jade);
+}
+
+.manual-grading-page .mg-nav-chip.is-current {
+  position: relative;
+  font-weight: 700;
+  color: var(--paper-hi);
+  background: var(--vermilion);
+  border: 1px solid var(--vermilion-deep);
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+/* 当前题被朱砂占满时，用底部蓝绿细条保留「本题已评分」这一层信息 */
+.manual-grading-page .mg-nav-chip.is-current.is-scored::after {
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  left: 4px;
+  height: 3px;
+  content: "";
+  background: var(--jade-soft);
+  border-radius: 2px;
+}
+
+.manual-grading-page .mg-nav-legend {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  margin: 0;
+  font-size: 11px;
+  color: var(--graphite);
+}
+
+.manual-grading-page .mg-nav-legend span {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.manual-grading-page .mg-nav-legend span::before {
+  width: 9px;
+  height: 9px;
+  content: "";
+  border-radius: 2px;
+}
+
+.manual-grading-page .mg-nav-legend .is-current::before {
+  background: var(--vermilion);
+}
+
+.manual-grading-page .mg-nav-legend .is-scored::before {
+  background: var(--jade);
+}
+
+.manual-grading-page .mg-nav-legend .is-unscored::before {
+  border: 1px dashed var(--graphite);
+}
+
+.manual-grading-page .mg-deck-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--field-edge);
+}
+
+.manual-grading-page .mg-deck-move {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+.manual-grading-page .mg-deck-hint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  margin: 0;
+  font-size: 13px;
+  color: var(--vermilion-deep);
+}
+
+.manual-grading-page .mg-deck-hint.is-ready {
+  color: var(--jade);
+}
+
+.manual-grading-page .mg-deck-hint b {
+  font-weight: 500;
+}
+
+.manual-grading-page .mg-deck-hint em {
+  font-size: 12px;
+  font-style: normal;
+  color: var(--graphite);
+}
+
+.manual-grading-page .mg-submit {
+  flex: 0 0 auto;
+}
+
+.manual-grading-page .mg-empty-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* ---------- 工作台版式：够宽够高时收成一屏，只让阅读列滚动 ----------
+   收益：抬头 / 进度 / 题号导航 / 上一题·下一题·提交 位置恒定，
+   评分面板在阅读列内吸顶，且吸底操作坞不可能压住正文。
+   高度门槛 820px：低于它时阅读列会比评分面板还矮（面板顶部的大号得分会被裁掉），
+   那种窗口退回常规文档流反而更好读，所以不进工作台版式。 */
+@media (width > 1080px) and (height >= 820px) {
+  .manual-grading-page.exam-page {
+    align-items: stretch;
+    height: 100vh;
+    min-height: 100vh;
+    padding-block: clamp(14px, 2.4vh, 28px);
+    overflow: hidden;
+  }
+
+  .manual-grading-page .manual-grading-sheet {
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+    padding: clamp(16px, 1.6vw, 24px) clamp(20px, 3.2vw, 40px);
+    overflow: hidden;
+  }
+
+  /* 常驻区（抬头 / 进度 / 操作坞）压薄，把高度让给阅读列 */
+  .manual-grading-page .mg-head {
+    padding-bottom: 8px;
+  }
+
+  .manual-grading-page .exam-title {
+    font-size: clamp(18px, 1.5vw, 21px);
+  }
+
+  .manual-grading-page .mg-progress {
+    padding: 7px 14px;
+    margin: 10px 0 12px;
+  }
+
+  .manual-grading-page .mg-progress-value {
+    font-size: 16px;
+  }
+
+  .manual-grading-page .mg-deck {
+    gap: 8px;
+    padding: 9px 14px;
+    margin-top: 12px;
+  }
+
+  .manual-grading-page .mg-deck-actions {
+    padding-top: 8px;
+  }
+
+  /* 本页唯一的滚动区 */
+  .manual-grading-page .mg-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-right: 4px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+
+  /* 右栏撑满行高（grid 项自身设 sticky 会被压成自身高度而失效），
+     由内层 .mg-pad 在 .mg-body 这个真滚动容器里吸顶。 */
+  .manual-grading-page .mg-side {
+    align-self: stretch;
+  }
+
+  .manual-grading-page .mg-pad {
+    position: sticky;
+    top: 0;
+  }
+
+  /* 坞已经常驻在纸脚，无需再 sticky */
+  .manual-grading-page .mg-deck {
+    position: static;
+    flex: 0 0 auto;
+    bottom: auto;
+  }
+}
+
+/* ---------- 中屏：评分面板回到文档流 ---------- */
+@media (width <= 1080px) {
+  .manual-grading-page .mg-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 单列后右栏不再有独立行高可吸，恢复常规文档流 */
+  .manual-grading-page .mg-pad {
+    position: static;
+  }
+
+  .manual-grading-page .mg-progress {
+    grid-template-columns: auto minmax(140px, 1fr);
+  }
+}
+
+/* ---------- 窄屏：单列 + 命中区 ≥44px ---------- */
+@media (width <= 760px) {
+  .manual-grading-page .mg-deck {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .manual-grading-page .mg-head {
+    flex-direction: column;
+  }
+
+  .manual-grading-page .mg-question-max {
+    margin-left: 0;
+  }
+
+  .manual-grading-page .mg-head-stage {
+    flex-direction: row;
+    justify-items: start;
+  }
+
+  .manual-grading-page .mg-progress {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .manual-grading-page .mg-question {
+    padding: 14px;
+  }
+
+  .manual-grading-page .mg-images img,
+  .manual-grading-page .mg-answer-files img {
+    width: calc(50% - 5px);
+    height: 104px;
+  }
+
+  .manual-grading-page .mg-reference-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .manual-grading-page .mg-score-grid {
+    grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+  }
+
+  .manual-grading-page .mg-nav {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .manual-grading-page .mg-nav-strip {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    gap: 8px;
+  }
+
+  .manual-grading-page .mg-nav-chip {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  .manual-grading-page .mg-deck-actions {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .manual-grading-page .mg-deck-move {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .manual-grading-page .mg-deck-move .exam-btn {
+    min-width: 0;
+  }
+
+  .manual-grading-page .mg-deck-hint {
+    min-width: 0;
+    justify-content: space-between;
+  }
+
+  .manual-grading-page .mg-deck-hint .exam-btn.is-small {
+    min-height: 44px;
+  }
+
+  .manual-grading-page .mg-submit {
+    width: 100%;
+  }
+}

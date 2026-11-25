@@ -1,0 +1,72 @@
+/* 壳子自己的样式（不是照搬的）：顶上一排菜单，下面是装各页的那一块。
+   菜单高 56px：考试、团队各页都按「整屏高减 56px」排的（旧网站原来的顶栏就这么高）。 */
+:root {
+  --shell-nav: 56px;
+  --shell-desk: #211f1a;
+  --shell-line: rgb(220 210 190 / 12%);
+  --shell-text: #a59c8c;
+  --shell-ink: #eee4d1;
+  --shell-mark: #c8442b;
+}
+
+body {
+  background: var(--shell-desk);
+}
+
+.shell-nav {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  height: var(--shell-nav);
+  padding: 0 22px;
+  font:
+    15px/1 "Noto Sans SC",
+    "Microsoft YaHei",
+    "PingFang SC",
+    sans-serif;
+  background: var(--shell-desk);
+  border-bottom: 1px solid var(--shell-line);
+}
+
+.shell-nav a {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  color: var(--shell-text);
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s;
+}
+
+.shell-nav a:hover {
+  color: var(--shell-ink);
+}
+
+.shell-nav a.router-link-active {
+  font-weight: 600;
+  color: var(--shell-ink);
+  border-bottom-color: var(--shell-mark);
+}
+
+/* 下面这几条照旧项目：lay-content 的 .app-main、.main-content，和它用到的三个工具类 */
+.app-main {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - var(--shell-nav));
+  overflow-x: hidden;
+}
+
+.main-content {
+  margin: 24px;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.h-full {
+  height: 100%;
+}
+
+.grow {
+  flex-grow: 1;
+}

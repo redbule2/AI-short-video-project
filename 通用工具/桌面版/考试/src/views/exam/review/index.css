@@ -1,0 +1,984 @@
+/* 考试复盘 · 批改后的卷子(共用底座见 ../exam-shared.css) */
+
+.review-page .review-blocked {
+  max-width: 620px;
+}
+
+.review-page {
+  min-width: 0;
+  overflow-x: clip;
+}
+
+/* 仅放开承载复盘页的 Element Plus 视图层,让 sticky 以真正滚动的 wrap 为参照。 */
+.el-scrollbar__view:has(> .grow > .review-page) {
+  width: 100%;
+  min-width: 0;
+  overflow: visible !important;
+}
+
+.el-scrollbar__view:has(> .grow > .review-page) > .grow {
+  width: 100%;
+  min-width: 0;
+}
+
+/* 卷面 + 答题卡 双栏布局(窄屏答题卡翻到顶部成横条) */
+.review-page .review-layout {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 1220px;
+}
+
+.review-page .review-sheet {
+  flex: 1;
+  min-width: 0;
+  max-width: 1000px;
+}
+
+/* ---------- 答题卡(长卷导航) ----------
+   桌面右栏随上层滚动容器吸顶;窄屏回到文档流并启用悬浮题卡。 */
+.review-page .review-nav {
+  position: sticky;
+  top: 24px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  width: 200px;
+  padding: 14px 14px 16px;
+  background: linear-gradient(
+    178deg,
+    var(--paper-hi) 0%,
+    var(--paper) 60%,
+    var(--paper-2) 100%
+  );
+  border: 1px solid var(--paper-edge);
+  border-radius: 6px;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 6%),
+    0 10px 26px rgb(0 0 0 / 36%);
+}
+
+.review-page .review-nav-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.review-page .review-nav-title {
+  font-family: var(--exam-serif);
+  font-size: 14px;
+  color: var(--ink);
+  letter-spacing: 0.14em;
+}
+
+.review-page .review-nav-count {
+  font-size: 11px;
+  color: var(--graphite);
+}
+
+.review-page .review-nav-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 10px;
+}
+
+.review-page .review-legend {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--graphite);
+}
+
+.review-page .review-legend::before {
+  width: 8px;
+  height: 8px;
+  content: "";
+  border-radius: 2px;
+}
+
+.review-page .review-legend.is-right::before {
+  background: var(--jade);
+}
+
+.review-page .review-legend.is-partial::before {
+  background: linear-gradient(135deg, var(--jade) 50%, var(--vermilion) 50%);
+}
+
+.review-page .review-legend.is-wrong::before {
+  background: var(--vermilion);
+}
+
+.review-page .review-legend.is-pending::before {
+  background: var(--azure);
+}
+
+.review-page .review-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+  gap: 6px;
+}
+
+.review-page .review-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    opacity 0.15s ease;
+}
+
+.review-page .review-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 22%);
+}
+
+.review-page .review-chip:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 1px;
+}
+
+.review-page .review-chip.is-right {
+  color: var(--jade);
+  background: rgb(60 106 76 / 10%);
+  border: 1px solid var(--jade-soft);
+}
+
+.review-page .review-chip.is-partial {
+  color: var(--vermilion-deep);
+  background: linear-gradient(
+    135deg,
+    rgb(60 106 76 / 12%) 50%,
+    rgb(200 68 43 / 12%) 50%
+  );
+  border: 1px solid var(--vermilion);
+}
+
+.review-page .review-chip.is-wrong {
+  color: var(--vermilion-deep);
+  background: rgb(200 68 43 / 12%);
+  border: 1px solid var(--vermilion);
+}
+
+.review-page .review-chip.is-pending {
+  color: var(--azure);
+  background: rgb(44 95 124 / 8%);
+  border: 1px dashed var(--azure-soft);
+}
+
+.review-page .review-chip.is-dimmed {
+  opacity: 0.32;
+}
+
+.review-page .review-chip.is-current {
+  font-weight: 700;
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+/* ---------- 逐题阅读(沉浸模式,与答题页专注模式同款体感) ---------- */
+.review-page .review-focus {
+  padding: 24px 28px 20px;
+}
+
+.review-page .review-focus-head {
+  display: flex;
+  gap: 10px 14px;
+  align-items: center;
+  padding-bottom: 8px;
+  margin-bottom: 0;
+  border-bottom: 2px solid var(--ink);
+}
+
+.review-page .review-focus-position {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.review-page .review-focus-position-total {
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.review-page .review-focus-shortcuts {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--graphite);
+  letter-spacing: 0.06em;
+}
+
+.review-page .review-focus .review-q {
+  padding: 10px 0 4px;
+  border-bottom: none;
+}
+
+.review-page .review-focus .review-q-head {
+  margin-bottom: 6px;
+}
+
+.review-page .review-focus .review-q-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr);
+  grid-auto-flow: row dense;
+  gap: 8px 18px;
+  align-items: start;
+}
+
+.review-page .review-focus .review-q-body > .exam-group-intro,
+.review-page .review-focus .review-q-body > .review-q-stem,
+.review-page .review-focus .review-q-body > .review-stem-images {
+  grid-column: 1 / -1;
+}
+
+.review-page .review-focus .review-q-body > .exam-group-intro {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  padding: 8px 12px;
+  margin: 0;
+}
+
+.review-page .review-focus .exam-group-case {
+  margin-top: 0;
+  line-height: 1.55;
+}
+
+.review-page .review-focus .review-q-stem {
+  margin-bottom: 2px;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.review-page .review-focus .review-options,
+.review-page .review-focus .review-answers {
+  grid-column: 1;
+  margin-bottom: 0;
+}
+
+.review-page .review-focus .review-option {
+  padding: 6px 10px;
+}
+
+.review-page .review-focus .review-answer-line {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.review-page .review-focus .review-answer-label {
+  line-height: 1.75;
+}
+
+.review-page .review-focus .review-explanation-stack {
+  display: flex;
+  grid-column: 2;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-page .review-focus .review-analysis,
+.review-page .review-focus .review-ai-comment {
+  padding: 8px 12px;
+  margin-bottom: 0;
+}
+
+.review-page .review-focus .review-analysis p,
+.review-page .review-focus .review-ai-comment p {
+  line-height: 1.55;
+}
+
+.review-page .review-focus-footer {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 1px solid var(--rule);
+}
+
+/* ---------- 悬浮答题卡(仅窄屏;桌面直接使用右侧吸顶题卡) ---------- */
+.review-page .review-fab {
+  display: none;
+  position: fixed;
+  right: 26px;
+  bottom: 104px;
+  z-index: 28;
+  min-width: 46px;
+  min-height: 46px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--ink);
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  background: linear-gradient(178deg, var(--paper-hi) 0%, var(--paper) 100%);
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 38%);
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.review-page .review-fab:hover,
+.review-page .review-fab[aria-expanded="true"] {
+  color: var(--vermilion-deep);
+  border-color: var(--vermilion);
+}
+
+.review-page .review-fab:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+.review-page .review-fab-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  background: rgb(0 0 0 / 25%);
+}
+
+.review-page .review-fab-pop {
+  display: none;
+  position: fixed;
+  right: 26px;
+  bottom: 160px;
+  z-index: 30;
+  width: min(320px, calc(100vw - 52px));
+  max-height: min(60vh, 480px);
+  padding: 14px 14px 16px;
+  overflow-y: auto;
+  background: linear-gradient(
+    178deg,
+    var(--paper-hi) 0%,
+    var(--paper) 60%,
+    var(--paper-2) 100%
+  );
+  border: 1px solid var(--paper-edge);
+  border-radius: 6px;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 6%),
+    0 16px 42px rgb(0 0 0 / 46%);
+}
+
+/* ---------- 等待公布:成绩先行 ---------- */
+.review-page .review-waiting-score {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  text-align: center;
+  border-bottom: 1px solid var(--rule);
+}
+
+.review-page .review-waiting-headline {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.review-page .review-waiting-note {
+  font-size: 13px;
+  color: var(--jade);
+}
+
+.review-page .review-waiting-note.is-lone {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--azure);
+}
+
+.review-page .review-waiting-sub {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--graphite);
+}
+
+.review-page .review-waiting-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+/* ---------- 成绩单头 ---------- */
+.review-page .review-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 2px solid var(--ink);
+}
+
+/* 主账号查阅时这行最多要放 考生章 + 状态章 + 收卷时间 + 用时 + 收卷方式章,
+   不换行会在窄屏把印章挤扁,所以允许折行(行间距比列间距小一档)。 */
+.review-page .review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.review-page .review-score-card {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.review-page .review-score {
+  font-size: 44px;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.review-page .review-score-total {
+  font-size: 13px;
+  color: var(--graphite);
+}
+
+.review-page .review-score-total.is-pending-only {
+  font-size: 15px;
+  color: var(--azure);
+}
+
+.review-page .review-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.review-page .review-toolbar-actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+/* 判词统计(与答题卡同色语义) */
+.review-page .review-stats {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.review-page .review-stat {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.review-page .review-stat::before {
+  width: 8px;
+  height: 8px;
+  content: "";
+  border-radius: 2px;
+}
+
+.review-page .review-stat.is-right {
+  color: var(--jade);
+}
+
+.review-page .review-stat.is-right::before {
+  background: var(--jade);
+}
+
+.review-page .review-stat.is-wrong {
+  color: var(--vermilion-deep);
+}
+
+.review-page .review-stat.is-wrong::before {
+  background: var(--vermilion);
+}
+
+.review-page .review-stat.is-pending {
+  color: var(--azure);
+}
+
+.review-page .review-stat.is-pending::before {
+  background: var(--azure);
+}
+
+.review-page .review-filter {
+  min-height: 34px;
+  padding: 4px 14px;
+  font-size: 13px;
+  color: var(--graphite);
+  cursor: pointer;
+  background: none;
+  border: 1px dashed var(--field-edge);
+  border-radius: 4px;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.review-page .review-filter:hover {
+  color: var(--vermilion);
+  border-color: var(--vermilion);
+}
+
+.review-page .review-filter.is-on {
+  color: var(--vermilion);
+  border: 1.5px solid var(--vermilion);
+}
+
+.review-page .review-filter:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+/* ---------- 逐题 ---------- */
+.review-page .review-items {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.review-page .review-q {
+  padding: 20px 4px;
+  scroll-margin-top: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.review-page .review-q:last-child {
+  border-bottom: none;
+}
+
+.review-page .review-q-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.review-page .review-q-no {
+  min-width: 28px;
+  padding: 0;
+  font-size: 17px;
+  color: var(--ink);
+  background: none;
+  border: none;
+}
+
+/* 清单里题号是按钮=逐题阅读入口;逐题头里的题号是静态标注 */
+.review-page button.review-q-no {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.review-page button.review-q-no:hover {
+  color: var(--vermilion);
+}
+
+.review-page button.review-q-no:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+.review-page .review-q-verdict {
+  font-size: 13px;
+}
+
+.review-page .review-q.is-right .review-q-verdict {
+  color: var(--jade);
+}
+
+.review-page .review-q.is-wrong .review-q-verdict {
+  color: var(--vermilion);
+}
+
+.review-page .review-q.is-partial .review-q-verdict {
+  color: var(--vermilion-deep);
+}
+
+.review-page .review-q.is-pending .review-q-verdict {
+  color: var(--azure);
+}
+
+.review-page .review-q-score {
+  margin-left: auto;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.review-page .review-q-stem {
+  margin-bottom: 12px;
+  font-family: var(--exam-serif);
+  font-size: 16px;
+  line-height: 1.9;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+/* 选择题标注 */
+.review-page .review-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  margin: 0 0 10px;
+  list-style: none;
+}
+
+.review-page .review-option {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 12px;
+  font-size: 14px;
+  color: var(--ink-body);
+  border: 1px solid transparent;
+  border-radius: 5px;
+}
+
+.review-page .review-option.is-mine {
+  background: color-mix(in srgb, var(--azure) 8%, transparent);
+  border-color: var(--azure);
+  box-shadow: inset 3px 0 0 var(--azure);
+}
+
+.review-page .review-option.is-correct {
+  background: rgb(60 106 76 / 8%);
+  border-color: var(--jade);
+}
+
+.review-page .review-option-key {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--graphite);
+}
+
+.review-page .review-option-text {
+  flex: 1;
+}
+
+.review-page .review-option-tag {
+  font-size: 11px;
+  color: var(--graphite);
+}
+
+.review-page .review-option-tag.is-mine {
+  font-weight: 600;
+  color: var(--azure);
+}
+
+.review-page .review-option-tag.is-correct {
+  color: var(--jade);
+}
+
+/* 非选择题作答对照 */
+.review-page .review-answers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.review-page .review-answer-line {
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.review-page .review-my-answer {
+  padding: 11px 14px 12px;
+  margin-bottom: 5px;
+  background: color-mix(in srgb, var(--azure) 8%, var(--paper-hi));
+  border: 1px solid color-mix(in srgb, var(--azure) 32%, transparent);
+  border-left: 4px solid var(--azure);
+  border-radius: var(--el-border-radius-base);
+  box-shadow: 0 3px 10px rgb(28 27 25 / 8%);
+}
+
+.review-page .review-my-answer .review-answer-line {
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* 一键复制作答:贴在作答卡右下角,不挤进正文那一行 */
+.review-page .review-answer-copy-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.review-page .review-answer-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--graphite);
+  line-height: 2.1;
+}
+
+.review-page .review-my-answer .review-answer-label {
+  padding: 1px 7px;
+  font-weight: 600;
+  line-height: 1.8;
+  color: var(--azure);
+  letter-spacing: 0.08em;
+  border: 1px solid color-mix(in srgb, var(--azure) 48%, transparent);
+  border-radius: var(--el-border-radius-small);
+}
+
+.review-page .review-answer-value {
+  color: var(--ink-body);
+  white-space: pre-wrap;
+}
+
+.review-page .review-my-answer .review-answer-value {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.85;
+  color: var(--ink);
+}
+
+.review-page .review-answer-value.is-correct {
+  color: var(--jade);
+}
+
+/* 题干配图 */
+.review-page .review-stem-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.review-page .review-stem-images img {
+  display: block;
+  max-width: min(260px, 100%);
+  max-height: 180px;
+  background: var(--field);
+  border: 1px solid var(--paper-edge);
+  border-radius: 4px;
+}
+
+/* 实操题图片 */
+.review-page .review-practical-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 4px 0 6px;
+}
+
+.review-page .review-practical-file img {
+  display: block;
+  width: 150px;
+  height: 112px;
+  object-fit: cover;
+  background: var(--field);
+  border: 1px solid var(--paper-edge);
+  border-radius: 4px;
+  transition: box-shadow 0.15s ease;
+}
+
+.review-page .review-practical-file:hover img {
+  box-shadow: 0 2px 10px rgb(0 0 0 / 22%);
+}
+
+/* 解析 */
+.review-page .review-analysis {
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  background: var(--field);
+  border-left: 3px solid var(--graphite);
+  border-radius: 4px;
+}
+
+.review-page .review-analysis-label {
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.review-page .review-analysis p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--ink-body);
+  white-space: pre-wrap;
+}
+
+/* AI 批语(靛青 = 机器) */
+.review-page .review-ai-comment {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 14px;
+  background: rgb(44 95 124 / 7%);
+  border-left: 3px solid var(--azure);
+  border-radius: 4px;
+}
+
+.review-page .review-ai-stamp {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  font-family: var(--exam-serif);
+  font-size: 11px;
+  color: var(--azure);
+  letter-spacing: 0.12em;
+  border: 1.5px solid var(--azure);
+  border-radius: 3px;
+}
+
+.review-page .review-ai-comment p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--azure);
+}
+
+/* 人工批语(朱砂 = 人工判断，与靛青 AI 轨道并列但不覆盖)。 */
+.review-page .review-human-comment {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 14px;
+  background: rgb(200 68 43 / 7%);
+  border-left: 3px solid var(--vermilion);
+  border-radius: 4px;
+}
+
+.review-page .review-human-stamp {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  font-family: var(--exam-serif);
+  font-size: 11px;
+  color: var(--vermilion);
+  letter-spacing: 0.12em;
+  border: 1.5px solid var(--vermilion);
+  border-radius: 3px;
+}
+
+.review-page .review-human-comment p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--vermilion-deep);
+}
+
+.review-page .review-score-track {
+  display: flex;
+  gap: 5px;
+  align-items: baseline;
+}
+
+.review-page .review-score-track-label {
+  font-family: var(--exam-serif);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.review-page .review-score-track-label.is-ai {
+  color: var(--azure);
+}
+
+.review-page .review-score-track-label.is-human {
+  color: var(--vermilion);
+}
+
+/* 窄屏:答题卡翻到卷面上方,变成横向滑条(中段跳题走悬浮答题卡) */
+@media (width <= 1080px) {
+  .review-page .review-layout {
+    flex-direction: column-reverse;
+    gap: 12px;
+  }
+
+  .review-page .review-nav {
+    position: static;
+    width: 100%;
+    padding: 10px 12px;
+  }
+
+  .review-page .review-fab,
+  .review-page .review-fab-backdrop,
+  .review-page .review-fab-pop {
+    display: block;
+  }
+
+  .review-page .review-nav-head {
+    display: none;
+  }
+
+  .review-page .review-nav-legend {
+    margin-bottom: 8px;
+  }
+
+  .review-page .review-nav-grid {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .review-page .review-chip {
+    flex-shrink: 0;
+    min-width: 32px;
+  }
+}
+
+@media (width <= 760px) {
+  .review-page .review-focus {
+    padding: 20px;
+  }
+
+  .review-page .review-focus-head {
+    flex-wrap: wrap;
+  }
+
+  .review-page .review-focus-shortcuts {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .review-page .review-focus .review-q-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .review-page .review-focus .review-q-body > .exam-group-intro,
+  .review-page .review-focus .review-q-body > .review-q-stem,
+  .review-page .review-focus .review-q-body > .review-stem-images,
+  .review-page .review-focus .review-options,
+  .review-page .review-focus .review-answers,
+  .review-page .review-focus .review-explanation-stack {
+    grid-column: 1;
+  }
+
+  .review-page .review-focus .review-q-body > .exam-group-intro {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
+@media (width <= 640px) {
+  .review-page .review-head {
+    flex-direction: column;
+  }
+
+  .review-page .review-my-answer .review-answer-line {
+    flex-direction: column;
+    gap: 8px;
+  }
+}

@@ -1,0 +1,41 @@
+appId: online.video8.liushuixian.desktop
+productName: AI短视频流水线
+# 程序文件用英文名：命令行、杀毒、日志里都好认
+executableName: Liushuixian
+directories:
+  output: release
+files:
+  - main.js
+  - preload.js
+  - lib/**/*
+  - 外框/**/*
+  - package.json
+extraResources:
+  # 流水线的工具文件（scripts/pack.mjs 照 git 登记的挑出来）：启动时同步进工作文件夹
+  - from: build/tools
+    to: tools
+    filter:
+      - "**/*"
+  # 跑本机服务用的 Node：换的电脑没装 Node 也能开
+  - from: build/node
+    to: node
+    filter:
+      - node.exe
+asar: true
+win:
+  target:
+    - nsis
+  # 带版本号、不带空格：和 new-video8-8 一样，更新源上每个包都不可变
+  artifactName: Liushuixian-${version}-${arch}.${ext}
+nsis:
+  # 安装、升级时的窗口固定用中文：不写的话跟着系统语言走，系统是英文界面的电脑上是一屏英文（11-24 试升级时看到）
+  installerLanguages:
+    - zh_CN
+  language: "2052"
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: AI短视频流水线
+publish:
+  provider: generic
+  url: https://video8.online/desktop-updates/liushuixian/win

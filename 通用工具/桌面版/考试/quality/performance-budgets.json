@@ -1,0 +1,1314 @@
+{
+  "schemaVersion": 1,
+  "budgets": {
+    "tools.promptFileWrite.fileBytesMax": 1048576,
+    "tools.promptFileWrite.targetReadsMax": 3,
+    "tools.promptFileWrite.peakConcurrencyMax": 1,
+    "tools.promptFileWrite.businessHttpMax": 0,
+    "desktop.dev.backendBuildsPerFrontendStart": 1,
+    "desktop.dev.backendStartsPerFrontendStart": 1,
+    "desktop.dev.backendPeakConcurrency": 1,
+    "desktop.dev.startupBusinessHttp": 0,
+    "desktop.dev.startupPayloadBytesMax": 0,
+    "desktop.updater.startupCheckMax": 1,
+    "desktop.updater.checkPeakConcurrencyMax": 1,
+    "desktop.updater.downloadPeakConcurrencyMax": 1,
+    "desktop.updater.packageBytesMax": 1073741824,
+    "desktop.updater.manualCheckMax": 1,
+    "desktop.login.businessGet": 0,
+    "desktop.cloudDraft.businessHttp": 0,
+    "desktop.http.concurrent401RefreshMax": 1,
+    "desktop.http.concurrent401RequestMax": 4,
+    "desktop.http.responseBytesMax": 33554432,
+    "desktop.collaboration.initialGet": 1,
+    "desktop.collaboration.explicitRefreshGet": 1,
+    "desktop.collaboration.concurrentGetMax": 1,
+    "desktop.collaboration.detailGet": 0,
+    "desktop.collaboration.writeFollowupGet": 0,
+    "desktop.accountCreate.businessHttp": 0,
+    "desktop.rebate.businessHttp": 0,
+    "desktop.promptCatalog.activationGet": 1,
+    "desktop.promptCatalog.detailGet": 0,
+    "desktop.promptGuard.pageEnterNativeCall": 0,
+    "desktop.promptGuard.explicitPrepareNativeCallMax": 1,
+    "desktop.promptGuard.preparePeakConcurrency": 1,
+    "desktop.promptGuard.bundleBytesMax": 5242880,
+    "desktop.modelConfig.typeActivationGet": 1,
+    "desktop.modelConfig.detailGet": 0,
+    "desktop.modelConfig.writeFollowupGet": 0,
+    "desktop.modelConfig.providerCatalogPost": 1,
+    "desktop.modelConfig.invokeHttpMax": 3,
+    "desktop.rawIdeas.pageEnter.list": 1,
+    "desktop.rawIdeas.select.detail": 0,
+    "desktop.rawIdeas.search.listMax": 1,
+    "desktop.rawIdeas.list.limit": 50,
+    "desktop.rawIdeas.direction.modelListMax": 1,
+    "desktop.rawIdeas.direction.concurrencyMax": 4,
+    "desktop.rawIdeas.mainlineHistory.firstOpenMax": 1,
+    "desktop.rawIdeas.mainlineHistory.limit": 50,
+    "desktop.rawIdeas.mainlineHistory.loadMoreMax": 1,
+    "desktop.screenplayStudio.firstActivationHttpMax": 2,
+    "desktop.screenplayStudio.scenesGenerationHttpMax": 2,
+    "desktop.screenplayStudio.dialogueBatchSceneMax": 40,
+    "desktop.screenplayStudio.dialogueBatchPeakConcurrency": 1,
+    "desktop.screenplaySync.list": 1,
+    "desktop.screenplaySync.detailMax": 1,
+    "desktop.screenplaySync.httpMax": 2,
+    "desktop.screenplayTakes.drawerInitialGet": 1,
+    "desktop.screenplayTakes.pageSize": 20,
+    "desktop.screenplayTakes.peakConcurrency": 1,
+    "desktop.screenplayLifecycle.writeFollowupGet": 0,
+    "desktop.screenplayReader.finalizedDetailMax": 1,
+    "desktop.screenplayReader.draftBusinessGet": 0,
+    "desktop.screenplayReader.finalizeFollowupGet": 0,
+    "desktop.videoTutorials.catalogBusinessHttp": 0,
+    "desktop.videoTutorials.pageEnterCatalogLoad": 1,
+    "desktop.storyboardWorkbench.windowOpenFileReadMax": 0,
+    "desktop.storyboardWorkbench.legacyMigrationFileReadMax": 1,
+    "desktop.storyboardWorkbench.windowOpenBusinessHttp": 0,
+    "desktop.storyboardWorkbench.autosavePeakConcurrency": 0,
+    "desktop.storyboardWorkbench.assetImportBatchMax": 20,
+    "desktop.storyboardWorkbench.assetImportPeakConcurrency": 1,
+    "desktop.storyboardWorkbench.assetFileBytesMax": 2147483648,
+    "desktop.storyboardWorkbench.assetsPerDocumentMax": 60,
+    "desktop.storyboardWorkbench.workspaceBytesMax": 4194304,
+    "desktop.storyboardWorkbench.shotsMax": 500,
+    "desktop.storyboardWorkbench.windowOpenCloudPullMax": 1,
+    "desktop.storyboardWorkbench.cloudRefreshPullPerClick": 1,
+    "desktop.storyboardWorkbench.docListPerPickerOpen": 1,
+    "desktop.storyboardWorkbench.cloudPushDebounceMs": 3000,
+    "desktop.storyboardWorkbench.cloudPushPeakConcurrency": 1,
+    "desktop.storyboardWorkbench.cloudAssetUploadBytesMax": 10485760,
+    "desktop.storyboardWorkbench.cloudAssetUploadPeakConcurrency": 1,
+    "desktop.storyboardWorkbench.cloudAssetDownloadPeakConcurrency": 1,
+    "desktop.storyboardWorkbench.cloudAssetPreviewGetPerDrawerMax": 60,
+    "desktop.storyboardWorkbench.cloudAssetPreviewTotalBytesMax": 629145600,
+    "desktop.storyboardWorkbench.promptComposeScriptReadMax": 1,
+    "desktop.storyboardWorkbench.generateFromScriptHttpPerCreate": 1,
+    "desktop.storyboardWorkbench.generateFromScriptPeakConcurrency": 1,
+    "desktop.storyboardWorkbench.generateModelListPerDialogOpen": 1,
+    "desktop.storyboardWorkbench.generateScriptListPerDialogOpen": 1,
+    "desktop.storyboardWorkbench.generateSceneReadPerPick": 1,
+    "desktop.storyboardWorkbench.createBlankHttpPerCreate": 1,
+    "desktop.storyboardWorkbench.createBlankLlmCallMax": 0,
+    "desktop.storyboardWorkbench.detachedOpenIpcPerGesture": 1,
+    "desktop.storyboardWorkbench.detachedPullIpcPerMount": 1,
+    "desktop.storyboardWorkbench.detachedRefreshIpcPerClick": 1,
+    "desktop.storyboardWorkbench.detachedPaneHttp": 0,
+    "desktop.storyboardWorkbench.detachedPublishThrottleMs": 120,
+    "desktop.storyboardWorkbench.assetTrashDays": 7,
+    "desktop.storyboardWorkbench.assetPurgeDeletePerAsset": 1,
+    "desktop.storyboardWorkbench.libraryPullPerWindowOpenMax": 1,
+    "desktop.storyboardWorkbench.videoGeneration.drawerOpenCliMax": 0,
+    "desktop.storyboardWorkbench.videoGeneration.capabilityDreaminaCliMax": 2,
+    "desktop.storyboardWorkbench.videoGeneration.capabilityLibTvCliMax": 4,
+    "desktop.storyboardWorkbench.videoGeneration.assetsPerPrepareMax": 30,
+    "desktop.storyboardWorkbench.videoGeneration.videosPerPrepareMax": 10,
+    "desktop.storyboardWorkbench.videoGeneration.audiosPerPrepareMax": 10,
+    "desktop.storyboardWorkbench.videoGeneration.inputsPerPrepareMax": 50,
+    "desktop.storyboardWorkbench.videoGeneration.assetCacheGetMax": 30,
+    "desktop.storyboardWorkbench.videoGeneration.assetCacheGetPeakConcurrency": 1,
+    "desktop.storyboardWorkbench.videoGeneration.assetBytesPerPrepareMax": 314572800,
+    "desktop.storyboardWorkbench.videoGeneration.assetReadPeakConcurrency": 1,
+    "desktop.storyboardWorkbench.videoGeneration.dreaminaSubmitCliMax": 1,
+    "desktop.storyboardWorkbench.videoGeneration.dreaminaQueryCliMax": 120,
+    "desktop.storyboardWorkbench.videoGeneration.libtvBaseCliMax": 4,
+    "desktop.storyboardWorkbench.videoGeneration.libtvCliPerAssetMax": 2,
+    "desktop.storyboardWorkbench.videoGeneration.activeJobsPerPlatformMax": 1,
+    "desktop.storyboardWorkbench.videoGeneration.confirmationRecordsMax": 50,
+    "desktop.storyboardWorkbench.videoGeneration.cliChildProcessPeakConcurrency": 2,
+    "desktop.storyboardWorkbench.videoGeneration.cleanupHelperPeakConcurrency": 1,
+    "desktop.storyboardWorkbench.videoGeneration.childProcessPeakConcurrency": 3,
+    "desktop.assetLibrary.pageEnterFileReadMax": 1,
+    "desktop.assetLibrary.pageEnterCloudPullMax": 1,
+    "desktop.assetLibrary.cloudPushDebounceMs": 3000,
+    "desktop.assetLibrary.cloudPushPeakConcurrency": 1,
+    "desktop.assetLibrary.assetsPerAccountMax": 500,
+    "desktop.assetLibrary.groupsPerAccountMax": 50,
+    "desktop.assetLibrary.uploadBytesMax": 10485760,
+    "desktop.assetLibrary.uploadPeakConcurrency": 1,
+    "desktop.assetLibrary.docBytesMax": 4194304,
+    "desktop.assetLibrary.assetDownloadPeakConcurrency": 1,
+    "desktop.assetLibrary.previewGetPerPageEnterMax": 60,
+    "desktop.assetLibrary.previewTotalBytesMax": 629145600,
+    "desktop.assetLibrary.previewOpenGetMax": 1,
+    "desktop.assetLibrary.userDownloadGetPerGestureMax": 1,
+    "desktop.assetLibrary.userDownloadIpcPerGestureMax": 3,
+    "desktop.scriptDesk.pageEnterFileReadMax": 1,
+    "desktop.scriptDesk.pageEnterBusinessHttp": 0,
+    "desktop.scriptDesk.pageEnterCloudPullMax": 1,
+    "desktop.scriptDesk.docListPerPickerOpen": 1,
+    "desktop.scriptDesk.autosavePeakConcurrency": 1,
+    "desktop.scriptDesk.cloudPushDebounceMs": 3000,
+    "desktop.scriptDesk.cloudPushPeakConcurrency": 1,
+    "desktop.scriptDesk.docBytesMax": 4194304,
+    "desktop.scriptDesk.scenesMax": 200,
+    "frontend.screenplayStudio.firstActivationRefreshRuns": 1,
+    "frontend.screenplayStudio.laterActivationRefreshRuns": 1,
+    "frontend.screenplayStudio.httpMax": 4,
+    "frontend.storyboardAssetLibrary.pageEnterCloudPullMax": 1,
+    "frontend.storyboardAssetLibrary.cloudPushDebounceMs": 3000,
+    "frontend.storyboardAssetLibrary.cloudPushPeakConcurrency": 1,
+    "frontend.storyboardAssetLibrary.assetsPerAccountMax": 500,
+    "frontend.storyboardAssetLibrary.groupsPerAccountMax": 50,
+    "frontend.storyboardAssetLibrary.uploadBytesMax": 10485760,
+    "frontend.storyboardAssetLibrary.uploadPeakConcurrency": 1,
+    "frontend.storyboardAssetLibrary.docBytesMax": 4194304,
+    "frontend.storyboardWorkbench.windowOpenCloudPullMax": 1,
+    "frontend.storyboardWorkbench.docListPerPickerOpen": 1,
+    "frontend.storyboardWorkbench.cloudPushDebounceMs": 3000,
+    "frontend.storyboardWorkbench.cloudPushPeakConcurrency": 1,
+    "frontend.storyboardWorkbench.cloudAssetUploadBytesMax": 10485760,
+    "frontend.storyboardWorkbench.cloudAssetUploadPeakConcurrency": 1,
+    "frontend.storyboardWorkbench.cloudAssetDownloadPeakConcurrency": 1,
+    "frontend.storyboardWorkbench.windowOpenFileReadMax": 0,
+    "frontend.storyboardWorkbench.windowOpenBusinessHttp": 0,
+    "frontend.storyboardWorkbench.autosavePeakConcurrency": 0,
+    "frontend.storyboardWorkbench.promptComposeScriptReadMax": 1,
+    "frontend.storyboardWorkbench.shotsMax": 500,
+    "frontend.storyboardWorkbench.workspaceBytesMax": 4194304,
+    "frontend.storyboardWorkbench.libraryPullPerWindowOpenMax": 1,
+    "frontend.rawIdeaCreate.cloudDraftGet": 0,
+    "frontend.rawIdeaExisting.reconcileCalls": 1,
+    "frontend.exam.papersPage.enter": 1,
+    "frontend.exam.paperEdit.enter": 1,
+    "frontend.exam.assignDialog.open": 1,
+    "frontend.exam.publishDialog.open": 1,
+    "frontend.exam.archivedCopy.click": 1,
+    "frontend.exam.take.pause": 1,
+    "frontend.exam.take.resume": 1,
+    "frontend.exam.resultsPage.enter": 2,
+    "frontend.exam.results.switchPaper": 1,
+    "frontend.exam.results.sheetDetail": 0,
+    "frontend.exam.results.reopenTimedOut": 1,
+    "frontend.exam.results.revokeAssignment": 1,
+    "frontend.exam.myPage.enter": 1,
+    "frontend.exam.take.enter": 1,
+    "frontend.exam.take.autosave": 1,
+    "frontend.exam.review.enter": 1,
+    "frontend.exam.review.ownerEnter": 1,
+    "frontend.exam.manualGrading.blindEnter": 1,
+    "frontend.exam.manualGrading.reviewEnter": 2,
+    "frontend.exam.manualGrading.firstSubmit": 2,
+    "frontend.exam.manualGrading.revisionSubmit": 1,
+    "frontend.exam.manualGrading.conflictRecovery": 3,
+    "frontend.exam.manualGrading.questionSwitch": 0,
+    "frontend.exam.manualGradingAssignments.enter": 2,
+    "frontend.exam.manualGradingAssignments.switchPaper": 1,
+    "frontend.exam.manualGradingAssignments.save": 1,
+    "frontend.exam.manualGradingTasks.enter": 1,
+    "frontend.exam.gradingHandoff.enter": 0,
+    "frontend.exam.gradingHandoff.copyClick": 1,
+    "frontend.exam.gradingHandoff.peakConcurrencyMax": 1,
+    "frontend.exam.gradingHandoff.grantResponseBytesMax": 8192,
+    "backend.exam.archivedCopy.businessReadsMax": 2,
+    "backend.exam.archivedCopy.peakConcurrencyMax": 1,
+    "backend.exam.saveQuestions.stemRemoteVerifyHeadMax": 120,
+    "backend.exam.saveQuestions.stemRemoteVerifyPeakConcurrencyMax": 4,
+    "backend.exam.saveQuestions.stemRemoteVerifyResponseBodyBytesMax": 0,
+    "backend.exam.reopenTimedOut.businessReadsMax": 2,
+    "backend.exam.reopenTimedOut.peakConcurrencyMax": 1,
+    "backend.exam.answerValidation.questionReadsMax": 1,
+    "backend.exam.answerValidation.questionRowsMax": 400,
+    "backend.exam.answerValidation.peakConcurrencyMax": 1,
+    "backend.exam.resultPapers.businessReadsMax": 4,
+    "backend.exam.resultPapers.pageSizeMax": 50,
+    "backend.exam.resultPapers.peakConcurrencyMax": 1,
+    "backend.exam.results.businessReadsMax": 5,
+    "backend.exam.results.responseSheetRowsMax": 500,
+    "backend.exam.sheetDetail.businessReadsMax": 6,
+    "backend.exam.review.publishedBusinessReadsMax": 5,
+    "backend.exam.manualGrading.workspace.businessReadsMax": 6,
+    "backend.exam.manualGrading.references.businessReadsMax": 4,
+    "backend.exam.manualGrading.submit.businessReadsMax": 3,
+    "backend.exam.manualGrading.peakConcurrencyMax": 1,
+    "backend.exam.manualGradingAssignments.workspace.businessReadsMax": 5,
+    "backend.exam.manualGradingAssignments.save.businessReadsMax": 5,
+    "backend.exam.manualGradingTasks.businessReadsMax": 6,
+    "backend.exam.manualGradingAssignments.peakConcurrencyMax": 1,
+    "backend.exam.gradingGrantIssue.businessReadsMax": 3,
+    "backend.exam.gradingGrantIssue.responseBytesMax": 8192,
+    "backend.exam.gradingGrantSheet.businessReadsMax": 4,
+    "backend.exam.gradingGrantSheet.responseBytesMax": 4194304,
+    "backend.exam.gradingGrantSubmit.businessReadsMax": 3,
+    "backend.exam.gradingGrantSubmit.requestBytesMax": 262144,
+    "backend.exam.gradingGrant.peakConcurrencyMax": 1,
+    "backend.userSchema.runtimeProbe": 0,
+    "backend.userSchema.startupCollectionReadsMax": 1,
+    "backend.canonicalUploads.coldCredentialReadsMax": 1,
+    "backend.canonicalUploads.coldLoginPostsMax": 1,
+    "backend.canonicalUploads.normalRemoteWritesPerMutation": 1,
+    "backend.canonicalUploads.authRetryMax": 1,
+    "backend.canonicalUploads.requestBytesMax": 12582912,
+    "backend.canonicalUploads.tokenBootstrapPeakConcurrencyPerAccount": 1,
+    "backend.storyboardAssetLibrary.save.businessReadsMax": 2,
+    "backend.storyboardAssetLibrary.get.responseBytesMax": 4194304,
+    "backend.storyboardAssetLibrary.upload.requestBytesMax": 12582912,
+    "backend.storyboardAssetLibrary.upload.peakConcurrencyMax": 1,
+    "backend.storyboardAssetLibrary.assetsPerAccountMax": 500,
+    "backend.agentAccess.tokenVerify.businessReadsMax": 1,
+    "backend.agentAccess.tokenTouchWriteThrottleMs": 300000,
+    "backend.agentAccess.activeTokensPerAccountMax": 20,
+    "backend.agentAccess.accountContext.businessReadsMax": 2,
+    "backend.agentAccess.tokenSecret.businessReadsMax": 3,
+    "backend.agentAccess.tokenSecret.responseBytesMax": 512,
+    "desktop.agentAccess.tokenCopyHttpMax": 1,
+    "desktop.agentAccess.tokenCopyFollowupGetMax": 0,
+    "desktop.agentAccess.tokenCopyPeakConcurrencyMax": 1,
+    "backend.agentAccess.tokenHardDelete.businessReadsMax": 2,
+    "desktop.agentAccess.tokenHardDeleteHttpMax": 1,
+    "desktop.agentAccess.tokenHardDeleteFollowupGetMax": 0,
+    "desktop.agentAccess.tokenHardDeletePeakConcurrencyMax": 1,
+    "backend.agentAccess.assetList.businessReadsMax": 4,
+    "backend.agentAccess.assetContent.businessReadsMax": 4,
+    "backend.agentAccess.assetContent.remoteFetchMax": 1,
+    "backend.agentAccess.assetList.responseBytesMax": 4194304,
+    "backend.agentAccess.assetContent.responseBytesMax": 10485760,
+    "mcp.assetLibrary.listCacheMs": 60000,
+    "mcp.assetLibrary.pageSize": 50,
+    "mcp.assetLibrary.imageBytesMax": 10485760,
+    "mcp.assetLibrary.pickerPageSize": 8,
+    "mcp.assetLibrary.imageFetchPeakConcurrencyMax": 2,
+    "mcp.assetLibrary.pickerPreviewCallsPerPageMax": 8,
+    "mcp.assetLibrary.pickerPreviewPayloadBytesPerPageMax": 83886080,
+    "backend.agentAccess.assetContext.businessReadsMax": 4,
+    "backend.agentAccess.assetContext.responseBytesMax": 12582912,
+    "backend.agentAccess.libraryDoc.businessReadsMax": 4,
+    "backend.agentAccess.libraryDoc.responseBytesMax": 12582912,
+    "backend.agentAccess.storyboardDoc.responseBytesMax": 12582912,
+    "backend.agentAccess.assetFileDelete.businessReadsMax": 5,
+    "backend.agentAccess.assetFileUpload.hashCompareReadsMax": 1,
+    "mcp.mutation.casAttemptMax": 3,
+    "mcp.mutation.httpCallsPerAttemptMax": 2,
+    "mcp.mutation.httpCallsPerMutationMax": 6,
+    "mcp.assets.uploadBatchMax": 10,
+    "mcp.assets.uploadBatchBytesMax": 104857600,
+    "mcp.assets.uploadHttpPerFileMax": 1,
+    "mcp.storyboard.listCacheMs": 0,
+    "desktop.storyboardWorkbench.preflight.businessHttp": 0,
+    "desktop.storyboardWorkbench.preflight.llmCallMax": 0,
+    "desktop.storyboardWorkbench.preflight.storeHydratePerAppMax": 1,
+    "desktop.storyboardWorkbench.preflight.builtinRulesMax": 6,
+    "desktop.storyboardWorkbench.preflight.userRulesMax": 50,
+    "desktop.storyboardWorkbench.preflight.receiptsMax": 20,
+    "desktop.storyboardWorkbench.preflight.persistedBytesMax": 65536,
+    "desktop.knowledge.loginBusinessGet": 0,
+    "desktop.knowledge.pageEnterSnapshotGetMax": 1,
+    "desktop.knowledge.searchGetMax": 0,
+    "desktop.knowledge.selectGetMax": 0,
+    "desktop.knowledge.mutationHttpPerActionMax": 1,
+    "desktop.knowledge.peakConcurrencyMax": 1,
+    "desktop.knowledge.activeNotesMax": 200,
+    "desktop.knowledge.noteBodyCharsMax": 8000,
+    "desktop.knowledge.tagsPerNoteMax": 20,
+    "desktop.knowledge.tagCharsMax": 32,
+    "desktop.knowledge.localDraftsMax": 50,
+    "frontend.videoTutorials.catalogBusinessHttp": 0,
+    "frontend.videoTutorials.pageEnterCatalogLoad": 1,
+    "frontend.promptLibrary.pageEnterHttpMax": 2,
+    "frontend.promptLibrary.fileOpenGet": 1,
+    "frontend.promptLibrary.savePutPerFlush": 1,
+    "frontend.promptLibrary.autosaveDebounceMs": 1500,
+    "frontend.promptLibrary.savePeakConcurrency": 1,
+    "frontend.promptLibrary.pairPreviewGetMax": 6,
+    "frontend.promptLibrary.assetOpenGetPerClickMax": 1,
+    "frontend.promptLibrary.localDraftsMax": 50,
+    "frontend.promptLibrary.docBytesMax": 2097152,
+    "frontend.promptLibrary.sealCopyHttpMax": 2,
+    "frontend.promptLibrary.compareOpenGet": 1,
+    "frontend.promptLibrary.entryActions.menuHttpMax": 0,
+    "frontend.promptLibrary.entryActions.mutationHttpMax": 3,
+    "frontend.promptLibrary.entryActions.revealHttpMax": 1,
+    "frontend.promptLibrary.entryActions.peakConcurrency": 1,
+    "backend.promptLibrary.tree.entriesMax": 20000,
+    "backend.promptLibrary.file.responseBytesMax": 2097152,
+    "backend.promptLibrary.save.requestBytesMax": 4194304,
+    "backend.promptLibrary.raw.responseBytesMax": 268435456,
+    "backend.promptLibrary.wrap.childProcessPerRequestMax": 1,
+    "backend.promptLibrary.write.peakConcurrencyMax": 1,
+    "backend.promptLibrary.entryActions.responseBytesMax": 33554432
+  },
+  "enforcedBy": {
+    "tools.promptFileWrite.fileBytesMax": [
+      "quality/prompt-file-write.test.mjs"
+    ],
+    "tools.promptFileWrite.targetReadsMax": [
+      "quality/prompt-file-write.test.mjs"
+    ],
+    "tools.promptFileWrite.peakConcurrencyMax": [
+      "quality/prompt-file-write.test.mjs"
+    ],
+    "tools.promptFileWrite.businessHttpMax": [
+      "quality/prompt-file-write.test.mjs"
+    ],
+    "desktop.dev.backendBuildsPerFrontendStart": [
+      "quality/desktop-dev-lifecycle-contract.test.mjs"
+    ],
+    "desktop.dev.backendStartsPerFrontendStart": [
+      "quality/desktop-dev-lifecycle-contract.test.mjs"
+    ],
+    "desktop.dev.backendPeakConcurrency": [
+      "quality/desktop-dev-lifecycle-contract.test.mjs"
+    ],
+    "desktop.dev.startupBusinessHttp": [
+      "quality/desktop-dev-lifecycle-contract.test.mjs"
+    ],
+    "desktop.dev.startupPayloadBytesMax": [
+      "quality/desktop-dev-lifecycle-contract.test.mjs"
+    ],
+    "desktop.updater.startupCheckMax": [
+      "quality/desktop-updater-contract.test.mjs"
+    ],
+    "desktop.updater.checkPeakConcurrencyMax": [
+      "quality/desktop-updater-contract.test.mjs"
+    ],
+    "desktop.updater.downloadPeakConcurrencyMax": [
+      "quality/desktop-updater-contract.test.mjs"
+    ],
+    "desktop.updater.packageBytesMax": [
+      "quality/desktop-updater-contract.test.mjs",
+      "desktop/electron/main/updaterPolicy.test.ts"
+    ],
+    "desktop.updater.manualCheckMax": [
+      "quality/desktop-updater-contract.test.mjs"
+    ],
+    "desktop.login.businessGet": [
+      "desktop/src/views/login/useLoginView.test.ts"
+    ],
+    "desktop.cloudDraft.businessHttp": [
+      "quality/desktop-no-cloud-drafts-contract.test.mjs"
+    ],
+    "desktop.http.concurrent401RefreshMax": [
+      "desktop/src/shared/api-core/http.test.ts"
+    ],
+    "desktop.http.concurrent401RequestMax": [
+      "desktop/src/shared/api-core/http.test.ts"
+    ],
+    "desktop.http.responseBytesMax": [
+      "desktop/electron/main/services/httpService.test.ts"
+    ],
+    "desktop.collaboration.initialGet": [
+      "desktop/src/features/collaboration/collaborationBudget.test.ts"
+    ],
+    "desktop.collaboration.explicitRefreshGet": [
+      "desktop/src/features/collaboration/collaborationBudget.test.ts"
+    ],
+    "desktop.collaboration.concurrentGetMax": [
+      "desktop/src/features/collaboration/collaborationBudget.test.ts"
+    ],
+    "desktop.collaboration.detailGet": [
+      "desktop/src/features/collaboration/collaborationBudget.test.ts"
+    ],
+    "desktop.collaboration.writeFollowupGet": [
+      "desktop/src/features/collaboration/collaborationBudget.test.ts"
+    ],
+    "desktop.accountCreate.businessHttp": [
+      "quality/desktop-critical-account-pages-contract.test.mjs"
+    ],
+    "desktop.rebate.businessHttp": [
+      "quality/desktop-critical-account-pages-contract.test.mjs"
+    ],
+    "desktop.promptCatalog.activationGet": [
+      "desktop/src/features/prompt-catalog/promptCatalogBudget.test.ts"
+    ],
+    "desktop.promptCatalog.detailGet": [
+      "desktop/src/features/prompt-catalog/promptCatalogBudget.test.ts"
+    ],
+    "desktop.promptGuard.pageEnterNativeCall": [
+      "desktop/src/features/prompt-guard/promptGuardBudget.test.ts"
+    ],
+    "desktop.promptGuard.explicitPrepareNativeCallMax": [
+      "desktop/src/features/prompt-guard/promptGuardBudget.test.ts"
+    ],
+    "desktop.promptGuard.preparePeakConcurrency": [
+      "desktop/src/features/prompt-guard/promptGuardBudget.test.ts"
+    ],
+    "desktop.promptGuard.bundleBytesMax": [
+      "desktop/electron/main/services/promptGuardInstallService.test.ts"
+    ],
+    "desktop.modelConfig.typeActivationGet": [
+      "desktop/src/features/model-config/modelConfigBudget.test.ts"
+    ],
+    "desktop.modelConfig.detailGet": [
+      "desktop/src/features/model-config/modelConfigBudget.test.ts"
+    ],
+    "desktop.modelConfig.writeFollowupGet": [
+      "desktop/src/features/model-config/modelConfigBudget.test.ts"
+    ],
+    "desktop.modelConfig.providerCatalogPost": [
+      "desktop/src/features/model-config/modelConfigBudget.test.ts"
+    ],
+    "desktop.modelConfig.invokeHttpMax": [
+      "desktop/src/shared/api-core/local-model.test.ts"
+    ],
+    "desktop.rawIdeas.pageEnter.list": [
+      "desktop/src/features/raw-ideas/rawIdeaRequestBudget.test.ts"
+    ],
+    "desktop.rawIdeas.select.detail": [
+      "desktop/src/features/raw-ideas/rawIdeaRequestBudget.test.ts"
+    ],
+    "desktop.rawIdeas.search.listMax": [
+      "desktop/src/features/raw-ideas/rawIdeaRequestBudget.test.ts"
+    ],
+    "desktop.rawIdeas.list.limit": [
+      "desktop/src/features/raw-ideas/rawIdeaRequestBudget.test.ts"
+    ],
+    "desktop.rawIdeas.direction.modelListMax": [
+      "desktop/src/features/raw-ideas/rawIdeaRequestBudget.test.ts"
+    ],
+    "desktop.rawIdeas.direction.concurrencyMax": [
+      "desktop/src/features/raw-ideas/rawIdeaRequestBudget.test.ts"
+    ],
+    "desktop.rawIdeas.mainlineHistory.firstOpenMax": [
+      "desktop/src/features/raw-ideas/rawIdeaRequestBudget.test.ts"
+    ],
+    "desktop.rawIdeas.mainlineHistory.limit": [
+      "desktop/src/features/raw-ideas/rawIdeaRequestBudget.test.ts"
+    ],
+    "desktop.rawIdeas.mainlineHistory.loadMoreMax": [
+      "desktop/src/features/raw-ideas/rawIdeaRequestBudget.test.ts"
+    ],
+    "desktop.screenplayStudio.firstActivationHttpMax": [
+      "desktop/src/features/screenplay-studio/screenplayStudioBudget.test.ts"
+    ],
+    "desktop.screenplayStudio.scenesGenerationHttpMax": [
+      "desktop/src/features/screenplay-studio/screenplayStudioBudget.test.ts"
+    ],
+    "desktop.screenplayStudio.dialogueBatchSceneMax": [
+      "desktop/src/features/screenplay-studio/screenplayStudioBudget.test.ts"
+    ],
+    "desktop.screenplayStudio.dialogueBatchPeakConcurrency": [
+      "desktop/src/features/screenplay-studio/screenplayStudioBudget.test.ts"
+    ],
+    "desktop.screenplaySync.list": [
+      "desktop/src/features/screenplays/screenplayStore.test.ts"
+    ],
+    "desktop.screenplaySync.detailMax": [
+      "desktop/src/features/screenplays/screenplayStore.test.ts"
+    ],
+    "desktop.screenplaySync.httpMax": [
+      "desktop/src/features/screenplays/screenplayStore.test.ts"
+    ],
+    "desktop.screenplayTakes.drawerInitialGet": [
+      "desktop/src/features/screenplays/screenplayStore.test.ts"
+    ],
+    "desktop.screenplayTakes.pageSize": [
+      "desktop/src/features/screenplays/screenplayStore.test.ts"
+    ],
+    "desktop.screenplayTakes.peakConcurrency": [
+      "desktop/src/features/screenplays/screenplayStore.test.ts"
+    ],
+    "desktop.screenplayLifecycle.writeFollowupGet": [
+      "desktop/src/features/screenplays/screenplayStore.test.ts"
+    ],
+    "desktop.screenplayReader.finalizedDetailMax": [
+      "desktop/src/features/screenplay-reader/screenplayReaderBudget.test.ts"
+    ],
+    "desktop.screenplayReader.draftBusinessGet": [
+      "desktop/src/features/screenplay-reader/screenplayReaderBudget.test.ts"
+    ],
+    "desktop.screenplayReader.finalizeFollowupGet": [
+      "desktop/src/features/screenplay-reader/screenplayReaderBudget.test.ts"
+    ],
+    "desktop.videoTutorials.catalogBusinessHttp": [
+      "desktop/src/features/video-tutorials/videoTutorialsBudget.test.ts"
+    ],
+    "desktop.videoTutorials.pageEnterCatalogLoad": [
+      "desktop/src/features/video-tutorials/videoTutorialsBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.windowOpenFileReadMax": [
+      "desktop/src/features/storyboard-workbench/storyboardWorkbenchBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.legacyMigrationFileReadMax": [
+      "desktop/src/features/storyboard-workbench/storyboardWorkbenchBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.windowOpenBusinessHttp": [
+      "desktop/src/features/storyboard-workbench/storyboardWorkbenchBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.autosavePeakConcurrency": [
+      "desktop/src/features/storyboard-workbench/storyboardWorkbenchBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.assetImportBatchMax": [
+      "desktop/electron/main/services/storyboardAssetService.test.ts"
+    ],
+    "desktop.storyboardWorkbench.assetImportPeakConcurrency": [
+      "desktop/electron/main/services/storyboardAssetService.test.ts"
+    ],
+    "desktop.storyboardWorkbench.assetFileBytesMax": [
+      "desktop/electron/main/services/storyboardAssetService.test.ts"
+    ],
+    "desktop.storyboardWorkbench.assetsPerDocumentMax": [
+      "desktop/electron/main/services/storyboardAssetService.test.ts"
+    ],
+    "desktop.storyboardWorkbench.workspaceBytesMax": [
+      "desktop/src/features/storyboard-workbench/storyboardWorkbenchBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.shotsMax": [
+      "desktop/src/features/storyboard-workbench/storyboardWorkbenchBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.windowOpenCloudPullMax": [
+      "desktop/src/features/storyboard-workbench/storyboardCloudDocsBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.cloudRefreshPullPerClick": [
+      "desktop/src/features/storyboard-workbench/storyboardCloudDocsBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.docListPerPickerOpen": [
+      "desktop/src/features/storyboard-workbench/storyboardCloudDocsBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.cloudPushDebounceMs": [
+      "desktop/src/features/storyboard-workbench/storyboardCloudDocsBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.cloudPushPeakConcurrency": [
+      "desktop/src/features/storyboard-workbench/storyboardCloudDocsBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.cloudAssetUploadBytesMax": [
+      "desktop/src/features/storyboard-workbench/storyboardCloudDocsBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.cloudAssetUploadPeakConcurrency": [
+      "desktop/src/features/storyboard-workbench/storyboardCloudDocsBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.cloudAssetDownloadPeakConcurrency": [
+      "desktop/src/features/storyboard-workbench/storyboardCloudDocsBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.cloudAssetPreviewGetPerDrawerMax": [
+      "desktop/src/features/storyboard-workbench/storyboardCloudDocsBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.cloudAssetPreviewTotalBytesMax": [
+      "desktop/src/features/storyboard-workbench/storyboardCloudDocsBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.promptComposeScriptReadMax": [
+      "desktop/src/features/storyboard-workbench/storyboardWorkbenchBudget.test.ts"
+    ],
+    "desktop.scriptDesk.pageEnterFileReadMax": [
+      "desktop/src/features/script-desk/scriptDeskBudget.test.ts"
+    ],
+    "desktop.scriptDesk.pageEnterBusinessHttp": [
+      "desktop/src/features/script-desk/scriptDeskBudget.test.ts"
+    ],
+    "desktop.scriptDesk.pageEnterCloudPullMax": [
+      "desktop/src/features/script-desk/scriptDeskBudget.test.ts"
+    ],
+    "desktop.scriptDesk.docListPerPickerOpen": [
+      "desktop/src/features/script-desk/scriptDeskBudget.test.ts"
+    ],
+    "desktop.scriptDesk.autosavePeakConcurrency": [
+      "desktop/src/features/script-desk/scriptDeskBudget.test.ts"
+    ],
+    "desktop.scriptDesk.cloudPushDebounceMs": [
+      "desktop/src/features/script-desk/scriptDeskBudget.test.ts"
+    ],
+    "desktop.scriptDesk.cloudPushPeakConcurrency": [
+      "desktop/src/features/script-desk/scriptDeskBudget.test.ts"
+    ],
+    "desktop.scriptDesk.docBytesMax": [
+      "desktop/src/features/script-desk/scriptDeskBudget.test.ts"
+    ],
+    "desktop.scriptDesk.scenesMax": [
+      "desktop/src/features/script-desk/scriptDeskBudget.test.ts"
+    ],
+    "frontend.screenplayStudio.firstActivationRefreshRuns": [
+      "frontend/src/features/video-prompt/screenplayStudioLifecycle.test.ts"
+    ],
+    "frontend.screenplayStudio.laterActivationRefreshRuns": [
+      "frontend/src/features/video-prompt/screenplayStudioLifecycle.test.ts"
+    ],
+    "frontend.screenplayStudio.httpMax": [
+      "frontend/src/features/video-prompt/screenplayStudioHttpBudget.test.ts"
+    ],
+    "frontend.storyboardAssetLibrary.pageEnterCloudPullMax": [
+      "frontend/src/features/video-prompt/storyboard-asset-library/__tests__/assetLibraryBudget.test.ts"
+    ],
+    "frontend.storyboardAssetLibrary.cloudPushDebounceMs": [
+      "frontend/src/features/video-prompt/storyboard-asset-library/__tests__/assetLibraryBudget.test.ts"
+    ],
+    "frontend.storyboardAssetLibrary.cloudPushPeakConcurrency": [
+      "frontend/src/features/video-prompt/storyboard-asset-library/__tests__/assetLibraryBudget.test.ts"
+    ],
+    "frontend.storyboardAssetLibrary.assetsPerAccountMax": [
+      "frontend/src/features/video-prompt/storyboard-asset-library/__tests__/assetLibraryBudget.test.ts"
+    ],
+    "frontend.storyboardAssetLibrary.groupsPerAccountMax": [
+      "frontend/src/features/video-prompt/storyboard-asset-library/__tests__/assetLibraryBudget.test.ts"
+    ],
+    "frontend.storyboardAssetLibrary.uploadBytesMax": [
+      "frontend/src/features/video-prompt/storyboard-asset-library/__tests__/assetLibraryBudget.test.ts"
+    ],
+    "frontend.storyboardAssetLibrary.uploadPeakConcurrency": [
+      "frontend/src/features/video-prompt/storyboard-asset-library/__tests__/assetLibraryBudget.test.ts"
+    ],
+    "frontend.storyboardAssetLibrary.docBytesMax": [
+      "frontend/src/features/video-prompt/storyboard-asset-library/__tests__/assetLibraryBudget.test.ts"
+    ],
+    "frontend.storyboardWorkbench.windowOpenCloudPullMax": [
+      "frontend/src/features/video-prompt/storyboard-workbench/__tests__/storyboardCloudDocsBudget.test.ts"
+    ],
+    "frontend.storyboardWorkbench.docListPerPickerOpen": [
+      "frontend/src/features/video-prompt/storyboard-workbench/__tests__/storyboardCloudDocsBudget.test.ts"
+    ],
+    "frontend.storyboardWorkbench.cloudPushDebounceMs": [
+      "frontend/src/features/video-prompt/storyboard-workbench/__tests__/storyboardCloudDocsBudget.test.ts"
+    ],
+    "frontend.storyboardWorkbench.cloudPushPeakConcurrency": [
+      "frontend/src/features/video-prompt/storyboard-workbench/__tests__/storyboardCloudDocsBudget.test.ts"
+    ],
+    "frontend.storyboardWorkbench.cloudAssetUploadBytesMax": [
+      "frontend/src/features/video-prompt/storyboard-workbench/__tests__/storyboardCloudDocsBudget.test.ts"
+    ],
+    "frontend.storyboardWorkbench.cloudAssetUploadPeakConcurrency": [
+      "frontend/src/features/video-prompt/storyboard-workbench/__tests__/storyboardCloudDocsBudget.test.ts"
+    ],
+    "frontend.storyboardWorkbench.cloudAssetDownloadPeakConcurrency": [
+      "frontend/src/features/video-prompt/storyboard-workbench/__tests__/storyboardCloudDocsBudget.test.ts"
+    ],
+    "frontend.storyboardWorkbench.windowOpenFileReadMax": [
+      "frontend/src/features/video-prompt/storyboard-workbench/__tests__/storyboardWorkbenchBudget.test.ts"
+    ],
+    "frontend.storyboardWorkbench.windowOpenBusinessHttp": [
+      "frontend/src/features/video-prompt/storyboard-workbench/__tests__/storyboardWorkbenchBudget.test.ts"
+    ],
+    "frontend.storyboardWorkbench.autosavePeakConcurrency": [
+      "frontend/src/features/video-prompt/storyboard-workbench/__tests__/storyboardWorkbenchBudget.test.ts"
+    ],
+    "frontend.storyboardWorkbench.promptComposeScriptReadMax": [
+      "frontend/src/features/video-prompt/storyboard-workbench/__tests__/storyboardWorkbenchBudget.test.ts"
+    ],
+    "frontend.storyboardWorkbench.shotsMax": [
+      "frontend/src/features/video-prompt/storyboard-workbench/__tests__/storyboardWorkbenchBudget.test.ts"
+    ],
+    "frontend.storyboardWorkbench.workspaceBytesMax": [
+      "frontend/src/features/video-prompt/storyboard-workbench/__tests__/storyboardWorkbenchBudget.test.ts"
+    ],
+    "frontend.storyboardWorkbench.libraryPullPerWindowOpenMax": [
+      "frontend/src/features/video-prompt/storyboard-asset-library/__tests__/assetLibraryBudget.test.ts"
+    ],
+    "frontend.rawIdeaCreate.cloudDraftGet": [
+      "frontend/src/features/video-prompt/rawIdeaDivergeFlow.test.ts"
+    ],
+    "frontend.rawIdeaExisting.reconcileCalls": [
+      "frontend/src/features/video-prompt/rawIdeaDivergeFlow.test.ts"
+    ],
+    "frontend.exam.papersPage.enter": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.paperEdit.enter": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.assignDialog.open": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.publishDialog.open": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.archivedCopy.click": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.take.pause": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.take.resume": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.resultsPage.enter": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.results.switchPaper": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.results.sheetDetail": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.results.reopenTimedOut": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.results.revokeAssignment": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.myPage.enter": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.take.enter": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.take.autosave": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.review.enter": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.review.ownerEnter": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.manualGrading.blindEnter": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.manualGrading.reviewEnter": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.manualGrading.firstSubmit": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.manualGrading.revisionSubmit": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.manualGrading.conflictRecovery": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.manualGrading.questionSwitch": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.manualGradingAssignments.enter": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.manualGradingAssignments.switchPaper": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.manualGradingAssignments.save": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.manualGradingTasks.enter": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.gradingHandoff.enter": [
+      "frontend/src/features/exam/examGradingHandoff.test.ts"
+    ],
+    "frontend.exam.gradingHandoff.copyClick": [
+      "frontend/src/features/exam/examGradingHandoff.test.ts"
+    ],
+    "frontend.exam.gradingHandoff.peakConcurrencyMax": [
+      "frontend/src/features/exam/examGradingHandoff.test.ts"
+    ],
+    "frontend.exam.gradingHandoff.grantResponseBytesMax": [
+      "frontend/src/features/exam/examGradingHandoff.test.ts"
+    ],
+    "backend.exam.archivedCopy.businessReadsMax": [
+      "quality/backend-exam-copy-budget.test.mjs"
+    ],
+    "backend.exam.archivedCopy.peakConcurrencyMax": [
+      "quality/backend-exam-copy-budget.test.mjs"
+    ],
+    "backend.exam.saveQuestions.stemRemoteVerifyHeadMax": [
+      "quality/backend-exam-stem-remote-verify-budget.test.mjs"
+    ],
+    "backend.exam.saveQuestions.stemRemoteVerifyPeakConcurrencyMax": [
+      "quality/backend-exam-stem-remote-verify-budget.test.mjs"
+    ],
+    "backend.exam.saveQuestions.stemRemoteVerifyResponseBodyBytesMax": [
+      "quality/backend-exam-stem-remote-verify-budget.test.mjs"
+    ],
+    "backend.exam.reopenTimedOut.businessReadsMax": [
+      "quality/backend-exam-reopen-budget.test.mjs"
+    ],
+    "backend.exam.reopenTimedOut.peakConcurrencyMax": [
+      "quality/backend-exam-reopen-budget.test.mjs"
+    ],
+    "backend.exam.answerValidation.questionReadsMax": [
+      "quality/backend-exam-stale-answer-budget.test.mjs"
+    ],
+    "backend.exam.answerValidation.questionRowsMax": [
+      "quality/backend-exam-stale-answer-budget.test.mjs"
+    ],
+    "backend.exam.answerValidation.peakConcurrencyMax": [
+      "quality/backend-exam-stale-answer-budget.test.mjs"
+    ],
+    "backend.exam.resultPapers.businessReadsMax": [
+      "quality/backend-exam-manual-grading-budget.test.mjs"
+    ],
+    "backend.exam.resultPapers.pageSizeMax": [
+      "quality/backend-exam-manual-grading-budget.test.mjs"
+    ],
+    "backend.exam.resultPapers.peakConcurrencyMax": [
+      "quality/backend-exam-manual-grading-budget.test.mjs"
+    ],
+    "backend.exam.results.businessReadsMax": [
+      "quality/backend-exam-manual-grading-budget.test.mjs"
+    ],
+    "backend.exam.results.responseSheetRowsMax": [
+      "quality/backend-exam-manual-grading-budget.test.mjs"
+    ],
+    "backend.exam.sheetDetail.businessReadsMax": [
+      "quality/backend-exam-manual-grading-budget.test.mjs"
+    ],
+    "backend.exam.review.publishedBusinessReadsMax": [
+      "quality/backend-exam-manual-grading-budget.test.mjs"
+    ],
+    "backend.exam.manualGrading.workspace.businessReadsMax": [
+      "quality/backend-exam-manual-grading-budget.test.mjs"
+    ],
+    "backend.exam.manualGrading.references.businessReadsMax": [
+      "quality/backend-exam-manual-grading-budget.test.mjs"
+    ],
+    "backend.exam.manualGrading.submit.businessReadsMax": [
+      "quality/backend-exam-manual-grading-budget.test.mjs"
+    ],
+    "backend.exam.manualGrading.peakConcurrencyMax": [
+      "quality/backend-exam-manual-grading-budget.test.mjs"
+    ],
+    "backend.exam.manualGradingAssignments.workspace.businessReadsMax": [
+      "quality/backend-exam-manual-grading-assignment-budget.test.mjs"
+    ],
+    "backend.exam.manualGradingAssignments.save.businessReadsMax": [
+      "quality/backend-exam-manual-grading-assignment-budget.test.mjs"
+    ],
+    "backend.exam.manualGradingTasks.businessReadsMax": [
+      "quality/backend-exam-manual-grading-assignment-budget.test.mjs"
+    ],
+    "backend.exam.manualGradingAssignments.peakConcurrencyMax": [
+      "quality/backend-exam-manual-grading-assignment-budget.test.mjs"
+    ],
+    "backend.exam.gradingGrantIssue.businessReadsMax": [
+      "quality/backend-exam-grading-grant-budget.test.mjs"
+    ],
+    "backend.exam.gradingGrantIssue.responseBytesMax": [
+      "quality/backend-exam-grading-grant-budget.test.mjs"
+    ],
+    "backend.exam.gradingGrantSheet.businessReadsMax": [
+      "quality/backend-exam-grading-grant-budget.test.mjs"
+    ],
+    "backend.exam.gradingGrantSheet.responseBytesMax": [
+      "quality/backend-exam-grading-grant-budget.test.mjs"
+    ],
+    "backend.exam.gradingGrantSubmit.businessReadsMax": [
+      "quality/backend-exam-grading-grant-budget.test.mjs"
+    ],
+    "backend.exam.gradingGrantSubmit.requestBytesMax": [
+      "quality/backend-exam-grading-grant-budget.test.mjs"
+    ],
+    "backend.exam.gradingGrant.peakConcurrencyMax": [
+      "quality/backend-exam-grading-grant-budget.test.mjs"
+    ],
+    "backend.userSchema.runtimeProbe": [
+      "quality/backend-user-schema-contract.test.mjs"
+    ],
+    "backend.userSchema.startupCollectionReadsMax": [
+      "quality/backend-user-schema-contract.test.mjs"
+    ],
+    "backend.canonicalUploads.coldCredentialReadsMax": [
+      "quality/backend-canonical-uploads-budget.test.mjs"
+    ],
+    "backend.canonicalUploads.coldLoginPostsMax": [
+      "quality/backend-canonical-uploads-budget.test.mjs"
+    ],
+    "backend.canonicalUploads.normalRemoteWritesPerMutation": [
+      "quality/backend-canonical-uploads-budget.test.mjs"
+    ],
+    "backend.canonicalUploads.authRetryMax": [
+      "quality/backend-canonical-uploads-budget.test.mjs"
+    ],
+    "backend.canonicalUploads.requestBytesMax": [
+      "quality/backend-canonical-uploads-budget.test.mjs"
+    ],
+    "backend.canonicalUploads.tokenBootstrapPeakConcurrencyPerAccount": [
+      "quality/backend-canonical-uploads-budget.test.mjs"
+    ],
+    "desktop.storyboardWorkbench.generateFromScriptHttpPerCreate": [
+      "desktop/src/features/storyboard-workbench/storyboardWorkbenchBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.generateFromScriptPeakConcurrency": [
+      "desktop/src/features/storyboard-workbench/storyboardWorkbenchBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.generateModelListPerDialogOpen": [
+      "desktop/src/features/storyboard-workbench/storyboardWorkbenchBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.generateScriptListPerDialogOpen": [
+      "desktop/src/features/storyboard-workbench/storyboardWorkbenchBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.generateSceneReadPerPick": [
+      "desktop/src/features/storyboard-workbench/storyboardWorkbenchBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.createBlankHttpPerCreate": [
+      "desktop/src/features/storyboard-workbench/storyboardWorkbenchBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.createBlankLlmCallMax": [
+      "desktop/src/features/storyboard-workbench/storyboardWorkbenchBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.detachedOpenIpcPerGesture": [
+      "desktop/src/features/detached-panes/detachedPanes.test.ts"
+    ],
+    "desktop.storyboardWorkbench.detachedPullIpcPerMount": [
+      "desktop/src/features/detached-panes/detachedPanes.test.ts"
+    ],
+    "desktop.storyboardWorkbench.detachedRefreshIpcPerClick": [
+      "desktop/src/features/detached-panes/detachedPanes.test.ts"
+    ],
+    "desktop.storyboardWorkbench.detachedPaneHttp": [
+      "desktop/src/features/detached-panes/detachedPanes.test.ts"
+    ],
+    "desktop.storyboardWorkbench.detachedPublishThrottleMs": [
+      "desktop/src/features/detached-panes/detachedPanes.test.ts"
+    ],
+    "desktop.storyboardWorkbench.assetTrashDays": [
+      "desktop/src/features/storyboard-workbench/workspaceMigration.test.ts"
+    ],
+    "desktop.storyboardWorkbench.assetPurgeDeletePerAsset": [
+      "desktop/src/features/storyboard-workbench/workspaceMigration.test.ts"
+    ],
+    "desktop.storyboardWorkbench.libraryPullPerWindowOpenMax": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.drawerOpenCliMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.capabilityDreaminaCliMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.capabilityLibTvCliMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.assetsPerPrepareMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.videosPerPrepareMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.audiosPerPrepareMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.inputsPerPrepareMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.assetCacheGetMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.assetCacheGetPeakConcurrency": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.assetBytesPerPrepareMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.assetReadPeakConcurrency": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.dreaminaSubmitCliMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.dreaminaQueryCliMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.libtvBaseCliMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.libtvCliPerAssetMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.activeJobsPerPlatformMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.confirmationRecordsMax": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.cliChildProcessPeakConcurrency": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.cleanupHelperPeakConcurrency": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.videoGeneration.childProcessPeakConcurrency": [
+      "desktop/src/features/storyboard-workbench/videoGenerationBudget.test.ts"
+    ],
+    "desktop.assetLibrary.pageEnterFileReadMax": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.assetLibrary.pageEnterCloudPullMax": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.assetLibrary.cloudPushDebounceMs": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.assetLibrary.cloudPushPeakConcurrency": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.assetLibrary.assetsPerAccountMax": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.assetLibrary.groupsPerAccountMax": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.assetLibrary.uploadBytesMax": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.assetLibrary.uploadPeakConcurrency": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.assetLibrary.docBytesMax": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.assetLibrary.assetDownloadPeakConcurrency": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.assetLibrary.previewGetPerPageEnterMax": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.assetLibrary.previewTotalBytesMax": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.assetLibrary.previewOpenGetMax": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.assetLibrary.userDownloadGetPerGestureMax": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "desktop.assetLibrary.userDownloadIpcPerGestureMax": [
+      "desktop/src/features/asset-library/assetLibraryBudget.test.ts"
+    ],
+    "backend.storyboardAssetLibrary.save.businessReadsMax": [
+      "quality/backend-storyboard-asset-library-budget.test.mjs"
+    ],
+    "backend.storyboardAssetLibrary.get.responseBytesMax": [
+      "quality/backend-storyboard-asset-library-budget.test.mjs"
+    ],
+    "backend.storyboardAssetLibrary.upload.requestBytesMax": [
+      "quality/backend-storyboard-asset-library-budget.test.mjs"
+    ],
+    "backend.storyboardAssetLibrary.upload.peakConcurrencyMax": [
+      "quality/backend-storyboard-asset-library-budget.test.mjs"
+    ],
+    "backend.storyboardAssetLibrary.assetsPerAccountMax": [
+      "quality/backend-storyboard-asset-library-budget.test.mjs"
+    ],
+    "backend.agentAccess.tokenVerify.businessReadsMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.tokenTouchWriteThrottleMs": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.activeTokensPerAccountMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.accountContext.businessReadsMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.tokenSecret.businessReadsMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.tokenSecret.responseBytesMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "desktop.agentAccess.tokenCopyHttpMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "desktop.agentAccess.tokenCopyFollowupGetMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "desktop.agentAccess.tokenCopyPeakConcurrencyMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.tokenHardDelete.businessReadsMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "desktop.agentAccess.tokenHardDeleteHttpMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "desktop.agentAccess.tokenHardDeleteFollowupGetMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "desktop.agentAccess.tokenHardDeletePeakConcurrencyMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.assetList.businessReadsMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.assetContent.businessReadsMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.assetContent.remoteFetchMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.assetList.responseBytesMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.assetContent.responseBytesMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "mcp.assetLibrary.listCacheMs": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "mcp.assetLibrary.pageSize": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "mcp.assetLibrary.imageBytesMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "mcp.assetLibrary.pickerPageSize": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "mcp.assetLibrary.imageFetchPeakConcurrencyMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "mcp.assetLibrary.pickerPreviewCallsPerPageMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "mcp.assetLibrary.pickerPreviewPayloadBytesPerPageMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.assetContext.businessReadsMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.assetContext.responseBytesMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.libraryDoc.businessReadsMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.libraryDoc.responseBytesMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.storyboardDoc.responseBytesMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.assetFileUpload.hashCompareReadsMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "mcp.assets.uploadHttpPerFileMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "backend.agentAccess.assetFileDelete.businessReadsMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "mcp.mutation.casAttemptMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "mcp.mutation.httpCallsPerAttemptMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "mcp.mutation.httpCallsPerMutationMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "mcp.assets.uploadBatchMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "mcp.assets.uploadBatchBytesMax": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "mcp.storyboard.listCacheMs": [
+      "quality/backend-agent-access-budget.test.mjs"
+    ],
+    "desktop.storyboardWorkbench.preflight.businessHttp": [
+      "desktop/src/features/storyboard-workbench/preflight/preflightBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.preflight.llmCallMax": [
+      "desktop/src/features/storyboard-workbench/preflight/preflightBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.preflight.storeHydratePerAppMax": [
+      "desktop/src/features/storyboard-workbench/preflight/preflightBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.preflight.builtinRulesMax": [
+      "desktop/src/features/storyboard-workbench/preflight/preflightBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.preflight.userRulesMax": [
+      "desktop/src/features/storyboard-workbench/preflight/preflightBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.preflight.receiptsMax": [
+      "desktop/src/features/storyboard-workbench/preflight/preflightBudget.test.ts"
+    ],
+    "desktop.storyboardWorkbench.preflight.persistedBytesMax": [
+      "desktop/src/features/storyboard-workbench/preflight/preflightBudget.test.ts"
+    ],
+    "desktop.knowledge.loginBusinessGet": [
+      "desktop/src/features/knowledge/knowledgeBudget.test.ts"
+    ],
+    "desktop.knowledge.pageEnterSnapshotGetMax": [
+      "desktop/src/features/knowledge/knowledgeBudget.test.ts"
+    ],
+    "desktop.knowledge.searchGetMax": [
+      "desktop/src/features/knowledge/knowledgeBudget.test.ts"
+    ],
+    "desktop.knowledge.selectGetMax": [
+      "desktop/src/features/knowledge/knowledgeBudget.test.ts"
+    ],
+    "desktop.knowledge.mutationHttpPerActionMax": [
+      "desktop/src/features/knowledge/knowledgeBudget.test.ts"
+    ],
+    "desktop.knowledge.peakConcurrencyMax": [
+      "desktop/src/features/knowledge/knowledgeBudget.test.ts"
+    ],
+    "desktop.knowledge.activeNotesMax": [
+      "desktop/src/features/knowledge/knowledgeBudget.test.ts"
+    ],
+    "desktop.knowledge.noteBodyCharsMax": [
+      "desktop/src/features/knowledge/knowledgeBudget.test.ts"
+    ],
+    "desktop.knowledge.tagsPerNoteMax": [
+      "desktop/src/features/knowledge/knowledgeBudget.test.ts"
+    ],
+    "desktop.knowledge.tagCharsMax": [
+      "desktop/src/features/knowledge/knowledgeBudget.test.ts"
+    ],
+    "desktop.knowledge.localDraftsMax": [
+      "desktop/src/features/knowledge/knowledgeBudget.test.ts"
+    ],
+    "frontend.videoTutorials.catalogBusinessHttp": [
+      "frontend/src/features/video-prompt/video-tutorials/videoTutorialsBudget.test.ts"
+    ],
+    "frontend.videoTutorials.pageEnterCatalogLoad": [
+      "frontend/src/features/video-prompt/video-tutorials/videoTutorialsBudget.test.ts"
+    ],
+    "frontend.promptLibrary.pageEnterHttpMax": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryBudget.test.ts"
+    ],
+    "frontend.promptLibrary.fileOpenGet": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryBudget.test.ts",
+      "frontend/build/backendProxy.test.ts"
+    ],
+    "frontend.promptLibrary.savePutPerFlush": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryBudget.test.ts"
+    ],
+    "frontend.promptLibrary.autosaveDebounceMs": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryBudget.test.ts"
+    ],
+    "frontend.promptLibrary.savePeakConcurrency": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryBudget.test.ts"
+    ],
+    "frontend.promptLibrary.pairPreviewGetMax": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryBudget.test.ts"
+    ],
+    "frontend.promptLibrary.assetOpenGetPerClickMax": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryBudget.test.ts"
+    ],
+    "frontend.promptLibrary.localDraftsMax": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryBudget.test.ts"
+    ],
+    "frontend.promptLibrary.docBytesMax": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryBudget.test.ts"
+    ],
+    "frontend.promptLibrary.sealCopyHttpMax": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryBudget.test.ts"
+    ],
+    "frontend.promptLibrary.compareOpenGet": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryBudget.test.ts"
+    ],
+    "frontend.promptLibrary.entryActions.menuHttpMax": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryEntries.test.ts"
+    ],
+    "frontend.promptLibrary.entryActions.mutationHttpMax": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryEntries.test.ts"
+    ],
+    "frontend.promptLibrary.entryActions.revealHttpMax": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryEntries.test.ts"
+    ],
+    "frontend.promptLibrary.entryActions.peakConcurrency": [
+      "frontend/src/features/video-prompt/prompt-library/__tests__/promptLibraryEntries.test.ts"
+    ],
+    "backend.promptLibrary.tree.entriesMax": [
+      "quality/backend-prompt-library-budget.test.mjs"
+    ],
+    "backend.promptLibrary.file.responseBytesMax": [
+      "quality/backend-prompt-library-budget.test.mjs",
+      "frontend/build/backendProxy.test.ts"
+    ],
+    "backend.promptLibrary.save.requestBytesMax": [
+      "quality/backend-prompt-library-budget.test.mjs"
+    ],
+    "backend.promptLibrary.raw.responseBytesMax": [
+      "quality/backend-prompt-library-budget.test.mjs"
+    ],
+    "backend.promptLibrary.wrap.childProcessPerRequestMax": [
+      "quality/backend-prompt-library-budget.test.mjs"
+    ],
+    "backend.promptLibrary.write.peakConcurrencyMax": [
+      "quality/backend-prompt-library-budget.test.mjs"
+    ],
+    "backend.promptLibrary.entryActions.responseBytesMax": [
+      "backend/Services.Tests/PromptLibraryEntryActionsTests.cs"
+    ]
+  }
+}

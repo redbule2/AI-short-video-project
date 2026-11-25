@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-menu="left">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'">
+<title>AI短视频流水线</title>
+<link rel="stylesheet" href="外框.css">
+</head>
+<body>
+<!-- 图标都是细线。菜单路由（lib/routes.js）里写的图标名，对着这里的 i-名字 -->
+<svg class="sprites" aria-hidden="true">
+  <symbol id="i-film" viewBox="0 0 16 16"><rect x="2.6" y="3.2" width="10.8" height="9.6" rx="1.3"/><path d="M5.2 3.2v9.6M10.8 3.2v9.6M2.6 6.4h2.6M2.6 9.6h2.6M10.8 6.4h2.6M10.8 9.6h2.6"/></symbol>
+  <symbol id="i-exam" viewBox="0 0 16 16"><path d="M4 2.4h5.6l2.8 2.8v8.4H4zM9.6 2.4v2.8h2.8M6 9.4l1.5 1.5 2.7-3"/></symbol>
+  <symbol id="i-set" viewBox="0 0 16 16"><path d="M2.5 5h5.2M11.3 5h2.2M2.5 11h2.2M8.3 11h5.2"/><circle cx="9.5" cy="5" r="1.8"/><circle cx="6.5" cy="11" r="1.8"/></symbol>
+  <symbol id="i-min" viewBox="0 0 10 10"><path d="M0 5.5h10"/></symbol>
+  <symbol id="i-max" viewBox="0 0 10 10"><rect x=".5" y=".5" width="9" height="9"/></symbol>
+  <symbol id="i-restore" viewBox="0 0 10 10"><rect x=".5" y="2.5" width="7" height="7"/><path d="M2.5 2.5v-2h7v7h-2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 10 10"><path d="M.5.5l9 9M9.5.5l-9 9"/></symbol>
+</svg>
+<header id="bar">
+  <span id="name"></span>
+  <nav id="tabs"></nav>
+  <span id="title"></span>
+  <span id="off" hidden>离线</span>
+  <button id="set" type="button" data-go="settings" title="设置"><svg class="ic"><use href="#i-set"/></svg>设置</button>
+  <div id="win">
+    <button type="button" data-win="min" title="最小化"><svg><use href="#i-min"/></svg></button>
+    <button type="button" data-win="max" title="最大化"><svg><use id="max-use" href="#i-max"/></svg></button>
+    <button type="button" data-win="close" title="关闭"><svg><use href="#i-close"/></svg></button>
+  </div>
+</header>
+<nav id="rail"></nav>
+<main id="stage">
+  <p id="busy"></p>
+  <!-- 设置：点顶栏的「设置」时各模块页先收起来，露出这一块。钮上的 data-do 对着 main.js 的 DO -->
+  <section id="set-page" hidden>
+    <header><h1>设置</h1><button type="button" class="btn" data-go="settings">返回</button></header>
+    <div class="row">
+      <h2>账号</h2>
+      <p id="set-user"></p>
+      <button type="button" class="btn" id="set-logout" data-do="logout">退出登录</button>
+    </div>
+    <div class="row">
+      <h2>工作文件夹</h2>
+      <p><span id="set-work"></span><small>剧本、提示词、图和片子都放在这里，升级不会动它。</small></p>
+      <button type="button" class="btn" data-do="work">打开</button>
+      <button type="button" class="btn" data-do="change-work">换一个…</button>
+    </div>
+    <div class="row">
+      <h2>菜单放哪</h2>
+      <div class="pick">
+        <button type="button" data-do="menu" data-arg="left"><i></i>左边一条</button>
+        <button type="button" data-do="menu" data-arg="top"><i></i>顶部一排</button>
+      </div>
+    </div>
+    <div class="row">
+      <h2>版本</h2>
+      <p><span id="set-ver"></span><small id="set-up"></small></p>
+      <button type="button" class="btn" id="set-update" data-do="update">检查更新</button>
+      <button type="button" class="btn" id="set-install" data-do="install">现在重启装上</button>
+      <button type="button" class="btn" data-do="logs">打开日志文件夹</button>
+    </div>
+    <p id="set-note"></p>
+  </section>
+</main>
+<script src="外框.js"></script>
+</body>
+</html>

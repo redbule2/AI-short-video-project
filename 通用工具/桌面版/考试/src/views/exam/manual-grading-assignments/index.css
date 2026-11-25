@@ -1,0 +1,411 @@
+/* 阅卷安排：一行 = 一张传卷签。
+   去表单化三原则：① 控件不画框，只画"待填的空"（.exam-field-quiet）；
+   ② 列标题只出现一次，行里不重复贴标签；③ 操作条按需出现，闲时页面无控件噪声。 */
+
+.assignment-page {
+  padding-bottom: 96px;
+}
+
+.assignment-page .assignment-sheet {
+  max-width: 1080px;
+}
+
+/* ---------- 抬头 ---------- */
+.assignment-page .assignment-head {
+  display: flex;
+  gap: 24px;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.assignment-page .assignment-head > div:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.assignment-page .assignment-flowline {
+  margin: 0;
+  font-size: 13px;
+  color: var(--graphite);
+}
+
+.assignment-page .assignment-flowline i {
+  padding: 0 2px;
+  font-style: normal;
+  color: var(--vermilion);
+}
+
+.assignment-page .assignment-paper {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  width: 300px;
+}
+
+.assignment-page .assignment-paper > span {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--graphite);
+}
+
+.assignment-page .assignment-paper-select {
+  width: 100%;
+}
+
+.assignment-page .assignment-loading {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+/* ---------- 卷堆：统计即筛选 ---------- */
+.assignment-page .assignment-piles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  align-items: flex-end;
+  padding: 16px 0 12px;
+}
+
+.assignment-page .assignment-pile {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+  padding: 4px 2px 7px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.assignment-page .assignment-pile strong {
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--graphite);
+  transition: color 0.2s ease;
+}
+
+.assignment-page .assignment-pile span {
+  font-size: 13px;
+  color: var(--graphite);
+}
+
+.assignment-page .assignment-pile:hover strong,
+.assignment-page .assignment-pile:hover span {
+  color: var(--ink-body);
+}
+
+.assignment-page .assignment-pile:hover {
+  border-bottom-color: var(--field-edge);
+}
+
+.assignment-page .assignment-pile.is-active {
+  border-bottom-color: var(--vermilion);
+}
+
+.assignment-page .assignment-pile.is-active strong,
+.assignment-page .assignment-pile.is-active span {
+  color: var(--ink);
+}
+
+.assignment-page .assignment-pile:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+.assignment-page .assignment-search {
+  display: flex;
+  flex: 1 1 200px;
+  gap: 6px;
+  align-items: center;
+  min-width: 180px;
+  padding-bottom: 4px;
+  margin-left: auto;
+  color: var(--graphite);
+}
+
+.assignment-page .assignment-search svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.assignment-page .assignment-search .el-input {
+  flex: 1 1 auto;
+}
+
+/* ---------- 台账 ---------- */
+.assignment-page .assignment-grid {
+  display: grid;
+  grid-template-columns:
+    20px minmax(140px, 0.9fr) minmax(190px, 1.05fr)
+    104px minmax(112px, auto);
+  gap: 14px;
+  align-items: center;
+}
+
+.assignment-page .assignment-ledger-head {
+  padding: 0 4px 7px;
+  border-bottom: 1.5px solid var(--ink);
+}
+
+.assignment-page .assignment-ledger-head span {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--graphite);
+}
+
+.assignment-page .assignment-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.assignment-page .assignment-row {
+  min-height: 62px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--rule);
+  transition: background-color 0.2s ease;
+}
+
+.assignment-page .assignment-row:hover {
+  background: rgb(255 255 255 / 12%);
+}
+
+.assignment-page .assignment-row.is-picked {
+  background: rgb(44 95 124 / 7%);
+}
+
+/* 改了还没落纸 = 一道朱批边 */
+.assignment-page .assignment-row.is-dirty {
+  background: rgb(200 68 43 / 5%);
+  box-shadow: inset 3px 0 0 var(--vermilion);
+}
+
+.assignment-page .assignment-row.is-complete {
+  background: rgb(60 106 76 / 4%);
+}
+
+.assignment-page .assignment-student {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0 8px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.assignment-page .assignment-student strong {
+  font-family: var(--exam-serif);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.assignment-page .assignment-student span {
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--graphite);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assignment-page .assignment-student small {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--graphite);
+}
+
+/* ---------- 阅卷人：句子里的一个空，不是一个输入框 ---------- */
+.assignment-page .assignment-hand {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.assignment-page .assignment-arrow {
+  font-style: normal;
+  color: var(--vermilion);
+}
+
+.assignment-page .assignment-hand-locked {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  min-width: 0;
+  font-family: var(--exam-serif);
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.assignment-page .assignment-hand-locked svg {
+  width: 12px;
+  height: 12px;
+  color: var(--jade);
+}
+
+.assignment-page .assignment-hand-locked em {
+  font-family: var(--exam-sans);
+  font-size: 11px;
+  font-style: normal;
+  color: var(--jade);
+}
+
+.assignment-page .assignment-mark {
+  display: grid;
+  gap: 3px;
+  justify-items: start;
+}
+
+.assignment-page .assignment-warn {
+  font-size: 11px;
+  color: var(--vermilion);
+}
+
+.assignment-page .assignment-act {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.assignment-page .assignment-hint {
+  font-size: 11px;
+  color: var(--graphite);
+  text-align: right;
+}
+
+.assignment-page .assignment-limit-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.assignment-page .exam-empty.is-compact {
+  padding: 30px 16px;
+}
+
+/* ---------- 桌沿操作条：闲时不存在 ---------- */
+.assignment-page .assignment-deskedge {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  margin: 14px -6px 0;
+  background: color-mix(in srgb, var(--paper-hi) 95%, transparent);
+  border: 1px solid var(--field-edge);
+  border-radius: 6px;
+  box-shadow: 0 10px 26px rgb(0 0 0 / 24%);
+  backdrop-filter: blur(8px);
+}
+
+.assignment-page .assignment-batch,
+.assignment-page .assignment-commit {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.assignment-page .assignment-batch strong {
+  font-family: var(--exam-serif);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.assignment-page .assignment-batch > span,
+.assignment-page .assignment-commit > span {
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.assignment-page .assignment-batch-select {
+  width: 210px;
+}
+
+.assignment-page .assignment-commit {
+  margin-left: auto;
+}
+
+.assignment-deskedge-enter-active,
+.assignment-deskedge-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.assignment-deskedge-enter-from,
+.assignment-deskedge-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+/* ---------- 响应式 ---------- */
+@media (width <= 940px) {
+  .assignment-page .assignment-grid {
+    grid-template-columns: 20px minmax(0, 1fr) 104px;
+    gap: 8px 12px;
+  }
+
+  .assignment-page .assignment-hand {
+    grid-column: 2 / 3;
+    grid-row: 2;
+  }
+
+  .assignment-page .assignment-act {
+    grid-column: 3 / 4;
+    grid-row: 2;
+  }
+
+  .assignment-page .assignment-ledger-head span:nth-child(3),
+  .assignment-page .assignment-ledger-head span:nth-child(5) {
+    display: none;
+  }
+}
+
+@media (width <= 720px) {
+  .assignment-page {
+    padding-bottom: 76px;
+  }
+
+  .assignment-page .assignment-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .assignment-page .assignment-paper {
+    width: 100%;
+    justify-items: start;
+  }
+
+  .assignment-page .assignment-piles {
+    gap: 4px 16px;
+  }
+
+  .assignment-page .assignment-pile strong {
+    font-size: 18px;
+  }
+
+  .assignment-page .assignment-search {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
+  .assignment-page .assignment-batch,
+  .assignment-page .assignment-commit {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+
+  .assignment-page .assignment-batch-select {
+    width: 150px;
+  }
+}

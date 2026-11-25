@@ -1,0 +1,1220 @@
+/* ============================================================
+   答题现场 · 卷面总览 ⇄ 专注答题(一次一题)
+   体验合同(含 gpt-5.6-sol 评审采纳):
+   - 去表单化:选项是"题纸行"不是 radio 卡;稿纸无框、横线到纸缘、随内容自动加高;
+   - 键盘:A-D/1-9 作答、←/→ 翻题、Esc 回卷面、F 标记(useExamTaking);
+   - 情绪:计时告警只变色不闪烁;交卷常态=朱砂描边「检查并交卷」,
+     朱砂实底只出现在确认框的最终不可逆按钮;保存反馈四态如实;
+   - 移动端:单层底栏、稿纸有效宽度≥320px、答题卡=带遮罩抽屉、格子≥44px。
+   ============================================================ */
+
+/*
+ * Element Plus 的 el-scrollbar__view 默认 overflow:hidden，也会截断后代 sticky。
+ * 只在答题页存在时放开这一层，让题卡以真正滚动的 el-scrollbar__wrap 为参照。
+ */
+.app-main .el-scrollbar__view:has(.take-page) {
+  /* PureAdmin 在该节点写了内联 overflow:hidden，只能在此做窄范围覆盖。 */
+  overflow: visible !important;
+}
+
+.take-page {
+  align-items: stretch;
+  padding-bottom: 40px;
+  /*
+   * sticky 题卡不能放在 overflow:hidden 的祖先内，否则它会把本页误认成
+   * 滚动容器并随长卷一起卷走。clip 继续截掉横向溢出，但不建立滚动容器。
+   */
+  overflow-x: clip;
+}
+
+.take-page .take-blocked {
+  align-self: flex-start;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.take-page .take-layout {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 22px;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+/* ---------- 考卷公共 ---------- */
+.take-page .take-paper {
+  flex: 1 1 auto;
+  max-width: 780px;
+  min-width: 0;
+}
+
+.take-page .take-paper-head {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  margin-bottom: 6px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.take-page .take-paper-total {
+  font-size: 13px;
+  color: var(--graphite);
+}
+
+/* ---------- 卷面总览 ---------- */
+.take-page .take-overview-hint {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--graphite);
+}
+
+.take-page .ov-questions {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.take-page .ov-q {
+  position: relative;
+  border-bottom: 1px solid var(--rule);
+  scroll-margin-top: 80px;
+}
+
+.take-page .ov-q:last-child {
+  border-bottom: none;
+}
+
+.take-page .ov-q-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 18px 10px 20px;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.take-page .ov-q-body:hover {
+  background: var(--paper-hi);
+}
+
+.take-page .ov-q-body:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: -2px;
+}
+
+/* 填空题的题目体不是按钮(就地作答,点哪都不跳走):去掉指针与悬停底色 */
+.take-page .ov-q-body.is-static {
+  cursor: default;
+}
+
+.take-page .ov-q-body.is-static:hover {
+  background: transparent;
+}
+
+.take-page .ov-q-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.take-page .ov-q-no {
+  min-width: 26px;
+  font-size: 17px;
+  color: var(--ink);
+}
+
+.take-page .ov-q-score {
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.take-page .ov-q-state {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.take-page .ov-q-state.is-answered {
+  color: var(--jade);
+}
+
+.take-page .ov-q-stem {
+  font-family: var(--exam-serif);
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+.take-page .ov-q-answer {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-body);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.take-page .ov-q-invite {
+  font-size: 12px;
+  color: var(--azure);
+}
+
+/* 卷面直答:选择/判断题选项摊在题干下方,点选即作答(复用专注模式的题纸行样式,收紧一号) */
+.take-page .ov-options {
+  display: flex;
+  flex-direction: column;
+  padding: 0 10px 16px;
+}
+
+.take-page .ov-options .take-option {
+  min-height: 40px;
+  padding: 7px 10px;
+  font-size: 15px;
+}
+
+.take-page .ov-options .take-option:last-of-type {
+  border-bottom: none;
+}
+
+.take-page .ov-options .take-option-mark {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+
+.take-page .ov-options.is-judge {
+  flex-direction: row;
+  gap: 10px;
+}
+
+.take-page .ov-options.is-judge .take-option-mark {
+  width: auto;
+  height: auto;
+}
+
+.take-page .ov-q.is-flagged::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  content: "";
+  border-color: var(--vermilion) var(--paper) transparent transparent;
+  border-style: solid;
+  border-width: 0 18px 18px 0;
+  border-top-color: var(--vermilion);
+}
+
+/* ---------- 专注答题 ---------- */
+.take-page .take-focus {
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+}
+
+.take-page .focus-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.take-page .focus-exit {
+  font-size: 13px;
+}
+
+.take-page .focus-position {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.take-page .focus-position .exam-mono {
+  font-size: 16px;
+}
+
+.take-page .focus-position-total {
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.take-page .focus-score {
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.take-page .focus-head .take-q-flag {
+  margin-left: auto;
+}
+
+.take-page .focus-stem {
+  margin-bottom: 20px;
+  font-family: var(--exam-serif);
+  font-size: 19px;
+  line-height: 1.75;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+.take-page .focus-stem:focus-visible {
+  outline: none;
+}
+
+.take-page .focus-type-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.take-page .take-q-flag {
+  min-height: 30px;
+  padding: 2px 10px;
+  font-size: 12px;
+  color: var(--graphite);
+  cursor: pointer;
+  background: none;
+  border: 1px dashed var(--field-edge);
+  border-radius: 4px;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.take-page .take-q-flag:hover {
+  color: var(--vermilion);
+  border-color: var(--vermilion);
+}
+
+.take-page .take-q-flag.is-on {
+  color: var(--vermilion);
+  border: 1.5px solid var(--vermilion);
+}
+
+.take-page .take-q-flag:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+/* ---------- 题干配图 ---------- */
+.take-page .stem-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.take-page .stem-images img {
+  display: block;
+  max-width: min(320px, 100%);
+  max-height: 240px;
+  background: var(--field);
+  border: 1px solid var(--paper-edge);
+  border-radius: 4px;
+  transition: box-shadow 0.15s ease;
+}
+
+.take-page .stem-images a:hover img {
+  box-shadow: 0 2px 12px rgb(0 0 0 / 24%);
+}
+
+.take-page .stem-images a:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+/* 总览里的紧凑配图行 */
+.take-page .stem-images.is-compact {
+  gap: 6px;
+  margin-bottom: 0;
+}
+
+.take-page .stem-images.is-compact img {
+  width: 88px;
+  height: 66px;
+  object-fit: cover;
+}
+
+/* ---------- 选项:题纸行(非表单卡) ---------- */
+.take-page .take-options {
+  display: flex;
+  flex-direction: column;
+}
+
+.take-page .take-option {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  min-height: 48px;
+  padding: 11px 12px;
+  font-family: var(--exam-sans);
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--ink-body);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.take-page .take-options .take-option:last-of-type {
+  border-bottom: none;
+}
+
+.take-page .take-option:hover {
+  background: var(--paper-hi);
+}
+
+.take-page .take-option:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: -2px;
+}
+
+/* 选中 = 字母圈落墨 + 左缘墨线,不给整块加框 */
+.take-page .take-option.is-picked {
+  background: var(--paper-hi);
+  box-shadow: inset 3px 0 0 var(--ink);
+}
+
+.take-page .take-option-mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-family: var(--exam-mono);
+  font-size: 13px;
+  color: var(--graphite);
+  border: 1.5px solid var(--field-edge);
+  border-radius: 50%;
+  transition: all 0.15s ease;
+}
+
+.take-page .take-option-mark.is-square {
+  border-radius: 5px;
+}
+
+.take-page .take-option.is-picked .take-option-mark {
+  color: var(--paper-hi);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.take-page .take-option-text {
+  flex: 1;
+}
+
+.take-page .take-judge {
+  display: flex;
+  gap: 10px;
+}
+
+.take-page .take-judge-option {
+  flex: 0 0 auto;
+  justify-content: center;
+  min-width: 104px;
+  border: 1px solid var(--field-edge);
+  border-radius: 6px;
+}
+
+.take-page .take-judge-option .take-option-mark {
+  width: auto;
+  height: auto;
+  padding: 2px 6px;
+  font-family: var(--exam-serif);
+  font-size: 16px;
+  color: inherit;
+  background: none;
+  border: none;
+}
+
+.take-page .take-judge-option.is-picked {
+  color: var(--paper-hi);
+  background: var(--ink);
+  border-color: var(--ink);
+  box-shadow: none;
+}
+
+.take-page .take-judge-option.is-picked .take-option-mark {
+  color: var(--paper-hi);
+  background: none;
+}
+
+/* ---------- 填空:直接写在横线上 ----------
+   填空不是简答:空位能嵌进题干就嵌进去,考生在句子里当场写(ExamFillBlankFields.vue)。
+   题干里放不下(没写横线/数目对不上)才退回题干原样 + 下方「空 N」行。
+   横线一律用 border-bottom 画,不描输入框白框——落在清样纸上要像卷子,不像表单。 */
+.take-page .take-fill-stem {
+  margin: 0;
+  font-family: var(--exam-serif);
+  font-size: 16px;
+  line-height: 2.2;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+.take-page .take-focus .take-fill-stem {
+  font-size: 19px;
+}
+
+/* 补空行那一支的题干不含输入框,行高回到与其他题干(.ov-q-stem)一致,同页不出现两种松紧 */
+.take-page .take-fill-stem.is-plain {
+  line-height: 1.8;
+}
+
+.take-page .take-focus .take-fill-stem.is-plain {
+  line-height: 1.75;
+}
+
+.take-page .take-fill-input {
+  width: var(--blank-width, 8ch);
+  min-width: 4ch;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 0 6px 2px;
+  font-family: var(--exam-serif);
+  font-size: inherit;
+  line-height: 1.5;
+  color: var(--azure);
+  text-align: center;
+  vertical-align: baseline;
+  caret-color: var(--azure);
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--graphite);
+  border-radius: 0;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+/* 鼠标点入:靛青底纹 + 加粗横线,安静但看得见 */
+.take-page .take-fill-input:focus {
+  background: color-mix(in srgb, var(--azure) 10%, transparent);
+  border-bottom-color: var(--azure);
+  border-bottom-width: 2px;
+  outline: none;
+}
+
+/* 键盘走到:必须给明确焦点环。一句话里三个空,靠半像素的横线变化找不到自己在哪 */
+.take-page .take-fill-input:focus-visible {
+  border-radius: 2px 2px 0 0;
+  outline: 2px solid var(--azure);
+  outline-offset: 1px;
+}
+
+/* Windows 高对比模式下 color-mix 底纹会被系统色覆盖,焦点只能靠系统描边 */
+@media (forced-colors: active) {
+  .take-page .take-fill-input:focus-visible {
+    outline: 2px solid highlight;
+  }
+}
+
+.take-page .take-fill-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* 补空行(题干里嵌不下时) */
+.take-page .take-fill-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.take-page .take-fill-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* 是 <label>,要挡掉 reset 的 font-weight:700——层级不靠字重(规范 §7.4) */
+.take-page .take-fill-no {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--graphite);
+}
+
+.take-page .take-fill-input.is-row {
+  flex: 1;
+  width: auto;
+  min-height: 40px;
+  padding: 6px 8px;
+  font-size: 16px;
+  text-align: left;
+}
+
+/* 占位文字用墨灰不用纸边色:--field-edge 落在清样纸上只有 1.34:1,等于看不见 */
+.take-page .take-fill-input::placeholder {
+  font-family: var(--exam-sans);
+  font-size: 13px;
+  color: var(--graphite);
+  opacity: 0.75;
+}
+
+/* 粘贴被拦下:朱砂横线抖一下,不静默吞掉动作(简答稿纸共用这套反馈,见 take-essay.is-rejected) */
+.take-page .take-fill-input.is-rejected {
+  background: color-mix(in srgb, var(--vermilion) 12%, transparent);
+  border-bottom-color: var(--vermilion);
+  animation: take-reject-shake 0.4s ease;
+}
+
+@keyframes take-reject-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-3px);
+  }
+
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .take-page .take-fill-input.is-rejected,
+  .take-page .take-essay.is-rejected {
+    animation: none;
+  }
+}
+
+/* 窄屏:行高放宽,横线之间不会挤成一团。
+   句中空位**不能**再加高:input 是 inline 元素,长高的部分整块挂在基线以下,
+   横线会掉到文字下一行去(实测 44px 时肉眼就是断成两行)。
+   如实记账:句中空位因此是 ~68×32px(≥8ch 宽 × 32 高),高度未达规范 §7.7 的 44px,
+   用横向加宽换取「横线贴着句子」的卷面观感;独立成行的补空行不受此限,拉满 44px。 */
+@media (width <= 640px) {
+  .take-page .take-fill-stem {
+    line-height: 2.6;
+  }
+
+  .take-page .take-fill-input {
+    min-width: 8ch;
+  }
+
+  .take-page .take-fill-input.is-row {
+    min-width: 0;
+    min-height: 44px;
+  }
+}
+
+/* ---------- 简答稿纸(唯一规则,勿再分裂两处覆盖) ----------
+   静止态无外框,横线延到纸缘;聚焦=左缘靛青细线+靛青光标;
+   高度由 JS 随 scrollHeight 增高(view 的 setEssay/growEssay),不给内滚动。 */
+.take-page .focus-essay-wrap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  margin: 0 -10px;
+}
+
+.take-page .take-essay {
+  display: block;
+  width: 100%;
+  min-height: clamp(300px, 42vh, 560px);
+  padding: 0 12px;
+  overflow: hidden;
+  font-family: var(--exam-serif);
+  font-size: 17px;
+  line-height: 36px;
+  color: var(--ink);
+  caret-color: var(--azure);
+  resize: none;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0 35px,
+    var(--rule) 35px 36px
+  );
+  background-attachment: local;
+  border: none;
+  border-radius: 0;
+  transition: box-shadow 0.2s ease;
+}
+
+.take-page .take-essay:focus {
+  outline: none;
+  box-shadow: inset 3px 0 0 var(--azure);
+}
+
+/* 粘贴被拦下:左缘细线转朱砂并抖一下。不能像填空那样铺底色——稿纸的横线是背景渐变,
+   盖一层底色就把格线抹平了。必须排在 :focus 之后:两条选择器权重相同,
+   而被拦时输入框正处于聚焦态,靠后才压得住那条靛青线。 */
+.take-page .take-essay.is-rejected {
+  box-shadow: inset 3px 0 0 var(--vermilion);
+  animation: take-reject-shake 0.4s ease;
+}
+
+.take-page .take-essay::placeholder {
+  font-family: var(--exam-sans);
+  font-size: 14px;
+  color: var(--graphite);
+}
+
+/* 状态 + 规则在左、字数在右。窄屏放不下时整块换行,不能把「13 字」拆成两行——
+   字数是考生随时在瞄的数字,断行等于读不出来。 */
+.take-page .focus-essay-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  justify-content: space-between;
+  padding: 6px 12px 0;
+  font-size: 11px;
+  color: var(--graphite);
+}
+
+.take-page .focus-essay-meta > * {
+  white-space: nowrap;
+}
+
+/* ---------- 实操:图片上传作答 ---------- */
+.take-page .focus-practical {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.take-page .practical-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.take-page .practical-file {
+  position: relative;
+  width: 180px;
+  margin: 0;
+}
+
+.take-page .practical-file img {
+  display: block;
+  width: 100%;
+  height: 135px;
+  object-fit: cover;
+  background: var(--field);
+  border: 1px solid var(--paper-edge);
+  border-radius: 4px;
+}
+
+.take-page .practical-file-name {
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--graphite);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.take-page .practical-file-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  color: var(--paper-hi);
+  cursor: pointer;
+  background: rgb(28 27 25 / 70%);
+  border: none;
+  border-radius: 50%;
+  transition: background-color 0.15s ease;
+}
+
+.take-page .practical-file-remove:hover {
+  background: var(--vermilion);
+}
+
+.take-page .practical-file-remove:focus-visible {
+  outline: 2px solid var(--azure);
+}
+
+/* 上传位:虚线裱框,像等待贴上的照片位 */
+.take-page .practical-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  width: 180px;
+  height: 160px;
+  cursor: pointer;
+  border: 1.5px dashed var(--field-edge);
+  border-radius: 4px;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.take-page .practical-upload:hover {
+  background: var(--paper-hi);
+  border-color: var(--azure);
+}
+
+.take-page .practical-upload.is-busy {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.take-page .practical-upload:focus-within {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+.take-page .practical-upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.take-page .practical-upload-icon {
+  font-size: 26px;
+  color: var(--graphite);
+}
+
+.take-page .practical-upload-text {
+  font-size: 13px;
+  color: var(--ink-body);
+}
+
+.take-page .practical-upload-hint {
+  font-size: 11px;
+  color: var(--graphite);
+}
+
+.take-page .practical-text-wrap {
+  margin-top: 16px;
+}
+
+.take-page .practical-text-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.take-page .practical-text {
+  min-height: 140px;
+  font-size: 15px;
+  line-height: 30px;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0 29px,
+    var(--rule) 29px 30px
+  );
+  background-attachment: local;
+}
+
+/* ---------- 桌沿:翻页 ---------- */
+.take-page .focus-footer {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 18px;
+  margin-top: auto;
+  border-top: 1px solid var(--rule);
+}
+
+/* ---------- 桌沿答题卡 ---------- */
+.take-page .take-rail {
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
+  flex: 0 0 232px;
+}
+
+.take-page .rail-inner {
+  padding: 16px;
+  color: var(--ink-body);
+  background: linear-gradient(178deg, var(--paper-hi) 0%, var(--paper) 60%);
+  border: 1px solid var(--paper-edge);
+  border-radius: 6px;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 38%);
+}
+
+.take-page .rail-timer {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.take-page .rail-timer-label {
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+/* 常态计时安静;最后 5 分钟静态转朱砂,不闪烁(焦虑管理【gpt-5.6-sol 采纳】) */
+.take-page .rail-timer-value {
+  font-size: 18px;
+  color: var(--ink);
+}
+
+.take-page .rail-timer.is-critical .rail-timer-label,
+.take-page .rail-timer.is-critical .rail-timer-value {
+  color: var(--vermilion);
+}
+
+/* 计时 v2:暂停按钮(冻结计时是机器动作,走中性形态,不抢主行动) */
+.take-page .rail-pause {
+  width: 100%;
+  min-height: 32px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--graphite);
+  cursor: pointer;
+  background: transparent;
+  border: 1px dashed var(--field-edge);
+  border-radius: 4px;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.take-page .rail-pause:hover:not(:disabled) {
+  color: var(--azure);
+  border-color: var(--azure);
+}
+
+.take-page .rail-pause:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 1px;
+}
+
+.take-page .rail-pause:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* 最晚交卷(墙钟硬止点):与剩余时长同屏,回答"什么时候必须交"【sol 必改#2】 */
+.take-page .rail-deadline {
+  padding: 6px 0 0;
+  font-size: 11px;
+  color: var(--graphite);
+  text-align: center;
+}
+
+.take-page .rail-save {
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--jade);
+  text-align: center;
+}
+
+.take-page .rail-save.is-failed {
+  color: var(--vermilion);
+}
+
+.take-page .rail-progress {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.take-page .rail-card-label {
+  font-family: var(--exam-serif);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+}
+
+.take-page .rail-card {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  max-height: 264px;
+  padding: 2px;
+  overflow-y: auto;
+}
+
+.take-page .rail-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  font-size: 13px;
+  color: var(--graphite);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--field-edge);
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.take-page .rail-cell:hover {
+  border-color: var(--graphite);
+}
+
+.take-page .rail-cell:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 1px;
+}
+
+.take-page .rail-cell.is-answered {
+  color: var(--paper-hi);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.take-page .rail-cell.is-current {
+  box-shadow: 0 0 0 2px var(--azure);
+}
+
+.take-page .rail-cell.is-flagged::after {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  content: "";
+  border-color: var(--vermilion) transparent transparent;
+  border-style: solid;
+  border-width: 8px 8px 0 0;
+  border-top-color: var(--vermilion);
+  border-right-color: transparent;
+}
+
+.take-page .rail-legend {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 10px 0;
+  font-size: 11px;
+  color: var(--graphite);
+}
+
+.take-page .legend-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 4px;
+  vertical-align: baseline;
+  border: 1px solid var(--field-edge);
+  border-radius: 2px;
+}
+
+.take-page .legend-dot.is-answered {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.take-page .legend-dot.is-flagged {
+  border-color: var(--vermilion);
+  border-top-width: 4px;
+  border-top-color: var(--vermilion);
+}
+
+.take-page .rail-submit {
+  width: 100%;
+}
+
+.take-page .take-card-backdrop {
+  display: none;
+}
+
+/* ---------- 计时 v2:暂停层(盖住卷面;z 高于窄屏底栏 31) ---------- */
+.take-page .take-paused-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background:
+    radial-gradient(80% 55% at 50% -8%, rgb(0 0 0 / 30%), transparent 70%),
+    rgb(22 20 15 / 92%);
+}
+
+.take-page .paused-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  width: min(420px, 100%);
+  padding: 32px 28px 24px;
+  text-align: center;
+  color: var(--ink-body);
+  background: linear-gradient(178deg, var(--paper-hi) 0%, var(--paper) 60%);
+  border: 1px solid var(--paper-edge);
+  border-radius: 6px;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 55%);
+}
+
+.take-page .paused-remaining {
+  margin-top: 6px;
+  font-size: 40px;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.take-page .paused-remaining-label {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--graphite);
+}
+
+.take-page .paused-hint {
+  max-width: 320px;
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--ink-body);
+}
+
+/* 冲刷失败的如实提醒:仅本机,别换设备【sol 必改#1】 */
+.take-page .paused-hint.is-warn {
+  color: var(--vermilion-deep);
+}
+
+.take-page .paused-deadline {
+  margin: 0;
+  font-size: 12px;
+  color: var(--vermilion);
+}
+
+.take-page .paused-resume {
+  min-width: 200px;
+  margin-top: 10px;
+}
+
+/* ---------- 窄屏 ---------- */
+.take-page .take-mobile-bar {
+  display: none;
+}
+
+@media (width <= 900px) {
+  /* 稿纸有效宽度:页面/纸张双收边(390px 下书写区≈320px)【gpt-5.6-sol 采纳】 */
+  .take-page {
+    padding: 14px 10px 84px;
+  }
+
+  .take-page .take-layout {
+    flex-direction: column;
+  }
+
+  .take-page .take-paper {
+    max-width: none;
+    padding: 16px 14px;
+  }
+
+  /* 专注模式头部:第一行=返回,第二行=位置/章/分/标记 */
+  .take-page .focus-head .focus-exit {
+    flex-basis: 100%;
+  }
+
+  /* 桌面翻页脚在窄屏隐藏——唯一操作带是底栏(不叠两层)【gpt-5.6-sol 采纳】 */
+  .take-page .focus-footer {
+    display: none;
+  }
+
+  /* 答题卡 = 带遮罩的底部抽屉 */
+  .take-page .take-card-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 29;
+    display: block;
+    background: rgb(0 0 0 / 45%);
+  }
+
+  .take-page .take-rail {
+    position: fixed;
+    inset: auto 12px 64px;
+    z-index: 30;
+    display: none;
+    flex: none;
+  }
+
+  .take-page .take-rail.is-open {
+    display: block;
+  }
+
+  /* 触控命中区 ≥44px */
+  .take-page .rail-cell {
+    min-height: 44px;
+  }
+
+  .take-page .take-mobile-bar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 31;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: var(--paper-hi);
+    border-top: 1px solid var(--paper-edge);
+    box-shadow: 0 -6px 18px rgb(0 0 0 / 30%);
+  }
+
+  .take-page .take-mobile-bar .exam-btn {
+    flex-shrink: 0;
+  }
+
+  .take-page .mobile-timer {
+    font-size: 16px;
+    color: var(--ink);
+  }
+
+  /* 窄屏直达暂停(不藏进题卡抽屉)【sol 必改#4】 */
+  .take-page .mobile-pause {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    min-height: 34px;
+    font-size: 15px;
+    color: var(--graphite);
+    cursor: pointer;
+    background: transparent;
+    border: 1px dashed var(--field-edge);
+    border-radius: 4px;
+  }
+
+  .take-page .mobile-pause:disabled {
+    opacity: 0.55;
+  }
+
+  .take-page .mobile-timer.is-critical {
+    color: var(--vermilion);
+  }
+
+  .take-page .mobile-progress {
+    font-size: 12px;
+    color: var(--graphite);
+  }
+}

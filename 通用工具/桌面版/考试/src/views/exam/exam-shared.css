@@ -1,0 +1,607 @@
+/* ============================================================
+   考试中心 · 共用视觉底座(砚·校样台语言)
+   一份令牌 + 公共部件,六个考试页面共用(三次法则:不在每页重抄色板)。
+   朱砂 = 人拍板(开考/交卷/发布);靛青 = 机器(AI 判分/自动动作);
+   蓝绿 = 判对/及格;墨灰 = 中性/未答。
+   全部选择器以 .exam-page 收口,按全局样式引入(非 scoped)。
+   ============================================================ */
+
+.exam-page {
+  --paper: #dcd6c5;
+  --paper-2: #d2ccb9;
+  --paper-hi: #e7e1d1;
+  --field: #d4cdba;
+  --field-edge: #c2b9a4;
+  --paper-edge: #c9c2ae;
+  --rule: #c6bfab;
+  --ink: #1c1b19;
+  --ink-body: #2c2a25;
+  --graphite: #615d54;
+  --vermilion: #c8442b;
+  --vermilion-deep: #a8331e;
+  --azure: #2c5f7c;
+  --azure-soft: #4a7e9b;
+  --jade: #3c6a4c;
+  --jade-soft: #4f7c5f;
+  --desk: #211f1a;
+  --exam-serif:
+    georgia, "Source Han Serif SC", "Noto Serif SC", "Noto Serif CJK SC",
+    "Songti SC", simsun, serif;
+  --exam-mono:
+    "JetBrains Mono", "Cascadia Code", consolas, "Noto Sans Mono", monospace;
+  --exam-sans:
+    "Noto Sans SC", system-ui, -apple-system, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: calc(100vh - 56px);
+  padding: clamp(24px, 4vh, 56px) 20px;
+  overflow-x: hidden;
+  font-family: var(--exam-sans);
+  color: #c4beaf;
+  background:
+    radial-gradient(80% 55% at 50% -8%, rgb(0 0 0 / 20%), transparent 70%),
+    radial-gradient(
+      120% 95% at 16% -8%,
+      #2c2a24 0%,
+      var(--desk) 52%,
+      #19170f 100%
+    );
+}
+
+.exam-page.main-content {
+  margin: 0;
+}
+
+.exam-page::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: "";
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg,
+    rgb(255 255 255 / 1.4%) 0 1px,
+    transparent 1px 64px
+  );
+  opacity: 0.5;
+}
+
+/* ---------- 清样纸 ---------- */
+.exam-sheet {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: clamp(20px, 3.2vw, 40px);
+  color: var(--ink-body);
+  background: linear-gradient(
+    178deg,
+    var(--paper-hi) 0%,
+    var(--paper) 38%,
+    var(--paper-2) 100%
+  );
+  border: 1px solid var(--paper-edge);
+  border-radius: 6px;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 6%),
+    0 14px 38px rgb(0 0 0 / 42%),
+    0 3px 10px rgb(0 0 0 / 30%);
+}
+
+.exam-sheet-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.exam-title {
+  margin: 0;
+  font-family: var(--exam-serif);
+  font-size: clamp(20px, 2.4vw, 26px);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+}
+
+.exam-subtitle {
+  font-size: 13px;
+  color: var(--graphite);
+}
+
+/* ---------- 章(状态戳) ---------- */
+.exam-stamp {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-family: var(--exam-serif);
+  font-size: 12px;
+  line-height: 1.6;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  border: 1.5px solid var(--graphite);
+  border-radius: 4px;
+  color: var(--graphite);
+  background: transparent;
+}
+
+.exam-stamp.is-vermilion {
+  color: var(--vermilion);
+  border-color: var(--vermilion);
+}
+
+.exam-stamp.is-azure {
+  color: var(--azure);
+  border-color: var(--azure);
+}
+
+.exam-stamp.is-jade {
+  color: var(--jade);
+  border-color: var(--jade);
+}
+
+.exam-stamp.is-solid-vermilion {
+  color: var(--paper-hi);
+  background: var(--vermilion);
+  border-color: var(--vermilion-deep);
+}
+
+/* ---------- 按钮 ---------- */
+.exam-btn {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 22px;
+  white-space: nowrap;
+  font-family: var(--exam-sans);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 5px;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.exam-btn:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+.exam-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.exam-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* 朱砂实底:页面唯一主行动 */
+.exam-btn.is-primary {
+  color: var(--paper-hi);
+  background: var(--vermilion);
+  border: 1px solid var(--vermilion-deep);
+}
+
+.exam-btn.is-primary:hover:not(:disabled) {
+  background: var(--vermilion-deep);
+}
+
+.exam-btn.is-ghost {
+  color: var(--ink-body);
+  background: transparent;
+  border: 1px solid var(--field-edge);
+}
+
+/* 朱砂描边:人拍板动作的常态形态;实底只留给最终不可逆确认(§7.1 语义纪律) */
+.exam-btn.is-outline-primary {
+  color: var(--vermilion);
+  background: transparent;
+  border: 1.5px solid var(--vermilion);
+}
+
+.exam-btn.is-outline-primary:hover:not(:disabled) {
+  color: var(--vermilion-deep);
+  background: rgb(200 68 43 / 8%);
+  border-color: var(--vermilion-deep);
+}
+
+.exam-btn.is-ghost:hover:not(:disabled) {
+  background: var(--field);
+  border-color: var(--graphite);
+}
+
+.exam-btn.is-azure {
+  color: #f0ece0;
+  background: var(--azure);
+  border: 1px solid #234c64;
+}
+
+.exam-btn.is-azure:hover:not(:disabled) {
+  background: var(--azure-soft);
+}
+
+.exam-btn.is-small {
+  min-height: 34px;
+  padding: 4px 14px;
+  font-size: 13px;
+}
+
+/* ---------- 一键复制考生原文(阅卷 / 复盘共用) ----------
+   靛青 = 机器动作,与朱砂的人拍板动作分开;贴在「考生作答」标签行右侧。
+   静止态就要看得出是按钮(触屏没有 hover,描边低于 3:1 等于没有边),
+   复制成功后就地变蓝绿「已复制」1.6 秒,同时经按钮外的 live 区播报给读屏。 */
+.exam-page .exam-copy-answer-slot {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+/* 读屏播报文本:不占版面,也不能被 display:none 吃掉 */
+.exam-page .exam-copy-answer-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.exam-page .exam-copy-answer {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 5px;
+  align-items: center;
+  min-height: 34px;
+  padding: 4px 11px;
+  font-family: var(--exam-sans);
+  font-size: 12px;
+  color: var(--azure);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--azure) 72%, transparent);
+  border-radius: 4px;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.exam-page .exam-copy-answer svg {
+  width: 13px;
+  height: 13px;
+}
+
+.exam-page .exam-copy-answer:hover {
+  background: color-mix(in srgb, var(--azure) 12%, transparent);
+  border-color: var(--azure);
+}
+
+.exam-page .exam-copy-answer:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+.exam-page .exam-copy-answer.is-copied {
+  color: var(--jade);
+  background: color-mix(in srgb, var(--jade) 12%, transparent);
+  border-color: var(--jade);
+}
+
+/* 窄屏改触摸尺寸(规范 §7.7:可触达目标 ≥44px) */
+@media (width <= 640px) {
+  .exam-page .exam-copy-answer {
+    min-height: 44px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+}
+
+/* ---------- 纸面控件皮肤(Element Plus 桥接) ----------
+   EP 控件默认白底 #fff,落在清样纸上就是一片"表单白洞"。这里只改 EP 变量、
+   不逐个覆写内部类名,六个考试页共用一份(三次法则:不在每页重抄)。
+   弹层 teleport 出 .exam-page 拿不到这些变量,见下方 .exam-popper。 */
+.exam-page {
+  --el-color-primary: var(--azure);
+  --el-fill-color-blank: rgb(255 255 255 / 14%);
+  --el-border-color: var(--field-edge);
+  --el-border-color-hover: var(--graphite);
+  --el-input-bg-color: rgb(255 255 255 / 14%);
+  --el-input-border-color: var(--field-edge);
+  --el-input-hover-border-color: var(--graphite);
+  --el-input-focus-border-color: var(--azure);
+  --el-input-text-color: var(--ink);
+  --el-text-color-regular: var(--ink-body);
+  --el-text-color-placeholder: var(--graphite);
+  --el-checkbox-bg-color: rgb(255 255 255 / 14%);
+  --el-checkbox-text-color: var(--ink-body);
+  --el-checkbox-checked-text-color: var(--ink);
+  --el-checkbox-input-border: 1px solid var(--field-edge);
+  --el-disabled-bg-color: transparent;
+  --el-fill-color-light: rgb(44 95 124 / 10%);
+}
+
+/* 安静控件:平时是纸上的一行字 + 虚线空格,hover/focus 才浮出可写的槽。
+   用于"值本身就是句子一部分"的位置(行内指派、卷宗切换),避免整页方框感。 */
+.exam-field-quiet .el-select__wrapper,
+.exam-field-quiet .el-input__wrapper {
+  padding-right: 6px;
+  padding-left: 2px;
+  background: transparent;
+  border-bottom: 1px dashed var(--field-edge);
+  border-radius: 3px 3px 0 0;
+  box-shadow: none !important;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.exam-field-quiet:hover .el-select__wrapper,
+.exam-field-quiet:hover .el-input__wrapper {
+  background: rgb(255 255 255 / 20%);
+  border-bottom-color: var(--graphite);
+}
+
+.exam-field-quiet .el-select__wrapper.is-focused,
+.exam-field-quiet .el-input__wrapper.is-focus {
+  background: rgb(44 95 124 / 8%);
+  border-bottom: 1.5px solid var(--azure);
+}
+
+.exam-field-quiet .el-select__selected-item,
+.exam-field-quiet .el-input__inner {
+  font-family: var(--exam-serif);
+  color: var(--ink);
+}
+
+.exam-field-quiet .el-select__caret {
+  color: var(--graphite);
+}
+
+/* 弹层(teleport 到 body,同 .exam-assign-dialog:必须自带一份令牌,否则回落成白底) */
+.exam-popper.el-popper {
+  --el-bg-color-overlay: #e7e1d1;
+  --el-fill-color-light: rgb(44 95 124 / 10%);
+  --el-text-color-regular: #2c2a25;
+  --el-text-color-secondary: #615d54;
+  --el-color-primary: #2c5f7c;
+
+  border-color: #c2b9a4 !important;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 32%);
+}
+
+.exam-popper .el-select-dropdown__item {
+  font-family:
+    "Noto Sans SC",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif;
+}
+
+.exam-popper .exam-option {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.exam-popper .exam-option strong {
+  font-weight: 500;
+}
+
+.exam-popper .exam-option em {
+  font-size: 11px;
+  font-style: normal;
+  color: #615d54;
+}
+
+.exam-popper .exam-option i {
+  font-size: 11px;
+  font-style: normal;
+  color: #c8442b;
+}
+
+.exam-popper .el-select-dropdown__item.is-selected {
+  font-weight: 500;
+  color: #2c5f7c;
+}
+
+.exam-popper .el-popper__arrow::before {
+  background: #e7e1d1 !important;
+  border-color: #c2b9a4 !important;
+}
+
+/* ---------- 数字 ---------- */
+.exam-mono {
+  font-family: var(--exam-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 三态 ---------- */
+.exam-skeleton {
+  height: 16px;
+  margin: 10px 0;
+  background: linear-gradient(
+    90deg,
+    var(--field) 25%,
+    var(--paper-hi) 45%,
+    var(--field) 65%
+  );
+  background-size: 240% 100%;
+  border-radius: 4px;
+  animation: exam-shimmer 1.4s ease infinite;
+}
+
+@keyframes exam-shimmer {
+  0% {
+    background-position: 120% 0;
+  }
+
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+.exam-empty,
+.exam-error {
+  padding: 44px 16px;
+  text-align: center;
+  color: var(--graphite);
+}
+
+.exam-empty .icon,
+.exam-error .icon {
+  margin-bottom: 10px;
+  font-size: 30px;
+  opacity: 0.7;
+}
+
+.exam-empty .lead,
+.exam-error .lead {
+  margin-bottom: 6px;
+  font-family: var(--exam-serif);
+  font-size: 16px;
+  color: var(--ink-body);
+}
+
+.exam-error .lead {
+  color: var(--vermilion-deep);
+}
+
+.exam-empty .hint,
+.exam-error .hint {
+  max-width: 460px;
+  margin: 0 auto 16px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+/* ---------- 行内小动作 ---------- */
+.exam-link {
+  padding: 2px 4px;
+  font-size: 13px;
+  color: var(--azure);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.exam-link:hover {
+  color: var(--azure-soft);
+  background: rgb(44 95 124 / 8%);
+}
+
+.exam-link:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 1px;
+}
+
+.exam-link.is-danger {
+  color: var(--vermilion);
+}
+
+.exam-link.is-danger:hover {
+  color: var(--vermilion-deep);
+  background: rgb(200 68 43 / 8%);
+}
+
+/* ---------- 指派/发布弹窗(teleport 到 body,试卷管理与出题工作台共用) ----------
+   弹窗脱离 .exam-page,拿不到纸面令牌——在弹窗根类上补一份关键令牌,
+   否则 .exam-btn.is-primary 的 var(--vermilion) 失效、主按钮变透明。 */
+.exam-assign-dialog {
+  max-width: calc(100vw - 24px);
+  --paper-hi: #e7e1d1;
+  --field: #d4cdba;
+  --field-edge: #c2b9a4;
+  --ink-body: #2c2a25;
+  --graphite: #615d54;
+  --vermilion: #c8442b;
+  --vermilion-deep: #a8331e;
+  --azure: #2c5f7c;
+  --azure-soft: #4a7e9b;
+  --exam-sans:
+    "Noto Sans SC", system-ui, -apple-system, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+}
+
+.exam-assign-dialog .assign-label {
+  margin: 12px 0 6px;
+  font-size: 13px;
+  color: #606266;
+}
+
+.exam-assign-dialog .assign-subs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.exam-assign-dialog .assign-sub-username {
+  margin-left: 6px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.exam-assign-dialog .assign-sub-owner {
+  padding: 1px 6px;
+  margin-left: 6px;
+  font-size: 11px;
+  color: #c8442b;
+  border: 1px solid #c8442b;
+  border-radius: 3px;
+}
+
+.exam-assign-dialog .publish-people-row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.exam-assign-dialog .publish-quick {
+  display: inline-flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.exam-assign-dialog .assign-empty {
+  padding: 18px 0;
+  font-size: 13px;
+  color: #909399;
+  text-align: center;
+}
+
+/* ---------- 减弱动效 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .exam-page *,
+  .exam-page *::before,
+  .exam-page *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

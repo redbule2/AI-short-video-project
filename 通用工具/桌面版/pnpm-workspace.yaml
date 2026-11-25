@@ -1,0 +1,12 @@
+# pnpm 11.11 自动补装 peer 依赖时，碰上 electron-builder 里 app-builder-lib 和 electron-builder-squirrel-windows 互相 peer，会一直卡在解析。
+# 我们只打 Windows 的 NSIS 安装包，这两样 peer（dmg-builder、squirrel）用不上，所以不自动补装。
+autoInstallPeers: false
+# app-builder-lib 26.15.3 写的要 @electron/get ^3.0.0，可它用到 3.1.0 才有的 ElectronDownloadCacheMode；
+# 装成 3.0.0 时打 NSIS 安装包报「reading 'ReadWrite'」。锁到 3.1 以上。
+overrides:
+  app-builder-lib>@electron/get: ^3.1.0
+# 装包时许哪些包跑自己的安装脚本：electron 要下它的程序，esbuild（打考试页的 vite 用）要核对它的程序；vue-demi 的用不上。
+allowBuilds:
+  electron: true
+  esbuild: true
+  vue-demi: false

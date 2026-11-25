@@ -1,0 +1,212 @@
+/* 成绩总览(共用底座见 ../exam-shared.css) */
+
+.results-page .results-sheet {
+  max-width: 1040px;
+  container-type: inline-size;
+}
+
+.results-page .results-loading {
+  padding: 8px 0;
+}
+
+.results-page .results-summary {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--graphite);
+}
+
+.results-page .results-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.results-page .results-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.results-page .results-limit-note {
+  padding: var(--spacing-2) var(--spacing-1);
+  font-size: 12px;
+  color: var(--graphite);
+  border-bottom: 1px solid var(--rule);
+}
+
+/* 表头与数据行共用同一组轨道。只用长度+fr(不含 auto/内容驱动轨):
+   任何一行按钮多几个、章多一枚都不会推挤别的列,五列跨行严格对齐。 */
+.results-page .result-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 1.05fr) minmax(126px, 0.85fr) minmax(156px, 1fr)
+    minmax(126px, 0.78fr) minmax(200px, 1.32fr);
+  gap: 8px 16px;
+  align-items: center;
+  padding-right: 4px;
+  padding-left: 4px;
+}
+
+.results-page .results-grid-head {
+  padding-top: 2px;
+  padding-bottom: 8px;
+  font-family: var(--exam-serif);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--graphite);
+  border-bottom: 1px solid var(--rule);
+}
+
+.results-page .results-grid-head .is-actions {
+  text-align: right;
+}
+
+.results-page .result-row {
+  padding-top: 13px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.results-page .result-row:last-child {
+  border-bottom: none;
+}
+
+/* 第一列:姓名在上、账号在下,长手机号不再和姓名挤同一行 */
+.results-page .result-student {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.results-page .result-name {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-family: var(--exam-serif);
+  font-size: 15px;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.results-page .result-username {
+  font-size: 11px;
+  color: var(--graphite);
+}
+
+.results-page .result-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* 长章(阅卷·姓名(停用)/手机号回退)允许章内折行:
+   共用底座的 .exam-stamp 是 nowrap,在 126px 轨里会溢出压进评分列 */
+.results-page .result-state .exam-stamp {
+  white-space: normal;
+  line-height: 1.5;
+}
+
+/* 评分列:双轨各自是「定宽标签 + 值」的两列小网格,
+   AI/人工 的数值起点落在同一条竖线上,标签与数字按基线对齐 */
+.results-page .result-score-tracks {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+}
+
+.results-page .result-score {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 16px;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.results-page .result-track-label {
+  font-family: var(--exam-serif);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.results-page .result-track-label.is-ai {
+  color: var(--azure);
+}
+
+.results-page .result-track-label.is-human {
+  color: var(--vermilion);
+}
+
+.results-page .result-score-total {
+  margin-left: 2px;
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+/* 文字型状态(待判/待阅/无主观题)降为注记字号,不与大数字抢眼 */
+.results-page .result-score-note {
+  font-family: var(--exam-sans);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--graphite);
+}
+
+/* 未开考/答题中:双轨都没有内容,收成一枚安静的破折号 */
+.results-page .result-score-empty {
+  font-size: 13px;
+  color: var(--graphite);
+}
+
+.results-page .result-time {
+  font-family: var(--exam-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--graphite);
+}
+
+.results-page .result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  justify-content: flex-end;
+}
+
+/* 降级断点按纸面自身宽度算(容器查询),侧栏展开/折叠都不会漏判:
+   五轨最小和 758 + 列沟 64 + 行内边距 8 = 830px,阈值取 848 留余量。
+   下方视口断点仅作不支持容器查询时的兜底。 */
+@container (width <= 848px) {
+  .results-page .results-grid-head {
+    display: none;
+  }
+
+  .results-page .result-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .results-page .result-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (width <= 920px) {
+  .results-page .results-grid-head {
+    display: none;
+  }
+
+  .results-page .result-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .results-page .result-actions {
+    justify-content: flex-start;
+  }
+}

@@ -1,0 +1,100 @@
+/* 外框页的样子：顶栏、窗口三个按钮、菜单、设置。
+   颜色全走 --k- 开头的变量：换皮肤只换这一组（现在只有一套「宣纸」，和流水线 公用/样式.css 的颜色对着）。 */
+:root {
+  --bar: 40px;                         /* 顶栏高、左边菜单宽：壳子给（lib/routes.js），这两行是它还没给时的数 */
+  --rail: 64px;
+  --k-bg: #ece5d8;                     /* 顶栏、左边菜单的底 */
+  --k-line: #d6cab6;                   /* 和中间那块之间的细线 */
+  --k-stage: #f4efe6;                  /* 中间那块（模块页还没出来时看得到） */
+  --k-sheet: #fffdf9;                  /* 设置里按钮的底 */
+  --k-ink: #2a2622;
+  --k-ink-2: #554d45;
+  --k-ink-3: #887e74;                  /* 平时淡淡的 */
+  --k-hover: rgba(42, 38, 34, .08);
+  --k-press: rgba(42, 38, 34, .14);
+  --k-on: #3e5c5e;                     /* 现在在的那一项 */
+  --k-on-bg: rgba(62, 92, 94, .12);
+  --k-close: #b3372a;                  /* 关闭钮指上去 */
+  --k-serif: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  --k-sans: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0; overflow: hidden; user-select: none; cursor: default;
+  display: grid; grid-template: var(--bar) minmax(0, 1fr) / auto minmax(0, 1fr);
+  color: var(--k-ink); background: var(--k-stage); font: 13px/1.4 var(--k-sans);
+  -webkit-font-smoothing: antialiased;
+}
+button { margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; -webkit-app-region: no-drag; }
+button:focus-visible { outline: 2px solid var(--k-on); outline-offset: -3px; }
+.sprites { position: absolute; width: 0; height: 0; }
+.ic { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- 顶栏：空着的地方按住能拖窗口，双击最大化 ---------- */
+#bar {
+  grid-column: 1 / -1; display: flex; align-items: stretch; min-width: 0;
+  background: var(--k-bg); border-bottom: 1px solid var(--k-line);
+  -webkit-app-region: drag;
+}
+#name { align-self: center; margin: 0 16px; white-space: nowrap; color: var(--k-ink-2); font: 600 13.5px/1 var(--k-serif); letter-spacing: .14em; }
+#title { flex: 1; min-width: 0; align-self: center; padding: 0 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--k-ink-3); font-size: 12.5px; letter-spacing: .04em; }
+#off { align-self: center; margin-right: 10px; padding: 1px 8px; border: 1px solid var(--k-line); border-radius: 10px; color: var(--k-ink-3); font-size: 12px; }
+#set { display: flex; align-items: center; gap: 6px; padding: 0 14px; color: var(--k-ink-3); font-size: 12.5px; letter-spacing: .08em; transition: background .12s, color .12s; }
+#set:hover { background: var(--k-hover); color: var(--k-ink); }
+#set:active { background: var(--k-press); }
+#set.on { background: var(--k-on-bg); color: var(--k-on); }
+
+/* ---------- 窗口三个按钮：细线，平时淡淡的，关闭指上去变红 ---------- */
+#win { display: flex; }
+#win button { width: 46px; display: grid; place-items: center; color: var(--k-ink-3); transition: background .12s, color .12s; }
+#win svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1; }
+#win button:hover { background: var(--k-hover); color: var(--k-ink); }
+#win button:active { background: var(--k-press); }
+#win button[data-win="close"]:hover { background: var(--k-close); color: #fff; }
+#win button[data-win="close"]:active { background: var(--k-close); opacity: .82; }
+html[data-blur] #name, html[data-blur] #title, html[data-blur] #set, html[data-blur] #win svg { opacity: .5; }   /* 窗口不在前面时更淡 */
+
+/* ---------- 菜单排进顶栏 ---------- */
+#tabs { display: flex; }
+#tabs button { display: flex; align-items: center; gap: 6px; padding: 0 14px; color: var(--k-ink-2); font-size: 13.5px; letter-spacing: .06em; box-shadow: inset 0 -2px 0 transparent; }
+#tabs button:hover { background: var(--k-hover); color: var(--k-ink); }
+#tabs button.on { color: var(--k-on); font-weight: 600; box-shadow: inset 0 -2px 0 var(--k-on); }
+
+/* ---------- 菜单放左边一条 ---------- */
+#rail { display: none; width: var(--rail); padding: 8px 0; flex-direction: column; align-items: center; gap: 4px; background: var(--k-bg); border-right: 1px solid var(--k-line); }
+html[data-rail] #rail { display: flex; }
+#rail button { width: 52px; padding: 8px 0 6px; border-radius: 9px; display: grid; justify-items: center; gap: 4px; color: var(--k-ink-2); font-size: 11.5px; letter-spacing: .04em; }
+#rail .ic { width: 20px; height: 20px; stroke-width: 1.15; }
+#rail button:hover { background: var(--k-hover); color: var(--k-ink); }
+#rail button.on { background: var(--k-on-bg); color: var(--k-on); font-weight: 600; }
+
+/* ---------- 中间那块：模块页盖在上面；还没有页时写一句话；点了「设置」露出设置 ---------- */
+#stage { grid-column: 2; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; }
+#busy { margin: 0; color: var(--k-ink-2); font-size: 16px; letter-spacing: .06em; }
+
+/* ---------- 设置：一行一件事，左边写是什么，右边是能点的 ---------- */
+#set-page { place-self: stretch; overflow-y: auto; padding: 40px 28px 48px; }
+#set-page > * { max-width: 640px; margin-inline: auto; }
+#set-page header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+#set-page h1 { margin: 0; font: 600 22px/1.2 var(--k-serif); letter-spacing: .22em; }
+.row { display: flex; align-items: center; gap: 10px; min-height: 72px; padding: 14px 0; border-top: 1px solid var(--k-line); }
+.row h2 { flex: none; width: 104px; margin: 0; color: var(--k-ink-3); font: 400 13px/1.4 var(--k-sans); letter-spacing: .08em; }
+.row p { flex: 1; min-width: 0; margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.row p span { user-select: text; cursor: text; }
+.row small { display: block; margin-top: 3px; color: var(--k-ink-3); font-size: 12px; }
+.btn { flex: none; padding: 6px 14px; border: 1px solid var(--k-line); border-radius: 6px; background: var(--k-sheet); font-size: 13px; letter-spacing: .06em; white-space: nowrap; transition: background .12s, border-color .12s; }
+.btn:hover { border-color: var(--k-ink-3); }
+.btn:active { background: var(--k-press); }
+.btn:focus-visible, .pick button:focus-visible { outline-offset: 2px; }
+/* 菜单放哪：两张小图挑一张 */
+.pick { flex: 1; display: flex; gap: 10px; }
+.pick button { display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 10px; border: 1px solid var(--k-line); border-radius: 8px; background: var(--k-sheet); color: var(--k-ink-2); font-size: 13px; letter-spacing: .06em; transition: background .12s, border-color .12s; }
+.pick button:hover { border-color: var(--k-ink-3); }
+.pick button.on { border-color: var(--k-on); background: var(--k-on-bg); color: var(--k-on); font-weight: 600; }
+.pick i { position: relative; width: 40px; height: 28px; overflow: hidden; border: 1.5px solid currentColor; border-radius: 4px; opacity: .85; }
+.pick i::before { content: ''; position: absolute; left: 0; top: 0; background: currentColor; opacity: .4; }
+.pick [data-arg="left"] i::before { width: 9px; height: 100%; }
+.pick [data-arg="top"] i::before { width: 100%; height: 7px; }
+#set-note { margin-block: 0; padding-top: 16px; border-top: 1px solid var(--k-line); color: var(--k-ink-3); font-size: 12px; user-select: text; cursor: text; }
