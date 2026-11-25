@@ -7,7 +7,8 @@
                人按了发送以后，这边从 Claude 的会话记录（~/.claude/projects）认出它开工了。
      DeepSeek  装了 DeepSeek Harness：开一个窗口跑它的命令行（只读），边想边写都在窗口里；对话存在 DeepSeek Harness 里。
                没装：照旧走 deepseek.py 接口（他说没装就不要求看得见）。
-     Codex     本来就是看得见的对话（codex-chat），不经这里。
+     Codex     本来就是看得见的对话（codex-chat），这里只看装没装。
+     豆包工作  不让外面的程序替人发话：话放进剪贴板、把它的主窗口叫到前面，人点「新工作任务」、按 Ctrl+V、回车（11-24 他定半自动）。
    AI 做完把回复写进这一回文件夹里的 回复.md、跑一句 node server.js reply <任务号>，和「给我提示词」是同一套（jobs.js 的 waitReply）。
    这里只管「装没装、怎么开、开工了没有」，不碰任务本身。
    ============================================================ */
@@ -16,7 +17,7 @@ const path = require('path');
 const os = require('os');
 const { spawn, spawnSync } = require('child_process');
 
-/* 注册表里某个链接（claude://、dsh://）是哪个程序在接：拿 (默认) 那一行里第一个带引号的路径 */
+/* 注册表里某个链接（claude://、dsh://、doubaowork://）是哪个程序在接：拿 (默认) 那一行里第一个带引号的路径 */
 function protocolExe(scheme) {
   for (const key of ['HKCU\\Software\\Classes\\' + scheme + '\\shell\\open\\command', 'HKCR\\' + scheme + '\\shell\\open\\command']) {
     try {
@@ -29,6 +30,17 @@ function protocolExe(scheme) {
     } catch (e) { /* 查不了就当没装 */ }
   }
   return '';
+}
+
+/* 注册表里登记了这个链接没有（Codex 这类商店装的程序只登记链接、没有 open 那一行）：有「URL Protocol」这一项就算装了 */
+function protocolOn(scheme) {
+  for (const key of ['HKCU\\Software\\Classes\\' + scheme, 'HKCR\\' + scheme]) {
+    try {
+      const r = spawnSync('reg', ['query', key, '/v', 'URL Protocol'], { windowsHide: true, encoding: 'utf8', timeout: 8000 });
+      if (r.status === 0) return true;
+    } catch (e) { /* 查不了就当没装 */ }
+  }
+  return false;
 }
 
 /* 用 PowerShell 的 Start-Process 开一个链接或程序：网址、路径都经环境变量传，不经命令行拼，免得引号、& 、% 出岔子 */
@@ -117,6 +129,73 @@ module.exports = function makeHandoff({ log = () => {} } = {}) {
     if (s && s.pid && s.状态 === '在做') spawn('taskkill', ['/PID', String(s.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
   }
 
-  log('看得见的 AI：Claude 桌面版' + (claudeExe ? '有' : '没装（Claude 照旧后台写）') + '，DeepSeek Harness' + (dshOk ? '有' : '没装（DeepSeek 照旧走接口）'));
-  return { claudeDesktop: !!claudeExe, openClaude, claudeStarted, dsHarness: dshOk, openDeepSeek, dsState, dsStop };
+  /* ---------- Codex 桌面版：开对话、读回复是 codex-chat 的事，这里只看装没装（codex:// 登记了没有） ---------- */
+  const codexOn = process.platform === 'win32' && process.env.ANTOU_CODEX_DESKTOP !== '0' && protocolOn('codex');
+
+  /* ---------- 豆包工作（11-24 他定半自动）：链接带进来的话它要自己签的安全码才发、也不肯填进输入框；
+     开 doubaowork:// 链接只会在它另一个浏览器样的窗口里多开一个标签（实测，交几回就堆几个）。
+     所以不开链接：话放进剪贴板，把它的主窗口（标题「豆包工作」）叫到最前面，没开着就开起来；
+     人点「新工作任务」、按 Ctrl+V、回车，对话名人顺手改。
+     raise：刚点的才抢到最前面（Windows 不让后台程序换前台，挂到前台窗口的输入上再切）；排了一阵才轮到的不抢，免得人正打着字被切走。
+     ANTOU_DOUBAO_EXE：换台电脑、注册表里没登记时手动指程序；ANTOU_DOUBAO_LOG：试验服务上只记下来，不真去开 ---------- */
+  const doubaoExe = process.platform === 'win32' && process.env.ANTOU_DOUBAO !== '0' ? (process.env.ANTOU_DOUBAO_EXE || protocolExe('doubaowork')) : '';
+  const RAISE_CS = [
+    'using System; using System.Collections.Generic; using System.Diagnostics; using System.Runtime.InteropServices; using System.Text;',
+    'public static class AntouRaise {',
+    '  delegate bool EnumProc(IntPtr h, IntPtr l);',
+    '  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr l);',
+    '  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);',
+    '  [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);',
+    '  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);',
+    '  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);',
+    '  [DllImport("user32.dll")] static extern bool GetWindowPlacement(IntPtr h, ref PLACE p);',
+    '  [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();',
+    '  [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();',
+    '  [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool f);',
+    '  [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);',
+    '  [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr h);',
+    '  [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int c);',
+    '  [StructLayout(LayoutKind.Sequential)] struct RECT { public int L, T, R, B; }',
+    '  [StructLayout(LayoutKind.Sequential)] struct POINT { public int X, Y; }',
+    '  [StructLayout(LayoutKind.Sequential)] struct PLACE { public int len, flags, show; public POINT min, max; public RECT normal; }',
+    '  /* 这个程序的顶层窗口里：标题正好是 title 的；没有就挑有标题、正常大小最大的 */',
+    '  public static IntPtr Find(string name, string title) {',
+    '    var ids = new HashSet<uint>();',
+    '    foreach (var p in Process.GetProcessesByName(name)) ids.Add((uint)p.Id);',
+    '    IntPtr exact = IntPtr.Zero, best = IntPtr.Zero; long area = 0;',
+    '    EnumWindows((h, l) => {',
+    '      uint pid; GetWindowThreadProcessId(h, out pid);',
+    '      if (!ids.Contains(pid) || !(IsWindowVisible(h) || IsIconic(h))) return true;',
+    '      var t = new StringBuilder(256); GetWindowText(h, t, 256);',
+    '      if (t.Length == 0) return true;',
+    '      if (exact == IntPtr.Zero && t.ToString() == title) exact = h;',
+    '      var p = new PLACE(); p.len = Marshal.SizeOf(typeof(PLACE));',
+    '      if (GetWindowPlacement(h, ref p)) { long a = (long)(p.normal.R - p.normal.L) * (p.normal.B - p.normal.T); if (a > area) { area = a; best = h; } }',
+    '      return true;',
+    '    }, IntPtr.Zero);',
+    '    return exact != IntPtr.Zero ? exact : best;',
+    '  }',
+    '  public static bool Raise(IntPtr h) {',
+    '    if (h == IntPtr.Zero) return false;',
+    '    if (IsIconic(h)) ShowWindow(h, 9);',
+    '    uint dummy, fg = GetWindowThreadProcessId(GetForegroundWindow(), out dummy), me = GetCurrentThreadId();',
+    '    bool att = fg != 0 && fg != me && AttachThreadInput(me, fg, true);',
+    '    BringWindowToTop(h);',
+    '    bool ok = SetForegroundWindow(h);',
+    '    if (att) AttachThreadInput(me, fg, false);',
+    '    return ok;',
+    '  }',
+    '}'].join('\n');
+  async function openDoubao(text, { raise = true } = {}) {
+    if (process.env.ANTOU_DOUBAO_LOG) { fs.appendFileSync(process.env.ANTOU_DOUBAO_LOG, (raise ? '叫到前面' : '不抢前台') + '\n' + text + '\n'); return; }
+    await startProcess(['Set-Clipboard -Value $env:ANTOU_CLIP',
+      'Add-Type -TypeDefinition $env:ANTOU_CS',
+      '$h = [AntouRaise]::Find($env:ANTOU_NAME, $env:ANTOU_TITLE)',
+      'if ($h -eq [IntPtr]::Zero) { Start-Process -FilePath $env:ANTOU_EXE; for ($i = 0; $i -lt 80 -and $h -eq [IntPtr]::Zero; $i++) { Start-Sleep -Milliseconds 250; $h = [AntouRaise]::Find($env:ANTOU_NAME, $env:ANTOU_TITLE) } }',   // 没开着：开起来，等它的窗口出来（最多二十秒）
+      'if ($env:ANTOU_RAISE) { [void][AntouRaise]::Raise($h) }'].join('; '),
+      { ANTOU_CLIP: text, ANTOU_CS: RAISE_CS, ANTOU_NAME: path.basename(doubaoExe, path.extname(doubaoExe)), ANTOU_TITLE: '豆包工作', ANTOU_EXE: doubaoExe, ANTOU_RAISE: raise ? '1' : '' });
+  }
+
+  log('看得见的 AI：Codex 桌面版' + (codexOn ? '有' : '没装') + '，DeepSeek Harness' + (dshOk ? '有' : '没装') + '，豆包工作' + (doubaoExe ? '有' : '没装') + '，Claude 桌面版' + (claudeExe ? '有' : '没装'));
+  return { claudeDesktop: !!claudeExe, openClaude, claudeStarted, codexDesktop: codexOn, dsHarness: dshOk, openDeepSeek, dsState, dsStop, doubaoWork: !!doubaoExe, openDoubao };
 };

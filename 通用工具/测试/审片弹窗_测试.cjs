@@ -66,6 +66,17 @@ test('「审片」：最新这一版没出片是灰的（前几版出过也灰�
   assert.deepEqual(b1.children, ['审片']);
 });
 
+test('madeOf：最新这一版出的样片，成片、历史记录里的都算；前几版的、删掉那一版的（带时间）不算。提示词页筛选、标签照它（11-24）', () => {
+  const a = page({ hist: { '11-13_改2.mp4': 4, '11-13_改1.mp4': 2 } });
+  assert.deepEqual(plain(a.RP.madeOf(a.s, L[1], L).map(x => [x.vid, x.old])), [['11-13_改2.mp4', true]]);
+  assert.equal(a.RP.btn(a.s, L[1], L).attrs.disabled, false, '和「审片」能不能点对得上');
+  const b = page({ here: { '11-13_改1.mp4': 3 }, hist: { '11-13_改2__20261122-101010.mp4': 4 } });
+  assert.deepEqual(plain(b.RP.madeOf(b.s, L[1], L)), []);
+  assert.equal(b.RP.btn(b.s, L[1], L).attrs.disabled, true);
+  const c = page({ here: { '11-13_改2.mp4': 5 }, hist: { '11-13_改2_2.mp4': 6 } });
+  assert.deepEqual(plain(c.RP.madeOf(c.s, L[1], L).map(x => [x.vid, x.old])), [['11-13_改2.mp4', false], ['11-13_改2_2.mp4', true]]);
+});
+
 test('点开：先放成片里新的一版最后出的那条；网址带这一条的原稿名（k）、哪一版（pr）', () => {
   const { RP, s, els, log, ctx } = page({ here: { '11-13_改1.mp4': 9, '11-13_改2.mp4': 5, '11-13_改2_2.mp4': 7 } });
   RP.open(s, L[1], L);

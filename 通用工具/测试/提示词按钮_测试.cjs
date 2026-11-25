@@ -57,6 +57,7 @@ test('提示词页面脚本语法有效，页面说明不再引导点击已移�
   assert.doesNotMatch(html, /让\s*AI\s*批一批/);
   assert.match(html, /确认满意后点「批准出片」/);
   assert.doesNotMatch(script, /'(看排好的|挂白模…|挂关键帧…)'/);   // 11-21 他定：那一行不再摆
+  assert.doesNotMatch(html, /点「打开看、写批注」|'打开看、写批注'|「打开看、写批注」在提示词上写/);   // 11-24 他定：这个按钮拿掉
   assert.doesNotMatch(script, /点「挂关键帧…」/);
 });
 
@@ -68,9 +69,8 @@ for (const draft of [false, true]) {
     assert.ok(!labels.some(t => /批一批/.test(t)));
     buttons.find(b => labelOf(b) === '进去改').attrs.onclick();
     assert.deepEqual(calls.at(-1), ['编辑', '1', '1-5.txt']);
-    const view = buttons.find(b => labelOf(b) === '打开看、写批注');   // AI 写的稿：写批注的入口留着
-    if (draft) assert.equal(view, undefined);
-    else { view.attrs.onclick(); assert.equal(calls.at(-1)[0], '查看'); }
+    assert.ok(!labels.includes('打开看、写批注'), '11-24 他定：「打开看、写批注」拿掉了');
+    assert.ok(!labels.includes('进去看'), '没出片的不摆「进去看」');
     const approve = buttons.find(b => labelOf(b) === '批准出片');
     assert.equal(approve.attrs.disabled, false);
     approve.attrs.onclick();
@@ -94,20 +94,23 @@ test('手写稿那一行依次是 接着写、批准出片、看任务书、审�
   assert.deepEqual(buttons.map(labelOf), ['接着写', '批准出片', '看任务书', '审片', '⋯']);
 });
 
-test('出过片的那一版（11-22 他定：原稿不能改，只能另存）：接着写、进去改换成「另存成改N」和「打开看、写批注」，批准出片灰掉，审片照旧', () => {
+test('出过片的那一版（11-22 他定：原稿不能改，只能另存）：接着写、进去改换成「另存成改N」和「进去看」（11-24：写稿页锁着只能看），批准出片灰掉，审片照旧', () => {
   const fz = { 出过片: true, 片: ['1-5.mp4'], 历史: [], 在出: false, 下一版: '1-5_改1.txt', 最新: '1-5.txt', 不能另存: '', 批注: ['成片/第1段/1-5_批注.md', '提示词/第1段/1-5_批注.md'] };
   const grey = (b, tip) => { assert.equal(labelOf(b), '批准出片'); assert.equal(b.attrs.disabled, true); assert.doesNotMatch(b.attrs.class, /zhu/); assert.match(b.attrs.title, tip); };
   for (const side of [{ 手写: true }, {}]) {
     const { buttons, calls, scene, entry } = promptButtons(true, false, side, ['1-5.mp4'], true, fz);
-    assert.deepEqual(buttons.map(labelOf), ['另存成改1', '打开看、写批注', '批准出片', '看任务书', '审片', '⋯']);
+    assert.deepEqual(buttons.map(labelOf), ['另存成改1', '进去看', '批准出片', '看任务书', '审片', '⋯']);
     const fork = buttons[0];
     assert.equal(fork.attrs.disabled, false);
     assert.match(fork.attrs.title, /出过片（1-5\.mp4）.*点了打开写稿页照它接着改：改了提示词或素材才存成「1-5_改1\.txt」，一处没改就不另存；原稿和它出的样片都不动/);   // 11-23 晚他定：另存不看审片、批注
     assert.doesNotMatch(fork.attrs.title, /批注/);
     fork.attrs.onclick();
     assert.deepEqual(calls.at(-1), ['另存', scene, entry]);
-    buttons[1].attrs.onclick();
-    assert.equal(calls.at(-1)[0], '查看');
+    const look = buttons[1];   // 进去看：打开写稿页（不带 fork，写稿页自己锁着），顶上写「只能看」
+    assert.equal(look.attrs.disabled, false);
+    assert.match(look.attrs.title, /锁着，不能改.*另存成改1/);
+    look.attrs.onclick();
+    assert.deepEqual(calls.at(-1), ['编辑', '1', '1-5.txt', !!side.手写, false, true]);
     grey(buttons[2], /出过片了.*另存成改1/);   // 11-22 他定：出过片的不再批准出片，要再出先另存
     assert.equal(buttons[4].attrs.disabled, false);   // 审片照旧能点
   }
@@ -213,4 +216,36 @@ test('第五步审片拿掉了（11-22 他定：审片是每条上的弹窗）�
   assert.doesNotMatch(script, /go\('审片'/);
   assert.doesNotMatch(script, /reviewState|reviewBtn/);
   assert.ok(!fs.existsSync(path.join(path.dirname(page), '审片.html')), '审片.html 该删了');
+});
+
+test('AI 批注怎么照改（11-24 拿掉「打开看、写批注」以后）：出过片的点「另存成改N」，你来写的接着写，AI 写的进去改', () => {
+  const r = promptButtons(true, false, { 手写: true });
+  const at = script.indexOf('function notesHow('), end = script.indexOf('\n}\n', at) + 3;
+  assert.ok(at > 0);
+  vm.runInContext(script.slice(at, end), r.context);
+  const how = (fz, draft, side) => { r.context.X.filmed = new Map(fz ? [['1-5.txt', fz]] : []); r.context.X.side = new Map(side ? [['1-5.txt', side]] : []); return r.context.notesHow({ name: '1-5.txt', draft }); };
+  assert.match(how({ 下一版: '1-5_改1.txt' }, true, { 手写: true }), /^点「另存成改1」.*改了才存成新的一版/);
+  assert.match(how({ 下一版: '', 不能另存: '这一版正在出片：出完再另存成新的一版' }, true), /^这一版正在出片/);
+  assert.match(how(null, true, { 手写: true }), /^点「接着写」/);
+  assert.match(how(null, false), /^点「进去改」/);
+});
+
+test('「已出片」标签：审完收进历史记录的也算（11-24），全在历史记录里的写「片在历史记录」；成片里老名字的照旧标第几条', () => {
+  const at = script.indexOf('function madeTag('), end = script.indexOf('\n}\n', at) + 3;
+  const ctx = { h: (tag, attrs, ...children) => ({ tag, attrs: attrs || {}, children: children.flat(Infinity).filter(x => x != null) }), icon: () => null, ClipOf: require('../公用/样片归属.js') };
+  vm.createContext(ctx);
+  vm.runInContext(script.slice(at, end), ctx);
+  assert.equal(ctx.madeTag([]), null);
+  const hist = ctx.madeTag([{ vid: '11-12_改5.mp4', old: true }]);
+  assert.equal(textOf(hist), '已出片 · 片在历史记录');
+  assert.match(hist.attrs.title, /11-12_改5\.mp4（在历史记录里）/);
+  assert.equal(textOf(ctx.madeTag([{ vid: '第3-4段_第14条_镜头1-5改6_样片480p.mp4', old: false }, { vid: '1-5_改6.mp4', old: true }])), '已出片 第14条');
+  assert.equal(textOf(ctx.madeTag([{ vid: '1-5.mp4', old: false }])), '已出片');
+});
+
+test('「已出片 / 没出片」筛选和标签照「审片」能不能点同一套算（11-24：审完收进历史记录的也算）', () => {
+  const r = script.slice(script.indexOf('function render('));
+  assert.match(r, /ReviewPop\.madeOf\(s, e, list\)/);
+  assert.doesNotMatch(r, /cl\.made\(/);
+  assert.match(html, /成片、历史记录里有这一版的样片就算/);
 });

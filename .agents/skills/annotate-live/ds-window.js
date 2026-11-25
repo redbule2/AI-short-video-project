@@ -68,54 +68,86 @@ async function main() {
   say(msg.trim());
   say(C.dim + '─'.repeat(40) + C.off);
 
-  const args = ['--expose-internals', cfg.cli, '--profile', 'headless', '--json', '--permission-mode', 'read-only', '--approval-policy', 'never', '-'];
-  let child;
-  try { child = spawn(cfg.exe, args, { cwd: cfg.cwd, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true }); }
-  catch (e) { fail('DeepSeek Harness 起不来：' + e.message); return; }
-  child.stdin.on('error', () => {});
-  child.stdin.end(msg);
-  let buf = '', final = null, sid = '', lastThink = false;
-  const errs = [];
-  child.stdout.on('data', c => {
-    buf += c.toString('utf8');
-    let i;
-    while ((i = buf.indexOf('\n')) >= 0) {
-      const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
-      if (!line) continue;
-      let ev;
-      try { ev = JSON.parse(line); } catch (e) { say(line); continue; }
-      if (ev.type === 'session') { sid = ev.sessionId || ''; state({ 会话: sid }); say(C.dim + 'DeepSeek Harness 会话：' + sid + C.off); }
-      else if (ev.type === 'thinking') { if (ev.text && ev.text.trim()) { say(C.dim + '（想）' + short(ev.text, 400) + C.off); lastThink = true; } }
-      else if (ev.type === 'tool_call') say(toolLine(ev));
-      else if (ev.type === 'tool_result') { if (ev.status && ev.status !== 'completed') say(C.yellow + '  （没成：' + short(ev.result, 160) + '）' + C.off); }
-      else if (ev.type === 'text') { if (ev.text) { if (lastThink) say(''); say(ev.text); lastThink = false; } }
-      else if (ev.type === 'status' && ev.phase === 'step_end' && ev.usage) say(C.dim + '（这一步 ' + (ev.usage.totalTokens || 0) + ' 个字元）' + C.off);
-      else if (ev.type === 'final') final = ev;
-    }
-  });
-  child.stderr.on('data', c => { for (const l of c.toString('utf8').split(/\r?\n/)) if (l.trim() && !/crashpad|registration_protocol_win/.test(l)) { errs.push(l.trim()); if (errs.length > 20) errs.shift(); } });
-  child.on('error', e => fail('DeepSeek Harness 起不来：' + e.message));
-  child.on('close', async code => {
-    const ok = final && final.reason && final.reason.kind === 'completed' && String(final.text || '').trim();
-    if (!ok) {
-      const why = (final && final.reason && final.reason.error && final.reason.error.message) || errs.slice(-3).join('；') || '退出码 ' + code;
-      fail(/MISSING_CREDENTIAL|no API key/i.test(why) ? 'DeepSeek Harness 的命令行没有 API key：在它的设置「模型」页填 key，或者照 deepseek 技能那样放好 key 文件' : short(why, 400));
-      return;
-    }
-    try {
-      const cur = fs.existsSync(cfg.回复) ? fs.readFileSync(cfg.回复, 'utf8').trim() : '';
-      if (!cur) fs.writeFileSync(cfg.回复, String(final.text).trim() + '\n');
-    } catch (e) { fail('回复写不进 ' + cfg.回复 + '：' + e.message); return; }
-    state({ 状态: '做完' });
-    say('');
-    say(C.green + '做完了，回复写进了 ' + cfg.回复 + C.off);
-    const r = await post(cfg.port, cfg.id);
-    if (r && r.格式错) say(C.yellow + '流水线说回复的格式不对：' + r.格式错 + C.off);
-    else if (r && r.状态 === '做完') say(C.green + '流水线接上了：' + (r.结果 || '') + C.off);
-    else if (r && (r.状态 === '没成' || r.状态 === '停了')) say(C.red + '流水线那边没成：' + (r.错误 || r.状态) + C.off);
-    else say(C.dim + '流水线自己会看到这个回复文件。' + C.off);
-    holdOpen(0);
-  });
-  process.on('SIGINT', () => { try { child.kill(); } catch (e) { /* 已经停了 */ } fail('在窗口里按了停'); });
+  let patch = '';
+  try { patch = namePatch(cfg.标题); } catch (e) { /* 起名的补丁写不了：照它自己起的名 */ }
+  let r = await runOnce(cfg, msg, patch);
+  if (r.error) { fail('DeepSeek Harness 起不来：' + r.error); return; }
+  if (!r.sid && patch) {   // 新版认不得这份补丁、没开起会话：不带它再跑一回
+    say(C.dim + '（对话名没用上，照 DeepSeek 自己起的名，再开一回）' + C.off);
+    r = await runOnce(cfg, msg, '');
+    if (r.error) { fail('DeepSeek Harness 起不来：' + r.error); return; }
+  }
+  const { final, errs, code } = r;
+  const ok = final && final.reason && final.reason.kind === 'completed' && String(final.text || '').trim();
+  if (!ok) {
+    const why = (final && final.reason && final.reason.error && final.reason.error.message) || errs.slice(-3).join('；') || '退出码 ' + code;
+    fail(/MISSING_CREDENTIAL|no API key/i.test(why) ? 'DeepSeek Harness 的命令行没有 API key：在它的设置「模型」页填 key，或者照 deepseek 技能那样放好 key 文件' : short(why, 400));
+    return;
+  }
+  try {
+    const cur = fs.existsSync(cfg.回复) ? fs.readFileSync(cfg.回复, 'utf8').trim() : '';
+    if (!cur) fs.writeFileSync(cfg.回复, String(final.text).trim() + '\n');
+  } catch (e) { fail('回复写不进 ' + cfg.回复 + '：' + e.message); return; }
+  state({ 状态: '做完' });
+  say('');
+  say(C.green + '做完了，回复写进了 ' + cfg.回复 + C.off);
+  const back = await post(cfg.port, cfg.id);
+  if (back && back.格式错) say(C.yellow + '流水线说回复的格式不对：' + back.格式错 + C.off);
+  else if (back && back.状态 === '做完') say(C.green + '流水线接上了：' + (back.结果 || '') + C.off);
+  else if (back && (back.状态 === '没成' || back.状态 === '停了')) say(C.red + '流水线那边没成：' + (back.错误 || back.状态) + C.off);
+  else say(C.dim + '流水线自己会看到这个回复文件。' + C.off);
+  holdOpen(0);
 }
-main().catch(e => fail(e.message));
+
+/* 对话名（11-24）：DeepSeek Harness 默认让模型照第一句话另起一个名，起出来没有「 · 」。这一回不让它起，名字就用话的头几个词——
+   流水线把对话名写在话的头一行。补丁只管这一回（--patch），不动它自己的设置 */
+function namePatch(name, dir = DIR) {
+  const words = String(name || '').trim().split(/\s+/).filter(Boolean).length;
+  if (!words) return '';
+  const bytes = Math.max(80, Buffer.byteLength(String(name), 'utf8') + 8);
+  const file = path.join(dir, '对话名.yml');
+  fs.writeFileSync(file, ['- id: session-title', '  config:', '    fallbackMaxWords: ' + words, '    fallbackMaxBytes: ' + bytes, '    maxTitleBytes: ' + bytes,
+    '- id: session-title-llm', '  disabled: true', ''].join('\n'));
+  return file;
+}
+
+/* 跑一回 DeepSeek Harness 的命令行，一路打在窗口里。回 { final, sid, errs, code }；起不来回 { error } */
+function runOnce(cfg, msg, patch) {
+  return new Promise(resolve => {
+    const args = ['--expose-internals', cfg.cli, '--profile', 'headless', ...(patch ? ['--patch', patch] : []), '--json', '--permission-mode', 'read-only', '--approval-policy', 'never', '-'];
+    let child;
+    try { child = spawn(cfg.exe, args, { cwd: cfg.cwd, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true }); }
+    catch (e) { resolve({ error: e.message }); return; }
+    running = child;
+    child.stdin.on('error', () => {});
+    child.stdin.end(msg);
+    let buf = '', final = null, sid = '', lastThink = false, done = false;
+    const errs = [];
+    child.stdout.on('data', c => {
+      buf += c.toString('utf8');
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!line) continue;
+        let ev;
+        try { ev = JSON.parse(line); } catch (e) { say(line); continue; }
+        if (ev.type === 'session') { sid = ev.sessionId || ''; state({ 会话: sid }); say(C.dim + 'DeepSeek Harness 会话：' + sid + C.off); }
+        else if (ev.type === 'thinking') { if (ev.text && ev.text.trim()) { say(C.dim + '（想）' + short(ev.text, 400) + C.off); lastThink = true; } }
+        else if (ev.type === 'tool_call') say(toolLine(ev));
+        else if (ev.type === 'tool_result') { if (ev.status && ev.status !== 'completed') say(C.yellow + '  （没成：' + short(ev.result, 160) + '）' + C.off); }
+        else if (ev.type === 'text') { if (ev.text) { if (lastThink) say(''); say(ev.text); lastThink = false; } }
+        else if (ev.type === 'status' && ev.phase === 'step_end' && ev.usage) say(C.dim + '（这一步 ' + (ev.usage.totalTokens || 0) + ' 个字元）' + C.off);
+        else if (ev.type === 'final') final = ev;
+      }
+    });
+    child.stderr.on('data', c => { for (const l of c.toString('utf8').split(/\r?\n/)) if (l.trim() && !/crashpad|registration_protocol_win/.test(l)) { errs.push(l.trim()); if (errs.length > 20) errs.shift(); } });
+    child.on('error', e => { if (!done) { done = true; resolve({ error: e.message }); } });
+    child.on('close', code => { if (!done) { done = true; running = null; resolve({ final, sid, errs, code }); } });
+  });
+}
+let running = null;
+if (require.main === module) {
+  process.on('SIGINT', () => { try { if (running) running.kill(); } catch (e) { /* 已经停了 */ } fail('在窗口里按了停'); });
+  main().catch(e => fail(e.message));
+} else module.exports = { namePatch };   // 测试用：只拿起名的补丁
+

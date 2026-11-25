@@ -234,7 +234,7 @@ async function adLeave() {   // 换页前（go）：没存的先存上，存不�
   if (!(await adSave(c.s, c.w, true))) throw new Error('字没存上');
 }
 
-/* ---------- 几样事：写字、交给 AI 改、批准出图、确认、候选、删除 ---------- */
+/* ---------- 几样事：写字、交给 AI 改、在 Codex 里出图、确认、候选、删除 ---------- */
 async function adWrite(s, w, self) {   // 还没有字：让 AI 写（批注框里写的当要求）。self：自己交给 AI
   if (!(await adSave(s, w, true))) return;
   if (w.frame && AD.base) w.refs = headRefs(AD.base.head).map(r => r.file);   // 关键帧重写：参考图照字开头那几行
@@ -252,7 +252,7 @@ async function adConvert(s, w, self) {   // 字和眼下的做法对不上：AI 
   const req = (w.txtOnly ? '把原来的出图提示词改写成文字描写：样子照原来的，只写样子；定妆照、画幅、背景这些出图的话去掉' : '把原来的文字描写改写成出图提示词：样子照原来的，照出图规矩写') + (add ? '。另外：' + add : '');
   if (await askWords(s, [w], req, self)) await pageRepaint();
 }
-async function adDraw(s, w) {   // 批准出图：照现在的字交给 Codex，一次一张；已经有图的，新图先当候选
+async function adDraw(s, w) {   // 在 Codex 里出图：开一个 Codex 新对话，照现在的字出第一张，你在里面聊、说「定稿」就换上；定稿前旧图照用
   if (w.txtOnly || adIsTxt()) { toast('这一份是只用文字时写的文字描写，不能直接出图' + (w.txtOnly ? '' : '：先点「让 ' + chName() + ' 改成出图提示词」'), 'err'); return; }
   const v = adVals();
   if (!w.hasTxt && !v.body) { toast('还没有字：先让 AI 写，或者自己写好点「存」', 'err'); return; }
@@ -262,13 +262,20 @@ async function adDraw(s, w) {   // 批准出图：照现在的字交给 Codex，
   if (!(await adSave(s, w, true))) return;
   if (await askDraw(s, w)) await pageRepaint();
 }
-/* 删掉这张关键帧：和资产页那一格的 × 一个做法（removeAsset）。删完换到下一张，没有就上一张，都没有就关掉 */
+/* 删掉这张图：和资产页那一格的 × 一个做法（removeAsset）。关键帧删完换到下一张，没有就上一张，都没有就关掉；
+   人物、道具、场景删完留在这一样上：字还在，能再出（11-23 他要弹窗里也能删） */
 async function adDelete(s, it, w) {
   const { list, i } = AD.nav || { list: [], i: -1 }, to = list[i + 1] || list[i - 1];
-  const cell = it || { 类别: '关键帧', 名称: w.stem, sub: '', at: w.img, 文件: w.img, own: true };   // 提示词那一步加的、资产格子里没有的
+  const cell = it && it.at === w.img ? it   // 资产格子里没挂着这张的：提示词那一步加的关键帧、只用文字写的场景旁边那张图
+    : { 类别: w.frame ? '关键帧' : w.cat === '场景' ? '场景图' : w.cat + '图', 名称: w.frame ? w.stem : w.name, sub: w.frame ? '' : w.state || '', at: w.img, 文件: w.img, own: true };
   if (AD.dirty && !(await adSave(s, w, true))) return;
-  if (!(await removeAsset(s, cell, true))) return;
-  if (to) { await adOpen(s, to.w); pageNow(); } else await adClose();
+  const r = await removeAsset(s, cell, true);
+  if (!r) return;
+  if (w.frame) { if (to) { await adOpen(s, to.w); pageNow(); } else await adClose(); return; }
+  toast(r === 'del' ? '「' + w.stem + '」这张图移进历史记录了：字还在，能再出' : '「' + cell.名称 + '」不挂这张图了');
+  const x = it ? assetsOf(s).list.find(y => y.类别 === it.类别 && y.名称 === it.名称 && (y.sub || '') === (it.sub || '') && (!it.文字 || y.文字 === it.文字)) : null, nw = x && wordOf(s, x);
+  if (nw && nw.img !== w.img) await adOpen(s, nw);   // 图名和叫法不一样的（书包挂的是 黑色单肩包.png）：换成删了以后的那一格
+  pageNow();
 }
 async function adEditImg(s, w) { if (await askEditImg(s, w)) await pageRepaint(); }
 async function adConfirm(s, it, w, on) {
@@ -311,7 +318,7 @@ async function usedByPrompts(file) {
   } catch (e) { return []; }
 }
 /* 删一张图（资产格子的 ×、弹窗里的「删除」）。几种删法：这一段不用它（人物、道具：这一段不出场，全片表里还在）；只是不引用（图还在原处，以后点「挑现成的图」能再挂回来）；
-   图不要了（移进这个项目的 历史记录，全片各处都不再引用它；想重出：那一格的字还在，点「批字」→「照这个出图」；想要回来，挑图那一栏「删掉的」里放回来） */
+   图不要了（移进这个项目的 历史记录，全片各处都不再引用它；想重出：那一格的字还在，点「批字」→「在 Codex 里出图」；想要回来，挑图那一栏「删掉的」里放回来） */
 async function removeAsset(s, it, stay) {   // stay：在弹窗里删的，删完弹窗自己换到别的，这里不重画。回 'drop'、'unref'、'del'，没删回 false
   const file = it.at, isRow = !!KIND[it.类别], e = isRow ? entryOf(it.类别, it.名称) : null, k = kindOf(it.类别), frame = it.类别 === '关键帧';
   const field = isRow || frame ? '' : it.类别 === '人物图' || it.类别 === '道具图' ? it.类别 : '场景图';   // 不是表里一行的：这一场哪一格记着它
@@ -320,7 +327,7 @@ async function removeAsset(s, it, stay) {   // stay：在弹窗里删的，删�
   const used = await usedByPrompts(file), mineImg = !isRow && segImg(s, file) && !F.doc.场景图.includes(file);   // mineImg：这一段文件夹里的图，只这一场用
   const r = await dialog(close => dlgShell('删掉这张图 · ' + it.名称 + (it.sub ? ' · ' + it.sub : ''), file,
     [canDrop ? h('p', { class: 'fn-note' }, '这一段不用「' + it.名称 + '」：这一段不出场，全片的' + k + '表里还在，图也还挂着。') : null,
-      h('p', { class: 'fn-note' }, mineImg ? '图不要了：移进这个项目的「历史记录」（照原来的文件夹放），这一段不再用它。' : '图不要了：移进这个项目的「历史记录」，全片各处都不再引用它。想重出一张：它的字还在，删完点那一格的「批字」→「照这个出图」；后悔了，在挑图那一栏的「删掉的」里放回来。'),
+      h('p', { class: 'fn-note' }, mineImg ? '图不要了：移进这个项目的「历史记录」（照原来的文件夹放），这一段不再用它。' : '图不要了：移进这个项目的「历史记录」，全片各处都不再引用它。想重出一张：它的字还在，删完点那一格的「批字」→「在 Codex 里出图」；后悔了，在挑图那一栏的「删掉的」里放回来。'),
       canUnref ? h('p', { class: 'fn-note' }, isRow ? '只是不引用：图还留在原处，「' + it.名称 + '」不再挂它（各段都不挂）。以后点「挑现成的图」能再挂回来。' : frame ? '只是这一段不当关键帧：图还留在 资产 / ' + segName(s.段) + ' 里。' : mineImg ? '只是这一段不用：图还留在 资产 / ' + segName(s.段) + ' 里，以后点「＋ 加' + k + '」能再挑回来。' : '只是这一段不用：图还留在原处，全片还引用着，只是这一段不挂它。') : null,
       used.length ? h('p', { class: 'fn-note warn' }, '有提示词挂着这张图：' + used.join('、') + '。移走以后，那边要重新挂图。') : null],
     [h('button', { class: 'btn ghost', 'data-focus': '', onclick: () => close(null) }, '取消'),
@@ -347,6 +354,7 @@ async function removeAsset(s, it, stay) {   // stay：在弹窗里删的，删�
   F.doc.场景图 = F.doc.场景图.filter(f => f !== file);
   for (const x of F.doc.场) { for (const f2 of ['场景图', '人物图', '道具图', '关键帧', '关键帧不用']) x[f2] = arrOf(x[f2]).filter(f => f !== file); SB.unbind(x, file); }
   delete F.doc.可用[file];   // 图不在了，它的「可用」也不留：重出的那一张要重新确认
+  if (isPlainObj(F.doc.rest.照的)) delete F.doc.rest.照的[file];   // 照的哪一句（11-23）也不留
   touch();
   await flush();
   window.UI.dropThumbs();   // 重出的图会回到同一个名字：做好的缩小图不能再用
@@ -410,7 +418,7 @@ async function adScan(s, w) {
 }
 
 /* ---------- 摆出来 ---------- */
-const AD_TRACK = ['AI 写字', '你批字', 'AI 出图', '你看图', '确认可用'], AD_TRACK_TXT = ['写文字描写', '写视频提示词照它写'];   // 只用文字的（11-17）：写好了就算完
+const AD_TRACK = ['AI 写字', '你批字', '在 Codex 里出图', '你看图', '确认可用'], AD_TRACK_TXT = ['写文字描写', '写视频提示词照它写'];   // 只用文字的（11-17）：写好了就算完
 function adTrackEl(w) {   // 五步缩成五个小点，后面写现在是哪一步
   const T = w.txtOnly ? AD_TRACK_TXT : AD_TRACK, at0 = (w.txtOnly ? { none: 0, 'ai-word': 0, txt: 2 } : { none: 0, 'ai-word': 0, word: 1, 'ai-img': 2, cand: 3, img: 3, ok: 5 })[w.step], ai = w.step === 'ai-word' || w.step === 'ai-img', done = at0 >= T.length;
   return h('div', { class: 'adm-trk', title: T.map((t, i) => (i < at0 ? '✓ ' : i === at0 ? '● ' : '　 ') + t).join('\n') },
@@ -425,7 +433,8 @@ function adHeadEls(s, it, w) {
   const sh = w.frame ? adShotOf(s, w) : null;
   return [sh ? adShotTitle(s, w, sh) : h('div', { class: 'ad-title ' + kindCls(w.cat) }, h('b', null, adLabel(w)), h('small', null, where)),
     h('span', { class: 'sp' }),
-    w.frame && w.hasImg ? h('button', { class: 'btn sm ghost', type: 'button', disabled: adBusy(s, w), title: '删掉这张关键帧：只是这一段不用，或者图也不要了（移进历史记录）', onclick: () => adDelete(s, it, w) }, '删除这张') : null,
+    w.hasImg ? h('button', { class: 'btn sm ghost', type: 'button', disabled: adBusy(s, w), title: w.frame ? '删掉这张关键帧：只是这一段不用，或者图也不要了（移进历史记录）'
+      : '删掉这张图：图不要了就移进历史记录（字还在，能再出；后悔了在挑图栏「删掉的」里放回来）' + (it && it.at === w.img ? '，或者只是不挂它' : '') + (adBusy(s, w) ? '。AI 在做这一样，做完才能删' : ''), onclick: () => adDelete(s, it, w) }, '删除这张') : null,
     sh && sh.row ? h('span', { class: 'adm-n', title: '这一段镜头表的第几镜。‹ › 一张一张换，照镜头表排' }, '镜头表第 ' + (sh.T.rows.indexOf(sh.row) + 1) + ' / ' + sh.T.rows.length + ' 镜')
       : list.length > 1 && i >= 0 ? h('span', { class: 'adm-n' }, '第 ' + (i + 1) + ' / ' + list.length + ' ' + u) : null,
     list.length > 1 ? nav('‹', prev, 'adm-prev', '上一' + u, '←') : null,
@@ -490,25 +499,30 @@ function adNowEls(s, it, w, jobs) {
   const txtScene = !!(it && it.文字 && w.hasImg);
   let t = { none: '还没写字（字就是出图提示词）。点「让 ' + chName() + ' 写出图提示词」，AI 读定稿的剧本，写清它要撑住什么戏，再写出图提示词' + (w.geo ? '（场景先写 GEO 底稿）' : '') + '。也可以自己写字，点「存」。',
     'ai-word': 'AI 在写字，写好了自动换上。',
-    word: '字写好了，等你批。看一遍「要撑住」「AI 替你定的」和出图提示词：行就点「批准出图」；不行就写批注，点「交给 AI 改」，或者自己改了点「存」。',
-    'ai-img': 'Codex 在出图，一次一张。出好了 AI 照字核一遍。',
+    word: '字写好了，等你批。看一遍「要撑住」「AI 替你定的」和出图提示词：行就点「在 Codex 里出图」；不行就写批注，点「交给 AI 改」，或者自己改了点「存」。',
+    'ai-img': '在 Codex 里出图：到那个对话里看图，要改就在那里说，满意了说「定稿」，这里自动换上、算确认可用。',
     cand: w.hasImg ? '出了一张新图。和旧图比一比，在图下面挑：「用旧图」还是「用新图」。' : '出了一张新图。能用就点图下面「用新图」，不能用点「不要新图」。',
-    img: '图出好了，等你看。能用就点「确认可用」；要改，点图框出来写批注，再点「照批注改图」，或者改字后点「批准出图」重出。',
-    ok: '这张图确认可用了。要改：改字后点「批准出图」，新图出来和这张并排，你挑用哪张。' }[w.step];
+    img: '图出好了，等你看。能用就点「确认可用」；要改，点图框出来写批注，再点「照批注改图」，或者改字后点「在 Codex 里出图」重出。',
+    ok: '这张图确认可用了。要改：改字后点「在 Codex 里出图」，在 Codex 里定稿前这张照用。' }[w.step];
   if (w.txtOnly) t = { none: '只用文字写、不出图：这一样只要一份文字描写，只写样子，写视频提示词时照它写。点「让 ' + chName() + ' 写文字描写」，AI 读定稿的剧本写；也可以自己写好点「存」。',
     'ai-word': 'AI 在写文字描写，写好了自动换上。', txt: '文字描写写好了，写视频提示词时照它写。要改：自己改了点「存」，或者写批注点「交给 ' + chName() + ' 改」。' }[w.step] || t;
   if (adMismatch(w)) t = w.txtOnly ? '这一份是以前写的出图提示词，这一样现在只用文字写：点「让 ' + chName() + ' 改成文字描写」，AI 照它改成只写样子的一段。' : '这一份是只用文字时写的文字描写，不能直接出图：点「让 ' + chName() + ' 改成出图提示词」，AI 照它改写。';
   if (txtScene && w.step !== 'cand') t = '图出好了：点「用上这张图」，这一段改用图（全片设定里那一句还在）。不满意就照批注改图，或者改字重出。';
+  const old = OldImg.of(w), d = old ? w.follow || w.wordFollow : null;   // 旧了（11-23，资产旧图.js）
+  if (old) t = !w.follow ? OldImg.tag(w) + '：这份字照的是原来那一句（下面并排写着）。出图时 Codex 先照现在的描写改字，告诉你改了哪几句再出；字照样对得上就点「字还能用」。'
+    : d.描写 || d.镜头 ? OldImg.tag(w) + '：这张图照的是原来那一句' + (d.镜头 && !d.描写 ? '，后来用到它的镜头多了' : '') + '（下面并排写着）。点「重画」：开一个 Codex 新对话，先照现在的' + (d.描写 ? '描写' : '镜头') + '改出图提示词，告诉你改了哪几句再出；旧图照样能用就点图下面「旧图还能用」。'
+      : '字改了：出图提示词在这张图出好以后又改过。照新字重出点「重画」；旧图照样能用就点图下面「旧图还能用」。';
   if (w.step === 'img' && checkBad(w.checkImg)) t += 'AI 核图说有问题，看图下面它怎么说。';
   if (w.step === 'ok' && !txtScene && w.cat === '场景' && w.hasGeo) t += '图和 GEO 底稿对不上，点图下面「照图核 GEO」：AI 先判断要不要改，对不上才改。';
   if (w.geoBack) t += 'AI 照图核了 GEO，说要拿回去批图：' + w.geoBack;
-  const hj = jobs.find(j => j.交给 && j.状态 === '在做');   // 在等交给 AI 的回复：给我提示词、Claude 桌面版、DeepSeek 窗口
-  if (hj) t = { self: '等你把任务交给 AI：点下面「交给 AI 的话」，复制，贴进你自己开的对话' + (hj.事 === '出图' || hj.事 === '改图' ? '（出图、改图要贴进 Codex）' : '') + '。它做完，这里自动接着做。',
+  const hj = jobs.find(j => j.交给 && j.状态 === '在做'), cx = !!hj && (hj.事 === '出图' || hj.事 === '改图');   // 在等交给 AI 的回复：给我提示词、Claude 桌面版、DeepSeek 窗口、自动发进去的 Codex 对话
+  if (hj) t = { self: cx ? '没自动发进 Codex：点下面「交给 AI 的话」，复制，贴进 Codex 的新对话发出去。在那个对话里聊，满意了说「定稿」，这里自动换上。' : '等你把任务交给 AI：点下面「交给 AI 的话」，复制，贴进你自己开的对话。它做完，这里自动接着做。',
+    codex: hj.交给.等 === '发送' ? '在往 Codex 里发：开一个新对话，把出图的话发进去。' : '在 Codex 里聊着：点下面「去 Codex 看」切过去。要改就在那个对话里说，满意了说「定稿」，这里自动换上、算确认可用。',
     claude: hj.交给.等 === '发送' ? '在 Claude 桌面版开了一个新对话，任务填好了：到 Claude 窗口里按发送。没看到就点下面「再开一次」。' : 'Claude 在做，在 Claude 窗口里看。它做完，这里自动接着做。',
     deepseek: 'DeepSeek 在它自己的窗口里做，做完这里自动接着做。' }[hj.交给.方式] || t;
-  const bad = jobs.length ? null : adFailed(s, w), codex = jobs.some(j => j.渠道 === 'codex' || j.事 === '出图' || j.事 === '改图');
-  const cls = jobs.length || w.step === 'ai-word' || w.step === 'ai-img' ? 'ai' : (w.step === 'ok' && !txtScene) || (w.step === 'txt' && !adMismatch(w)) ? 'ok' : 'you';
-  return { cls, kids: [adTrackEl(w), h('span', null, t),
+  const bad = jobs.length ? null : adFailed(s, w), codex = jobs.some(j => j.渠道 === 'codex');   // 11-21 以前交给 Codex 做的
+  const cls = jobs.length || w.step === 'ai-word' || w.step === 'ai-img' ? 'ai' : (w.step === 'ok' && !txtScene && !old) || (w.step === 'txt' && !adMismatch(w)) ? 'ok' : 'you';
+  return { cls, kids: [adTrackEl(w), h('span', null, t), old ? OldImg.compare(w) : null,
     ...jobs.map(j => h('div', { class: 'ad-job' }, jobLine(j), h('span', { class: 'fn-note' }, j.标题))),
     codex ? h('span', { class: 'fn-note' }, 'Codex 会开一个看得见的对话，在 Codex 里能看它这会儿在做什么。') : null,
     bad ? h('div', { class: 'ad-job' }, h('span', { class: 'fn-note warn' }, '上一回' + (bad.事 === '出图' || bad.事 === '改图' ? ' Codex ' : ' ' + bad.渠道名 + ' ') + '没做成：' + bad.错误), relDir(bad.记录) ? h('button', { class: 'fl-link', type: 'button', onclick: () => adShowRun(relDir(bad.记录), bad.标题) }, '看过程') : null) : null] };
@@ -520,14 +534,14 @@ function adInfoEls(s, w) {
   const b = AD.base, need = (b && b.need) || w.need, mine = w.rec && Array.isArray(w.rec.替人定的) ? w.rec.替人定的 : [];
   const head = b ? b.head : [], refs = headRefs(head), other = head.filter(l => !/^(用途|要撑住)[：:]/.test(l) && !headRefs([l]).length);
   const refEl = r => {
-    const bm = BMF_RE.test(r.file), ok = bm || markOk(r.file, 0), el = h('button', { class: 'fl-asset ' + (bm ? 'k-zhen' : kindCls(refKind(r.file))), type: 'button', title: r.file + '\n点一下看大图', onclick: () => openImage(r.file) },
-      thumbImg(r.file), h('span', { class: 'nm' }, '图' + r.n + ' ' + (bm ? '白模这一刻' : baseOf(r.file)), h('small', null, ok ? (bm ? '构图、站位照它' : '确认过可用') : '还没确认可用')));
+    const bm = BMF_RE.test(r.file), ok = bm || fileOk(r.file), el = h('button', { class: 'fl-asset ' + (bm ? 'k-zhen' : kindCls(refKind(r.file))), type: 'button', title: r.file + '\n点一下看大图', onclick: () => openImage(r.file) },
+      thumbImg(r.file), h('span', { class: 'nm' }, '图' + r.n + ' ' + (bm ? '白模这一刻' : baseOf(r.file)), h('small', null, ok ? (bm ? '构图、站位照它' : '确认过可用') : markOk(r.file, 0) ? '旧了：' + AssetSrc.tagOf(oldOf(r.file, srcOfFile(r.file))) : '还没确认可用')));
     if (!ok) el.classList.add('wd-bad');
     return el;
   };
   return [need ? adRow('要撑住', '这一段的戏要它做到什么。AI 读定稿的剧本写的，出图、核图都照它', need) : null,
     mine.length ? adRow('AI 替你定的', '剧本里没写、AI 替你拿的主意。不行就写在批注里', h('ul', null, mine.map(x => h('li', null, x)))) : null,
-    refs.length ? adRow('参考图', '出图时一起交给 Codex，样子照它们', h('div', { class: 'ad-refs' }, refs.map(refEl)), refs.some(r => !BMF_RE.test(r.file) && !markOk(r.file, 0))) : null,
+    refs.length ? adRow('参考图', '出图时一起交给 Codex，样子照它们', h('div', { class: 'ad-refs' }, refs.map(refEl)), refs.some(r => !BMF_RE.test(r.file) && !fileOk(r.file))) : null,
     other.length ? adRow('开头另外写的', '', other.join('\n')) : null];
 }
 /* 右边字那一块：框子只做一次（打字时不重做，光标不丢），会变的几样另外换 */
@@ -554,12 +568,13 @@ function adMain(s, it, w) {
   if (adMismatch(w)) return b('conv', '让 ' + chName() + ' 改成' + (w.txtOnly ? '文字描写' : '出图提示词'), () => adConvert(s, w), 'AI 照这一份改写，改之前的那一版收进历史记录；批注框里写的一起交过去');
   if (w.txtOnly) return w.step === 'none' ? (typed('ta') ? b('save', '存', () => adSave(s, w), '存上你写的文字描写') : b('write', '让 ' + chName() + ' 写文字描写', () => adWrite(s, w), 'AI 读定稿的剧本写这一样的文字描写；批注框里写的当要求'))
     : typed('nta') ? b('fix', '交给 ' + chName() + ' 改', () => adAskFix(s, w), '照批注改：只改你说到的地方，改之前的那一版收进历史记录') : null;
+  if (w.follow && OldImg.of(w)) return b('draw', '重画', () => adDraw(s, w), '开一个 Codex 新对话：先照现在的描写、镜头改出图提示词，告诉你改了哪几句，再出图。满意了在那个对话里说「定稿」，定稿前旧图照用');   // 旧了（11-23）
   if (it && it.文字 && w.hasImg && w.step !== 'cand') return b('scene', '用上这张图', () => adUseScene(s, it, w), '这一段改用这张图（全片设定里那一句还在）');
-  if (w.step === 'none') return typed('ta') ? b('draw', '批准出图', () => adDraw(s, w), '字定了：先存上，再交给 Codex 照这份字出图，一次一张')
+  if (w.step === 'none') return typed('ta') ? b('draw', '在 Codex 里出图', () => adDraw(s, w), '字定了：先存上，再开一个 Codex 新对话照这份字出图。在那个对话里聊，满意了说「定稿」')
     : b('write', '让 ' + chName() + ' 写出图提示词', () => adWrite(s, w), 'AI 读定稿的剧本写这一样的出图提示词；批注框里写的当要求');
   if (w.step === 'word') return typed('nta') ? b('fix', '交给 ' + chName() + ' 改', () => adAskFix(s, w), '照批注改：只改你说到的地方，改之前的那一版收进历史记录')
-    : b('draw', '批准出图', () => adDraw(s, w), '字定了：交给 Codex 照这份字出图，一次一张' + (w.hasImg ? '；已经有图，新图先当候选' : ''));
-  if (w.step === 'img') return w.hasImgNote ? b('edit', '照批注改图', () => adEditImg(s, w), 'Codex 以这张为底，只改你在图上批注的地方，改出来的先当候选')
+    : b('draw', '在 Codex 里出图', () => adDraw(s, w), '字定了：开一个 Codex 新对话照这份字出图。在那个对话里聊，满意了说「定稿」' + (w.hasImg ? '；定稿前旧图照用' : ''));
+  if (w.step === 'img') return w.hasImgNote ? b('edit', '照批注改图', () => adEditImg(s, w), '开一个 Codex 新对话：以这张为底，只改你在图上批注的地方。在那个对话里接着聊，满意了说「定稿」就换上')
     : b('confirm', [icon('check'), '确认可用'], () => adConfirm(s, it, w, true), '这张图看过了、能用。确认过的图，别的段不用再确认');
   return null;
 }
@@ -573,7 +588,7 @@ function adPaintActs() {
     skip === 'save' ? null : h('button', { class: 'btn', type: 'button', disabled: busy || !AD.dirty, title: '存上你改的（改之前的那一版收进历史记录）。Ctrl+S 也行', onclick: () => adSave(s, w) }, '存'),
     w.hasTxt ? (skip === 'fix' ? null : h('button', { class: 'btn', type: 'button', disabled: busy, title: '照批注改：只改你说到的地方', onclick: () => adAskFix(s, w) }, '交给 ' + chName() + ' 改'))
       : skip === 'write' ? null : h('button', { class: 'btn', type: 'button', disabled: busy, title: 'AI 读定稿的剧本写这一样的' + noun + '；批注框里写的当要求', onclick: () => adWrite(s, w) }, '让 ' + chName() + ' 写' + noun),
-    skip === 'draw' || noDraw ? null : h('button', { class: 'btn', type: 'button', disabled: busy || !has, title: '字定了：交给 Codex 照这份字出图，一次一张' + (w.hasImg ? '；已经有图，新图先当候选' : ''), onclick: () => adDraw(s, w) }, '批准出图')].filter(Boolean));
+    skip === 'draw' || noDraw ? null : h('button', { class: 'btn', type: 'button', disabled: busy || !has, title: '字定了：开一个 Codex 新对话照这份字出图。在那个对话里聊，满意了说「定稿」' + (w.hasImg ? '；定稿前旧图照用' : ''), onclick: () => adDraw(s, w) }, '在 Codex 里出图')].filter(Boolean));
   /* 底边：左边存没存、键盘；右边下一样要你看的、这一步要按的那一个 */
   const { list, todo } = AD.nav, u = adUnit(w);
   const st = busy ? ['AI 在做这一样，做完这里自动换', ''] : AD.saveErr ? ['没存上：' + AD.saveErr, 'bad'] : AD.dirty ? ['改了还没存：关掉、换一' + u + '时自动存', 'dirty'] : AD.base ? ['都存上了', ''] : ['在读…', ''];
@@ -595,7 +610,7 @@ function adPaintWord(s, it, w) {
     h('button', { class: 'btn sm', type: 'button', onclick: () => { AD.dirty = false; AD.outside = false; adReload(w); } }, '换成新的（丢掉我没存的）'),
     h('button', { class: 'btn sm ghost', type: 'button', onclick: () => { AD.outside = false; AD.mt = adStamp(w); adRepaint(); } }, '留着我的'))] : []));
   e.ta.placeholder = w.txtOnly ? '文字描写：只写样子（人物的年纪、长相、穿着；道具的样子、大小；场景有什么、光从哪来），不写画幅、背景。' : '出图提示词：画面里有什么、什么样、光从哪来。';
-  e.labTa.replaceChildren(h('b', null, w.txtOnly ? '文字描写' : '出图提示词'), h('span', null, w.txtOnly && w.hasTxt ? '只写样子，写视频提示词时照它写进【主体与关系】' : w.txtOnly && b ? '还没写：点「让 ' + chName() + ' 写文字描写」，或者自己写了点「存」' : adMismatch(w) ? '这一份还是文字描写：先让 AI 改成出图提示词' : w.hasTxt ? '批准出图时一字不改交给 Codex' : b ? '还没写：点「让 ' + chName() + ' 写字」，或者自己写了点「存」' : '在读…'));
+  e.labTa.replaceChildren(h('b', null, w.txtOnly ? '文字描写' : '出图提示词'), h('span', null, w.txtOnly && w.hasTxt ? '只写样子，写视频提示词时照它写进【主体与关系】' : w.txtOnly && b ? '还没写：点「让 ' + chName() + ' 写文字描写」，或者自己写了点「存」' : adMismatch(w) ? '这一份还是文字描写：先让 AI 改成出图提示词' : w.hasTxt ? '出图时一字不改发给 Codex' : b ? '还没写：点「让 ' + chName() + ' 写字」，或者自己写了点「存」' : '在读…'));
   e.labNote.replaceChildren(h('b', null, w.hasTxt ? '批注' : '给 AI 的要求'), h('span', null, w.hasTxt ? '哪里不对写这里，点「交给 ' + chName() + ' 改」：只改你说到的地方，改之前的那一版收进历史记录' : '可以不写，AI 照定稿的剧本写'));
   e.nta.placeholder = w.txtOnly ? (w.hasTxt ? '比如：胡子再白一点；衣服打满补丁' : '比如：七十来岁，精瘦，白发蓬乱') : w.hasTxt ? '比如：衣服换成旧的蓝色工装；桌上再乱一点' : '比如：四十岁，瘦，熬夜熬出来的黑眼圈';
   const ro = !b || adBusy(s, w);
@@ -620,19 +635,20 @@ function adImgEls(s, it, w, skip) {
     if (w.checkCand) out.push(note('AI 核图（新图）', w.checkCand, checkBad(w.checkCand)));
     out.push(note(users.length > 1 ? '共用' : '挑一张', users.length > 1 ? users.map(x => '第' + x + '段').join('、') + '都在用旧图：点「用新图」，几段一起换，用到它的提示词、样片标「待核对」' : old ? '两张挑一张用，没挑中的收进历史记录' : '不要的话，新图收进历史记录', users.length > 1));
   } else if (w.hasImg) {
-    const ok = imgOk(it, w), txtScene = !!(it && it.文字);
-    out.push(fig(w.img, (ok ? '确认过可用' : '还没确认') + ' · 点图看大图、写批注', shellActs(s, it, w)));
+    const ok = imgOk(it, w), txtScene = !!(it && it.文字), old = !!w.follow && OldImg.of(w);   // 旧了（11-23）
+    out.push(fig(w.img, (old ? OldImg.tag(w) : ok ? '确认过可用' : '还没确认') + ' · 点图看大图、写批注', shellActs(s, it, w)));
     if (w.checkImg) out.push(note('AI 核图', w.checkImg, checkBad(w.checkImg)));
     if (w.geoNote) out.push(note('照图核 GEO', w.geoNote + (w.geoBack ? '。要拿回去批图：' + w.geoBack : ''), !!w.geoBack));
     if (w.hasImgNote) out.push(note('图上的批注', '写好了，还没交给 Codex 照着改', true));
     out.push(h('div', { class: 'ad-acts' }, ...[
-      txtScene && skip !== 'scene' ? h('button', { class: 'btn', type: 'button', onclick: () => adUseScene(s, it, w) }, '用上这张图') : null,
-      skip === 'edit' ? null : h('button', { class: 'btn', type: 'button', disabled: busy, title: '先点开图、框出来写好批注，再点这里：Codex 以这张为底只改你说到的地方，改出来的先当候选', onclick: () => adEditImg(s, w) }, '照批注改图'),
-      txtScene ? null : ok ? h('button', { class: 'btn ghost', type: 'button', title: '确认的时间：' + (F.doc.可用[w.img] || '') + '。点一下取消', onclick: () => adConfirm(s, it, w, false) }, icon('check'), '确认过可用')
+      txtScene && skip !== 'scene' && !old ? h('button', { class: 'btn', type: 'button', onclick: () => adUseScene(s, it, w) }, '用上这张图') : null,
+      old ? h('button', { class: 'btn', type: 'button', disabled: busy, title: '这张图照现在的' + (w.follow.描写 ? '描写' : w.follow.镜头 ? '镜头' : '字') + '也能用：算确认可用，不再标出来' + (txtScene ? '；这一段改用这张图' : ''), onclick: async () => { OldImg.keep(s, it, w); await flush(); pageNow(); } }, '旧图还能用') : null,
+      skip === 'edit' || old && !w.hasImgNote ? null : h('button', { class: 'btn', type: 'button', disabled: busy, title: '先点开图、框出来写好批注，再点这里：开一个 Codex 新对话，以这张为底只改你说到的地方；在那个对话里接着聊，满意了说「定稿」就换上', onclick: () => adEditImg(s, w) }, '照批注改图'),
+      txtScene || old ? null : ok ? h('button', { class: 'btn ghost', type: 'button', title: '确认的时间：' + (F.doc.可用[w.img] || '') + '。点一下取消', onclick: () => adConfirm(s, it, w, false) }, icon('check'), '确认过可用')
         : skip === 'confirm' ? null : h('button', { class: 'btn', type: 'button', disabled: busy, title: '这张图看过了、能用。确认过的图，别的段不用再确认', onclick: () => adConfirm(s, it, w, true) }, icon('check'), '确认可用'),
       ok && !txtScene && w.cat === '场景' && w.hasGeo ? h('button', { class: 'btn', type: 'button', disabled: busy, title: '图你满意了：让 AI 先判断 GEO 底稿和图对不对得上，对不上才照图改（改之前的那一版收进历史记录）。字框里改了没存的，先存上再核', onclick: () => adGeoCheck(s, w) }, '照图核 GEO') : null].filter(Boolean)));
   } else {
-    out.push(h('div', { class: 'ad-ph' }, w.drawing ? [h('i', { class: 'wt-ring' }), h('span', { class: 'wt-t' }, 'Codex 在出图，出好了在这里')] : adIsTxt() ? '还没出图：这一份还是文字描写，先让 AI 改成出图提示词' : w.hasTxt || w.step === 'word' ? '还没出图：字批好了点「批准出图」，Codex 一次出一张' : '还没出图：先有字，你批过点「批准出图」'));
+    out.push(h('div', { class: 'ad-ph' }, w.drawing ? [h('i', { class: 'wt-ring' }), h('span', { class: 'wt-t' }, '在 Codex 里出图：满意了在那个对话里说「定稿」，图换到这里')] : adIsTxt() ? '还没出图：这一份还是文字描写，先让 AI 改成出图提示词' : w.hasTxt || w.step === 'word' ? '还没出图：字批好了点「在 Codex 里出图」' : '还没出图：先有字，你批过点「在 Codex 里出图」'));
     if (it && KIND[it.类别] && it.own && !w.hasTxt && !w.writing && typeof pickFor === 'function') out.push(h('p', { class: 'fn-note' }, '已经有现成的图？', h('button', { class: 'fl-link', type: 'button', title: '关掉弹窗，在右边的挑图栏里挑', onclick: () => adPick(s, it) }, '挑现成的图')));
   }
   return out;
@@ -684,7 +700,7 @@ function adRepaint() {
   u.now.replaceChildren(...now.kids.filter(Boolean));
   adPaintWord(s, it, w);   // 字，连底边（adPaintActs）
   const main = adMain(s, it, w), skip = main ? main.key : '';
-  const isig = [skip, w.step, !!w.txtOnly, adIsTxt(), w.hasImg, w.hasCand, w.checkImg, w.checkCand, w.geoNote, w.geoBack, w.hasImgNote, imgOk(it, w), adBusy(s, w), pt, F.doc.可用[w.img] || ''].join('|');
+  const isig = [skip, w.step, !!w.txtOnly, adIsTxt(), w.hasImg, w.hasCand, w.checkImg, w.checkCand, w.geoNote, w.geoBack, w.hasImgNote, imgOk(it, w), adBusy(s, w), pt, F.doc.可用[w.img] || '', OldImg.of(w) ? OldImg.tag(w) : ''].join('|');
   if (isig !== AD.imgSig) { AD.imgSig = isig; u.img.replaceChildren(...adImgEls(s, it, w, skip).filter(Boolean)); }
   const lsig = JSON.stringify([w.rec && w.rec.过程, AD.scan, AD.hist && [AD.hist.txt, AD.hist.geo]]);
   if (lsig !== AD.logSig) {

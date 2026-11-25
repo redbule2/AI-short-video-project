@@ -71,7 +71,7 @@ const CH = {
   now: () => { const v = readLS(CH_KEY); return CH.list.some(c => c.id === v) ? v : (CH.list[0] || { id: 'claude' }).id; },
   info: () => CH.list.find(c => c.id === CH.now()) || null,
   name: () => CH.now() === CH.SELF ? '你自己的 AI' : (CH.info() || { 名: 'AI' }).名,   // 按钮上写「交给 X 改」：选了给我提示词就是你自己的 AI
-  hand: id => (CH.list.find(c => c.id === id) || {}).hand || '',   // self 给我提示词 / claude Claude 桌面版 / deepseek DeepSeek 窗口；空＝在后台调
+  hand: id => (CH.list.find(c => c.id === id) || {}).hand || '',   // self 给我提示词 / claude Claude 桌面版 / deepseek DeepSeek 窗口 / doubao 豆包工作（你贴）；空＝在后台调
   opt: k => { const c = CH.info(), v = c ? readLS(OPT_KEY[k] + c.id) : ''; return c && (c[k] || []).some(d => d.id === v) ? v : ''; },   // k：'模型' 或 '深度'；没选过、这个 AI 不认就是空（照默认）
   optName: k => { const c = CH.info(), v = CH.opt(k); return v ? c[k].find(d => d.id === v).名 : ''; },
   set: id => store(CH_KEY, id),
@@ -80,7 +80,7 @@ const CH = {
   fill: b => { if (b.渠道 === CH.now()) for (const k of ['深度', '模型']) if (b[k] === undefined && CH.opt(k)) b[k] = CH.opt(k); return b; },
   say: () => CH.now() === CH.SELF ? '以后不调 AI：点了先给你要交代的话，贴进你自己开的对话'
     : '以后交给 ' + CH.name() + (CH.optName('模型') ? '（' + CH.optName('模型') + '）' : '') + (CH.optName('深度') ? '，推理' + CH.optName('深度') : '')
-      + ({ claude: '：在 Claude 桌面版开新对话，你按发送', deepseek: '：在 DeepSeek Harness 的窗口里做' }[CH.hand(CH.now())] || ''),
+      + ({ claude: '：在 Claude 桌面版开新对话，你按发送', deepseek: '：在 DeepSeek Harness 的窗口里做', doubao: '：叫出豆包工作、话复制好，你点「新工作任务」，按 Ctrl+V、回车' }[CH.hand(CH.now())] || { codex: '：在 Codex 里开新对话' }[CH.now()] || ''),
 };
 
 /* ---------- 项目 ---------- */

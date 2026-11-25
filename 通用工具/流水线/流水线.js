@@ -291,6 +291,7 @@ function markBase() {
   if (!F.doc) return;
   for (const K of LISTS) for (const e of F.doc[K.key]) { F.base.set(K.key + '/' + e.名, rowSig(e)); F.base.set(K.key + '/' + e.名 + '/描写', e.描写.trim()); }
   for (const s of F.doc.场) F.base.set('场/' + s.段, castSig(s));
+  for (const l of sceneLines()) F.base.set('景/' + (sceneStem(l) || l), l);
 }
 function stampChanges() {
   if (!F.base) return markBase();
@@ -307,6 +308,11 @@ function stampChanges() {
     const k = '场/' + s.段, sig = castSig(s), was = F.base.get(k);
     if (was !== undefined && was !== sig) s.出场改 = now;
     F.base.set(k, sig);
+  }
+  for (const l of sceneLines()) {   // 全片场景里哪一处的那一句改了（11-23，记在「场景改」：地方名 → 时间）：用到它的提示词标「资产改了」
+    const n = sceneStem(l) || l, k = '景/' + n, was = F.base.get(k);
+    if (was !== undefined && was !== l) (isPlainObj(F.doc.rest.场景改) ? F.doc.rest.场景改 : (F.doc.rest.场景改 = {}))[n] = now;
+    F.base.set(k, l);
   }
 }
 /* 两个页面同时开着同一个项目（右边窗格一个、Chrome 里一个）：后存的那一页不能拿自己手里旧的整份去盖。
@@ -524,6 +530,18 @@ async function loadSides() {
   const isig = [...itime].map(([k, v]) => k + '@' + v).sort().join('|');
   if (isig !== F.imgSig) { const first = F.imgSig === undefined; F.imgSig = isig; F.imgTime = itime; if (!first) { window.UI.dropThumbs(); for (const s of F.doc.场) changed.add(s.段); changed.add('*'); } }
   if ([...gone].sort().join('|') !== [...F.gone].sort().join('|')) { F.gone = gone; for (const s of F.doc.场) changed.add(s.段); changed.add('*'); }
+  /* 项目里本来就有的图（2026-11-25 他要，公用/资产认图.js）：人物、道具表里没图的行、只用文字写的场景，文件夹里有同名的图就替你挂上、算确认可用。
+     时间记图文件自己的（那一行的描写后来改过，照改的时间），不记现在，「改」「出场改」也照它记：早就有的图认上以后，后来写的提示词不标「资产改了」。
+     放在下面「AI 把图出好了」前面：名字一样的先照这里认 */
+  if (typeof AssetMatch === 'object' && typeof oldOf === 'function') {
+    const mt = f => (F.pool.find(p => p.文件 === f) || {}).mtime || 0, later = (a, t) => timeOf(a) < timeOf(t) ? t : a;
+    const seen = f => { if (F.imgTime && mt(f)) F.imgTime.set(f.toLowerCase(), mt(f)); };   // 新挂上的图是什么时候的：「可用」要拿它比
+    const got = AssetMatch.apply(F.doc, F.pool, { gone, old: (f, k) => !!oldOf(f, k), note: (f, k) => noteSrc(f, k),
+      when: (f, e) => { const t = Math.max(mt(f), e ? timeOf(e.描写改) : 0); return nowText(t ? new Date(t) : new Date()); },
+      row: (k, e, t) => { e.改 = later(e.改, t); if (F.base) F.base.set(k + '/' + e.名, rowSig(e)); e.资产.forEach(seen); },
+      scene: (s, line, f, t) => { useSceneImg(s, line, f); s.出场改 = later(s.出场改, t); if (F.base) F.base.set('场/' + s.段, castSig(s)); seen(f); } });
+    if (got.length) { linked = true; toast(AssetMatch.say(got)); }
+  }
   // AI 补的描写、照 GEO 写的场景段
   if ((await ls('定稿的剧本')).some(e => e.kind === 'file' && e.name === AI_FILE)) {
     const p = at([name, '定稿的剧本', AI_FILE]), st = await FS.stat(p);
@@ -746,8 +764,9 @@ const openImage = (file, extra) => openShell(at([F.name, ...file.split('/')]), b
    页头不盖（2026-11-15 他要的：写提示词时也得看得见「AI 用」选的是谁、能换）：从页头下面盖起（wf-write）；
    写稿页交 AI 的活现读页头选的 AI、模型、推理（同一份本机记录）。点页头去别的页、换项目，也先把写稿页存上（SHELL.leave，go、pickProject 里调）。
    hand：你来写的稿（11-19 又能写了），顶上写「接着写」，提醒写好事件脚本点「交给 AI 写完」（11-21）。
-   fork：出过片的那一版点「另存成改N」（11-23 晚）：给下一版的名字，写稿页一打开就照它接着改（网址带 fork=1，公用/写稿出过片.js），改了提示词或素材才存成这一版 */
-function openWrite(seg, name, hand, fork) {
+   fork：出过片的那一版点「另存成改N」（11-23 晚）：给下一版的名字，写稿页一打开就照它接着改（网址带 fork=1，公用/写稿出过片.js），改了提示词或素材才存成这一版。
+   look：出过片的那一版点「进去看」（11-24 他定：出过片的也能进写稿页，只是不能改）：写稿页照常锁着，顶上写「只能看」 */
+function openWrite(seg, name, hand, fork, look) {
   closePop(); hideHov();
   if (SHELL) SHELL.remove();
   const frame = h('iframe', { class: 'wf-shell-frame', title: '写提示词', src: encodeURI('/通用工具/项目管理_写稿试用.html') + '#open=' + [F.name, '提示词', segName(seg), name].map(encodeURIComponent).join('/') + (fork ? '&fork=1' : '') });
@@ -767,8 +786,8 @@ function openWrite(seg, name, hand, fork) {
   };
   SHELL = h('div', { class: 'wf-shell wf-write' },
     h('div', { class: 'wf-shell-h' }, h('button', { class: 'btn sm ink', type: 'button', onclick: close }, '← 回到流水线'),
-      h('span', { class: 'wf-shell-t' }, '第' + seg + '段 · ' + (name === C.PF_FILE ? '自由稿' : vpLabel(fork || name)) + (fork ? ' · 另存' : hand ? ' · 接着写' : ' · 进去改')), h('span', { class: 'sp' }),
-      h('span', { class: 'fn-note' }, fork ? '「' + vpLabel(name) + '」出过片，原稿不动。照它改，改了提示词或素材才存成「' + vpLabel(fork) + '」；一处没改就不另存，回来也不会多出一版。' : name === C.PF_FILE ?'这一段的戏你来写：谁在哪、做什么、说什么，想好的机位、声音也写上。写好点「提炼分镜」，AI 照它分镜头、列出场的人物场景道具。' : hand ? '你来写的稿：在自由模式写好事件脚本，点「交给 AI 写完」，AI 拆成分镜，生成目标、素材这几块一起写好。' : '这一条是 AI 写的，在这里自己改。改过以后，AI 估的每镜秒数可能不准，出片时会提醒。')),
+      h('span', { class: 'wf-shell-t' }, '第' + seg + '段 · ' + (name === C.PF_FILE ? '自由稿' : vpLabel(fork || name)) + (fork ? ' · 另存' : look ? ' · 只能看' : hand ? ' · 接着写' : ' · 进去改')), h('span', { class: 'sp' }),
+      h('span', { class: 'fn-note' }, fork ? '「' + vpLabel(name) + '」出过片，原稿不动。照它改，改了提示词或素材才存成「' + vpLabel(fork) + '」；一处没改就不另存，回来也不会多出一版。' : look ? '「' + vpLabel(name) + '」出过片，原稿锁着，只能看。要改点下面的「另存成…」，改了提示词或素材才存成新的一版。' : name === C.PF_FILE ?'这一段的戏你来写：谁在哪、做什么、说什么，想好的机位、声音也写上。写好点「提炼分镜」，AI 照它分镜头、列出场的人物场景道具。' : hand ? '你来写的稿：在自由模式写好事件脚本，点「交给 AI 写完」，AI 拆成分镜，生成目标、素材这几块一起写好。' : '这一条是 AI 写的，在这里自己改。改过以后，AI 估的每镜秒数可能不准，出片时会提醒。')),
     frame);
   SHELL.leave = keep;
   document.body.append(SHELL); document.body.classList.add('wf-covered');
@@ -776,7 +795,7 @@ function openWrite(seg, name, hand, fork) {
 /* 盖上来的写稿页换了一份稿（加减镜头改了名、出过片另存成了下一版）：顶上那一行跟着换名字。写稿页（iframe）调 parent.retitleWrite */
 function retitleWrite(from, to) {
   const t = document.querySelector('.wf-write .wf-shell-t');
-  if (t && from && to) t.textContent = t.textContent.split(vpLabel(from)).join(vpLabel(to));
+  if (t && from && to) t.textContent = t.textContent.split(vpLabel(from)).join(vpLabel(to)).replace(/ · 只能看$/, ' · 另存');   // 进去看的那一版另存成了新的一版：不再只能看
 }
 /* 看这一段现有的剧本、镜头表（整页盖上来看，能写批注） */
 function seeOld(seg, kind) {
@@ -809,11 +828,13 @@ async function startJob(body, quiet) {
     const b = CH.fill({ 项目: F.name, 渠道: chNow(), ...body });   // 模型、推理深度只说「AI 用」选的那一个（出片这类指定了 Codex 的不带）
     const j = await (await LINK.req('POST', '/api/job', C.encodeText(JSON.stringify(b)))).json();
     AI.jobs = AI.jobs.filter(x => x.id !== j.id).concat(j);
-    const hand = j.渠道 === b.渠道 && !j.本机 ? handOf(j.渠道) : '';   // 同一件事已经在做的，服务给的是原来那个任务；本机的活（排任务书、出片）不经 AI
-    if (hand === 'self' && window.HandAI) HandAI.wait(j, () => loadJobs());   // 给我提示词：话备好就弹出来给你复制
+    const ai = j.渠道 === b.渠道 && !j.本机, hand = ai ? handOf(j.渠道) : '';   // 同一件事已经在做的，服务给的是原来那个任务；本机的活（排任务书、出片）不经 AI
+    if (ai && window.HandAI) HandAI.wait(j, () => loadJobs());   // 给我提示词：话备好就弹出来给你复制；选的 AI 开不起来、服务改成给我提示词的也弹（11-24）
     if (!quiet) toast(hand === 'self' ? '要交代的话备好就弹出来：复制，贴进你自己开的对话。它做完这里自动出现'
       : hand === 'claude' ? '在 Claude 桌面版开了一个新对话，任务填好了：到 Claude 窗口里按发送。做完这里自动出现'
       : hand === 'deepseek' ? '交给 DeepSeek 了：它在自己的窗口里做，做完这里自动出现'
+      : hand === 'doubao' ? '交给豆包工作：话备好就复制好、把它叫到前面，你点「新工作任务」，按 Ctrl+V、回车。做完这里自动出现'
+      : ai && j.渠道 === 'codex' ? '在 Codex 里开一个新对话交给它，做完这里自动出现'
       : j.本机 ? '流水线在做了，做完这里自动出现' : '交给 ' + j.渠道名 + ' 了。做完这里自动出现');
     return j;
   } catch (e) { toast('没交上：' + e.message, 'err'); return null; }
@@ -880,7 +901,9 @@ function assetEdits(s) {
   const rows = LISTS.flatMap(K => s[K.key].map(n => { const e = entryOf(K.key, n); return e ? { 类别: K.key, 名称: n, 改: timeOf(e.改), 描写改: timeOf(e.描写改), 描写: e.描写 } : null; }));
   const cast = s.出场改 ? [{ 类别: '', 名称: '', 改了: '出场', 时间: timeOf(s.出场改) }] : [];
   if (typeof AssetEdit !== 'object') return [...rows.filter(Boolean).map(r => ({ 类别: r.类别, 名称: r.名称, 改了: '图或音色', 时间: r.改 })), ...cast];   // 没引 公用/资产改过.js 的页面：照以前只看那一行和换出场的
-  return [...AssetEdit.rowEdits(rows), ...cast, ...AssetEdit.editsOf(assetsOf(s).list, it => wordOf(s, it), fileTimeOf)];
+  const sc = isPlainObj(F.doc.rest.场景改) ? F.doc.rest.场景改 : {};   // 全片场景里那一句改过（11-23）：和人物、道具的描写一样算
+  const scRows = uniq([...s.场景文字.map(sceneStem), ...s.场景图.map(baseOf)]).filter(n => sc[n]).map(n => ({ 类别: '场景', 名称: n, 改: 0, 描写改: timeOf(sc[n]), 描写: sceneLines().find(l => sceneStem(l) === n) || '' }));
+  return [...AssetEdit.rowEdits([...rows, ...scRows]), ...cast, ...AssetEdit.editsOf(assetsOf(s).list, it => wordOf(s, it), fileTimeOf)];
 }
 /* 这条提示词什么时候写好的，你点过「沿用」就从那时算；不知道（老版本的服务）给 0 */
 function promptSince(s, name) {
@@ -897,13 +920,12 @@ function shotRecOf(seg, pname, t) {
   const r = F.shotLog.get(seg), b = vpBase(pname), xs = r ? r.记录.map(x => ({ ...x, 提示词: nowName(seg, String(x.提示词 || '')) })).filter(x => vpBase(x.提示词) === b && timeOf(x.时间) <= t + 999) : [];   // 改过名的：记录里的旧名字换成现在的
   return xs.length ? xs[xs.length - 1] : null;
 }
-/* ---------- 影响清单（2026-11-14 文生资产流程图「中途改剧本」）：剧本重新定稿以后，AI 对一遍新旧剧本，列出哪些资产、提示词要再看、为什么。
-   列上的标出来，没列上的照旧（不用你一样一样再看）；也可以点「全部重看」，照老办法这一场的图全都再核一遍。
-   清单在 定稿的剧本/第N段/第N段_影响清单.json（AI 写，页面只读）；看过了的记在这一场的「沿用」里（'影响/类别/名称'） ---------- */
+/* ---------- 影响清单（2026-11-14 文生资产流程图「中途改剧本」）：剧本重新定稿以后，AI 对一遍新旧剧本，列出哪几条提示词要再看、为什么。
+   列上的标出来，没列上的照旧（不用你一条一条再看）。清单在 定稿的剧本/第N段/第N段_影响清单.json（AI 写，页面只读）。
+   资产 11-23 起不归它管：每张图记下照的哪一句描写，描写、镜头变了自己标出来（资产旧图.js） ---------- */
 function normImpact(j) {
   if (!j || typeof j !== 'object') return null;
   return { 时间: str(j.时间), 上回: str(j.上回), 总: str(j.总).trim(),
-    资产: (Array.isArray(j.资产) ? j.资产 : []).filter(x => x && str(x.名称).trim()).map(x => ({ 类别: str(x.类别).trim(), 名称: str(x.名称).trim(), 影响: str(x.影响).trim(), 为什么: str(x.为什么).trim() })),
     提示词: (Array.isArray(j.提示词) ? j.提示词 : []).filter(x => x && str(x.文件).trim()).map(x => ({ 文件: str(x.文件).trim(), 为什么: str(x.为什么).trim() })) };
 }
 /* 眼下算数的影响清单：这一回定稿以后列的；点过「全部重看」就不算 */
@@ -911,22 +933,10 @@ function impactOf(s) {
   const v = F.impact.get(s.段);
   return !v || !s.剧本定稿 || timeOf(v.时间) + 999 < timeOf(s.剧本定稿) || s.影响全看 === v.时间 ? null : v;
 }
-const impactKey = x => '影响/' + kindOf(x.类别) + '/' + x.名称;
 const impactPrompt = (s, name) => { const v = impactOf(s); return v ? v.提示词.find(x => vpBase(nowName(s.段, x.文件)) === vpBase(name)) || null : null; };   // 改过几版的：清单上写哪一版都算这一条
-/* 清单上列的资产，还没处理的。处理了：要改的那张图后来又确认过；要加的这一场选上了；不用了的这一场去掉了；或者你点了「看过了」 */
-function impactTodo(s, v) {
-  v = v || impactOf(s);
-  if (!v) return [];
-  const t = timeOf(v.时间), list = assetsOf(s).list;
-  const mine = x => list.filter(it => kindOf(it.类别) === kindOf(x.类别) && (it.名称 === x.名称 || (!!it.文字 && sceneStem(it.文字) === x.名称)));
-  return v.资产.filter(x => {
-    if (timeOf(keptOf(s)[impactKey(x)]) + 999 >= t) return false;
-    const m = mine(x);
-    return x.影响 === '要加' ? !m.length : x.影响 === '不用了' ? m.length > 0 : !m.some(it => it.at && timeOf(F.doc.可用[it.at]) > t + 999);
-  });
-}
 /* ---------- 一张图「可用」：你看过这张图、能用。记在全片（流水线.json 的「可用」：图 → 时间），所以确认过的图，别的场不用再确认。
-   这张图后来重出过（文件比确认的时间新），或者它那一行的描写改过，就不算数了，要再确认一次 ---------- */
+   这张图后来重出过（文件比确认的时间新），或者它那一行的描写改过，就不算数了，要再确认一次。
+   照的那一句描写变了、场景多了镜头、图出好以后字又改过（11-23，资产旧图.js 的 oldOf）：旧了，也不算数 ---------- */
 const imgTime = file => (F.imgTime && F.imgTime.get(file.toLowerCase())) || 0;   // 老版本的服务不给文件时间：当它没变过
 function markOk(file, since) {
   const t = timeOf(F.doc.可用[file]);
@@ -943,29 +953,25 @@ function setMark(file, on, since) {
 }
 /* 一格图（assetsOf 给的那种）：它所属的那一行描写最后是什么时候改的；这张图现在算不算确认过 */
 const sinceOf = it => KIND[it.类别] && it.own ? timeOf((entryOf(it.类别, it.名称) || {}).描写改) : 0;
-const okOf = it => !!it.at && markOk(it.at, sinceOf(it));
+const okOf = it => !!it.at && markOk(it.at, sinceOf(it)) && !oldOf(it.at, srcOfIt(it));
 /* 这一场的图最后一次确认是什么时候：你点「还能用，确认」的时间，和各张图确认的时间里最晚的 */
 function assetCheckTime(s) {
   let t = timeOf(s.资产确认);
   for (const it of assetsOf(s).list) if (it.at && it.类别 !== '关键帧') t = Math.max(t, timeOf(F.doc.可用[it.at]));   // 关键帧只管挂了它的那一条，确认它不让这一场所有提示词都待核对
   return t;
 }
-/* 工序三 资产：剧本定稿以后才开；这一场要的图都有了、每一张你都确认过可用，就算完（不用另外再点）。剧本重新定过稿，要再看一遍（待核对） */
+/* 工序三 资产：剧本定稿以后才开；这一场要的图都有了、每一张你都确认过可用，就算完（不用另外再点）。
+   剧本重新定过稿不再整段标待核对（11-23）：哪张图照的描写、镜头变了，那一张自己不算确认（okOf） */
 function assetState(s) {
   const sc = scriptState(s);
   if (sc.st !== 'final') return { st: 'lock', tx: sc.pf ? (sc.again && hasParas(s) ? '分镜核对后' : '写好自由稿后') : '剧本定稿后' };   // 先写提示词的段（11-21）：分镜定下来就能出
   if (!s.定稿) return { st: 'lock', tx: sc.pf ? '分镜定下来后' : '提炼定了后' };   // 出场的人物、道具是剧本定稿以后提炼的（11-16）
-  if (jobLive(jobOf('出图', s.段))) return { st: 'ai', tx: 'AI 在出图' };
+  if (jobLive(jobOf('出图', s.段))) return { st: 'ai', tx: '在 Codex 里出图' };
   if (jobLive(jobOf('写字', s.段))) return { st: 'ai', tx: 'AI 在写字' };
-  if (jobLive(jobOf('影响清单', s.段))) return { st: 'ai', tx: 'AI 在对剧本' };
   const list = assetsOf(s).list.filter(x => x.类别 !== '关键帧'), has = list.filter(x => x.at), lack = list.filter(lacksImg).length, ok = has.filter(okOf).length;   // 只用文字写的场景不算缺；关键帧在提示词那一步做、在那一步确认，不算这一步的（11-14 流程图丙）
   if (!list.length) return { st: 'you', tx: '没选出场的' };   // 光有关键帧（文件夹里自动列上的）不算选了出场的
   if (lack) return { st: 'you', tx: '缺 ' + lack + ' 张', ok, n: has.length };
   if (ok < has.length) return { st: 'you', tx: '确认 ' + ok + '/' + has.length, ok, n: has.length };
-  const again = !!s.头回定稿 && timeOf(s.头回定稿) + 999 < timeOf(s.剧本定稿);   // 头回定稿：剧本头一回定稿的时间（剧本页点定稿时记的）
-  const im = again ? impactOf(s) : null, todo = im ? impactTodo(s, im) : [];   // 有影响清单：只看列上的
-  if (todo.length) return { st: 'you', tx: '待核对', why: '剧本改了，AI 列了 ' + todo.length + ' 样要再看', impact: todo, ok, n: has.length };
-  if (again && !im && assetCheckTime(s) + 999 < timeOf(s.剧本定稿)) return { st: 'you', tx: '待核对', why: sc.pf ? '自由稿改过了' : '剧本重新定过稿了', ok, n: has.length };
   if (has.length && assetCheckTime(s) + 999 < styleChangedAt(s)) return { st: 'you', tx: '待核对', why: '拍摄风格换过了', ok, n: has.length };   // 图是照原来的风格出的
   return { st: 'ok', tx: '确认了', ok, n: has.length };
 }
@@ -1566,8 +1572,9 @@ function assetChip(it, opener) {   // opener：点开这一格时另有做法（
 /* ---------- 文生资产（2026-11-14 他定的：字先定，图后出。讨论记录 通用工具/流水线/文生资产_讨论.md，流程图 文生资产_流程图.html）----------
    剧本定稿以后，每一样（人物、道具、场景；关键帧在提示词那一步）走同一条线：
    AI 写字（读定稿的剧本：写清要撑住什么戏；已经有图的核一遍撑不撑得住；没图的写出图提示词，场景先写 GEO 底稿）
-   → 你批字（自己改，或写批注交给 AI 改）→ 点「照这个出图」（Codex 一次一张；已经有图的，新图先存成「图名_候选.png」，和旧图并排，你点「用新图」才换上）
-   → AI 核图 → 你批图（点开图框出来写批注，交给 Codex 照批注改；或者回去改字）→ 确认可用。场景图确认以后，AI 照图再核一遍 GEO 底稿。
+   → 你批字（自己改，或写批注交给 AI 改）→ 点「在 Codex 里出图」，或者资产页顶上「出图」一次勾几样（11-23 他定：一样开一个 Codex 新对话，话自动发进去，
+   Codex 先照字出第一张；你在那个对话里聊，满意了说「定稿」，这里换上、算确认可用。聊的时候存的是「图名_候选.png」，定稿前旧图照用）
+   → 要再改：点开图框出来写批注，点「照批注改图」（也是开一个 Codex 对话聊），或者回去改字。场景图确认以后，AI 照图再核一遍 GEO 底稿。
    字：提示词/全局资产/类别/图名_提示词.txt（关键帧：提示词/第N段/图名_提示词.txt）；GEO 底稿：同一处「图名_GEO底稿.md」；字的批注：「图名_提示词_批注.md」。
    AI 写的「要撑住」「核图」「核GEO」记在 资产/第N段_资产清单.json 里这张图的那一条（页面只读） ---------- */
 const CAND_RE = /_候选\.(png|jpe?g|webp)$/i;
@@ -1576,7 +1583,7 @@ const inCatDir = (cat, f) => { const q = String(f).split('/'); return q.length =
 const fileTimeOf = f => (F.imgTime && F.imgTime.get(String(f).toLowerCase())) || (F.pool.find(p => p.文件 === f) || {}).mtime || F.words.get(f) || 0;
 const nearTime = (a, b) => !!a && !!b && Math.abs(a - b) < 3000;
 const checkBad = t => !!t && !(/没看出问题|撑得住/.test(t) && !/撑不住/.test(t));   // AI 核图说的是有问题
-const WORD_TX = { 'ai-img': 'AI 在出图', 'ai-word': 'AI 在写字', cand: '新图等你看', ok: '可用', img: '图等你看', word: '字等你批', none: '还没写字', txt: '文字写好了' };   // txt：只用文字的写好了文字描写（11-17）
+const WORD_TX = { 'ai-img': '在 Codex 里出图', 'ai-word': 'AI 在写字', cand: '新图等你看', ok: '可用', img: '图等你看', word: '字等你批', none: '还没写字', txt: '文字写好了' };   // txt：只用文字的写好了文字描写（11-17）
 /* 一格资产（assetsOf 给的）走这一套用的几个文件、眼下走到哪了。不走这一套的（这一段文件夹里当人物、道具、场景用的图，人物和道具、场景下一层文件夹里的图）回 null */
 function wordOf(s, it) {   // 只用文字写、不出图的（it.只字）也走这一套：写的是文字描写（公用/文字描写.js），不出图（11-17）
   let cat = '', stem = '', img = '';
@@ -1615,7 +1622,9 @@ function wordFor(s, cat, stem, img, it) {
   w.drawing = live('出图', j => j.类别 === cat && j.文件名 === stem) || live('改图', j => j.类别 === cat && j.文件名 === stem);
   w.writing = live('写字', j => j.段 === seg && (Array.isArray(j.只) && j.只.length ? j.只.includes(key) : !frame && !w.hasTxt && !w.hasImg)) || live('按批注改字', j => j.名 === stem && (!frame || j.段 === seg));
   w.geoing = cat === '场景' && live('核GEO', j => j.名 === stem);
-  w.ok = w.hasImg && (it && it.at === img ? okOf(it) : markOk(img, 0));
+  w.follow = w.hasImg && !frame && !txtOnly ? oldOf(img, [cat, w.name]) : null;   // 这张图旧了（11-23，资产旧图.js）：照的描写变了、场景多了镜头、字又改过
+  w.wordFollow = !frame && !txtOnly && w.hasTxt ? AssetSrc.wordStale(F.doc, w.txt, cat, w.name, F.words.get(w.txt) || 0, w.hasImg ? img : '', imgTime(img)) : null;   // 字照的那一句变了
+  w.ok = w.hasImg && !w.follow && (it && it.at === img ? okOf(it) : markOk(img, 0));
   w.step = w.drawing ? 'ai-img' : w.writing ? 'ai-word' : w.hasCand ? 'cand' : w.hasImg ? (w.ok ? 'ok' : 'img') : w.hasTxt ? (txtOnly ? 'txt' : 'word') : 'none';
   return w;
 }
@@ -1627,15 +1636,21 @@ async function askWords(s, ws, req, self) {   // self：自己交给 AI（复制
   const only = (ws || []).map(w => ({ 类别: w.cat, 名称: w.name, 状态名: w.state, 图: w.img, 文字: w.text, 要求: req || w.req || '', 参考: w.refs || [], ...(w.forPrompt ? { 提示词: w.forPrompt } : {}) }));
   return (self ? startSelf : startJob)({ 事: '写字', 段: s.段, ...(only.length ? { 参数: { 只: only } } : {}) });
 }
-/* 照字出图：Codex 一次一张；已经有图的，新图先存成候选 */
-async function askDraw(s, w) {
+/* 照字出图：开一个 Codex 新对话，话自动发进去，你在里面聊，说「定稿」就换上（本机服务 codex-draw.js）。quiet：一次勾几样的，最后统一说一句 */
+const CODEX_SAY = '开一个 Codex 新对话，话自动发进去。到 Codex 里看图，要改就在那个对话里说，满意了说「定稿」，这里自动换上';
+async function askDraw(s, w, quiet) {
   if (scriptState(s).st !== 'final') { toast(C.isPF(s) ? '分镜定下来以后才能出图' : '剧本定稿以后才能出图', 'err'); return null; }
-  return startJob({ 事: '出图', 段: s.段, 类别: w.cat, 名: w.name, 状态名: w.state, 参数: { 图: w.img } });
+  const src = w.frame || w.txtOnly ? {} : { 照: AssetSrc.nowOf(F.doc, w.cat, w.name), ...(changeOf(w) ? { 变了: changeOf(w) } : {}) };   // 照现在哪一句出、和原来比变了什么（11-23）：Codex 先照新描写改字再出
+  const j = await startJob({ 事: '出图', 段: s.段, 类别: w.cat, 名: w.name, 状态名: w.state, 参数: { 图: w.img, ...src } }, true);
+  if (j && !quiet) toast(CODEX_SAY);
+  return j;
 }
-/* 照图上写的批注改图：以这张为底只改说到的地方，改出来的先当候选 */
+/* 照图上写的批注改图：也开一个 Codex 对话，以这张为底只改说到的地方 */
 async function askEditImg(s, w) {
   if (!(await hasFile(F.name, w.imgNote.split('/')))) { toast('还没在图上写批注：点开这张图，框出来写好，再点「照批注改图」', 'err'); return null; }
-  return startJob({ 事: '改图', 段: s.段, 类别: w.cat, 名: w.name, 状态名: w.state, 参数: { 图: w.img } });
+  const j = await startJob({ 事: '改图', 段: s.段, 类别: w.cat, 名: w.name, 状态名: w.state, 参数: { 图: w.img } }, true);
+  if (j) toast(CODEX_SAY);
+  return j;
 }
 /* 字的开头几行（图1：……、用途：……、要撑住：……）和正文（单独一行「提示词」下面）分开：开头几行只给看，正文给改 */
 function splitWord(t) {
@@ -1651,7 +1666,7 @@ function headRefs(head) {
   }
   return out;
 }
-const unconfirmedRefs = head => headRefs(head).filter(r => !BMF_RE.test(r.file) && !markOk(r.file, 0));
+const unconfirmedRefs = head => headRefs(head).filter(r => !BMF_RE.test(r.file) && !fileOk(r.file));   // 旧了的图（11-23）也算没确认
 const purposeOf = w => w.txtOnly && typeof TxtWord === 'object' ? TxtWord.purpose(w.cat, w.name, w.state) : w.frame ? '第' + w.seg + '段' + (w.forPrompt ? '「' + w.forPrompt + '」' : '') + '的关键帧' : w.cat + '「' + w.name + '」' + (w.state ? '（' + w.state + '）' : '') + '的定妆图，各段照它的样子';
 const readText = async rel => { try { return unbom(C.decodeText((await FS.read(at([F.name, ...rel.split('/')]))).buf).text); } catch (e) { return e && e.message === '没有这个文件' ? '' : null; } };
 const noteBody = t => { const m = /^##\s*整体\s*$/m.exec(t || ''); return (m ? t.slice(m.index + m[0].length) : t || '').trim(); };
@@ -1666,47 +1681,32 @@ async function archiveFile(rel, stamp, tail) {   // 收进历史记录（照原�
   await FS.move(at([F.name, ...parts, name]), at([F.name, '历史记录', ...parts, base + '__' + stamp + (tail || '') + ext]));
 }
 const pageRepaint = async () => { await loadSides(); if (!(PAGE.repaint && PAGE.repaint() !== false)) rerender(); };
-/* 看字、批字、批准出图：点一样东西，弹出它的弹窗（资产详情.js 的 adOpen；11-16 起不换页）。
+/* 看字、批字、在 Codex 里出图：点一样东西，弹出它的弹窗（资产详情.js 的 adOpen；11-16 起不换页）。
    11-14 他说原来的小窗太黑盒：AI 写了什么、照什么写的、做到哪了，都要看得见。没引 资产详情.js 的页面：去资产那一步弹出来 */
 function openWord(s, w) {
   if (typeof adOpen === 'function') return adOpen(s, w);
   go('资产', { s: s.段 }, 'a=' + w.img + (w.forPrompt ? '|' + w.forPrompt : ''));
 }
-/* 「用新图」：旧图和它的批注、批注截图用同一个时间收进历史记录，新图（候选）换成原来的名字，算确认可用；参考素材映射里这张图的 SHA-256 跟着换。
-   画布上的旧节点：出片任务书里会让 Codex 照 AGENTS.md 改名（加同一个 __时间）再传新的 */
+/* 「用新图」「用旧图」（没有旧图时叫「不要新图」）：和在 Codex 里定稿、说不出了是同一套，本机服务做（codex-draw.js 的 take、drop）。
+   用新图：旧图和它的批注、批注截图用同一个时间收进历史记录，新图（候选）换成原来的名字，参考素材映射里这张图的 SHA-256 跟着换；确认可用这里记。
+   用旧图：新图和它上面写的批注收进历史记录，旧图不动。画布上的旧节点：出片任务书里会让 Codex 照 AGENTS.md 改名（加同一个 __时间）再传新的 */
+async function pickCand(w, take) {
+  try { return await (await LINK.req('POST', '/api/job?' + (take ? 'take' : 'drop'), C.encodeText(JSON.stringify({ 项目: F.name, 段: w.seg, 类别: w.cat, 名: w.name, 状态名: w.state, 图: w.img })))).json(); }
+  catch (e) { toast((take ? '没换上：' : '没收走：') + e.message, 'err'); return null; }
+}
 async function takeCand(w) {
-  const stamp = stampNow(), P = rel => at([F.name, ...rel.split('/')]);
-  let moved = false;
-  try { if (await hasFile(F.name, w.img.split('/'))) { await archiveFile(w.img, stamp); moved = true; } }
-  catch (e) { toast('原来的图没收走：' + e.message, 'err'); return false; }
-  try { await FS.move(P(w.cand), P(w.img)); }
-  catch (e) {
-    if (moved) { const q = w.img.split('/'), n = q.pop(), d = n.lastIndexOf('.'); try { await FS.move(at([F.name, '历史记录', ...q, n.slice(0, d) + '__' + stamp + n.slice(d)]), P(w.img)); } catch (e2) { /* 放不回去：历史记录里还在 */ } }
-    toast('没换上：' + e.message, 'err'); return false;
-  }
-  const side = [[w.imgNote, ''], [w.shots, '']], cn = w.cand.replace(/\.[^.]+$/, '');
-  side.push([cn + '_批注.md', ''], [cn + SHOTS_TAIL, '']);
-  for (const [rel] of side) { try { const q = rel.split('/'); if (await hasFile(F.name, q) || await FS.isDir(P(rel))) await archiveFile(rel, stamp); } catch (e) { /* 挪不动就留着 */ } }
-  try {   // 参考素材映射：挂着这张图的提示词，登记的 SHA-256 换成新图的（那几条提示词会标「待核对」）
-    if (await hasFile(F.name, ['资产', '参考素材映射.json'])) {
-      const mp = at([F.name, '资产', '参考素材映射.json']), j = await readJson(mp), buf = (await FS.read(P(w.img))).buf;
-      const hex = [...new Uint8Array(await crypto.subtle.digest('SHA-256', buf))].map(b => b.toString(16).padStart(2, '0')).join('');
-      let n = 0;
-      for (const v of Object.values(j.prompts || {})) for (const x of (v && Array.isArray(v.references) ? v.references : [])) if (x && cleanFile(x.path) === w.img && x.sha256 !== hex) { x.sha256 = hex; n++; }
-      if (n) await FS.write(mp, C.encodeText(JSON.stringify(j, null, 2) + '\n'));
-    }
-  } catch (e) { toast('参考素材映射没跟着改：' + e.message, 'err'); }
-  F.doc.可用[w.img] = nowText(); touch();
+  const r = await pickCand(w, true);
+  if (!r) return false;
+  F.doc.可用[w.img] = r.可用;
+  if (!w.frame) noteSrc(w.img, [w.cat, w.name], r.可用);   // 记下这张照的是现在哪一句（11-23）
+  touch();
   window.UI.dropThumbs();
   await flush();
-  toast(moved ? '用新图了。旧图收在 历史记录 / ' + w.img.split('/').slice(0, -1).join(' / ') + '，名字后面加了 __' + stamp : '用新图了');
+  toast(r.旧图 ? '用新图了。旧图收在 历史记录 / ' + w.img.split('/').slice(0, -1).join(' / ') + '，名字后面加了 __' + r.stamp : '用新图了');
   return true;
 }
-/* 「用旧图」（没有旧图时叫「不要新图」）：新图（候选）收进历史记录，旧图不动 */
 async function dropCand(w) {
-  const stamp = stampNow(), cn = w.cand.replace(/\.[^.]+$/, '');
-  try { await archiveFile(w.cand, stamp); } catch (e) { toast('没收走：' + e.message, 'err'); return false; }
-  for (const rel of [cn + '_批注.md', cn + SHOTS_TAIL]) { try { if (await hasFile(F.name, rel.split('/')) || await FS.isDir(at([F.name, ...rel.split('/')]))) await archiveFile(rel, stamp); } catch (e) { /* 挪不动就留着 */ } }
+  if (!(await pickCand(w, false))) return false;
   toast(w.hasImg ? '用旧图。新图收进历史记录了' : '新图收进历史记录了');
   return true;
 }
@@ -1716,10 +1716,12 @@ const pageNow = () => { if (!(PAGE.repaint && PAGE.repaint() !== false)) rerende
 /* 确认一张图可用（on：确认；不然取消）。11-15 起不再自动让 AI 核 GEO（只复制、不自动开）：要核到资产详情页点「照图核 GEO」 */
 function confirmImg(s, it, on) {
   setMark(it.at, on, sinceOf(it));
+  if (on) noteSrc(it.at, srcOfIt(it));   // 记下这张照的是现在哪一句（11-23）：以后描写、镜头变了才认得出
 }
 function confirmW(s, w, on) {   // 不在资产格子里的（提示词那一步的关键帧）
   if (w.it && w.it.at === w.img) return confirmImg(s, w.it, on);
   setMark(w.img, on, 0);
+  if (on && !w.frame) noteSrc(w.img, [w.cat, w.name]);
 }
 const imgOk = (it, w) => it && it.at ? okOf(it) : !!w && w.ok;
 const clipNote = (t, n) => t.length > n ? t.slice(0, n - 1) + '…' : t;
@@ -1730,7 +1732,7 @@ const shellActs = (s, it, w) => close => {
   return [
     w && w.checkImg ? noteEl('AI 核图', w.checkImg) : null,
     w && w.geoBack ? h('span', { class: 'fn-note as-note warn', title: w.geoBack }, 'GEO 对不上：要拿回去批图') : null,
-    w ? h('button', { class: 'btn sm', type: 'button', disabled: w.drawing, title: '先在图上框出来、写好批注，再点这里：Codex 以这张为底只改你说到的地方，改出来的先当候选', onclick: async () => { if (await askEditImg(s, w)) close(); } }, '照批注改图') : null,
+    w ? h('button', { class: 'btn sm', type: 'button', disabled: w.drawing, title: '先在图上框出来、写好批注，再点这里：开一个 Codex 新对话，以这张为底只改你说到的地方；在那个对话里接着聊，满意了说「定稿」就换上', onclick: async () => { if (await askEditImg(s, w)) close(); } }, '照批注改图') : null,
     ok ? h('span', { class: 'fs-state ok', title: '确认的时间：' + F.doc.可用[file] }, icon('check'), '确认过可用')
       : h('button', { class: 'btn sm', type: 'button', title: '这张图看过了、能用。确认过的图，别的段不用再确认', onclick: () => { it && it.at ? confirmImg(s, it, true) : confirmW(s, w, true); toast('「' + label + '」确认可用'); close(); } }, icon('check'), '这张确认可用')];
 };
@@ -1764,10 +1766,10 @@ function wordPills(s, it, w) {
   if (w.step === 'ai-img' || w.step === 'ai-word') return [h('span', { class: 'fl-asset-ok busy', title: '做完这里自动换' }, h('i', { class: 'wt-ring' }), WORD_TX[w.step])];
   if (w.txtOnly) return w.step === 'txt' ? [b(w.hasNote ? '批注没交' : '看字', '弹出来看文字描写：自己改，或者写批注交给 AI 改', () => openWord(s, w))]   // 只用文字的（11-17）：写文字描写，不出图
     : w.step === 'none' ? [b('写文字描写', '交给 AI 写这一样的文字描写：读定稿的剧本，只写样子，写视频提示词时照它写。也可以点开自己写', async () => { if (await askWords(s, [w])) pageNow(); })] : [];
-  if (it && it.文字 && w.hasImg) return [b('用上这张图', '图出好了：这一段改用这张图（全片设定里那一句还在）', () => { useSceneImg(s, it.文字, w.img); pageNow(); })];
+  if (it && it.文字 && w.hasImg && !w.follow) return [b('用上这张图', '图出好了：这一段改用这张图（全片设定里那一句还在）', () => { useSceneImg(s, it.文字, w.img); pageNow(); })];
   if (w.step === 'cand') return [b('看新图', w.hasImg ? '出了一张新图：点开和旧图并排比，挑「用旧图」或「用新图」' : '出了一张新图：点开看，用不用', () => openWord(s, w))];
-  if (w.step === 'word') return [b(w.hasNote ? '批注没交' : '批字', '弹出来看字：自己改，或者写批注交给 AI 改；字定了点「批准出图」', () => openWord(s, w))];
-  if (w.step === 'none') return [b('写出图提示词', '交给 AI 写这一样的出图提示词' + (w.geo ? '（先写 GEO 底稿）' : '') + '：读定稿的剧本，写清要撑住什么戏。写好你批，点「批准出图」才出图', async () => { if (await askWords(s, [w])) pageNow(); })];
+  if (w.step === 'word') return [b(w.hasNote ? '批注没交' : '批字', '弹出来看字：自己改，或者写批注交给 AI 改；字定了点「在 Codex 里出图」', () => openWord(s, w))];
+  if (w.step === 'none') return [b('写出图提示词', '交给 AI 写这一样的出图提示词' + (w.geo ? '（先写 GEO 底稿）' : '') + '：读定稿的剧本，写清要撑住什么戏。写好你批，字定了才出图', async () => { if (await askWords(s, [w])) pageNow(); })];
   return [];
 }
 /* 格子底下那一行小字：这一样走到哪了 */

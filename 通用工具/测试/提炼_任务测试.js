@@ -17,7 +17,7 @@ const notePath = P('定稿的剧本', '第1段', '第1段_提炼_批注.md');
 const SCRIPT = '第1段｜吃面\n正文\n△ 老李端起碗。\n老李：烫！';
 const fail = code => Object.assign(new Error(code), { code });
 
-function setup(scene, more = {}) {
+function setup(scene, more = {}, dirs = {}) {   // dirs：文件夹里有哪些文件（路径 → 名字的列表）；不给就都是空的
   const files = new Map([[flowPath, Buffer.from(JSON.stringify({ 梗概: '小面摊', 人物: [{ 名: '老李', 描写: '五十岁' }], 道具: [{ 名: '面碗', 描写: '白瓷大碗' }], 场景: '面摊：路边一个小面摊', 场: [scene, { 段: '2', 名: '吵架', 表达: '老李和老婆吵' }] }))]]);
   const mtimes = new Map();
   for (const [p, v] of Object.entries(more)) { files.set(p, Buffer.from(v.text)); if (v.mtime) mtimes.set(p, v.mtime); }
@@ -30,7 +30,7 @@ function setup(scene, more = {}) {
         return encoding ? files.get(p).toString(encoding) : Buffer.from(files.get(p));
       },
       async stat(p) { if (!files.has(p)) throw fail('ENOENT'); return { mtimeMs: mtimes.get(p) || 0 }; },
-      async mkdir() {}, async readdir() { return []; },
+      async mkdir() {}, async readdir(p) { return dirs[p] || []; },
       async writeFile(p, data) { files.set(p, Buffer.from(data)); },
       async rename(from, to) { if (!files.has(from)) throw fail('ENOENT'); files.set(to, files.get(from)); files.delete(from); },
       async copyFile(from, to) { files.set(to, Buffer.from(files.get(from))); },
@@ -248,6 +248,19 @@ const REPLY = '好的\n' + JSON.stringify({ 梗概: ' 老李开面摊，嘴硬�
     await s.K.提炼.apply(j, JSON.stringify({ 梗概: '有', 镜头表: [{ 号: '1', 写什么: '端碗', 作用: '' }] }));
     assert.deepEqual(s.json(outPath).镜头表, [{ 写什么: '端碗', 作用: '' }]);
     assert.ok(!s.files.has(notePath));
+  });
+
+  await check('项目里本来就有的图（11-25）：文件夹里有图、全片设定里还没列的名字，提炼、重新提炼、提炼按批注改的要求里都带上，叫 AI 照这个名字写；表里有的、候选图、过程文件不列；没有就不提', async () => {
+    const dirs = { [P('资产', '人物和道具')]: ['老李.png', '小孩_七八岁.png', '小孩_七八岁_候选.png', '面车_底图.png', '生成记录.json'], [P('资产', '场景')]: ['面摊.png', '菜市场路.jpg'] };
+    const LINE = '项目里已经有现成的图、全片设定里还没列的：人物和道具「小孩」；场景「菜市场路」。剧本里出场的要是其中哪一样，名字就照这个写（场景是冒号前面的地方名），一个字不差，好和图对上；剧本里没有的不要列。';
+    assert.ok((await setup(scene(), script, dirs).K.提炼.book(job())).includes('\n9. ' + LINE + '\n'));
+    const had = [{ 号: '1', 写什么: '老李端碗', 作用: '' }];
+    const redo = setup(scene({ 段落: had }), script, dirs), j = job(); await redo.K.提炼.prep(j);
+    assert.match(await redo.K.提炼.book(j), new RegExp('\\n\\d+\\. ' + LINE.replace(/[（）]/g, '.') + '\\n'));
+    const fix = setup(scene({ 段落: had, 场景图: ['资产/场景/面摊.png'] }), { ...script, [notePath]: { text: '批注' } }, dirs), j2 = job(); await fix.K.提炼按批注改.prep(j2);
+    const book = await fix.K.提炼按批注改.book(j2);
+    assert.ok(book.includes('\n9. 这一段挂了场景图，图名：面摊。') && book.includes('\n10. ' + LINE + '\n'));
+    assert.ok(!(await setup(scene(), script).K.提炼.book(job())).includes('已经有现成的图'));
   });
 
   console.log(tested + ' 项检查通过；真实项目数据未读写。');

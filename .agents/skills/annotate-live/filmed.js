@@ -17,6 +17,7 @@
    接口（server.js 查过 X-Antou）：
      GET  /api/filmed?p=项目&s=段          这一段出过片的几版：{ 版: { 名字: { 名, 出过片, 片, 历史, 在出, 下一版, 最新, 不能另存, 批注 } } }，没出过片的不列
      GET  /api/filmed?p=项目&s=段&n=名字   这一版：{ 名, 出过片, 片, 历史, 在出, 下一版, 最新, 不能另存, 批注 }
+     GET  /api/filmed?p=项目&s=段&n=名字&new=1   新建一条用这个名字行不行：{ 名: 该用的名字, 用过: 用过的话为什么 }（用过的往下排 _改N，起不出给 名: ''）
      POST /api/filmed?p=项目&s=段&n=名字   { text, side }（写稿页的字、写稿资料那几样）：另存成下一版，给 { 名, mtime, sideMtime, side, 挪了, 没挪 }
    测试：node --test 通用工具/测试/出过片_测试.cjs */
 const fs = require('fs');
@@ -82,11 +83,23 @@ module.exports = function makeFilmed({ ROOT, TOOLS, live = () => [], withLocks =
   function nextOf(st, n) {
     const fam = famOf(st, n);
     for (let k = Core.vpVer(fam.length ? fam[fam.length - 1] : n) + 1; k < 1000; k++) {
-      const c = Core.vpVerName(n, k), cs = stemOf(c);
-      if ([c, cs + '_写稿.json', cs + '_批注.md', cs + '_AI批注.md', cs + SHOTS].some(x => st.files.has(x)) || own(st.rn, c) || clipsOf(st, c).length) continue;
-      return c;
+      const c = Core.vpVerName(n, k);
+      if (!usedOf(st, c)) return c;
     }
     return '';
+  }
+  /* 这个名字用过没有，用过给一句为什么（没用过给 ''）：文件、写稿资料、批注占着，改名记录里改走了，或者还有样片认这个名字 */
+  function usedOf(st, c) {
+    const cs = stemOf(c), clips = clipsOf(st, c);
+    return [c, cs + '_写稿.json', cs + '_批注.md', cs + '_AI批注.md', cs + SHOTS].some(x => st.files.has(x)) ? '提示词里已经有它的文件'
+      : own(st.rn, c) ? '以前的「' + c + '」改名成「' + st.rn[c] + '」了'
+      : clips.length ? '它以前出的样片还在：' + clips.map(x => x.name).join('、') : '';
+  }
+  /* 新建一条叫什么（11-23 他问镜头11「没有出片，为什么无法编辑」：新稿用了改名走的旧名字，旧样片 11.mp4 就算到新稿头上）：
+     名字没用过就用它；用过的接着往下排 _改N，让开的和另存同一套 */
+  function freshOf(st, n) {
+    const why = usedOf(st, n);
+    return { 名: why ? nextOf(st, n) : n, 用过: why };
   }
   /* 写给这一版的批注（项目里的相对路径）：它出的样片旁边的审片批注（成片里的在前），再加上这一版提示词上写的批注 */
   function notesOf(st, n, cs) {
@@ -232,7 +245,7 @@ module.exports = function makeFilmed({ ROOT, TOOLS, live = () => [], withLocks =
     if (!Core.nameOk(p) || !segOk(s) || (n !== null && !vpOk(n))) throw err(400, '要写项目 p、段 s，一版的名字 n');
     if (req.method === 'GET') {
       const st = await segState(p, s);
-      if (n !== null) return json(res, stateOf(st, n));
+      if (n !== null) return json(res, q.get('new') === '1' ? freshOf(st, n) : stateOf(st, n));
       const 版 = {};
       for (const x of st.files) if (vpOk(x)) { const f = stateOf(st, x); if (f.出过片) 版[x] = f; }
       return json(res, { 版 });
@@ -247,5 +260,5 @@ module.exports = function makeFilmed({ ROOT, TOOLS, live = () => [], withLocks =
     }
     throw err(405, '只能问，或者带着改好的字另存（POST，写 n）');
   }
-  return { promptAt, state, say, frozen, twin, fork, handle };
+  return { promptAt, state, fresh: async (p, s, n) => freshOf(await segState(p, s), n), say, frozen, twin, fork, handle };
 };

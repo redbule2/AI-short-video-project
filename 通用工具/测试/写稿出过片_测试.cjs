@@ -3,6 +3,7 @@
    「另存以后…如果发现提示词、素材都没有变，则不允许保存」。点了另存放开这一页照它改，改了头一回存就另存成下一版（POST /api/filmed），
    这一页换成新的一版；没改的不存（服务回 422，写稿交互.js 的 saveEditor 照它不存、不挡着离开）。
    照审片批注另存、按批注改提示词（别处交的）做完，换到另存的那一版，没存上的字（恢复草稿）跟过去。
+   11-24 他说「放开看图」：锁着也能看图，资产栏不锁（插入、挂上的钮藏起来），正文里点、停在图上转给那张图。
    页面的东西都用假的（h、$、fetch……），不开浏览器。node --test 通用工具/测试/写稿出过片_测试.cjs */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,11 +17,14 @@ const Core = require('../公用/核心.js');
 const KIND = '照审片批注另存';
 const OPEN = '项目/试/提示词/第1段/11.txt';
 const BASE = { 名: '11.txt', 出过片: true, 片: ['11.mp4'], 历史: [], 在出: false, 下一版: '11_改1.txt', 最新: '11.txt', 不能另存: '', 批注: [] };
-const LOCK = ['#sheet', '#editor-mode', '#pane-assets', '#pane-ai', '#pane-lint', '#pane-shots'], OFF = ['#askAll', '#sendNotes'];
+const LOCK = ['#sheet', '#editor-mode', '#pane-ai', '#pane-lint', '#pane-shots'], OFF = ['#askAll', '#sendNotes'];
+const FREE = ['#pane-assets'];   // 锁着也不锁：资产栏照常点图、钉住
 function page(f, { svc = 25, live = [], hash = '' } = {}) {
   const els = new Map(), locks = new Map(), store = new Map(), cur = { f, post: null };
   const calls = { toast: [], status: [], fetch: [], retarget: [], retitle: [], recover: 0, ask: 0, send: 0, fin: 0 };
-  for (const s of [...LOCK, ...OFF]) locks.set(s, { inert: false, disabled: false });
+  for (const s of [...LOCK, ...OFF, ...FREE]) locks.set(s, { inert: false, disabled: false });
+  const cls = () => { const set = new Set(); return { has: c => set.has(c), classList: { toggle: (c, on) => { if (on === undefined ? !set.has(c) : on) set.add(c); else set.delete(c); }, add: c => set.add(c), remove: c => set.delete(c) } }; };
+  const body = cls(), canvas = Object.assign(cls(), { prepend: x => els.set('#filmedBar', x) }), listeners = [];
   const node = (tag, attrs, children) => {
     const n = { tag, attrs: attrs || {}, children: children.flat(Infinity).filter(x => x != null), dataset: {}, disabled: false, inert: false };
     if (n.attrs['data-sig'] != null) n.dataset.sig = n.attrs['data-sig'];
@@ -31,8 +35,11 @@ function page(f, { svc = 25, live = [], hash = '' } = {}) {
   };
   const box = {
     h: (tag, attrs, ...children) => node(tag, attrs, children),
-    $: sel => els.get(sel) || locks.get(sel) || (sel === '#canvas' ? { prepend: x => els.set('#filmedBar', x) } : null),
-    document: { head: { append() {} } },
+    $: sel => els.get(sel) || locks.get(sel) || (sel === '#canvas' ? canvas : null),
+    $$: sel => (box.SHEET && box.SHEET[sel]) || [], SHEET: null,
+    document: { head: { append() {} }, body },
+    addEventListener: (t, fn, cap) => listeners.push([t, fn, cap]),
+    MouseEvent: class { constructor(type, init) { this.type = type; Object.assign(this, init); } },
     toast: t => calls.toast.push(t), setStatus: t => calls.status.push(t),
     fetch: async (url, opts) => {
       calls.fetch.push([url, opts]);
@@ -59,7 +66,7 @@ function page(f, { svc = 25, live = [], hash = '' } = {}) {
   const btn = () => { const walk = n => !n || typeof n !== 'object' ? null : n.tag === 'button' ? n : n.children.map(walk).find(Boolean) || null; return walk(bar()); };
   const text = n => typeof n === 'string' ? n : n && n.children ? n.children.map(text).join('') : '';
   const locked = () => Object.fromEntries([...LOCK.map(s => [s, locks.get(s).inert]), ...OFF.map(s => [s, locks.get(s).disabled])]);
-  return { box, cur, calls, store, bar, btn, text, locked, F: box.Filmed };
+  return { box, cur, calls, store, bar, btn, text, locked, locks, body, canvas, listeners, F: box.Filmed };
 }
 const allLocked = Object.fromEntries([...LOCK, ...OFF].map(s => [s, true]));
 const allOpen = Object.fromEntries([...LOCK, ...OFF].map(s => [s, false]));
@@ -131,6 +138,84 @@ test('另存不了的：AI 正在做这一条、本机服务是旧的、不是�
   assert.equal(on.btn(), null);
 });
 
+test('锁着能看图：资产栏不锁；插入、挂上的钮藏起来（body 挂 filmed-ro），点了另存、另存成了就露出来', async () => {
+  const s = page(BASE);
+  await s.F.init();
+  assert.equal(s.locks.get('#pane-assets').inert, false);
+  assert.equal(s.body.has('filmed-ro'), true);
+  s.F.paint();
+  assert.equal(s.locks.get('#pane-assets').inert, false);
+  s.btn().attrs.onclick();   // 点另存：能插了
+  assert.equal(s.body.has('filmed-ro'), false);
+  s.F.paint();
+  assert.equal(s.body.has('filmed-ro'), false);
+  s.F.made({ 名: '11_改1.txt' });
+  assert.equal(s.body.has('filmed-ro'), false);
+  const t = page({ ...BASE, 出过片: false, 片: [], 下一版: '' });   // 没出过片的：不挂
+  assert.equal(await t.F.init(), false);
+  assert.equal(t.body.has('filmed-ro'), false);
+  const u = page(BASE);   // 存稿撞上 423 锁上的：一样藏
+  await u.F.hit('这一版刚出了片');
+  assert.equal(u.body.has('filmed-ro'), true);
+});
+
+test('锁着能看图：正文里点、停在图上的这一下转给那张图（照写稿页自己的看大图、悬停小图走），别处不管', async () => {
+  const s = page(BASE);
+  await s.F.init();
+  const [click, move] = ['click', 'mousemove'].map(t => s.listeners.find(l => l[0] === t && l[2] === true)[1]);
+  const got = [];
+  const el = (c, r) => ({ getClientRects: () => [r], matches: sel => sel === '.' + c, dispatchEvent: e => got.push([c, e]) });
+  s.box.SHEET = { '#sheet .wr-ta': [el('wr-ta', { left: 0, right: 100, top: 0, bottom: 50 })], '#sheet .ref': [el('ref', { left: 0, right: 40, top: 60, bottom: 80 })] };
+  const ev = (type, x, y, more) => ({ type, isTrusted: true, target: s.canvas, clientX: x, clientY: y, screenX: x, screenY: y, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false,
+    button: 0, buttons: 0, detail: 1, stopped: 0, stopPropagation() { this.stopped++; }, ...more });
+  let e = ev('click', 10, 70);   // 点 @图片N 小牌子
+  click(e);
+  assert.equal(e.stopped, 1);
+  assert.equal(got.length, 1);
+  assert.equal(got[0][0], 'ref');
+  assert.equal(got[0][1].type, 'click'); assert.equal(got[0][1].clientX, 10); assert.equal(got[0][1].clientY, 70); assert.equal(got[0][1].bubbles, true);
+  click(ev('click', 50, 20, { ctrlKey: true }));   // 按住 Ctrl 点文字框里的 @图片N：Ctrl 跟着转（写稿页照它认是看图）
+  assert.equal(got.at(-1)[0], 'wr-ta'); assert.equal(got.at(-1)[1].ctrlKey, true);
+  for (const x of [ev('click', 300, 300), ev('click', 10, 70, { isTrusted: false }), ev('click', 10, 70, { target: {} }), ev('mousemove', 10, 70, { buttons: 1 })]) {   // 别处、转出来的、没落在 #canvas 上的、按着键拖的：不管
+    const n = got.length;
+    (x.type === 'click' ? click : move)(x);
+    assert.equal(got.length, n); assert.equal(x.stopped, 0);
+  }
+  move(ev('mousemove', 10, 70));   // 停在小牌子上：转过去出小图，鼠标是放大镜
+  assert.equal(got.at(-1)[0], 'ref'); assert.equal(got.at(-1)[1].type, 'mousemove');
+  assert.equal(s.canvas.has('filmed-pic'), true);
+  move(ev('mousemove', 50, 20));   // 文字框上：转过去，鼠标照旧
+  assert.equal(got.at(-1)[0], 'wr-ta'); assert.equal(s.canvas.has('filmed-pic'), false);
+  move(ev('mousemove', 10, 70)); move(ev('mousemove', 300, 300));
+  assert.equal(s.canvas.has('filmed-pic'), false);
+  s.btn().attrs.onclick();   // 点了另存：正文放开了，写稿页自己接得住，不再转
+  const n = got.length;
+  e = ev('click', 10, 70);
+  click(e);
+  assert.equal(got.length, n); assert.equal(e.stopped, 0);
+});
+
+test('写稿页：插入、挂上的钮都带 data-ins（锁着藏起来），看图那一格的「插入」也带；insertFromRail 锁着拦下', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', '项目管理_写稿试用.html'), 'utf8');
+  const btns = src.match(/h\('button', \{[^}]*insertFromRail\(a\)[^}]*\}/g) || [];
+  assert.equal(btns.length, 4);
+  for (const b of btns) assert.match(b, /'data-ins': ''/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', '公用', '写稿看图.js'), 'utf8'), /'data-ins': '', title: '放到稿子里光标停的地方'/);
+  assert.match(fs.readFileSync(FILE, 'utf8'), /\.filmed-ro \[data-ins\]\{display:none!important\}/);
+  const fn = src.match(/\nfunction insertFromRail\(a\) \{[\s\S]*?\n\}\n/)[0];
+  const run = locked => {
+    const box = { Filmed: { on: () => locked }, toasts: [], ins: [], LASTF: { isConnected: true, selectionStart: 1, selectionEnd: 1 }, LAST: null, isVoice: () => false };
+    box.toast = t => box.toasts.push(t); box.insertAsset = (a, w) => box.ins.push(a);
+    vm.createContext(box); vm.runInContext(fn + 'insertFromRail({ path: \'a.png\' });', box);
+    return box;
+  };
+  const on = run(true);
+  assert.deepEqual(on.ins, []);
+  assert.match(on.toasts[0], /出过片，原稿不能改/);
+  const off = run(false);
+  assert.equal(off.ins.length, 1); assert.deepEqual(off.toasts, []);
+});
+
 test('post：带着这一页的字和写稿资料 POST 到 /api/filmed（问的是出过片的那一版）', async () => {
   const { F, calls, cur } = page(BASE);
   await F.init();
@@ -149,7 +234,7 @@ test('made：另存成了，这一页换成新的一版接着写：retarget、�
   s.btn().attrs.onclick();   // 点另存
   s.F.made({ 名: '11_改1.txt' });
   assert.deepEqual(s.calls.retarget, [['11_改1.txt', OPEN]]);
-  assert.deepEqual(s.calls.retitle, [['11.txt', '11_改1.txt']]);
+  assert.deepEqual(s.calls.retitle, [['11.txt', '11.txt'], ['11.txt', '11_改1.txt']]);   // 点另存那一下先叫一回（流水线「进去看」开的：顶上「只能看」换成「另存」，11-24），存成了再换名字
   assert.equal(s.F.pending(), ''); assert.equal(s.F.on(), false); assert.equal(s.F.base(), '');
   assert.deepEqual(s.locked(), lockOpen);
   assert.equal(s.bar(), undefined);

@@ -504,8 +504,9 @@ async function tellAI(line) {   // 交给谁：照流水线顶栏「AI 用」选
   if (!r.ok) throw new Error((await r.text()) || String(r.status));
   const j = await r.json(), hand = CH.hand(body.渠道);
   watchJob(j);
-  if (hand === 'self' && window.HandAI) HandAI.wait(j, () => {});   // 给我提示词（流水线顶栏「AI 用」选的）：话备好就弹出来给你复制
-  return { online: true, say: { self: '要交给 AI 的话弹出来了：复制，贴进你自己开的对话。它做完这里自动换上', claude: '在 Claude 桌面版开了一个新对话，任务填好了：到 Claude 窗口里按发送。做完这里自动换上', deepseek: '交给 DeepSeek 了：它在自己的窗口里做，做完这里自动换上' }[hand] || '' };
+  if (window.HandAI) HandAI.wait(j, () => {});   // 给我提示词（流水线顶栏「AI 用」选的）：话备好就弹出来给你复制；选的 AI 开不起来、服务改成给我提示词的也弹（11-24）
+  return { online: true, say: { self: '要交给 AI 的话弹出来了：复制，贴进你自己开的对话。它做完这里自动换上', claude: '在 Claude 桌面版开了一个新对话，任务填好了：到 Claude 窗口里按发送。做完这里自动换上', deepseek: '交给 DeepSeek 了：它在自己的窗口里做，做完这里自动换上', doubao: '交给豆包工作：话备好就复制好、把它叫到前面，你点「新工作任务」，按 Ctrl+V、回车。做完这里自动换上' }[hand]
+    || (body.渠道 === 'codex' ? '在 Codex 里开一个新对话交给它，做完这里自动换上' : '') };
 }
 /* 正在做的任务：左下角一行一个，转圈、在做什么、用了多久、停掉 */
 const jobLive = j => j.状态 === '排队' || j.状态 === '在做';
@@ -1719,6 +1720,7 @@ function usage(a) {
 const drag = (e, a) => { e.dataTransfer.setData('text/x-asset', a.path); e.dataTransfer.effectAllowed = 'copy'; };
 const canInsert = () => !!((LASTF && LASTF.isConnected) || (LAST && LAST.startContainer.isConnected));
 function insertFromRail(a) {
+  if (Filmed.on()) return toast('这一版出过片，原稿不能改：要插图先另存成新的一版');   // 出过片锁着只能看图（公用/写稿出过片.js），插入、挂上的钮（data-ins）也藏着
   if (isVoice(a)) {   // 人物的音色（11-15）：不往正文里插，只挂上、在「素材」里补一句
     const had = refOf(a), ref = bind(a), who = voiceOf(a);
     paintAssets();
@@ -1785,7 +1787,7 @@ function usedRow(a, list) {
   t.title = VIEW_TIP[a.type]; t.addEventListener('click', () => viewAsset(a, list));
   return h('div', { class: 'used-row', draggable: 'true', title: a.path, ondragstart: e => drag(e, a) }, t,
     h('div', { class: 'u-n' }, h('b', null, refOf(a)), ' ' + nameOf(a), h('span', { class: (n || a.type !== '图片') && !bad ? '' : 'warn' }, KIND_NAME[a.kind] + ' · ' + (n ? '正文用了 ' + n + ' 处' : a.type === '图片' ? '分镜里还没写到' : '只在素材里') + (bad ? ' · 还没确认可用' : ''))),
-    h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'), h('button', { class: 'mini-b', onclick: () => pin(a, list) }, a.type === '音频' ? '听' : '钉住'));
+    h('button', { class: 'mini-b', 'data-ins': '', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'), h('button', { class: 'mini-b', onclick: () => pin(a, list) }, a.type === '音频' ? '听' : '钉住'));
 }
 /* 视频一张卡：左边封面（点一下放大播放），右边名字、时长、插入、钉住 */
 function videoCard(a, list) {
@@ -1796,18 +1798,18 @@ function videoCard(a, list) {
       h('div', { class: 'vc-n' }, ref ? h('b', null, ref) : null, a.name),
       h('div', { class: 'vc-m', 'data-vmeta': a.path }, mediaMeta(a) || (a.cat === '本段' ? AssetPath.KF + ' / ' + SEGDIR : a.cat)),
       ref ? h('div', { class: 'vc-m' + (n ? '' : ' warn') }, n ? '正文用了 ' + n + ' 处' : '已挂上，正文还没写到') : null,
-      h('div', { class: 'vc-acts' }, h('button', { class: 'mini-b', onclick: () => viewAsset(a, list) }, '播放'), h('button', { class: 'mini-b', title: '放在右栏最上面，一边写一边看', onclick: () => pin(a) }, '钉住'), h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'))));
+      h('div', { class: 'vc-acts' }, h('button', { class: 'mini-b', onclick: () => viewAsset(a, list) }, '播放'), h('button', { class: 'mini-b', title: '放在右栏最上面，一边写一边看', onclick: () => pin(a) }, '钉住'), h('button', { class: 'mini-b', 'data-ins': '', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'))));
 }
 function audioRow(a, list) {
   const ref = refOf(a);
   return h('div', { class: 'av-row', draggable: 'true', title: a.path + '　点击试听', ondragstart: e => drag(e, a), onclick: e => { if (!e.target.closest('button')) viewAsset(a, list); } },
     h('span', { class: 'av-ic' }, '♪'), h('span', { class: 'av-n' }, a.name), ref ? h('b', null, ref) : null,
-    h('button', { class: 'mini-b', onclick: () => viewAsset(a, list) }, '听'), h('button', { class: 'mini-b', onmousedown: keep, onclick: () => insertFromRail(a), title: isVoice(a) ? '挂成 @音频N，「素材」里补一句，正文不动' : null }, isVoice(a) ? '挂上' : '插入'));
+    h('button', { class: 'mini-b', onclick: () => viewAsset(a, list) }, '听'), h('button', { class: 'mini-b', 'data-ins': '', onmousedown: keep, onclick: () => insertFromRail(a), title: isVoice(a) ? '挂成 @音频N，「素材」里补一句，正文不动' : null }, isVoice(a) ? '挂上' : '插入'));
 }
 function imageTile(a, list, tag) {   // tag：绑在哪一镜（公用/写稿资产栏.js tagOf），名字前面标一行
   const img = thumb(a), bad = !!OK && !OK.has(a.path); img.title = '点击放大'; img.addEventListener('click', () => viewAsset(a, list));   // 挂上了、可没确认可用的：名字标红
   return h('div', { class: 'as-t' + (bad ? ' unok' : ''), draggable: 'true', title: a.path + (bad ? '\n还没确认可用' : ''), ondragstart: e => drag(e, a) }, img, refOf(a) ? h('span', { class: 'no' }, refOf(a).slice(1)) : null,
-    h('div', { class: 'as-acts' }, h('button', { onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'), h('button', { onclick: () => pin(a) }, '钉住')),
+    h('div', { class: 'as-acts' }, h('button', { 'data-ins': '', onmousedown: keep, onclick: () => insertFromRail(a) }, '插入'), h('button', { onclick: () => pin(a) }, '钉住')),
     h('div', { class: 'as-n' }, tag ? h('b', { class: 'as-bind', title: tag.title }, tag.text) : null, (a.sub ? a.sub + ' / ' : '') + a.name));
 }
 function paintAssets() {

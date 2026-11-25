@@ -15,7 +15,7 @@ module.exports = function makeReviewFork({ fsp, pj, str, fail, exists, unbom, to
      包过的再调就丢了这里给的开头和批注，那一句还会加两回。这一样自己的 book 照样被包一回 */
   const { book: editBook, apply: editApply } = edit;
   const NAME = '照审片批注另存';
-  const NO_NOTE = '这一版出的样片还没写批注：先点「审片」，边看边写哪里不对（或者「打开看、写批注」在提示词上写），再交给 AI';
+  const NO_NOTE = '这一版出的样片还没写批注：先点「审片」，边看边写哪里不对，再交给 AI';   // 「打开看、写批注」11-24 拿掉了
   const MUST = '没照批注改出新的东西（AI 一处没改，或者改完和原稿一字不差）：原样照抄不算新的一版，这回没另存。把批注写具体些再交一次，或者点「另存成改N」自己改';
   const stem = n => str(n).replace(/\.txt$/i, '');
   const isPrompt = rel => rel.startsWith('提示词/');

@@ -130,8 +130,12 @@
 <script src="../公用/文字描写.js"></script>
 <script src="../公用/资产改过.js"></script>
 <script src="../公用/资产归类.js"></script>
+<script src="../公用/资产照的.js"></script>
+<script src="../公用/资产认图.js"></script>
 <script src="流水线.js"></script>
+<script src="资产旧图.js"></script>
 <script src="资产详情.js"></script>
+<script src="一次出图.js"></script>
 <script src="电脑找图.js"></script>
 <script src="音色绑定.js"></script>
 <script src="挑图栏.js"></script>
@@ -157,10 +161,14 @@
        出了图不核 GEO，写视频提示词也不用 GEO；卡上那行小字带「不写 GEO」，点「要GEO」改回来。记在这一场的「不要GEO」（公用/核心.js 的 noGeo、setNoGeo）。
      全局、用在哪几镜、删掉（2026-11-17 他要，提炼那一步标、公用/资产归类.js）：卡上小字打头写「全局 · 镜6～9」；人物、道具、只用文字的场景卡上 × 是删掉
        （这一段不用它；别的段也没用的，全片设定里也删；AI 重新提炼不再列）。挂的图卡上的 × 照旧只是取下这张图。
-     每张卡上是眼下该做的：写字 → 批字（自己改，或写批注交给 AI 改；字定了点「照这个出图」）→ 图出好了点开看 → 确认可用。
+     每张卡上是眼下该做的：写字 → 批字（自己改，或写批注交给 AI 改）→ 出图 → 确认可用。
+     出图（2026-11-23 他定，一次出图.js）：顶上「出图」勾好要出的几样，一样开一个 Codex 新对话、话自动发进去；在 Codex 里聊，满意了说「定稿」，这里换上、算确认可用。
+       单出一样：弹窗里「在 Codex 里出图」，同一个做法。
      已经有图的再出，新图先当候选（「看新图」：旧图、新图并排，挑「用旧图」或「用新图」；没挑以前卡上不摆旧图的「可用」）。
      只用文字写的场景也能写字、出图：图出好了点「用上这张图」，这一场改用图。道具能「加一种样子」（一个状态一张图）。
    确认可用：一张图一张图确认（2026-11-12 他定的）。确认记在全片，确认过的图别的场不用再确认；这一场要的图都确认了，这一步自动过。图重出过、它的描写改过，那一张要再确认。
+   项目里本来就有的图（2026-11-25 他要：前一条出的图后一条接着用，项目也可能自带图）：放进 资产/人物和道具、资产/场景，名字和表里那一行（只用文字写的场景：地方名）对得上的，
+     自动挂上、算确认可用（公用/资产认图.js，流水线.js 的 loadSides 挂着）；自己在挑图栏里挑上的，挑上也算确认可用（挑图栏.js 的 pickedOk；关键帧照旧）。认错了点卡上的 × 取下，取下的不再自己挂回。
    关键帧绑到镜头表的「一镜一刻」上（2026-11-16 他定，流程图 关键帧绑定_流程图.html；算法在 公用/关键帧绑定.js）；同一镜同一刻几张，一张现用、别的备选；
      镜头表后来改了那一镜的字，那张卡左边一道红线，看过点「还对得上」。挂到哪条提示词，在提示词那一步定。
    2026-11-19 页签那一排右边加「历史记录」（他要的：默认不摆，点了这一页签只看换下来收进历史记录的旧图；流水线/历史记录.js）。
@@ -191,7 +199,6 @@ function switchTab(t) {
 }
 
 /* ---------- 一张卡：人物、场景、道具 ---------- */
-let IMPACT = new Map();   // 影响清单上列着、还没处理的：'类别/名称' → 为什么（repaint 时算）
 const cardKey = it => [it.类别, it.名称, it.sub || '', it.文字 || it.文件 || it.at || ''].join('|');
 /* 全局、用在哪几镜（11-17 他要，提炼那一步标的，公用/资产归类.js）：卡上那行小字打头写「全局 · 镜6～9」「镜1」。
    人物、道具那一行，只用文字写的场景，场景图；这一段文件夹里挑来当人物、道具的、AI 另外列的不写 */
@@ -219,20 +226,21 @@ const dropIt = async (s, k, name) => { if (await Scope.dropAsk(confirmDlg, F.doc
 function cardEl(s, it, voice) {
   const w = wordOf(s, it), k = kindOf(it.类别), stop = ev => ev.stopPropagation(), isRow = !!KIND[it.类别], txt = !!it.只字;
   const geoKey = k === '场景' && it.own && !txt ? (it.文字 ? sceneStem(it.文字) : it.类别 === '场景图' ? baseOf(it.文件) : '') : '', offGeo = !!geoKey && noGeo(s, geoKey);   // 不要 GEO 的场景（11-17）
-  const why = IMPACT.get(k + '/' + it.名称) || (it.文字 ? IMPACT.get('场景/' + sceneStem(it.文字)) : '');
   const img = !!it.at && IMG_RE.test(it.at), ok = img && okOf(it), again = img && !ok && !!F.doc.可用[it.at], cand = !!w && w.step === 'cand';
+  const old = !!w && OldImg.of(w), tag = old ? OldImg.tag(w) : '';   // 旧了（11-23，资产旧图.js）：描写改了、镜头改了、字改了
   const open = w ? () => openWord(s, w) : img ? () => openImage(it.at, shellActs(s, it, w)) : it.own && !txt && (isRow || it.文字) ? () => pickFor(s, it) : null;
   /* 走到哪了：一行小字 */
   const sc = scopeTx(s, it), canSc = !!sc && Scope.marked(s);   // 用在哪几镜：标过了的能点开改
-  const tx = [txt ? ['只用文字', w ? wordTx(w) : ''].filter(Boolean).join(' · ') : it.文字 ? (w ? (w.hasImg ? '图出好了' : wordTx(w)) : '只用文字写，不用图')
+  const tx = [tag, txt ? ['只用文字', w ? wordTx(w) : ''].filter(Boolean).join(' · ') : it.文字 ? (w ? (w.hasImg ? (tag ? '' : '图出好了') : wordTx(w)) : '只用文字写，不用图')
     : !img ? [it.own ? '' : 'AI 列的', w ? chipTx(it, w) : it.状态 || '还没有图'].filter(Boolean).join(' · ')
-      : [cand || ok ? '' : again ? '图改过、描写改过，再看一眼' : '还没确认', w ? chipTx(it, w) : ''].filter(Boolean).join(' · '), offGeo ? '不写 GEO' : ''].filter(Boolean).join(' · ');
-  const good = ok && !(w && (checkBad(w.checkImg) || w.geoBack || cand)) && !why;
+      : [cand || ok || tag ? '' : again ? '图改过、描写改过，再看一眼' : '还没确认', w ? chipTx(it, w) : ''].filter(Boolean).join(' · '), offGeo ? '不写 GEO' : ''].filter(Boolean).join(' · ');
+  const good = ok && !(w && (checkBad(w.checkImg) || w.geoBack || cand)) && !old;
+  const mk = (label, title, fn) => h('button', { class: 'fl-asset-ok go', type: 'button', title, onkeydown: stop, onclick: ev => { stop(ev); fn(); } }, label);
   /* 眼下该按的：挑现成的图（没图的）、写字批字看新图（wordPills）、确认可用 */
   const acts = [
     it.own && !txt && !img && !(w && (w.hasImg || w.drawing)) && (isRow || it.文字) ? h('button', { class: 'fl-asset-ok go', type: 'button', title: isRow ? '从项目里现成的图挑一张，挂给「' + it.名称 + '」' : '从项目里现成的图挑一张，这一段改用图', onkeydown: stop, onclick: ev => { stop(ev); pickFor(s, it); } }, '挑现成的图') : null,
-    ...(w ? wordPills(s, it, w) : []),
-    img && !cand ? h('button', { class: 'fl-asset-ok' + (ok ? ' on' : ''), type: 'button', onkeydown: stop,
+    ...(w ? (old && w.follow ? OldImg.acts(s, it, w, mk) : [...wordPills(s, it, w), ...(old ? OldImg.acts(s, it, w, mk) : [])]) : []),   // 旧了的图：只给「重画」「旧图还能用」
+    img && !cand && !(old && w.follow) ? h('button', { class: 'fl-asset-ok' + (ok ? ' on' : ''), type: 'button', onkeydown: stop,
       title: ok ? '确认过可用（' + F.doc.可用[it.at].slice(5, 16) + '）。点一下取消' : again ? '你确认过，可后来这张图重出过、或者它的描写改过：再看一眼，能用就再确认' : '这张图看过了、能用。确认过的图，别的段不用再确认',
       onclick: ev => { stop(ev); confirmImg(s, it, !ok); paint(); } }, ok ? [icon('check'), '可用'] : again ? '再确认' : '确认可用') : null].filter(Boolean);
   /* 右上角 ×：有图的删图（几种删法）；没图的这一段不用它、去掉不在了的引用；只用文字写的这一段不用它 */
@@ -252,13 +260,14 @@ function cardEl(s, it, voice) {
       title: offGeo ? '改回来：要写 GEO 底稿，锁住谁站哪、朝哪看、往哪走' : '这一场没有严格站位：只写出图提示词，不写 GEO 底稿；出了图不核 GEO，写视频提示词也不用 GEO',
       onclick: ev => { stop(ev); setNoGeo(s, geoKey, !offGeo); touch(); paint(); } }, offGeo ? '要GEO' : '不要GEO') : null;
   const swap = isRow && it.own && img && !KIND[it.类别].multi ? h('button', { class: 'ac-swap', type: 'button', title: '另挑一张现成的图挂给「' + it.名称 + '」', onkeydown: stop, onclick: ev => { stop(ev); pickFor(s, it); } }, '换图') : null;
-  const el = h('div', { class: 'ac ' + kindCls(k) + (good ? ' ok' : '') + (w && checkBad(w.checkImg) || why ? ' bad' : ''), 'data-key': cardKey(it), 'data-img': w ? w.img : it.at || null, role: open ? 'button' : null, tabindex: open ? '0' : null,
-      title: [w ? (txt ? '点一下弹出来：文字描写（自己写，或者让 AI 写）' : '点一下弹出来：字、图、AI 做过的事') : img ? '点开看大图' : open ? '点一下挑现成的图' : '', txt ? '只用文字写，不出图' + (isRow ? '：' + String((entryOf(it.类别, it.名称) || {}).描写 || '').trim() : '') : '', it.at || it.文字 || it.说明 || '', w && w.checkImg ? 'AI 核图：' + w.checkImg : '', w && w.need ? '要撑住：' + w.need : '', why ? '剧本改了：' + why : ''].filter(Boolean).join('\n'),
+  const el = h('div', { class: 'ac ' + kindCls(k) + (good ? ' ok' : '') + (w && checkBad(w.checkImg) || old ? ' bad' : ''), 'data-key': cardKey(it), 'data-img': w ? w.img : it.at || null, role: open ? 'button' : null, tabindex: open ? '0' : null,
+      title: [w ? (txt ? '点一下弹出来：文字描写（自己写，或者让 AI 写）' : '点一下弹出来：字、图、AI 做过的事') : img ? '点开看大图' : open ? '点一下挑现成的图' : '', txt ? '只用文字写，不出图' + (isRow ? '：' + String((entryOf(it.类别, it.名称) || {}).描写 || '').trim() : '') : '', it.at || it.文字 || it.说明 || '', w && w.checkImg ? 'AI 核图：' + w.checkImg : '', w && w.need ? '要撑住：' + w.need : '', old ? tag + '：原来和现在并排在卡上，点开看全的' : ''].filter(Boolean).join('\n'),
       onclick: open, onkeydown: open ? ev => { if (ev.key === 'Enter' && ev.target === ev.currentTarget) open(); } : null },
-    h('div', { class: 'ac-pic' + (img ? '' : ' none') }, img ? thumbImg(it.at, 400) : txt ? '只用文字写' : it.状态 === '图不在了' ? '图不在了' : '还没有图'),
+    h('div', { class: 'ac-pic' + (img || old && w.hasImg ? '' : ' none') }, img ? thumbImg(it.at, 400) : old && w.hasImg ? thumbImg(w.img, 400) : txt ? '只用文字写' : it.状态 === '图不在了' ? '图不在了' : '还没有图'),
     h('div', { class: 'ac-bd' },
       h('div', { class: 'ac-nm' }, h('span', null, it.名称), it.sub ? h('small', null, it.sub) : null, swap || lock, geo),
       sc || tx ? h('div', { class: 'ac-st' + (good ? ' ok' : !it.own || txt ? '' : ' todo') }, canSc ? scBtn(s, it, sc) : sc, sc && tx ? ' · ' : '', tx) : null,
+      old ? OldImg.compare(w, 30) : null,
       h('div', { class: 'ac-acts' }, acts),
       voice ? VoiceBind.line(it.名称, paint) : null),
     x ? h('button', { class: 'fl-asset-x', type: 'button', title: x[0], onkeydown: stop, onclick: ev => { stop(ev); x[1](); } }, icon('x')) : null);
@@ -271,7 +280,7 @@ async function addLookDlg(s) {
   const sel = h('select', { class: 'inp' }, names.map(n => h('option', { value: n }, n)));
   const nm = h('input', { class: 'inp', type: 'text', placeholder: '这种样子叫什么，比如：夜里、摔坏了' });
   const req = h('textarea', { class: 'fl-ta sm', spellcheck: 'false', placeholder: '和原来比哪里不一样（可以不写，AI 照剧本想）' });
-  const ok = await dialog(close => dlgShell('道具加一种样子 · 第' + s.段 + '段', '一种样子一张图。AI 先写字，写好在道具那一块多一格：你批字，点「照这个出图」再出。',
+  const ok = await dialog(close => dlgShell('道具加一种样子 · 第' + s.段 + '段', '一种样子一张图。AI 先写字，写好在道具那一块多一格：你批字，字定了再出图。',
     [h('div', { class: 'pick-lab' }, '哪个道具'), sel, h('div', { class: 'pick-lab', style: 'margin-top:10px' }, '叫什么'), nm, h('div', { class: 'pick-lab', style: 'margin-top:10px' }, '要求'), req],
     [h('button', { class: 'btn ghost', onclick: () => close(false) }, '取消'), h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close(true) }, '交给 AI 写字')]));
   if (!ok) return;
@@ -435,10 +444,12 @@ function openFirst(s, pred) { const x = adOrder(s, {}).find(y => pred(y.w)); if 
 function headEls(s) {
   const { has, lacking, ws, okN, st, cast, jobs } = barInfo(s);
   const n = k => ws.filter(w => w.step === k).length, none = n('none'), noneT = ws.filter(w => w.step === 'none' && w.txtOnly).length, noneI = none - noneT, word = n('word'), cand = n('cand'), geo = ws.filter(w => w.geoBack).length, bad = ws.filter(w => w.hasImg && checkBad(w.checkImg)).length;
+  const olds = ws.filter(w => OldImg.of(w)), oldTags = [...new Set(olds.map(OldImg.tag))];   // 旧了的（11-23）：照的描写、镜头改了，图出好以后字又改过
   const batch = jobs.some(j => j.事 === '写字' && !(Array.isArray(j.只) && j.只.length));
   const warns = [
-    word ? h('button', { class: 'as-warn', type: 'button', title: '字写好了，等你批：自己改，或者写批注交给 AI 改；字定了点「批准出图」。点一下打开头一样，看完点「下一样要你看的」', onclick: () => openFirst(s, w => w.step === 'word') }, '字等你批 ' + word + ' 样') : null,
+    word ? h('button', { class: 'as-warn', type: 'button', title: '字写好了，等你批：自己改，或者写批注交给 AI 改；字定了点顶上「出图」，或者弹窗里「在 Codex 里出图」。点一下打开头一样，看完点「下一样要你看的」', onclick: () => openFirst(s, w => w.step === 'word') }, '字等你批 ' + word + ' 样') : null,
     cand ? h('button', { class: 'as-warn', type: 'button', title: '出了新图：和旧图并排比，挑「用旧图」或「用新图」。点一下打开头一张', onclick: () => openFirst(s, w => w.step === 'cand') }, '新图 ' + cand + ' 张等你看') : null,
+    olds.length ? h('button', { class: 'as-warn', type: 'button', title: '这几样照的描写、用到它的镜头改了，或者图出好以后字又改过。点一下打开头一样：原来和现在并排，「重画」或者「旧图还能用」', onclick: () => openFirst(s, w => OldImg.of(w)) }, (oldTags.length === 1 ? oldTags[0] : '前面改过') + ' ' + olds.length + ' 样') : null,
     bad ? h('button', { class: 'as-warn', type: 'button', title: 'AI 对着定稿的剧本核图，说这几张撑不住戏（确认过的也算）。点一下打开头一张看它说什么：不对就改字重出，或者照批注改图', onclick: () => openFirst(s, w => w.hasImg && checkBad(w.checkImg)) }, 'AI 说有问题 ' + bad + ' 张') : null,
     geo ? h('button', { class: 'as-warn', type: 'button', title: 'AI 照确认过的场景图核 GEO 底稿，有对不上、会影响走位或视线的：点一下打开头一张看', onclick: () => openFirst(s, w => !!w.geoBack) }, 'GEO 对不上 ' + geo + ' 张') : null];
   const left = st.st === 'ok' ? [h('span', { class: 'fs-state ok', title: '图重出了、描写改了，那一张要再确认' }, icon('check'), '这一段的图都确认可用了')]
@@ -447,32 +458,33 @@ function headEls(s) {
           onclick: () => goTo(s, it => !!it.at && !okOf(it)) },
           h('span', { class: 'as-meter' }, h('i', { style: 'width:' + Math.round(okN / has.length * 100) + '%' })), '确认了 ', h('b', null, String(okN)), ' / ' + has.length + ' 张') : null,
         lacking.length ? h('button', { class: 'as-warn', type: 'button', title: '还没有图：' + lacking.map(x => x.名称).join('、') + '。点一下跳过去；卡上「挑现成的图」，或者「写出图提示词」让 AI 写；只出现一次、不用图的点名字右边「只用文字」', onclick: () => goTo(s, lacksImg) }, '缺图 ' + lacking.length + ' 样') : null,
-        st.tx === '待核对' && st.impact ? h('button', { class: 'as-warn', type: 'button', title: '剧本重新定稿以后，AI 对了一遍新旧剧本，列了这几样。点一下跳过去', onclick: () => goTo(s, it => IMPACT.has(kindOf(it.类别) + '/' + it.名称)) }, '待核对：' + st.why)
-          : st.tx === '待核对' ? h('span', { class: 'as-warn', title: '看一遍这些图还合不合适：合适就点右边「还能用，确认」，不合适的点 × 删掉重出' }, '待核对：' + st.why) : null];
+        st.tx === '待核对' ? h('span', { class: 'as-warn', title: '看一遍这些图还合不合适：合适就点右边「还能用，确认」，不合适的点 × 删掉重出' }, '待核对：' + st.why) : null];
   const sty = styleName(s) ? null : h('button', { class: 'as-warn', type: 'button', title: '出资产图照拍摄风格写画面质感、颜色和光。不定也能出。点一下挑', onclick: () => styleDlg(s) }, '还没定拍摄风格');   // 只提醒，不拦着（11-14）
-  const ai = !batch && ws.some(w => !w.txtOnly || w.step === 'none') ? h('button', { class: 'btn sm' + (none ? '' : ' ghost'), type: 'button', title: 'AI 读定稿的剧本：给这一段还没写的人物、道具、场景写出图提示词（场景先写 GEO 底稿），已经有的图核一遍撑不撑得住；只用文字写、不出图的写文字描写（写好了的不重写）。写好了点那一样弹出来看，出图的点「批准出图」才出图', onclick: async () => { if (await askWords(s)) paint(); } },
+  const ai = !batch && ws.some(w => !w.txtOnly || w.step === 'none') ? h('button', { class: 'btn sm' + (none ? '' : ' ghost'), type: 'button', title: 'AI 读定稿的剧本：给这一段还没写的人物、道具、场景写出图提示词（场景先写 GEO 底稿），已经有的图核一遍撑不撑得住；只用文字写、不出图的写文字描写（写好了的不重写）。写好了点那一样弹出来看；字定了点「出图」才出图', onclick: async () => { if (await askWords(s)) paint(); } },
     noneI && noneT ? '让 AI 写字（出图提示词 ' + noneI + ' 样、文字描写 ' + noneT + ' 样）' : noneT ? '让 AI 写文字描写（' + noneT + ' 样）' : noneI ? '让 AI 写出图提示词（' + noneI + ' 样）' : '让 AI 照剧本再核一遍') : null;   // 要给提示词自己交的：顶栏「AI 用」选「给我提示词」
   /* 这一步要按的那一个（深色），旁边「去写提示词」（提示词不等资产，什么时候写你自己定） */
   const next = ink => h('button', { class: 'btn sm' + (ink ? ' ink' : ' ghost'), type: 'button', title: '提示词那一步不等资产：什么时候写你自己定，没图的写的时候用文字锁', onclick: () => go('提示词', { s: s.段 }) }, ink ? '下一步：提示词 →' : '去写提示词 →');
+  const fresh = has.filter(x => !okOf(x) && !oldOf(x.at, srcOfIt(x)));   // 没确认、也没旧的：能一起确认；旧了的一张一张看（11-23）
+  const quiet = !(st.st === 'ok' || st.tx === '待核对' || fresh.length), drawN = DrawAll.todo(ws);   // 眼下没有别的深色钮、还有有字没图的（或者字要先改成出图提示词的）：「出图」就是这一步要按的
+  const draw = DrawAll.button(s, ws, paint, quiet && drawN > 0);
   const main = st.st === 'ok' ? [next(true)]
-    : st.tx === '待核对' && st.impact ? [next(false), h('button', { class: 'btn sm ink', type: 'button', title: '影响清单上列的这几样你都看过了，照旧能用', onclick: () => { const t = nowText(); for (const x of st.impact) keptOf(s)[impactKey(x)] = t; touch(); paint(); toast('列的几样都看过了'); } }, icon('check'), '列的都看过了')]
-      : st.tx === '待核对' ? [next(false), h('button', { class: 'btn sm ink', type: 'button', title: '这一段要的图你又看了一遍，还能用', onclick: () => { s.资产确认 = nowText(); touch(); paint(); toast('第' + s.段 + '段的资产核对过了'); } }, icon('check'), '还能用，确认')]
-        : okN < has.length ? [next(false), h('button', { class: 'btn sm ink', type: 'button', title: '这一段现在有的图你都看过了、都能用。确认过的图，别的段不用再确认', onclick: () => {
+    : st.tx === '待核对' ? [next(false), h('button', { class: 'btn sm ink', type: 'button', title: '这一段要的图你又看了一遍，还能用', onclick: () => { s.资产确认 = nowText(); touch(); paint(); toast('第' + s.段 + '段的资产核对过了'); } }, icon('check'), '还能用，确认')]
+        : fresh.length ? [next(false), h('button', { class: 'btn sm ink', type: 'button', title: '这一段现在有的图你都看过了、都能用。确认过的图，别的段不用再确认' + (fresh.length < has.length - okN ? '。旧了的几张不算在里面：一张一张点「重画」或「旧图还能用」' : ''), onclick: () => {
           const t = nowText();
-          for (const it of has.filter(x => !okOf(x))) F.doc.可用[it.at] = t;
-          s.资产确认 = t; touch(); paint(); toast('第' + s.段 + '段的图都确认可用了');
-        } }, icon('check'), okN ? '剩下的都确认可用' : '都确认可用')]
-          : [next(cast)];   // 只差缺的图、AI 在出图：图的事在左边那几个，这里只管往下走
-  return [...left, ...warns, sty, h('span', { class: 'sp' }), ai, ...main];
+          for (const it of fresh) { F.doc.可用[it.at] = t; noteSrc(it.at, srcOfIt(it), t); }   // 记下照的哪一句（11-23）
+          s.资产确认 = t; touch(); paint(); toast('第' + s.段 + '段的' + (fresh.length < has.length - okN ? fresh.length + ' 张' : '图都') + '确认可用了');
+        } }, icon('check'), fresh.length < has.length - okN ? '这 ' + fresh.length + ' 张确认可用' : okN ? '剩下的都确认可用' : '都确认可用')]
+          : [next(cast && !drawN)];   // 只差缺的图、AI 在出图：图的事在左边那几个和「出图」，这里只管往下走
+  return [...left, ...warns, sty, h('span', { class: 'sp' }), ai, draw, ...main];
 }
-/* 页签上的数和红点：有要你做的（缺图、没确认、字等你批、新图、剧本改了；关键帧：还没绑、这一镜改了） */
+/* 页签上的数和红点：有要你做的（缺图、没确认、字等你批、新图、照的描写镜头改了；关键帧：还没绑、这一镜改了） */
 function tabMarks(s, list) {
   const out = {};
   for (const k of KINDS) {
     const mine = list.filter(it => it.类别 !== '关键帧' && kindOf(it.类别) === k), ws = mine.map(it => wordOf(s, it)).filter(Boolean);
-    const lack = mine.filter(lacksImg).length, un = mine.filter(it => it.at && !okOf(it)).length;
-    const need = ws.filter(w => w.step === 'word' || w.step === 'cand' || (w.hasImg && checkBad(w.checkImg)) || w.geoBack).length, imp = mine.filter(it => IMPACT.has(k + '/' + it.名称)).length;
-    out[k] = { n: mine.length, dot: [lack ? lack + ' 样没图' : '', un ? un + ' 张没确认' : '', need ? need + ' 样等你看' : '', imp ? imp + ' 样剧本改了' : ''].filter(Boolean).join('，') };
+    const lack = mine.filter(lacksImg).length, un = mine.filter(it => it.at && !okOf(it) && !oldOf(it.at, srcOfIt(it))).length;
+    const need = ws.filter(w => w.step === 'word' || w.step === 'cand' || (w.hasImg && checkBad(w.checkImg)) || w.geoBack).length, old = ws.filter(w => OldImg.of(w)).length;
+    out[k] = { n: mine.length, dot: [lack ? lack + ' 样没图' : '', un ? un + ' 张没确认' : '', need ? need + ' 样等你看' : '', old ? old + ' 样前面改过了' : ''].filter(Boolean).join('，') };
   }
   const frames = list.filter(it => it.类别 === '关键帧'), T = SB.table(frames.map(it => it.文件), s.段落, SB.bindsOf(s)), stale = T.rows.filter(r => r.帧.some(x => x.stale)).length;
   out.关键帧 = { n: frames.length, dot: s.段落.length ? [T.loose.length ? T.loose.length + ' 张还没绑' : '', stale ? stale + ' 镜改了字' : ''].filter(Boolean).join('，') : '' };
@@ -485,7 +497,6 @@ function repaint() {
   const s = sceneNow(), head = document.getElementById('as-head');
   if (!s || !head || assetState(s).st === 'lock') return false;
   const flat = a => [a].flat(Infinity).filter(Boolean);
-  IMPACT = new Map(impactTodo(s).map(x => [kindOf(x.类别) + '/' + x.名称, x.影响 + '：' + x.为什么]));
   const { list, rec } = assetsOf(s), jobs = AI.jobs.filter(j => WORD_JOBS.includes(j.事) && j.段 === s.段 && jobLive(j)), last = AI.jobs.filter(j => WORD_JOBS.includes(j.事) && j.段 === s.段).pop(), bad = jobs.length || !last ? null : jobFailed(last.事, s.段);
   const cur = tabNow(), marks = tabMarks(s, list);
   const mineOf = k => list.filter(it => k === '关键帧' ? it.类别 === '关键帧' : it.类别 !== '关键帧' && kindOf(it.类别) === k);
@@ -498,29 +509,9 @@ function repaint() {
   document.getElementById('as-more').replaceChildren(...flat([
     jobs.length ? h('div', { class: 'wf-jobs' }, jobs.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题)))) : null,
     bad ? h('p', { style: 'margin-top:10px' }, bad) : null,
-    rec && rec.bad ? h('p', { class: 'fn-note warn', style: 'margin-top:12px' }, 'AI 列的资产清单读不了：' + rec.bad) : null,
-    impactBox(s)]));
+    rec && rec.bad ? h('p', { class: 'fn-note warn', style: 'margin-top:12px' }, 'AI 列的资产清单读不了：' + rec.bad) : null]));
   document.getElementById('as-body').replaceChildren(...flat(HistView.on ? HistView.assetView(s, cur, hc) : cur === '关键帧' ? kbBody(s, mineOf('关键帧')) : kindBody(s, cur, list)));
   paintSteps(); paintStatus(); asPin(); PickBar.refresh(); adSync();   // 开着弹窗：跟着换（资产详情.js）
-}
-/* 剧本重新定稿以后 AI 列的影响清单：列上、还没处理的一样一行（为什么、看过了）；「全部重看」照老办法这一场的图全都再核一遍 */
-function impactBox(s) {
-  const job = jobOf('影响清单', s.段);
-  if (jobLive(job)) return h('div', { class: 'wf-jobs' }, h('div', null, jobLine(job), h('span', { class: 'fn-note' }, '剧本重新定稿了：AI 在对新旧剧本，列哪些要再看')));
-  const v = impactOf(s), bad = v ? null : jobFailed('影响清单', s.段);
-  if (bad) return h('p', { style: 'margin-top:10px' }, bad, h('span', { class: 'fn-note' }, '　影响清单没列成：这一段的图照老办法全都再核一遍'));
-  const todo = v ? impactTodo(s, v) : [];
-  if (!todo.length) return null;
-  const add = { 要改: '要改', 要加: '要加', 不用了: '不用了' };
-  return h('div', { class: 'fl-aibox', style: 'margin:0 0 14px' },
-    h('div', { class: 'fl-aibox-h' }, '剧本改了，这几样要再看', h('span', { class: 'sp' }),
-      h('button', { class: 'fl-link', type: 'button', title: '不照这份清单：这一段的图全都再核一遍（老办法）', onclick: () => { s.影响全看 = v.时间; touch(); paint(); } }, '全部重看')),
-    v.总 ? h('p', null, v.总) : null,
-    h('ol', { class: 'wf-notes' }, todo.map(x => h('li', null,
-      h('div', null, h('b', null, kindOf(x.类别) + '「' + x.名称 + '」'), h('span', { class: 'wf-lv' + (x.影响 === '要改' ? ' must' : '') }, add[x.影响] || x.影响), x.为什么),
-      h('div', { class: 'faint small' }, x.影响 === '要加' ? '新剧本多出来的：在那一页最后点「＋ 加」加上' : x.影响 === '不用了' ? '新剧本里没有了：点那张卡右上角的 × 去掉' : '点那张卡看：字不对改字重出，图不对照批注改图',
-        h('button', { class: 'fl-link', type: 'button', style: 'margin-left:10px', title: '看过了，照旧能用', onclick: () => { keptOf(s)[impactKey(x)] = nowText(); touch(); paint(); } }, '看过了，照旧'))))),
-    v.提示词.length ? h('p', { class: 'faint small' }, '提示词也有 ' + v.提示词.length + ' 条要再看，在提示词那一步。') : null);
 }
 const paint = () => { if (repaint() === false) rerender(); };
 function render() {

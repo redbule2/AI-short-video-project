@@ -7,6 +7,7 @@
    图点一下放到原尺寸（点哪儿放大哪儿），再点缩回；一组的 ‹ › 翻。光标不在字里时：左右键翻、Esc 收起、空格播放或暂停。
    open(items, i)：items 一样一个 { type: '图片' | '视频' | '音频', ref, name, sub, load() → Blob 或地址, own：给的地址是 blob、看完收回,
      info()：名字底下那行小字（不给就写 sub）, loaded(媒体)：读好以后, insert() }。close()、step(d)、isOpen()。
+   「插入」的钮带 data-ins：出过片的稿锁着时藏起来（公用/写稿出过片.js）。
    这一页的 RefPic.show（公用/点图.js：参考里的图）也摆到这里。
    要先引 公用/界面.js、点图.js、写稿旁窗.js；样式在 公用/写稿看图.css（标题栏、小钮在 写稿旁窗.css）。
    ============================================================ */
@@ -67,7 +68,7 @@ async function show() {
     m = h('img', { src: v.url, alt: cur.name || '', title: '点击放大到原尺寸', onload: e => { if (cur.loaded) cur.loaded(e.currentTarget); info(); } });
     m.addEventListener('click', e => zoom(v, m, e));
   }
-  if (cur.insert) v.acts.append(h('button', { class: 'rf-mini ink', type: 'button', title: '放到稿子里光标停的地方', onmousedown: keepFocus, onclick: () => { cur.insert(); paintTitle(v, cur); } }, '插入'));
+  if (cur.insert) v.acts.append(h('button', { class: 'rf-mini ink', type: 'button', 'data-ins': '', title: '放到稿子里光标停的地方', onmousedown: keepFocus, onclick: () => { cur.insert(); paintTitle(v, cur); } }, '插入'));
   v.media = m; v.stage.append(m); info();
 }
 function open(items, i) {

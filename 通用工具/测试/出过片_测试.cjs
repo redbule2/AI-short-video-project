@@ -90,6 +90,19 @@ test('一段里出过片的几版（GET /api/filmed）：没出过片的不列',
   await assert.rejects(F.handle({ method: 'GET' }, null, new URL('http://x/api/filmed?p=a/b&s=1'), { json() {} }), e => e.status === 400);
 });
 
+test('新建一条叫什么（GET /api/filmed?new=1）：没用过的照用；改名走的旧名字、还有样片认的、已经有文件的往下排 _改N', async t => {
+  const { F } = await setup(t);
+  assert.deepEqual(await F.fresh('试', '1', '20.txt'), { 名: '20.txt', 用过: '' });
+  const old = await F.fresh('试', '1', '9b-9d.txt');   // 改名成 9b-9e 了，9b-9d.mp4 还认这个名字（11-23 镜头11 就是这样被锁的）
+  assert.equal(old.名, '9b-9d_改1.txt'); assert.match(old.用过, /改名成「9b-9e\.txt」/);
+  const clip = await F.fresh('试', '1', '12_改1.txt');   // 文件删了，样片还在历史记录里
+  assert.equal(clip.名, '12_改2.txt'); assert.match(clip.用过, /12_改1\.mp4/);
+  assert.equal((await F.fresh('试', '1', '7.txt')).名, '7_改1.txt');
+  let out = null;
+  await F.handle({ method: 'GET' }, null, new URL('http://x/api/filmed?p=' + encodeURIComponent('试') + '&s=1&n=' + encodeURIComponent('9b-9d.txt') + '&new=1'), { json: (res, o) => { out = o; } });
+  assert.equal(out.名, '9b-9d_改1.txt');
+});
+
 test('正在出片的也算出过片：等出完才能另存', async t => {
   const { F } = await setup(t, { live: [{ 事: '出片', 项目: '试', 段: '1', 名: '14_出片任务.txt' }, { 事: '出片任务书', 项目: '试', 段: '1', 名: '7.txt' }] });
   const f = await F.state('试', '1', '14.txt');
