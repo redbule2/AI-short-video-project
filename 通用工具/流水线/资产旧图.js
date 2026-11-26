@@ -20,8 +20,8 @@ const wordPath = (cat, img) => '提示词/全局资产/' + cat + '/' + baseOf(im
 /* 这张图旧了没有：{ 描写, 镜头, 字 } 里有的几样；没旧回 null */
 function oldOf(img, k) {
   if (!img || !k || !k[1]) return null;
-  const d = { ...(AssetSrc.imgStale(F.doc, img, k[0], k[1], imgTime(img)) || {}) };
-  if (AssetSrc.wordEdited(F.doc, img, timeOf(F.doc.可用[img]), F.words.get(wordPath(k[0], img)) || 0)) d.字 = true;
+  const t = imgTime(img), d = { ...(AssetSrc.imgStale(F.doc, img, k[0], k[1], t) || {}) };
+  if (AssetSrc.wordEdited(F.doc, img, timeOf(F.doc.可用[img]), F.words.get(wordPath(k[0], img)) || 0, t)) d.字 = true;   // 图比字新的不算字改了
   return d.描写 || d.镜头 || d.字 ? d : null;
 }
 const fileOk = f => markOk(f, 0) && !oldOf(f, srcOfFile(f));   // 关键帧挂的参考图：确认过，也没旧

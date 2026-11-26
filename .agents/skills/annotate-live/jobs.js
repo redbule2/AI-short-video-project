@@ -653,7 +653,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       seen.add(key);
       const imgP = pj(j.项目, ...f.img), 有图 = await exists(imgP), 有字 = await exists(pj(j.项目, ...f.txt));
       const mt = 有图 ? Math.floor((await fsp.stat(imgP)).mtimeMs) : 0;
-      const 旧 = 有图 && !!Src && (!!Src.imgStale(flow, f.img.join('/'), x.类别, x.名称, mt) || Src.wordEdited(flow, f.img.join('/'), timeOf((flow.可用 || {})[f.img.join('/')]), 有字 ? await mtimeOf(pj(j.项目, ...f.txt)) : 0));   // 照的描写、镜头变了，图出好以后字又改过（11-23）：不算确认过
+      const 旧 = 有图 && !!Src && (!!Src.imgStale(flow, f.img.join('/'), x.类别, x.名称, mt) || Src.wordEdited(flow, f.img.join('/'), timeOf((flow.可用 || {})[f.img.join('/')]), 有字 ? await mtimeOf(pj(j.项目, ...f.txt)) : 0, mt));   // 照的描写、镜头变了，图出好以后字又改过（11-23；图比字新的不算，11-26）：不算确认过
       const 确认 = 有图 && !旧 && timeOf((flow.可用 || {})[f.img.join('/')]) + 999 >= Math.max(mt, x.描写改 || 0);
       const 写 = !!x.只 || (!有字 && !有图), 不写GEO = x.类别 === '场景' && core('noGeo')(s, x.stem);   // 不要 GEO 的场景（11-17）：只写出图提示词
       if (x.只字 && !写) return;   // 只用文字的已经有文字描写：没图可核，不用再写

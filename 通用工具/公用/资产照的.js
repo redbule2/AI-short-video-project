@@ -1,7 +1,7 @@
 /* 资产照的哪一句（2026-11-23 他要「资产跟着改」：前面改了，后面照旧版做的要标出来。
    起因：面试被拒 1-1 的第二家面试单位从会议室改成前台，旧的会议室图照算可用，卡上还劝「用上这张图」）。
    每张资产图、每份出图提示词记下它照的是哪一句描写，场景还记下用到它的镜头：流水线.json 顶上的「照的」{ 项目里的路径: { 描写, 镜头, 时间 } }。
-   旧了：现在的描写和记下的不一样（描写改了）；场景多了、改了用到它的镜头（镜头改了，删掉的不算）；图出好以后出图提示词又改过（字改了）。
+   旧了：现在的描写和记下的不一样（描写改了）；场景多了、改了用到它的镜头（镜头改了，删掉的不算）；图出好以后出图提示词又改过（字改了；图文件比字新、同一刻换的不算）。
    旧了的图不算确认过（关键帧、提示词不照它）；资产卡上标出来，原来和现在并排，只给「重画」「旧图还能用」。
    记的时候：页面确认可用、旧图还能用、用新图；本机服务在 Codex 里定稿（codex-draw.js，照点出图那一刻的）、AI 照描写写好字（jobs.js 写字）。
    记下以后文件又换过（别处挑来的图、手改的字）：不知道照的哪一句，不标。
@@ -85,10 +85,11 @@
     const r = recOf(doc, file);
     return fresh(r, imgTime) ? diff(r, nowOf(doc, kind, name)) : null;
   }
-  /* 这张图出好（确认可用、记下）以后，出图提示词又改过：字改了。okTime：确认可用的时间（没确认给 0）；wordTime：字的修改时间 */
-  function wordEdited(doc, file, okTime, wordTime) {
+  /* 这张图出好（确认可用、记下）以后，出图提示词又改过：字改了。okTime：确认可用的时间（没确认给 0）；wordTime：字的修改时间；
+     imgTime：图文件的修改时间（不知道给 0）。图文件比字新、或和字同一刻换的，图就是照这份字出的，不算（11-26 大砍刀：图和字在流水线外一起换，被误标） */
+  function wordEdited(doc, file, okTime, wordTime, imgTime) {
     const r = recOf(doc, file), ref = Math.max(r ? timeOf(r.时间) : 0, okTime || 0);
-    return !!ref && !!wordTime && wordTime > ref + 999;
+    return !!ref && !!wordTime && wordTime > Math.max(ref, imgTime || 0) + 999;
   }
   /* 出图提示词旧了没有（照它出图以前要不要先改）：看字记下的；字没记、或者记下以后又改过，看图记下的（字比图早，图就是照它出的） */
   function wordStale(doc, word, kind, name, wordTime, img, imgTime) {

@@ -78,6 +78,12 @@ test('字改了：图确认、记下以后出图提示词又改过；没确认�
   d.照的 = { [img]: { 描写: '二十八岁，瘦，穿旧西装', 时间: '2026-11-23 07:00:00' } };   // 旧图还能用：重新记下的时间也算
   assert.equal(S.wordEdited(d, img, ms(T0), ms('2026-11-23 06:59:00')), false);
   assert.equal(S.tagOf({ 字: true }), '字改了');
+  // 图文件也换过（11-26 大砍刀：图和字在流水线外一起换）：图比字新、同一刻换的不算；换了图以后字又改过照算
+  const at = ms('2026-11-25 22:26:24');
+  assert.equal(S.wordEdited(d, img, ms(T0), at, at), false);
+  assert.equal(S.wordEdited(d, img, ms(T0), at, at + 60e3), false);
+  assert.equal(S.wordEdited(d, img, ms(T0), at + 60e3, at), true);
+  assert.equal(S.wordEdited(d, img, ms(T0), at, 0), true);   // 不知道图的时间：照以前
 });
 
 test('出图以前字旧了没有：看字记下的；字手改过、没记的，看图（字比图早才算）', () => {
