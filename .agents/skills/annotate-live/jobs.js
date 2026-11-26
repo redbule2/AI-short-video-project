@@ -302,7 +302,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   }
   const scriptPath = (name, seg) => pj(name, '定稿的剧本', segDir(seg), segDir(seg) + '_剧本.docx');
   const shotsPath = (name, seg) => pj(name, '定稿的剧本', segDir(seg), segDir(seg) + '_镜头表.docx');
-  const PF = require('./prompt-first.js')({ Core, pj, segDir, scriptPath, readFlow, sceneOf }), srcPath = PF.srcPath;   // 先写提示词的段（11-21）：「剧本」是自由稿
+  const PF = require('./prompt-first.js')({ Core, pj, segDir, scriptPath, readFlow, sceneOf, has: p => fs.existsSync(p) }), srcPath = PF.srcPath;   // 写初步剧本的段（11-21 起，11-26 改叫初步剧本）：「剧本」是人写的初步剧本
   async function skill(name, from, to) {   // 技能说明里的一段：从哪个小标题到哪个小标题之前
     const t = unbom(await fsp.readFile(path.join(SKILLS, name, 'SKILL.md'), 'utf8')).replace(/\r\n/g, '\n');
     const a = from ? t.indexOf(from) : 0, z = to ? t.indexOf(to, a + 1) : -1;
@@ -363,8 +363,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   async function distillBase(j) {
     const flow = await readFlow(j.项目), s = sceneOf(flow, j.段), sp = srcPath(j.项目, s, j.段), pf = PF.isPF(s);
     if (!s) throw fail('流水线里没有第' + j.段 + '段');
-    if (!(await exists(sp))) throw fail(pf ? '这一段还没有自由稿' : '这一段还没有剧本');
-    if (!finalOk(s, Math.floor((await fsp.stat(sp)).mtimeMs))) throw fail(pf ? '自由稿写好、点了「提炼分镜」才能提炼' : '剧本定稿以后才能提炼');
+    if (!(await exists(sp))) throw fail(pf ? '这一段还没有初步剧本' : '这一段还没有剧本');
+    if (!finalOk(s, Math.floor((await fsp.stat(sp)).mtimeMs))) throw fail(pf ? '初步剧本写好、点了「提炼分镜」才能提炼' : '剧本定稿以后才能提炼');
     const lib = Match ? Match.bookLine(Match.freeNames(flow, await Match.poolOn(d => fsp.readdir(d).catch(() => []), c => pj(j.项目, '资产', c)))) : '';   // 项目里已经有图、全片设定里还没列的名字（11-25）
     return { flow, s, script: await docText(sp), lib };
   }
@@ -619,7 +619,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   }
   async function needFinal(j, flow) {   // 剧本定稿了才写字、出图（先写提示词的段：分镜定下来了才出，11-21 他定）
     const s = sceneOf(flow, j.段), sp = srcPath(j.项目, s, j.段);
-    if (!s || !(await exists(sp)) || !finalOk(s, Math.floor((await fsp.stat(sp)).mtimeMs)) || (PF.isPF(s) && !s.定稿)) throw fail(PF.isPF(s) ? '分镜定下来以后才能写字、出图（自由稿改过的，先到「提炼分镜」点「照旧」或「重新提炼」）' : '剧本定稿以后才能写字、出图');
+    if (!s || !(await exists(sp)) || !finalOk(s, Math.floor((await fsp.stat(sp)).mtimeMs)) || (PF.isPF(s) && !s.定稿)) throw fail(PF.isPF(s) ? '分镜定下来以后才能写字、出图（初步剧本改过的，先到「提炼分镜」点「照旧」或「重新提炼」）' : '剧本定稿以后才能写字、出图');
     return s;
   }
   async function noteList(j, fields) {   // 资产清单里这一张记一笔（关键帧也记，页面照它摆 AI 核图的话）
@@ -950,7 +950,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       async book(j) {
         const flow = await readFlow(j.项目), s = sceneOf(flow, j.段), sp = srcPath(j.项目, s, j.段);
         if (!s) throw fail('流水线里没有第' + j.段 + '段');
-        if (!(await exists(sp))) throw fail(PF.isPF(s) ? '要先有自由稿，才能写提示词' : '要先有定稿的剧本，才能写提示词');
+        if (!(await exists(sp))) throw fail(PF.isPF(s) ? '要先有初步剧本，才能写提示词' : '要先有定稿的剧本，才能写提示词');
         if (!SB) throw fail('读不了 公用/关键帧绑定.js');
         const ps = parasOf(s), nos = ps.map(x => x.号), pa = Array.isArray(j.段落) && j.段落.length === 2 ? j.段落 : null;   // 段落：老请求带着的范围 [从, 到]（第几行）
         const code = vpCode(str(j.名)), ex = code ? SB.expand(code, nos) : null;   // 名字就是镜头号（11-16），照镜头表的固定号认：1-5 是镜头表里从镜头1 到镜头5 那几行
@@ -1653,7 +1653,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   /* 11-16 加的「对剧本」（审片、定稿后项目自己调 Codex 拿片子对剧本、写剧本批注）11-22 删了：他定以后都先写提示词，不再对剧本 */
   /* ---------- 与AI沟通剧本（11-17 他定）：剧本页「与AI继续沟通」，先和人商量，他说「定稿」才写回来。都在 script-talk.js ---------- */
   Object.assign(KINDS, require('./script-talk.js')({ fsp, pj, str, fail, exists, unbom, nameOk, docText, writeDoc, archive, body, today, mmdd }).KINDS);
-  PF.wrap(KINDS);   // 先写提示词的段（11-21）：各样事的任务书开头说一句「剧本」指的是自由稿
+  PF.wrap(KINDS);   // 写初步剧本的段（11-21 起）：各样事的任务书开头说一句「剧本」指的是初步剧本、成片可以二次创作
 
   /* ---------- 任务：排队、一个一个做 ---------- */
   const jobs = [], byId = new Map();

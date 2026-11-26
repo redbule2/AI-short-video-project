@@ -1211,13 +1211,22 @@ function scriptFinal(fin, back, mtime) {
   const f = textTime(fin), b = textTime(back);
   return !!f && (f + 999 >= mtime || (b >= f && b + 999 >= mtime));
 }
-/* 先写提示词的段（2026-11-21 他定，服务、页面共用）：没有剧本，人先在写稿页写一段自由模式的提示词，存成 提示词/第N段/自由稿.txt。
-   流水线.json 这一段记着「先写提示词: true」；「剧本定稿」记的是人点「提炼分镜」的时间，之后自由稿没再动就算数（和剧本定稿一个算法） */
-const PF_FILE = '自由稿.txt';
+/* 写初步剧本的段（服务、页面共用）：人先在写稿页写这一段的初步剧本，存成 提示词/第N段/初步剧本.txt。
+   11-21 起叫「先写提示词」「自由稿」；2026-11-26 他定改回先写剧本，叫「初步剧本」：只是初稿，成片照它二次创作，可以不一样，不回头改它。
+   流水线.json 这一段还记着「先写提示词: true」（老名字，认段用）；「剧本定稿」记的是人点「提炼分镜」的时间，之后初步剧本没再动就算数（和剧本定稿一个算法） */
+const PF_FILE = '初步剧本.txt';
+const PF_OLD = '自由稿.txt';   // 11-21～11-26 建的段：文件名照旧，一样认
+const PF_FILES = [PF_FILE, PF_OLD];
+const isPfFile = name => PF_FILES.includes(name);
+/* 这一段的初步剧本叫什么：names 是 提示词/第N段 里的文件名（Set 或数组）。有新名字用新的，只有老名字用老的，都没有给新名字（新建用） */
+function pfFileIn(names) {
+  const has = n => names instanceof Set ? names.has(n) : Array.isArray(names) && names.includes(n);
+  return has(PF_FILE) || !has(PF_OLD) ? PF_FILE : PF_OLD;
+}
 const isPF = s => !!s && s.先写提示词 === true;
-/* 一个项目的段全是先写提示词的（总览的表头换成自由稿、提炼分镜、写完出片，11-21 他要）；一段都没有不算 */
+/* 一个项目的段全是写初步剧本的（总览的表头换成初步剧本、提炼分镜、写完出片，11-21 他要）；一段都没有不算 */
 const pfAll = list => Array.isArray(list) && list.length > 0 && list.every(isPF);
-/* 先写提示词的段，自由稿走到哪了（页面用，11-21）。f：自由稿文件 { mtime, size }，没有给 null；fin：这一场的「剧本定稿」（点「提炼分镜」的时间）。
+/* 写初步剧本的段，初步剧本走到哪了（页面用，11-21）。f：初步剧本文件 { mtime, size }，没有给 null；fin：这一场的「剧本定稿」（点「提炼分镜」的时间）。
    none 还没写：没有这个文件，或者建了还没写字（0 字节；不知道大小的照写了算）。final 提炼过、之后没再改；ok 写了还没提炼，again：提炼以后又改过 */
 function pfState(f, fin) {
   if (!f || f.size === 0) return { st: 'none' };
@@ -1244,7 +1253,7 @@ const Core = {
   units, redline, diffChars, notesToMd, parseNotes,
   nameOk, sceneStem, NO_IMG_KINDS, noImgList, noImg, setNoImg, noGeo, setNoGeo, SHOT_CODE, RE_VP, vpVer, vpBase, vpVerName, vpNo, vpCode, vpLabel, vpTok, vpFams, vpSort, RE_TASK, vpTask, taskVp, RE_CLIP, clipOld, clipTake, clipName, vpNow, vpWas, vpRenamed,
 };
-Core.scriptFinal = scriptFinal; Core.PF_FILE = PF_FILE; Core.isPF = isPF; Core.pfAll = pfAll; Core.pfState = pfState;
+Core.scriptFinal = scriptFinal; Core.PF_FILE = PF_FILE; Core.PF_OLD = PF_OLD; Core.PF_FILES = PF_FILES; Core.isPfFile = isPfFile; Core.pfFileIn = pfFileIn; Core.isPF = isPF; Core.pfAll = pfAll; Core.pfState = pfState;
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;
 G.Core = Core;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

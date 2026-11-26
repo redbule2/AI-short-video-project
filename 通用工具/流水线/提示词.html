@@ -489,8 +489,8 @@ const bmCover = (v, picked, nos) => (SB.shotsOf('', v.name, nos) || []).filter(n
 /* 2026-11-16 他定：勾这一条拍镜头表里的哪几个镜头，名字就是镜头号（1-5.txt）；本机服务照名字认范围，只写这几个镜头。
    11-19 他在设计稿（流水线/再写提示词弹窗_设计稿.html）里挑了「两步走」：第 1 步只勾镜头；第 2 步定谁来写、挂白模和关键帧。
    谁来写二选一（11-21 他定：人只写自由模式）：我来写（建空稿、进写稿页的自由模式，写好交给 AI 写完），AI 先写一版（交给 AI）。标题和按钮钉住，只有中间一处滚（.dlg.pin） */
-/* 先写提示词的段（11-21 他定）：默认照自由稿交给 AI 写完（照镜头表拆这几镜、写完），也能自己写 */
-const HOW_PF = [['照自由稿', '照自由稿，交给 AI 写完', 'AI 照镜头表和你写的自由稿，把这几镜拆好、写完：生成目标、素材这些一起写。写好你看一眼，再批准出片'], ['自由', '我来写', '自己写这几镜里发生什么，写好点「交给 AI 写完」']];
+/* 写初步剧本的段（11-21 他定；11-26 改叫初步剧本）：默认照初步剧本交给 AI 写完（照镜头表拆这几镜、写完），也能自己写 */
+const HOW_PF = [['照自由稿', '照初步剧本，交给 AI 写完', 'AI 照镜头表和你写的初步剧本，把这几镜拆好、写完：生成目标、素材这些一起写。写好你看一眼，再批准出片'], ['自由', '我来写', '自己写这几镜里发生什么，写好点「交给 AI 写完」']];
 const HOW = [['自由', '我来写', '照剧本写这几镜里发生什么，一大段也行。写好点「交给 AI 写完」：拆成分镜，生成目标、素材这些一起写'], ['ai', 'AI 先写一版', 'AI 照 sd25-pe 写、估每镜几秒，你再批注']];
 async function newPrompt(s) {
   if (!s.段落.length) { toast('先到「提炼」准备好镜头表，再勾这一条拍哪几个镜头', 'err'); return; }
@@ -553,7 +553,7 @@ async function newPrompt(s) {
   };
   const paintHow = () => {
     for (const b of picks.children) { b.classList.toggle('on', b.dataset.v === how); b.setAttribute('aria-checked', String(b.dataset.v === how)); }
-    const me = how === '自由';   // 照自由稿：AI 写完（11-21）
+    const me = how === '自由';   // 照初步剧本：AI 写完（11-21；选项的值还叫「照自由稿」）
     okBtn.textContent = me ? '开始写' : viaSelf ? '复制任务，自己交给 AI' : '让 ' + chName() + (how === 'ai' ? ' 写' : ' 写完');
     selfBtn.style.display = me || viaSelf || !selfOk() ? 'none' : '';   // .btn 的 display 会盖掉 hidden
     whatField.hidden = how !== 'ai';
@@ -590,11 +590,11 @@ async function newPrompt(s) {
     return shell;
   });
   if (!r) return;
-  if (r.who === 'pf') {   // 照自由稿交给 AI 写完（先写提示词的段，11-21）：事件脚本先放自由稿，交给 AI 照镜头表拆这几镜、写完，进写稿页看
+  if (r.who === 'pf') {   // 照初步剧本交给 AI 写完（写初步剧本的段，11-21）：事件脚本先放初步剧本，交给 AI 照镜头表拆这几镜、写完，进写稿页看
     if (!AI.ok) { toast('本机服务是旧的，重开一次才能交给 AI 写完', 'err'); return; }
     let body = '';
-    try { body = C.decodeText((await FS.read(at([...dirOf(s), C.PF_FILE]))).buf).text.replace(/\r\n?/g, '\n').trim().split('\n').join('\r\n'); } catch (err) { /* 没有 */ }
-    if (!body) { toast('自由稿还空着：先到「自由稿」那一步写好', 'err'); return; }
+    try { body = C.decodeText((await FS.read(at([...dirOf(s), C.pfFileIn((F.names.get(s.段) || {}).set || [])]))).buf).text.replace(/\r\n?/g, '\n').trim().split('\n').join('\r\n'); } catch (err) { /* 没有 */ }
+    if (!body) { toast('初步剧本还空着：先到「初步剧本」那一步写好', 'err'); return; }
     await flush();
     try { await makeDraft(s, r.name, r.mode, r.shots, r.bm, r.frames, body); }
     catch (err) { toast('没建成：' + err.message, 'err'); await loadSides(); await loadExtra(); rerender(); return; }

@@ -34,7 +34,7 @@ const { vpVer, vpBase, vpNo, vpCode, vpLabel, vpTok, vpFams, nameOk, sceneStem, 
 const VID_RE = /\.(mp4|m4v|mov|webm)$/i;
 const SHOTS_TAIL = '_批注截图';
 const FILE = '流水线.json';
-const NOTE_LINE = '项目管理「流水线」页存的。梗概：全片讲什么。人物、道具：全片的，一行一个，「资产」是它引用的那张图（引用了就是对上了）；道具有几个状态、引用了几张图时，「资产」是一个列表，一张图一个状态；「描写改」是这一行的描写最后改动的时间。场景：全片的场景描写，一行写一处地方；场景图：引用的场景图。可用：哪张图人看过、确认能用（图 → 确认的时间），确认过的图各场通用；图重出过、它那一行的描写改过，就要再确认。场：一场一场的，各场的「人物」「道具」写的是上面表里的名字，「场景图」是这一场用的场景图，「场景文字」是这一场用的、只用文字写的地方（全片「场景」里的原句，没有图也算），「不出图」是这一场只用文字写、不出图的几样（人物、道具写名字，场景写地方名：不算缺图，不写出图提示词，写视频提示词时照全片设定里的描写写；挂上了图的照图），「不要GEO」是这一场没有严格站位、不用 GEO 底稿的场景（写地方名：不写、不核 GEO 底稿，写视频提示词也不用），「段落」是这一场的镜头表（一个镜头写什么、起什么作用；字段名照旧叫「段落」；作用写成「标签｜目的，关系」，「秒数」是这一镜预估几秒，「秒数人定」是人改过的，AI 照批注改时照抄；每一镜的「人物」「场景」「道具」是这一镜出场的，场景写地方名）。顶上的「全局」是全片好几段都出场的人物、场景、道具（AI 提炼时估，人能改；好几段都选了的不记也算）；各场的「删掉」是人删掉的、这一段用不着的（类别|名字），AI 重新提炼也不再列。先写剧本（11-16 起），剧本定稿以后 AI 照剧本一次提炼出梗概、这一场的人物道具场景和镜头表（定稿的剧本/第N段/第N段_提炼.json），页面并进全片设定和这一场，人再改；「提炼取」是并进来的那一版的时间，「提炼改」记着 AI 改了哪几样、原来是什么，「提炼批」是人写的还没交出去的批注。写提示词时分镜照剧情需要设计，不必和镜头表一一对应，写在提示词的「分镜」里。「剧本定稿」是人看过剧本以后点的时间，有它、而且不早于剧本最后改动的时间，才许提炼；「回填」是剧本页点「照片子改剧本」、项目照定稿的样片改完剧本的时间，之后剧本没再动，剧本定稿照旧算数；「定稿」是这一场的提炼（出场的、镜头表）定下来的时间，定了才出这一场的资产图；这一场要的图都确认可用了，才写提示词。风格：全片的拍摄风格，「名」是 通用工具/AI短片风格库 里的一种，或者「本项目自己的」（照 提示词/全局资产/全片_光影总基调.txt），「定」是定下来的时间，「换」是从别的风格换过来的时间；一场另选的写在那一场的「风格」里（「风格换」是这一场换风格的时间），没写就照全片的；出资产图、写提示词照它写。「先写提示词」是 true 的场没有剧本（11-21 起）：人先在写稿页写一段自由模式的提示词（提示词/第N段/自由稿.txt），点「提炼分镜」记成这一场的「剧本定稿」，AI 照自由稿提炼梗概、出场的和镜头表；「定稿」（分镜定下来）以后出资产图，写提示词时 AI 照镜头表拆、照自由稿写；提炼以后自由稿又改过，分镜待核对，人点「照旧」或「重新提炼」（只动改到的镜头，号不变）。人在页面上写，AI 只读；一场就是一个「第N段」。';
+const NOTE_LINE = '项目管理「流水线」页存的。梗概：全片讲什么。人物、道具：全片的，一行一个，「资产」是它引用的那张图（引用了就是对上了）；道具有几个状态、引用了几张图时，「资产」是一个列表，一张图一个状态；「描写改」是这一行的描写最后改动的时间。场景：全片的场景描写，一行写一处地方；场景图：引用的场景图。可用：哪张图人看过、确认能用（图 → 确认的时间），确认过的图各场通用；图重出过、它那一行的描写改过，就要再确认。场：一场一场的，各场的「人物」「道具」写的是上面表里的名字，「场景图」是这一场用的场景图，「场景文字」是这一场用的、只用文字写的地方（全片「场景」里的原句，没有图也算），「不出图」是这一场只用文字写、不出图的几样（人物、道具写名字，场景写地方名：不算缺图，不写出图提示词，写视频提示词时照全片设定里的描写写；挂上了图的照图），「不要GEO」是这一场没有严格站位、不用 GEO 底稿的场景（写地方名：不写、不核 GEO 底稿，写视频提示词也不用），「段落」是这一场的镜头表（一个镜头写什么、起什么作用；字段名照旧叫「段落」；作用写成「标签｜目的，关系」，「秒数」是这一镜预估几秒，「秒数人定」是人改过的，AI 照批注改时照抄；每一镜的「人物」「场景」「道具」是这一镜出场的，场景写地方名）。顶上的「全局」是全片好几段都出场的人物、场景、道具（AI 提炼时估，人能改；好几段都选了的不记也算）；各场的「删掉」是人删掉的、这一段用不着的（类别|名字），AI 重新提炼也不再列。先写剧本（11-16 起），剧本定稿以后 AI 照剧本一次提炼出梗概、这一场的人物道具场景和镜头表（定稿的剧本/第N段/第N段_提炼.json），页面并进全片设定和这一场，人再改；「提炼取」是并进来的那一版的时间，「提炼改」记着 AI 改了哪几样、原来是什么，「提炼批」是人写的还没交出去的批注。写提示词时分镜照剧情需要设计，不必和镜头表一一对应，写在提示词的「分镜」里。「剧本定稿」是人看过剧本以后点的时间，有它、而且不早于剧本最后改动的时间，才许提炼；「回填」是剧本页点「照片子改剧本」、项目照定稿的样片改完剧本的时间，之后剧本没再动，剧本定稿照旧算数；「定稿」是这一场的提炼（出场的、镜头表）定下来的时间，定了才出这一场的资产图；这一场要的图都确认可用了，才写提示词。风格：全片的拍摄风格，「名」是 通用工具/AI短片风格库 里的一种，或者「本项目自己的」（照 提示词/全局资产/全片_光影总基调.txt），「定」是定下来的时间，「换」是从别的风格换过来的时间；一场另选的写在那一场的「风格」里（「风格换」是这一场换风格的时间），没写就照全片的；出资产图、写提示词照它写。「先写提示词」是 true 的场先写初步剧本（11-21 起；11-26 起叫初步剧本）：人先在写稿页写这一段的初步剧本（提示词/第N段/初步剧本.txt，11-26 以前建的叫 自由稿.txt），点「提炼分镜」记成这一场的「剧本定稿」，AI 照初步剧本提炼梗概、出场的和镜头表；「定稿」（分镜定下来）以后出资产图，写提示词时 AI 照镜头表拆、照初步剧本写；初步剧本只是初稿，成片照它二次创作，可以不一样，不回头改它；提炼以后初步剧本又改过，分镜待核对，人点「照旧」或「重新提炼」（只动改到的镜头，号不变）。人在页面上写，AI 只读；一场就是一个「第N段」。';
 const IMG_RE = /\.(png|jpe?g|webp|gif|avif)$/i;
 const AI_FILE = '流水线_AI扩写.json';   // 定稿的剧本/流水线_AI扩写.json：AI 补的人物、道具描写，照 GEO 写的场景段（AI 写，页面只读；你点「采用」才换进流水线）
 const GROWS = typeof CSS !== 'undefined' && !!CSS.supports && CSS.supports('field-sizing', 'content');   // 文字框会不会自己长高
@@ -635,7 +635,7 @@ async function loadSides() {
     if (F.name !== name || ls.failed) return out();
     const sig = pfiles.map(e => e.name + '@' + (e.mtime || 0)).sort().join('|'), was = F.names.get(seg);
     if (!was || was.sig !== sig) {
-      const pfSt = names.includes(C.PF_FILE) ? await FS.stat(at([name, '提示词', segName(seg), C.PF_FILE])) : null;   // 自由稿多大：建了还没写字的（0 字节）算还没写（11-21）
+      const pfn = C.pfFileIn(names), pfSt = names.includes(pfn) ? await FS.stat(at([name, '提示词', segName(seg), pfn])) : null;   // 初步剧本多大：建了还没写字的（0 字节）算还没写（11-21；老段叫 自由稿.txt）
       if (F.name !== name) return out();
       F.names.set(seg, { sig, set: new Set(names), time: new Map(pfiles.map(e => [e.name, e.mtime || 0])), pfSize: pfSt && typeof pfSt.size === 'number' ? pfSt.size : undefined });
       changed.add(seg);
@@ -786,8 +786,8 @@ function openWrite(seg, name, hand, fork, look) {
   };
   SHELL = h('div', { class: 'wf-shell wf-write' },
     h('div', { class: 'wf-shell-h' }, h('button', { class: 'btn sm ink', type: 'button', onclick: close }, '← 回到流水线'),
-      h('span', { class: 'wf-shell-t' }, '第' + seg + '段 · ' + (name === C.PF_FILE ? '自由稿' : vpLabel(fork || name)) + (fork ? ' · 另存' : look ? ' · 只能看' : hand ? ' · 接着写' : ' · 进去改')), h('span', { class: 'sp' }),
-      h('span', { class: 'fn-note' }, fork ? '「' + vpLabel(name) + '」出过片，原稿不动。照它改，改了提示词或素材才存成「' + vpLabel(fork) + '」；一处没改就不另存，回来也不会多出一版。' : look ? '「' + vpLabel(name) + '」出过片，原稿锁着，只能看。要改点下面的「另存成…」，改了提示词或素材才存成新的一版。' : name === C.PF_FILE ?'这一段的戏你来写：谁在哪、做什么、说什么，想好的机位、声音也写上。写好点「提炼分镜」，AI 照它分镜头、列出场的人物场景道具。' : hand ? '你来写的稿：在自由模式写好事件脚本，点「交给 AI 写完」，AI 拆成分镜，生成目标、素材这几块一起写好。' : '这一条是 AI 写的，在这里自己改。改过以后，AI 估的每镜秒数可能不准，出片时会提醒。')),
+      h('span', { class: 'wf-shell-t' }, '第' + seg + '段 · ' + (C.isPfFile(name) ? '初步剧本' : vpLabel(fork || name)) + (fork ? ' · 另存' : look ? ' · 只能看' : hand ? ' · 接着写' : ' · 进去改')), h('span', { class: 'sp' }),
+      h('span', { class: 'fn-note' }, fork ? '「' + vpLabel(name) + '」出过片，原稿不动。照它改，改了提示词或素材才存成「' + vpLabel(fork) + '」；一处没改就不另存，回来也不会多出一版。' : look ? '「' + vpLabel(name) + '」出过片，原稿锁着，只能看。要改点下面的「另存成…」，改了提示词或素材才存成新的一版。' : C.isPfFile(name) ? '这是初稿，想到哪写到哪：在哪、谁、做什么、说什么。写好点「提炼分镜」，AI 照它分镜头、列出场的人物场景道具。' : hand ? '你来写的稿：在自由模式写好事件脚本，点「交给 AI 写完」，AI 拆成分镜，生成目标、素材这几块一起写好。' : '这一条是 AI 写的，在这里自己改。改过以后，AI 估的每镜秒数可能不准，出片时会提醒。')),
     frame);
   SHELL.leave = keep;
   document.body.append(SHELL); document.body.classList.add('wf-covered');
@@ -882,7 +882,7 @@ setInterval(() => document.querySelectorAll('.ai-run b[data-t0]').forEach(b => {
 
 /* ---------- 各场走到哪一步：总览的进度表、一场页面顶上的步骤条都看它 ---------- */
 const STEPS = [['剧本', '一', '剧本'], ['分场', '二', '提炼'], ['资产', '三', '资产'], ['提示词', '四', '提示词']];   // [哪一页, 第几道工序, 这一步叫什么]。先写剧本，定稿以后提炼（11-16 他定）；提炼那一页的文件还叫 分场.html。第五步「审片」11-22 拿掉了：审片是提示词那一步每条上的弹窗
-const PF_STEP = { 剧本: '自由稿', 分场: '提炼分镜', 提示词: '写完出片' };   // 先写提示词的段（11-21 他定）：这几步换个叫法
+const PF_STEP = { 剧本: '初步剧本', 分场: '提炼分镜', 提示词: '写完出片' };   // 写初步剧本的段（11-21 他定；11-26 第一步改叫初步剧本）：这几步换个叫法
 const clipsOf = seg => (F.clips.get(seg) || { vids: [], all: new Set(), time: new Map() });
 /* ---------- 待核对：前面确认过的东西后来又动过，后面用到它的要你看一眼。看过了选「沿用」（这里记一个时间），或者重做（文件新了自然就不算旧）。
    记在这一场的「沿用」里：{ '提示词/文件名': 时间, '样片/视频名': 时间 } ---------- */
@@ -964,7 +964,7 @@ function assetCheckTime(s) {
    剧本重新定过稿不再整段标待核对（11-23）：哪张图照的描写、镜头变了，那一张自己不算确认（okOf） */
 function assetState(s) {
   const sc = scriptState(s);
-  if (sc.st !== 'final') return { st: 'lock', tx: sc.pf ? (sc.again && hasParas(s) ? '分镜核对后' : '写好自由稿后') : '剧本定稿后' };   // 先写提示词的段（11-21）：分镜定下来就能出
+  if (sc.st !== 'final') return { st: 'lock', tx: sc.pf ? (sc.again && hasParas(s) ? '分镜核对后' : '写好初步剧本后') : '剧本定稿后' };   // 先写提示词的段（11-21）：分镜定下来就能出
   if (!s.定稿) return { st: 'lock', tx: sc.pf ? '分镜定下来后' : '提炼定了后' };   // 出场的人物、道具是剧本定稿以后提炼的（11-16）
   if (jobLive(jobOf('出图', s.段))) return { st: 'ai', tx: '在 Codex 里出图' };
   if (jobLive(jobOf('写字', s.段))) return { st: 'ai', tx: 'AI 在写字' };
@@ -985,7 +985,7 @@ function promptState(s) {
 /* 一场的四步各是什么样：ok 做完了、you 等你、ai AI 在做、lock 前一步没完还不能做 */
 function stepInfo(s) {
   const sc = scriptState(s);
-  const a = sc.pf ? (sc.st === 'none' ? { st: 'you', tx: '还没写' } : sc.st === 'final' ? { st: 'ok', tx: '提炼了' } : sc.again && hasParas(s) ? { st: 'ok', tx: '改过了' } : { st: 'you', tx: '等你提炼' })   // 先写提示词的段：第一步是自由稿（改过了：到提炼分镜那一步核对）
+  const a = sc.pf ? (sc.st === 'none' ? { st: 'you', tx: '还没写' } : sc.st === 'final' ? { st: 'ok', tx: '提炼了' } : sc.again && hasParas(s) ? { st: 'ok', tx: '改过了' } : { st: 'you', tx: '等你提炼' })   // 写初步剧本的段：第一步是初步剧本（改过了：到提炼分镜那一步核对）
     : sc.st === 'none' ? { st: 'you', tx: '还没写' } : sc.st !== 'final' ? { st: 'you', tx: sc.again ? '改过，再定稿' : '等你定稿' } : { st: 'ok', tx: '定稿了' };
   return [a, paraState(s), assetState(s), promptState(s)];
 }
@@ -996,8 +996,8 @@ const paraStale = s => !!s.定稿 && !!s.头回定稿 && timeOf(s.定稿) + 999 
 function paraState(s) {
   for (const 事 of ['提炼', '提炼按批注改']) { const job = jobOf(事, s.段); if (jobLive(job)) return { st: 'ai', tx: 事 === '提炼' ? 'AI 在提炼' : 'AI 在改', job }; }
   const sc = scriptState(s);
-  if (sc.pf && sc.again && hasParas(s)) return { st: 'you', tx: '待核对', stale: true, edited: true };   // 先写提示词的段：提炼以后自由稿又改过（11-21 他定：照旧，或者重新提炼）
-  if (sc.st !== 'final') return { st: 'lock', tx: sc.pf ? '写好自由稿后' : '剧本定稿后' };
+  if (sc.pf && sc.again && hasParas(s)) return { st: 'you', tx: '待核对', stale: true, edited: true };   // 写初步剧本的段：提炼以后初步剧本又改过（11-21 他定：照旧，或者重新提炼）
+  if (sc.st !== 'final') return { st: 'lock', tx: sc.pf ? '写好初步剧本后' : '剧本定稿后' };
   if (!hasParas(s)) return { st: 'you', tx: '还没提炼' };
   if (!s.定稿) return { st: 'you', tx: '等你定' };
   if (paraStale(s)) return { st: 'you', tx: '待核对', stale: true };
@@ -1334,8 +1334,8 @@ function mentioned(s) {
 }
 const pickCount = s => s.人物.length + s.道具.length + s.场景图.length + uniq(s.场景文字).length + s.人物图.length + s.道具图.length;
 /* 资产那一步还不能开：剧本没定稿，或者提炼还没定（资产页、资产详情页都用） */
-const PF_LOCK = { 写好自由稿后: ['先写好自由稿，点「提炼分镜」；分镜定下来以后才能出资产图。', '剧本', '← 去写自由稿'], 分镜核对后: ['自由稿提炼以后又改过：先到「提炼分镜」那一步点「照旧」或「重新提炼」，再出资产图。', '分场', '← 去提炼分镜'],
-  分镜定下来后: ['分镜定下来才能出资产图：出场的人物、场景、道具是照自由稿提炼的。先到「提炼分镜」那一步，看完点「定下来」。', '分场', '← 去提炼分镜'] };   // 先写提示词的段（11-21）
+const PF_LOCK = { 写好初步剧本后: ['先写好初步剧本，点「提炼分镜」；分镜定下来以后才能出资产图。', '剧本', '← 去写初步剧本'], 分镜核对后: ['初步剧本提炼以后又改过：先到「提炼分镜」那一步点「照旧」或「重新提炼」，再出资产图。', '分场', '← 去提炼分镜'],
+  分镜定下来后: ['分镜定下来才能出资产图：出场的人物、场景、道具是照初步剧本提炼的。先到「提炼分镜」那一步，看完点「定下来」。', '分场', '← 去提炼分镜'] };   // 先写提示词的段（11-21）
 function assetLock(s, lk) {
   const pf = PF_LOCK[lk.tx];
   if (pf) return h('div', { class: 'wf-lock' }, pf[0], h('button', { class: 'btn ink', onclick: () => go(pf[1], { s: s.段 }) }, pf[2]));
@@ -1394,9 +1394,9 @@ async function sendAI(line, ok) {
    剧本定稿：你看过剧本，点了「剧本定稿」，之后剧本没再动。定稿了才提炼，提炼定了才许出资产图。11-16 起剧本是第一步，提炼再改不碰剧本定稿 */
 function scriptState(s) {
   const d = docsOf(s.段);
-  if (C.isPF(s)) {   // 先写提示词的段（11-21 他定）：第一步是自由稿（提示词/第N段/自由稿.txt），点「提炼分镜」记下时间，之后自由稿没再改就算数
-    const rec = F.names.get(s.段), has = !!rec && rec.set.has(C.PF_FILE);   // 建了还没写字的自由稿也算还没写（公用/核心.js 的 pfState）
-    return { d, pf: true, ...C.pfState(has ? { mtime: rec.time.get(C.PF_FILE) || 0, size: rec.pfSize } : null, s.剧本定稿) };
+  if (C.isPF(s)) {   // 写初步剧本的段（11-21 他定）：第一步是初步剧本（提示词/第N段/初步剧本.txt），点「提炼分镜」记下时间，之后初步剧本没再改就算数
+    const rec = F.names.get(s.段), pfn = rec ? C.pfFileIn(rec.set) : C.PF_FILE, has = !!rec && rec.set.has(pfn);   // 建了还没写字的初步剧本也算还没写（公用/核心.js 的 pfState）
+    return { d, pf: true, ...C.pfState(has ? { mtime: rec.time.get(pfn) || 0, size: rec.pfSize } : null, s.剧本定稿) };
   }
   if (!d.script) return { d, st: 'none' };
   const fin = timeOf(s.剧本定稿);   // 记到秒，文件时间到毫秒：比的时候让一秒

@@ -31,7 +31,7 @@
 .sbx .fs-lab { margin-top: 0; }
 .sbx-name { display: block; width: 100%; margin: 0 0 2px; font-size: 16px; }
 .sbx-f { margin-top: 18px; padding-top: 10px; border-top: 1px dashed var(--line); text-align: right; }
-/* 先写提示词的段：右边摆自由稿（只看，点一下接着写） */
+/* 写初步剧本的段：右边摆初步剧本（只看，点一下接着写） */
 .pf-text { margin: 0; padding: 18px 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); font: 16px/1.9 var(--serif); color: var(--ink); white-space: pre-wrap; word-break: break-word; cursor: text; }
 .pf-text:hover { border-color: var(--dai-line); }
 </style>
@@ -53,6 +53,7 @@
 <script src="../公用/资产照的.js"></script>
 <script src="../公用/资产认图.js"></script>
 <script src="流水线.js"></script>
+<script src="初步剧本.js"></script>
 <script src="资产旧图.js"></script>
 <script>
 /* ============================================================
@@ -63,7 +64,7 @@
    定稿了，下一步 AI 照剧本提炼梗概、出场的人物场景道具和镜头表（提炼那一页），提炼定了才出资产图。剧本再改，要再定一次。
    镜头表这一步 2026-11-12 取消了（他定的）：剧本定稿、资产确认以后直接写提示词，镜头在提示词的「分镜」里设计。
    看剧本、写批注用的是「项目管理」里剧本那一样，嵌在这一页下面。
-   先写提示词的段（2026-11-21 他定）：没有剧本，这一页是「自由稿」，见下面 pfBar 那一节。
+   写初步剧本的段（2026-11-21 他定先写提示词；11-26 改回先写剧本、叫初步剧本）：这一页是「初步剧本」，见下面 pfBar 那一节。
    共用的东西（读写流水线.json、顶栏、步骤条、剧本现在什么样）在 流水线.js。
    ============================================================ */
 'use strict';
@@ -336,62 +337,45 @@ function impactNote(s) {
   if (!AI.ok || !prev || timeOf(prev) + 999 >= timeOf(s.剧本定稿) || !s.剧本定稿) return null;
   return barNote(h('span', null, '剧本重新定稿了，提炼、提示词都标成待核对；资产图照的描写变了的，资产那一步自己标出来。', h('button', { class: 'btn sm ghost', type: 'button', title: '可选：让 AI 对一遍新旧剧本，列出哪几条提示词真要再看，没列上的照旧', onclick: async () => { await startJob({ 事: '影响清单', 段: s.段, 参数: { 上回: prev } }); swapCard(s); } }, '让 AI 列影响')));
 }
-/* ---------- 先写提示词的段（2026-11-21 他定）：没有剧本，第一步在写稿页写一段自由模式的提示词（提示词/第N段/自由稿.txt）。
-   这一页摆自由稿（只看），点「写自由稿」「接着写」把写稿页盖上来写；写好点「提炼分镜」（这里、写稿页顶上都有）：
-   记下时间（当剧本定稿用），交给 AI 照自由稿提炼分镜，去「提炼分镜」那一步看。提炼以后自由稿又改过，到「提炼分镜」那一步点「照旧」或「重新提炼」 ---------- */
-const pfParts = seg => [F.name, '提示词', segName(seg), C.PF_FILE];
-const PF_AUTO = new Set();   // 这一回已经替你打开过写稿页的段（还没有自由稿时，进来先打开一次）
-const pfOld = () => !(LINK.v >= 21) && (toast('本机服务是旧的：重开一次才能用「先写提示词」', 'err'), true);   // 第 21 版起才存得了自由稿、照它提炼
+/* ---------- 写初步剧本的段（2026-11-21 起；11-26 他定改回先写剧本、叫初步剧本）：第一步在写稿页写这一段的初步剧本（提示词/第N段/初步剧本.txt；老段叫 自由稿.txt，照认）。
+   初步剧本只是初稿：成片照它二次创作，可以不一样，不回头改它。
+   这一页摆初步剧本（只看），点「写初步剧本」「接着写」把写稿页盖上来写；写好点「提炼分镜」（这里、写稿页顶上都有）：
+   记下时间（当剧本定稿用），交给 AI 照初步剧本提炼分镜，去「提炼分镜」那一步看（pfExtract 这几样在 初步剧本.js，提炼那一步也用，11-26）。提炼以后初步剧本又改过，到「提炼分镜」那一步点「照旧」或「重新提炼」 ---------- */
+const PF_AUTO = new Set();   // 这一回已经替你打开过写稿页的段（还没有初步剧本时，进来先打开一次）
 async function pfOpen(s) {   // 还没有就先建一份空的（写稿资料记「自由」：整页一大块），再把写稿页盖上来
-  if (pfOld()) return;
-  const p = pfParts(s.段), side = [...p.slice(0, -1), C.PF_FILE.replace(/\.txt$/, '_写稿.json')];
+  const p = pfParts(s.段), side = [...p.slice(0, -1), p[p.length - 1].replace(/\.txt$/, '_写稿.json')];
+  if (pfOld(p[p.length - 1])) return;
   try {
     if (!(await FS.stat(at(p)))) {
       await FS.create(at(p), C.encodeText(''));
-      if (!(await FS.stat(at(side)))) await FS.create(at(side), C.encodeText(JSON.stringify({ 说明: '写稿页的过程文件，不是提示词。这一段先写提示词：自由稿.txt 是人写的这一段的戏，AI 照它提炼分镜（流水线「提炼分镜」那一步）。', 写法: '自由', 手写: true }, null, 2) + '\n'));
+      if (!(await FS.stat(at(side)))) await FS.create(at(side), C.encodeText(JSON.stringify({ 说明: '写稿页的过程文件，不是提示词。' + p[p.length - 1] + ' 是人写的这一段的初步剧本（初稿），AI 照它提炼分镜（流水线「提炼分镜」那一步）。', 写法: '自由', 手写: true }, null, 2) + '\n'));
       await loadSides();
     }
   } catch (e) { toast('没建成：' + e.message, 'err'); return; }
-  openWrite(s.段, C.PF_FILE, true);
+  openWrite(s.段, p[p.length - 1], true);
 }
-async function pfExtract(s) {   // 提炼分镜：写稿页盖着的先存上；自由稿有字才交。提炼过的，AI 在现在的分镜上面改，号不变（本机服务照旧走 redoBook）
-  if (SHELL && SHELL.leave && !(await SHELL.leave())) return;
-  let text = '';
-  try { text = C.decodeText((await FS.read(at(pfParts(s.段)))).buf).text; } catch (e) { /* 还没有 */ }
-  if (!text.trim()) { toast('自由稿还空着：先写好这一段的戏', 'err'); return; }
-  if (pfOld()) return;
-  if (jobLive(jobOf('提炼', s.段))) { go('分场', { s: s.段 }); return; }
-  if (hasParas(s) && !(await confirmDlg({ title: '照新的自由稿重新提炼', body: 'AI 在现在的分镜上面改：没变的照抄，改了的只改那几镜，镜头号留着（提示词、关键帧都认号）。换之前流水线留一版在历史记录。', ok: '重新提炼' }))) return;
-  const now = nowText();
-  if (!s.头回定稿) s.头回定稿 = now;
-  s.剧本定稿 = now; s.定稿 = ''; touch();
-  if (!(await startJob({ 事: '提炼', 段: s.段 }))) return;
-  if (!filmStyle()) await styleDlg(null, { first: true, lead: '分镜在提炼了，接着定这部片子的拍摄风格（以后能换）。' });
-  go('分场', { s: s.段 });
-}
-window.wfFreeExtract = () => { const s = sceneNow(); if (s && C.isPF(s)) pfExtract(s); };   // 写稿页顶上的「提炼分镜」（公用/写稿自由稿.js）
 function pfBar(s) {
   const { st, again } = scriptState(s), sp = () => h('span', { class: 'sp' }), job = jobOf('提炼', s.段), bad = jobFailed('提炼', s.段);
   const write = (label, cls) => h('button', { class: 'btn sm ' + (cls || ''), type: 'button', title: '把写稿页盖上来写，边写边存', onclick: () => pfOpen(s) }, icon('pen'), label);
   const next = label => h('button', { class: 'btn ink', type: 'button', onclick: () => go('分场', { s: s.段 }) }, label);
-  if (jobLive(job)) return [jobLine(job), barNote('AI 在照自由稿提炼分镜，好了到「提炼分镜」那一步看。'), sp(), next('去看 →')];
+  if (jobLive(job)) return [jobLine(job), barNote('AI 在照初步剧本提炼分镜，好了到「提炼分镜」那一步看。'), sp(), next('去看 →')];
   const out = bad ? [bad] : [];
-  if (st === 'none') out.push(barNote('这一段先写提示词：点「写自由稿」，把这一段的戏写成一大段。'), sp(), write('写自由稿', 'ink'));
-  else if (st === 'final') out.push(h('span', { class: 'fs-state ok', title: '点「提炼分镜」的时间：' + s.剧本定稿 }, icon('check'), '提炼过了 ' + s.剧本定稿.slice(5, 16)), barNote('自由稿再改，分镜要再核对。'), write('接着写'), sp(), next('下一步：提炼分镜 →'));
-  else if (again && hasParas(s)) out.push(barNote('提炼以后自由稿又改过：到「提炼分镜」那一步，点「照旧」或「重新提炼」。', true), write('接着写'), sp(), next('去核对 →'));
+  if (st === 'none') out.push(barNote('先写这一段的初步剧本：想到哪写到哪，写成一大段就行。'), sp(), write('写初步剧本', 'ink'));
+  else if (st === 'final') out.push(h('span', { class: 'fs-state ok', title: '点「提炼分镜」的时间：' + s.剧本定稿 }, icon('check'), '提炼过了 ' + s.剧本定稿.slice(5, 16)), barNote('初步剧本再改，分镜要再核对。'), write('接着写'), sp(), next('下一步：提炼分镜 →'));
+  else if (again && hasParas(s)) out.push(barNote('提炼以后初步剧本又改过：到「提炼分镜」那一步，点「照旧」或「重新提炼」。', true), write('接着写'), sp(), next('去核对 →'));
   else out.push(barNote('写好了就点「提炼分镜」：AI 照它分镜头、列出场的人物场景道具。'), sp(), write('接着写'),
-    h('button', { class: 'btn sm ink', type: 'button', title: 'AI 照自由稿分镜头、列出场的人物场景道具', onclick: () => pfExtract(s) }, '提炼分镜'));
+    h('button', { class: 'btn sm ink', type: 'button', title: 'AI 照初步剧本分镜头、列出场的人物场景道具', onclick: () => pfExtract(s) }, '提炼分镜'));
   return out;
 }
-async function pfPaint(s) {   // 右边摆自由稿（只看）：点一下接着写
-  const box = document.getElementById('sb-doc'), rec = F.names.get(s.段), key = 'pf:' + (rec && rec.time ? rec.time.get(C.PF_FILE) || 0 : 'none');
+async function pfPaint(s) {   // 右边摆初步剧本（只看）：点一下接着写
+  const box = document.getElementById('sb-doc'), rec = F.names.get(s.段), key = 'pf:' + (rec && rec.time ? rec.time.get(pfName(s.段)) || 0 : 'none');
   if (key === FRAME_KEY && box.firstChild) return;
   FRAME_KEY = key;
   let text = '';
   try { text = C.decodeText((await FS.read(at(pfParts(s.段)))).buf).text; } catch (e) { /* 还没有 */ }
   if (FRAME_KEY !== key) return;
   box.replaceChildren(text.trim() ? h('pre', { class: 'pf-text', title: '点一下接着写', onclick: () => pfOpen(s) }, text)
-    : h('div', { class: 'wf-lock' }, '还空着。点上面的按钮，把这一段的戏写成一大段：谁在哪、做什么、说什么，想好的机位、声音也写上。'));
+    : h('div', { class: 'wf-lock' }, '初步剧本还空着。点上面的「写初步剧本」，想到哪写到哪：在哪、谁、做什么、说什么。'));
   if (scriptState(s).st === 'none' && rec && !PF_AUTO.has(s.段)) { PF_AUTO.add(s.段); pfOpen(s); }   // 刚建的段：直接打开写稿页
 }
 /* ---------- 左边：这一段的名字，边写边存（剧本的段名跟着它） ----------
@@ -427,7 +411,7 @@ function paintDoc(s) {
 function repaint() {
   const s = sceneNow(), bar = document.getElementById('sb-bar'), side = document.getElementById('sb-side');
   if (!s || !bar || !side) return false;
-  const d = docsOf(s.段), box = sideBox(s), pf = C.isPF(s);   // 先写提示词的段：上面一条、右边换成自由稿的
+  const d = docsOf(s.段), box = sideBox(s), pf = C.isPF(s);   // 写初步剧本的段：上面一条、右边换成初步剧本的
   bar.replaceChildren(...(pf ? pfBar(s) : barEls(s)));
   if (side.firstChild !== box) { side.replaceChildren(box); fitAll(); }
   if (pf) { document.getElementById('sb-docs').replaceChildren(); pfPaint(s); return; }

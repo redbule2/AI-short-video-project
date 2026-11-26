@@ -82,6 +82,7 @@ function renderFree() {
   $('.wr-ta', wr).setAttribute('aria-label', '自由提示词');
   $('#shot-editor').replaceChildren(Zone.bar() || '', WHOLE ? h('div', { class: 'whole-note' }, '这份稿是整页写的老格式，认不出分区：这里照原样整页改，存的时候一字不添。') : '', h('div', { class: 'free-section' },
     wr, h('div', { class: 'free-footer' }, '分镜正文 · 输入 @ 引用素材', h('span', { id: 'freeCount' }, FREE.length + ' 字'))));
+  if (window.FreeDraft && FreeDraft.is()) FreeDraft.dress();   // 写初步剧本：稿纸上加打气的话、人物小牌子、字数（公用/写稿自由稿.js，11-26）
   grow($('#freeText'));
   LASTF = $('#freeText'); LAST = null;
 }

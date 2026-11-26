@@ -25,9 +25,10 @@ function checkSide(patch, what = '草稿保存') {
   if (own(patch, '挂图') && !object(patch.挂图)) throw error(400, '挂图必须是对象');
 }
 
-module.exports = function makeDraftStore({ ROOT, io = fs.promises, now = () => new Date(), RE_VP = require(path.join(__dirname, '..', '..', '..', '通用工具', '公用', '核心.js')).RE_VP, PF_FILE = '', frozen = async () => '', twin = async () => '' }) {   // RE_VP：视频提示词的名字，和页面共用 公用/核心.js；PF_FILE：先写提示词的段的自由稿（11-21），也走这里存；frozen(abs)：出过片的稿给拦下的话（11-22，filmed.js），正文、挂图不许改；twin(abs, text, side)：出过片另存出来的一版，字和素材又和出片的那一版一样，给拦下的话（11-23 晚，filmed.js）
+module.exports = function makeDraftStore({ ROOT, io = fs.promises, now = () => new Date(), RE_VP = require(path.join(__dirname, '..', '..', '..', '通用工具', '公用', '核心.js')).RE_VP, PF_FILE = '', frozen = async () => '', twin = async () => '' }) {   // RE_VP：视频提示词的名字，和页面共用 公用/核心.js；PF_FILE：写初步剧本的段的初步剧本（11-21 起；11-26 起给一组名字：初步剧本.txt、老名字 自由稿.txt），也走这里存；frozen(abs)：出过片的稿给拦下的话（11-22，filmed.js），正文、挂图不许改；twin(abs, text, side)：出过片另存出来的一版，字和素材又和出片的那一版一样，给拦下的话（11-23 晚，filmed.js）
   const pending = new Map();
   const keyOf = p => path.resolve(p).toLowerCase();
+  const pfOk = n => Array.isArray(PF_FILE) ? PF_FILE.includes(n) : !!PF_FILE && n === PF_FILE;   // 初步剧本（11-26）：新名字 初步剧本.txt、老名字 自由稿.txt 都认（服务传 PF_FILES）
 
   // 普通 PUT 和草稿事务共用此锁。多文件按固定顺序取锁，避免相互等待。
   function withLocks(paths, work) {
@@ -42,7 +43,7 @@ module.exports = function makeDraftStore({ ROOT, io = fs.promises, now = () => n
 
   function pathsFor(abs) {
     const parts = path.relative(ROOT, abs).split(path.sep);
-    if (parts.length !== 5 || parts[0] !== '项目' || !parts[1] || parts[2] !== '提示词' || !/^第[0-9]+(?:-[0-9]+)*段$/.test(parts[3]) || !(RE_VP.test(parts[4]) || (!!PF_FILE && parts[4] === PF_FILE))) {
+    if (parts.length !== 5 || parts[0] !== '项目' || !parts[1] || parts[2] !== '提示词' || !/^第[0-9]+(?:-[0-9]+)*段$/.test(parts[3]) || !(RE_VP.test(parts[4]) || pfOk(parts[4]))) {
       throw error(400, '草稿保存只支持 项目/项目名/提示词/第N段/ 里的视频提示词（照镜头号起名的 1-5.txt，照修改方案改出来的 1-5_改1.txt；老稿 视频提示词.txt、视频提示词_02.txt，老名字 4-6_补1.txt……）');
     }
     return { side: abs.replace(/\.txt$/i, '_写稿.json'), hist: path.join(ROOT, '项目', parts[1], '历史记录', ...parts.slice(2, -1)) };

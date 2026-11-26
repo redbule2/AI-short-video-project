@@ -1,0 +1,51 @@
+/* 写初步剧本的那一页（2026-11-26 他要「写的舒服，开心」）：一张稿纸摆中间，字大一点，一行不太长；只留写字要用的。
+   写稿自由稿.js 在打开初步剧本时引进来，只管 body.free-draft 底下。颜色只用写稿页自己的那一组变量（项目管理_写稿试用.html 的 :root）。 */
+
+/* 用不上的：写稿页顶上那一行（存好没有挪到右下角）、文件名、底下的路径、「六 分镜」、写到哪一区的提醒 */
+.free-draft .top, .free-draft .doc-name, .free-draft .sheet-foot, .free-draft #guide,
+.free-draft #sheet > section.sec > .sec-h, .free-draft .tag-try { display: none !important; }
+
+/* 标题那一行和稿纸一样宽、对齐：左边「第N段 初步剧本」，右边「提炼分镜」 */
+.free-draft #sheet .sheet-head { max-width: 780px; margin-left: auto; margin-right: auto; }
+.pf-kind { margin-left: 12px; color: var(--ink-3); font: 15px var(--kai); letter-spacing: .2em; }
+
+/* 稿纸：暖白的纸、软影子；底下留大半屏空白，写到最后也能把字推到屏幕中间 */
+.free-draft .free-section { max-width: 780px; margin: 4px auto 0; padding: 30px 56px 38vh; border: 1px solid var(--edge-2); border-radius: 14px; background: var(--card); box-shadow: var(--lift); }
+.free-draft .free-section .wr, .free-draft .free-section .wr:focus-within { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+/* 字和底下那层影子（画标记用）要一模一样，不然标记会错位 */
+.free-draft .free-section .wr-bg, .free-draft .free-section .wr-ta { padding: 0; font: var(--pf-fs, 18px)/2.1 var(--serif); letter-spacing: .02em; }   /* 字号三档：写稿自由稿.js 照记的那一档写 --pf-fs */
+.free-draft .free-section .wr-ta { min-height: 18em; }
+.free-draft .free-section .wr-ta::placeholder { color: var(--ink-4); }
+
+/* 顶上：一句打气的话，人物小牌子 */
+.pf-head { margin: 0 0 20px; padding-bottom: 14px; border-bottom: 1px dashed var(--line-2); }
+.pf-cheer { margin: 0 0 10px; color: var(--ink-3); font: 15px/1.7 var(--kai); }
+.pf-cheer.new { animation: pf-up .6s ease; }
+@keyframes pf-up { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.pf-chips { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.pf-chips-l { margin-right: 2px; color: var(--ink-4); font-size: 12.5px; }
+.pf-chip { padding: 1px 12px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--sheet); color: var(--ink-2); font: 14px/1.9 var(--sans); cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+.pf-chip:hover { border-color: var(--qing-line); background: var(--qing-soft); color: var(--qing); }
+.pf-chip.q { font-family: var(--serif); letter-spacing: .12em; }
+.pf-chips-tip { color: var(--ink-4); font-size: 12.5px; }
+
+/* 右下角：写了多少字、这回多写了多少、存好没有 */
+.pf-stat { position: fixed; right: 22px; bottom: 16px; z-index: 5; display: flex; gap: 12px; align-items: center; padding: 5px 16px; border: 1px solid var(--edge-2); border-radius: 999px; background: var(--card); color: var(--ink-3); font-size: 13px; box-shadow: var(--lift); }
+.pf-stat b { color: var(--ink); font-weight: 600; }
+.pf-delta { color: var(--qing); }
+.pf-delta:empty { display: none; }
+.pf-save.ok::before { content: '✓ '; color: var(--qing); }
+.pf-save.err { color: var(--zhu); }
+.pf-sel { color: var(--ink-3); }
+.pf-sel:empty { display: none; }
+/* 字号：小、中、大（11-26 晚） */
+.pf-size { display: inline-flex; gap: 2px; margin-left: 2px; padding-left: 10px; border-left: 1px solid var(--line-2); }
+.pf-sz { padding: 0 7px; border: 1px solid transparent; border-radius: 999px; background: none; color: var(--ink-3); font: 12.5px/1.7 var(--sans); cursor: pointer; }
+.pf-sz:hover { color: var(--ink); }
+.pf-sz.on { border-color: var(--line-2); color: var(--ink); font-weight: 600; }
+
+@media (max-width: 760px) {
+  .free-draft .free-section { padding: 20px 18px 38vh; border-radius: 10px; }
+  .free-draft .free-section .wr-bg, .free-draft .free-section .wr-ta { font-size: 17px; }
+  .pf-stat { right: 10px; bottom: 10px; }
+}

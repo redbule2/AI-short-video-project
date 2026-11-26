@@ -15,8 +15,8 @@
   const humanOf = d => PromptDraft.shotText(d).split(/\r\n|\n|\r/).map(l => l.trim()).filter(l => l && !PromptDraft.isLook(l));   // 你写的事件脚本（和本机服务一个算法）
   const loose = d => (d.shotsPre || []).some(l => String(l).trim() && !PromptDraft.isLook(String(l).trim()));   // 事件脚本里还有一段没分镜的字
   const doneOf = d => !!String(d.event || '').trim() && !!String(d.keep || '').trim() && (d.basic || []).some(l => !PromptDraft.isLook(l));   // 写完了：生成目标、基础设定、保持一致都有字
-  const pfSeg = () => !!FLOW && Core.isPF(FLOW);   // 先写提示词的段（11-21）：剧本就是自由稿，分镜还要定下来
-  const whyNot = () => pfSeg() ? '分镜定下来以后才能交给 AI 写完：回流水线，到「提炼分镜」那一步点「定下来」（自由稿改过的，点「照旧」或「重新提炼」）' : '剧本定稿以后才能交给 AI 写完：回流水线，到剧本那一步点「剧本定稿」';
+  const pfSeg = () => !!FLOW && Core.isPF(FLOW);   // 写初步剧本的段（11-21）：剧本就是初步剧本，分镜还要定下来
+  const whyNot = () => pfSeg() ? '分镜定下来以后才能交给 AI 写完：回流水线，到「提炼分镜」那一步点「定下来」（初步剧本改过的，点「照旧」或「重新提炼」）' : '剧本定稿以后才能交给 AI 写完：回流水线，到剧本那一步点「剧本定稿」';
   /* 分区头上、引导条上写谁写的：你来写的稿（写稿资料里记着「手写」）只有事件脚本是你写的，别的都是 AI 写 */
   const whoOf = by => by === 'me' && PromptDraft.isHand(SIDE) ? '你写' : 'AI 写';
   const guideName = (key, name) => name.replace(/ · AI 写$/, ' · ' + whoOf((SECS.find(s => s.key === key) || {}).by));
@@ -26,7 +26,8 @@
     if (!s || !s.剧本定稿) return false;
     const pf = Core.isPF(s);
     if (pf && !s.定稿) return false;
-    const st = await FS.stat(pf ? [HOME, PJ, '提示词', SEGDIR, Core.PF_FILE] : [HOME, PJ, '定稿的剧本', SEGDIR, SEGDIR + '_剧本.docx']).catch(() => null);
+    const st = pf ? (await FS.stat([HOME, PJ, '提示词', SEGDIR, Core.PF_FILE]).catch(() => null)) || (await FS.stat([HOME, PJ, '提示词', SEGDIR, Core.PF_OLD]).catch(() => null))   // 老段的初步剧本叫 自由稿.txt（11-26）
+      : await FS.stat([HOME, PJ, '定稿的剧本', SEGDIR, SEGDIR + '_剧本.docx']).catch(() => null);
     return !!st && Core.scriptFinal(s.剧本定稿, s.回填, st.mtime);
   }
   function nav() {   // 分区按钮那一行，最右边摆「交给 AI 写完」；旧格式的稿、没有流水线的老项目不摆
@@ -48,7 +49,7 @@
     b.disabled = !READY || on || !S.fin;
     b.classList.toggle('dian', !b.disabled && !!DOC && (MODE === '自由' || loose(DOC) || !doneOf(DOC)));   // 你写好了、AI 那几块还空着（或者还有没拆的一段）：这一步就该点它
     b.title = on ? 'AI 在写完：进度和「停掉」在左下角。写好整页换上；这时候先别改，要改先点「停掉」'
-      : !S.fin ? whyNot() : (pfSeg() ? 'AI 照镜头表、你写的自由稿和这一段的资产，把这几镜拆好、写完' : 'AI 照定稿的剧本和这一段的资产，把你写的事件脚本拆成一镜一镜、扩写（已经一镜一镜的不动），再写生成目标、素材、基础设定这几块。写过的，AI 先看要不要改，对得上一个字不动');
+      : !S.fin ? whyNot() : (pfSeg() ? 'AI 照镜头表、你写的初步剧本和这一段的资产，把这几镜拆好、写完' : 'AI 照定稿的剧本和这一段的资产，把你写的事件脚本拆成一镜一镜、扩写（已经一镜一镜的不动），再写生成目标、素材、基础设定这几块。写过的，AI 先看要不要改，对得上一个字不动');
     if (b.dataset.on !== String(on)) { b.dataset.on = String(on); b.replaceChildren(...(on ? [h('i', { class: 'wt-ring' }), 'AI 在写完'] : ['交给 AI 写完'])); }   // 变了才换：每秒都来，换了转着的环会跳回原处
   }
   async function ask() {

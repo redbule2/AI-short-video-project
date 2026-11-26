@@ -331,14 +331,14 @@ test('照审片批注另存：任务书说清出过片、要另存成哪一版�
   assert.match(book, /## 原文（文件：11\.txt）\n【事件脚本】/);
   assert.deepEqual([...j.images], [P('成片', '第1段', '11_批注截图', '0分01.0秒_第25帧.jpg')]);   // 不在的那一张不叫它看
 });
-test('照审片批注另存：先写提示词的段，任务书开头「剧本指自由稿」那一句只说一回（借来的那一套没被包两层）', async t => {
+test('照审片批注另存：写初步剧本的段（老段的 自由稿.txt），任务书开头「剧本指初步剧本」那一句只说一回（借来的那一套没被包两层）', async t => {
   const { root, F, put } = await setup(t);
   await put('定稿的剧本/流水线.json', JSON.stringify({ 场: [{ 段: '1', 先写提示词: true }] }));
   await put('提示词/第1段/自由稿.txt', '甲走进来。');
   const K = jobsOf(root, F), j = { 项目: '试', 段: '1', 名: '11.txt' };
   await K.照审片批注另存.prep(j);
   const book = await K.照审片批注另存.book(j);
-  assert.equal(book.split('这一段没有剧本').length, 2);
+  assert.equal(book.split('这一段的剧本是人自己写的初步剧本').length, 2);
   assert.match(book, /^# 任务：照审片批注改视频提示词/);
 });
 test('照审片批注另存：AI 回空列表、改完一字不差，都不另存；原稿、批注照旧', async t => {
