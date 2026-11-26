@@ -11,7 +11,7 @@ const read = f => fs.readFileSync(path.join(TOOLS, f), 'utf8');
 const P = (key, ...more) => ({ key, name: more.length ? more[more.length - 1] : key, vers: [key, ...more], label: key });
 
 /* 一页：成片里 here（名字 → 修改时间）、历史记录里 hist（名字 → 修改时间）、成片文件夹里还有 extra（批注、截图） */
-function page({ here = {}, hist = {}, extra = [], jobs = [], sel = null, moveFail = null } = {}) {
+function page({ here = {}, hist = {}, extra = [], jobs = [], sel = null, moveFail = null, v = 27, pairs = { 提示词: [], 片: [], 挪了: [], 没挪: [] }, pairsFail = '' } = {}) {
   const log = [], els = [];
   const el = (tag, attrs, ...kids) => ({ tag, attrs: attrs || {}, children: kids.flat(Infinity).filter(x => x != null), listeners: {}, removed: false,
     addEventListener(t, fn) { this.listeners[t] = fn; }, remove() { this.removed = true; log.push(['收起', tag]); } });
@@ -29,6 +29,7 @@ function page({ here = {}, hist = {}, extra = [], jobs = [], sel = null, moveFai
     lister: () => { const fn = async () => [...Object.keys(here), ...extra].map(name => ({ name, kind: /截图$/.test(name) ? 'directory' : 'file' })); fn.failed = false; return fn; },
     FS: { move: async (a, b) => { if (moveFail && moveFail(a)) throw new Error(moveFail(a)); log.push(['挪', a, b]); } },
     touch: () => log.push(['改了流水线']), flush: async () => {},
+    LINK: { v, req: async (m, u) => { log.push(['叫服务', m, decodeURIComponent(u)]); if (pairsFail) throw new Error(pairsFail); return { json: async () => pairs }; } },   // 同进同出（11-26）：/api/pairs
   };
   ctx.window = ctx;
   vm.createContext(ctx);
@@ -155,6 +156,25 @@ test('这条不要了：样片和它的批注、截图移进 历史记录/成片
     ['试验/成片/第3-4段/11-13_改2_批注截图', '试验/历史记录/成片/第3-4段/11-13_改2_批注截图']]);
   assert.deepEqual({ ...s.选定 }, {});
   assert.ok(log.some(x => x[0] === '改了流水线'));
+  assert.deepEqual(plain(log.filter(x => x[0] === '叫服务')), [['叫服务', 'POST', '/api/pairs?p=试验&s=3-4']], '挪完片子叫本机服务理一遍（同进同出）');
+  assert.doesNotMatch(log.filter(x => x[0] === '提示').at(-1)[1], /提示词/, '这一版还有片在成片里：提示词没动，不提');
+});
+
+test('这条不要了（11-26 同进同出）：本机服务把出它的提示词收进去了，说一声，沿用里它的几项去掉；服务挪不成、连不上的照实说；老服务不叫', async () => {
+  const a = page({ here: { '8-9.mp4': 1 }, pairs: { 提示词: ['8-9.txt'], 片: [], 挪了: ['提示词/第3-4段/8-9.txt → 历史记录/提示词/第3-4段/8-9__20261126-160000.txt'], 没挪: [] } });
+  a.s.沿用 = { '提示词/8-9.txt': 1, '白模/8-9.txt': 1, '样片/8-9.mp4': 1, '提示词/11-12.txt': 1 };
+  assert.equal(await a.RP.retire(a.s, '8-9.mp4'), '');
+  assert.deepEqual({ ...a.s.沿用 }, { '提示词/11-12.txt': 1 });
+  assert.deepEqual(plain(a.log.filter(x => x[0] === '提示').at(-1)), ['提示', '「8-9.mp4」移进 历史记录 / 成片 / 第3-4段 了；出它的提示词 8-9.txt 也跟着进了 历史记录 / 提示词 / 第3-4段', '']);
+  const b = page({ here: { '8-9.mp4': 1 }, pairs: { 提示词: [], 片: [], 挪了: [], 没挪: ['提示词「8-9.txt」：那里已经有同名的了'] } });
+  assert.equal(await b.RP.retire(b.s, '8-9.mp4'), '');
+  assert.match(b.log.filter(x => x[0] === '提示').at(-1)[1], /没跟上：提示词「8-9\.txt」：那里已经有同名的了/);
+  const c = page({ here: { '8-9.mp4': 1 }, pairsFail: '本机服务出错 500' });
+  assert.equal(await c.RP.retire(c.s, '8-9.mp4'), '', '片子挪好了就算挪好');
+  assert.match(c.log.filter(x => x[0] === '提示').at(-1)[1], /出它的提示词没跟上（本机服务出错 500）/);
+  const d = page({ here: { '8-9.mp4': 1 }, v: 26 });
+  assert.equal(await d.RP.retire(d.s, '8-9.mp4'), '');
+  assert.ok(!d.log.some(x => x[0] === '叫服务'), '本机服务还是老的：不叫');
 });
 
 test('这条不要了，挪不成的说为什么：已经不在了、AI 在用、剪映占着', async () => {

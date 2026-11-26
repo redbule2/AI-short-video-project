@@ -14,7 +14,7 @@ const all = (n, out = []) => { if (Array.isArray(n)) n.forEach(x => all(x, out))
 
 /* 审片台那一页：网址 q；成片里 here、历史记录里 hist（名字 → 修改时间，批注也写在里面）；prompts：提示词文件夹里的几版；
    dirs：别的文件夹里有什么（{ 文件夹: { 名字: 修改时间 } }，历史记录/提示词 用）；files：读得到的文件（{ 项目里的路径: 字 }） */
-function desk({ q, here = {}, hist = {}, prompts, sel = null, host = null, confirm = true, notes = 0, md = '# 批注\n- 00:01 太慢', dirs = {}, files = {} }) {
+function desk({ q, here = {}, hist = {}, prompts, sel = null, host = null, confirm = true, v = 27, notes = 0, md = '# 批注\n- 00:01 太慢', dirs = {}, files = {} }) {
   const log = [], pops = [];
   const P = new URLSearchParams(q);
   const ctx = {
@@ -35,10 +35,10 @@ function desk({ q, here = {}, hist = {}, prompts, sel = null, host = null, confi
     h: (tag, attrs, ...kids) => ({ tag, attrs: attrs || {}, children: kids.flat(Infinity).filter(x => x != null) }),
     toast: (t, k) => log.push(['提示', t, k || '']),
     popover: (anchor, build) => { const p = { anchor, closed: false }; p.el = build(() => { p.closed = true; }); pops.push(p); },
-    confirmDlg: async o => { log.push(['问', o.title]); return confirm; },
+    confirmDlg: async o => { log.push(['问', o.title, o.body]); return confirm; },
     copyText: async (t, ok) => { log.push(['复制', t]); return true; },
   };
-  ctx.Base = { C: { decodeText: () => ({ text: md }) }, LINK: { abs: 'E:\\AI短视频项目' }, FS: { read: async () => ({ buf: new Uint8Array() }), isDir: async () => true } };
+  ctx.Base = { C: { decodeText: () => ({ text: md }) }, LINK: { abs: 'E:\\AI短视频项目', v }, FS: { read: async () => ({ buf: new Uint8Array() }), isDir: async () => true } };
   vm.createContext(ctx);
   for (const f of ['公用/核心.js', '公用/资产路径.js', '公用/样片归属.js', '公用/历史记录.js', '流水线/审片台这一条.js']) vm.runInContext(read(f), ctx, { filename: f });
   ctx.RE_VP = ctx.Core.RE_VP;   // 审片台.html 从 Core 里取出来的
@@ -115,6 +115,20 @@ test('这条不要了：问过、存好批注，交给弹窗那一页挪；挪�
   await d.One.load();
   await all(d.One.top(null)).find(x => textOf(x) === '这条不要了').attrs.onclick();
   assert.ok(!d.log.some(x => x[0] === '存'), '没点「移进历史记录」：不动');
+});
+
+test('这条不要了，问的时候说清提示词怎么办（11-26 同进同出）：这一版还有片在成片里就留着；是最后一条，提示词跟着进历史记录，这一条回到上一版或者没了', async () => {
+  const ask = async (opt) => { const x = desk({ here: HERE, hist: HIST, prompts: PR, host: { retire: async () => '', close: () => {} }, ...opt }); await x.One.load(); await all(x.One.top(null)).find(n => textOf(n) === '这条不要了').attrs.onclick(); return x.log.find(l => l[0] === '问')[2]; };
+  assert.match(await ask({ q: { p: '试验', s: '3-4', v: '11-13_改2.mp4', k: '11-13.txt' } }), /「镜头11-13 改2」还有 1 条片在成片里，提示词留着/);
+  const only = await ask({ q: { p: '试验', s: '3-4', v: '8-9.mp4', k: '8-9.txt' } });
+  assert.match(only, /出它的提示词 8-9\.txt 也一起收进历史记录/);
+  assert.match(only, /这一条在提示词页就没了/);
+  const back = await ask({ q: { p: '试验', s: '3-4', v: '11-13_改2.mp4', k: '11-13.txt' }, here: { '11-13_改2.mp4': 5 } });
+  assert.match(back, /出它的提示词 11-13_改2\.txt 也一起收进历史记录.*这一条回到「镜头11-13 改1」/);
+  const older = await ask({ q: { p: '试验', s: '3-4', v: '11-12_改1.mp4', k: '11-12.txt' }, prompts: [...PR, '11-12_改2.txt'] });
+  assert.match(older, /出它的提示词 11-12_改1\.txt 也一起收进历史记录/);
+  assert.doesNotMatch(older, /回到|没了/, '不是最新一版：这一条照旧');
+  assert.match(await ask({ q: { p: '试验', s: '3-4', v: '8-9.mp4', k: '8-9.txt' }, v: 26 }), /提示词留在原处/, '本机服务还是老的：不说跟着挪');
 });
 
 test('复制批注：没批注说一声；有批注连完整路径一起复制', async () => {

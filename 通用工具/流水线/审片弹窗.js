@@ -3,6 +3,7 @@
    审片不再单独一页：「提示词」那一步每条上点「审片」，弹出审片台（看片、对照提示词、白模、关键帧，写批注）。
    只摆这一条出的样片（它几版出的都算，成片里的、历史记录里的；公用/样片归属.js 的 ofPrompt），进去以后换不到别的提示词（流水线/审片台这一条.js）。
    「这条不要了」在这里挪（流水线.json 的选定、沿用跟着去掉）：移进 历史记录/成片/第N段，名字不改，批注、截图跟着走。
+   11-26 起提示词和它出的样片同进同出（他定）：挪完片子叫本机服务理一遍（/api/pairs，pair-keeper.js），这一版没有片留在成片里了，提示词跟着收进历史记录。
    11-25 起历史记录里的一版也能审（oldBtn：网址带 hp＝那一版的文件，审片台照它摆字、只摆它出的样片）。
    要先引 流水线.js、公用/样片归属.js、流水线/历史记录.js。测试：测试/审片弹窗_测试.cjs
    ============================================================ */
@@ -81,7 +82,8 @@ function show(s, q, label) {
   document.body.append(box); document.body.classList.add('wf-covered');
   frame.addEventListener('load', () => { try { frame.contentWindow.focus(); } catch (err) { /* 不要紧 */ } });
 }
-/* 这条不要了：样片和它的批注、截图（公用/样片归属.js 的 ownKin）移进 历史记录/成片/第N段，名字不改。给 '' 是挪好了，不然是为什么没挪 */
+/* 这条不要了：样片和它的批注、截图（公用/样片归属.js 的 ownKin）移进 历史记录/成片/第N段，名字不改。给 '' 是挪好了，不然是为什么没挪。
+   接着叫本机服务把这一段理一遍（同进同出，11-26）：出它的那一版没有片留在成片里了，提示词连写稿资料、批注、出片任务书收进 历史记录/提示词/第N段 */
 async function retire(s, vid) {
   if (AI.jobs.some(j => jobLive(j) && j.段 === s.段 && j.视频 === vid)) return 'AI 正在照这条样片做事，做完再移';
   const crel = ['成片', segName(s.段)], ls = lister(F.name), ents = await ls(crel.join('/'));
@@ -92,11 +94,20 @@ async function retire(s, vid) {
   try { await FS.move(from(vid), to(vid)); } catch (err) { return '没移走：' + err.message + (/同名/.test(err.message) ? '' : '（剪映开着它的话先关掉）'); }
   const left = [];
   for (const n of ClipOf.ownKin(vid, names)) { try { await FS.move(from(n), to(n)); } catch (err) { left.push(n); } }
+  let went = [];   // 跟着收进历史记录的提示词（本机服务挪的）
+  if (LINK.v >= 27) {
+    try {
+      const r = await (await LINK.req('POST', '/api/pairs?p=' + encodeURIComponent(F.name) + '&s=' + encodeURIComponent(s.段))).json();
+      went = r.提示词 || [];
+      left.push(...(r.没挪 || []));
+    } catch (err) { left.push('出它的提示词没跟上（' + err.message + '），本机服务过一会儿会再理'); }
+  }
   let changed = false;
   if (own(s, '选定') && s.选定 && typeof s.选定 === 'object') for (const k of Object.keys(s.选定)) if (s.选定[k] === vid) { delete s.选定[k]; changed = true; }
-  if (own(s.沿用, '样片/' + vid)) { delete s.沿用['样片/' + vid]; changed = true; }
+  for (const k of ['样片/' + vid, ...went.flatMap(n => ['提示词/' + n, '白模/' + n])]) if (own(s.沿用, k)) { delete s.沿用[k]; changed = true; }
   if (changed) { touch(); await flush(); }
-  toast(left.length ? '样片移走了，这几样没跟上：' + left.join('、') : '「' + vid + '」移进 历史记录 / ' + crel.join(' / ') + ' 了', left.length ? 'err' : undefined);
+  const say = '「' + vid + '」移进 历史记录 / ' + crel.join(' / ') + ' 了' + (went.length ? '；出它的提示词 ' + went.join('、') + ' 也跟着进了 历史记录 / 提示词 / ' + crel[1] : '');
+  toast(left.length ? say + '。这几样没跟上：' + left.join('、') : say, left.length ? 'err' : undefined);
   return '';
 }
 window.ReviewPop = Object.freeze({ clipsFor, madeOf, firstOf, tag, btn, oldBtn, open, retire });

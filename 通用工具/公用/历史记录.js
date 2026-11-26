@@ -10,12 +10,15 @@
      Hist.mapsOf(io)、Hist.refsFor(io, maps, it, text)：一条提示词（现在的、历史记录里的一版）挂的是哪几张图（流水线历史记录、写稿页「参考」共用）。
      Hist.ms(stamp)：收进去的那一刻（本机时间，毫秒）；不是时间给 0。
      Hist.made(...)：一段里每一版（历史记录里的、现在的）出过哪几条样片（流水线历史记录、审片台、写稿页「参考」共用；样子写在它上面）。
-   网页里、node 里都能用（made 要先引 公用/样片归属.js）。测试：node --test 通用工具/测试/历史记录_测试.cjs
+     Hist.pairs(...)：一段里提示词和它出的样片对不上的（2026-11-26 他定同进同出；本机服务 pair-keeper.js 照它跟着挪）。
+     Hist.KIN、Hist.promptKin、Hist.dated、Hist.stampOf：一版提示词收进历史记录时跟着走的几样、收进去叫什么（删提示词、同进同出共用）。
+   网页里、node 里都能用（made、pairs 要先引 公用/核心.js、公用/样片归属.js）。测试：node --test 通用工具/测试/历史记录_测试.cjs、同进同出_测试.cjs
    ============================================================ */
 (function (G) {
 'use strict';
 const AP = () => G.AssetPath || require('./资产路径.js');   // 资产放哪（公用/资产路径.js）：老登记里的路径换成新的
 const CO = () => G.ClipOf || require('./样片归属.js');   // 样片是哪一条出的（公用/样片归属.js）
+const CORE = () => G.Core || require('./核心.js');   // 视频提示词、样片的名字（公用/核心.js）
 const RE = /^(.+)__([0-9]{8})-([0-9]{6})(?:-[0-9a-z]+)?(\.[^./\\]+)?$/i;
 const when = stamp => /^[0-9]{8}-[0-9]{6}$/.test(stamp || '') ? stamp.slice(4, 6) + '-' + stamp.slice(6, 8) + ' ' + stamp.slice(9, 11) + ':' + stamp.slice(11, 13) : '';
 const ms = stamp => { const m = /^([0-9]{4})([0-9]{2})([0-9]{2})-([0-9]{2})([0-9]{2})([0-9]{2})$/.exec(stamp || ''); return m ? new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime() : 0; };
@@ -103,7 +106,47 @@ function made({ olds = [], curs = [], here = [], hist = [], now = n => n } = {})
   for (const m of [out.old, out.cur]) for (const v of m.values()) v.sort(ord);
   return out;
 }
-const Hist = Object.freeze({ parse, when, ms, newer, promptSha, refsBySha, mapsOf, refsFor, made });
+
+/* ---------- 提示词和它出的样片同进同出（2026-11-26 他定：「如果成片在历史记录，那么提示词也应该进历史记录，反之……」） ---------- */
+/* 一版提示词收进历史记录时，提示词/第N段 里跟着它走的：写稿资料、批注、AI 批注（再加出片任务书、批注截图，见 promptKin） */
+const KIN = Object.freeze([['_写稿.json', '写稿资料'], ['_批注.md', '批注'], ['_AI批注.md', 'AI 批注']]);
+const SHOTS = '_批注截图';
+/* names：提示词/第N段 里的名字（文件、文件夹都给）。给 [[名字, 叫法]]，有的才给 */
+function promptKin(name, names) {
+  const s = String(name).replace(/\.txt$/i, ''), have = new Set(names || []);
+  return [...KIN.map(([t, lab]) => [s + t, lab]), [CORE().vpTask(name), '出片任务书'], [s + SHOTS, '批注截图']].filter(([n]) => n !== name && have.has(n));
+}
+/* 收进历史记录叫什么：视频提示词_02.txt → 视频提示词_02__时间.txt；批注截图这种文件夹，时间接在最后 */
+const dated = (n, stamp) => { const d = n.lastIndexOf('.'); return d > 0 && !n.endsWith(SHOTS) ? n.slice(0, d) + '__' + stamp + n.slice(d) : n + '__' + stamp; };
+const two = n => String(n).padStart(2, '0');
+const stampOf = (d = new Date()) => d.getFullYear() + two(d.getMonth() + 1) + two(d.getDate()) + '-' + two(d.getHours()) + two(d.getMinutes()) + two(d.getSeconds());   // 本机时间：20261126-153000
+/* 一段里对不上的。只认名字，和「出过片」同一套（公用/样片归属.js 的 carries；片子后来做的 kinCarries 也算；改过名的连以前的名字）：
+     a：提示词还在用，它出的片（连后期补、混剪）全在历史记录里 → [{ name, clips }]
+     b：片还在成片，出它的那一版提示词只在历史记录里 → [{ vid, from: 历史记录里那几份 }]
+   同一版还有片在成片（另一条、后期补的）不算对不上。历史记录里带「__时间」的片是删掉的那一版的，不算。
+   老名字的样片（第N条，照记号认，认不准）不管：有老名字的片认它的提示词也不管。
+   curs：提示词/第N段 的名字；olds：历史记录/提示词/第N段 的；here、hist：成片/第N段、历史记录/成片/第N段 的；rn：这一场的「改名」 */
+function pairs({ curs = [], olds = [], here = [], hist = [], rn = null } = {}) {
+  const C = CO(), K = CORE(), cur = curs.filter(n => K.RE_VP.test(n)), has = new Set(cur);
+  const was = n => [n, ...(rn && typeof rn === 'object' ? K.vpWas(rn, n, x => has.has(x)) : [])];
+  const of = (v, n) => was(n).some(m => C.carries(v, m) || C.kinCarries(v, m));
+  const vids = (list, old) => list.filter(v => VID.test(v) && !(old && parse(v).stamp));
+  const now = vids(here, false), gone = vids(hist, true), legacy = v => K.clipOld(v);
+  const a = [], b = [];
+  for (const n of cur) {
+    if ([...now, ...gone].some(v => legacy(v) && was(n).some(m => C.carries(v, m)))) continue;
+    const back = gone.filter(v => of(v, n));
+    if (back.length && !now.some(v => of(v, n))) a.push({ name: n, clips: back });
+  }
+  const ps = olds.map(n => ({ n, o: parse(n).orig })).filter(x => K.RE_VP.test(x.o));
+  for (const v of now) {
+    if (legacy(v) || cur.some(n => of(v, n))) continue;
+    const from = ps.filter(x => of(v, x.o)).map(x => x.n);
+    if (from.length) b.push({ vid: v, from });
+  }
+  return { a, b };
+}
+const Hist = Object.freeze({ parse, when, ms, newer, promptSha, refsBySha, mapsOf, refsFor, made, KIN, promptKin, dated, stampOf, pairs });
 if (typeof module !== 'undefined' && module.exports) module.exports = Hist;
 G.Hist = Hist;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

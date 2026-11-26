@@ -693,7 +693,7 @@ async function jobEnd(id) {
    和删掉的 1-5__时间.txt 对得上；以后再写一份同名的，不会一出生就算出过片）。只认名字对得上的，批注、批注截图、后期补的片子跟着走（公用/样片归属.js）；
    名字认不出是它出的，留在成片里，删之前说一声。流水线.json 里这一条的「选定」「沿用」、参考素材映射里这一条的登记一起去掉。
    别的条不改名（改了，样片名、任务书就对不上） */
-const KIN = [['_写稿.json', '写稿资料'], ['_批注.md', '批注'], ['_AI批注.md', 'AI 批注']];
+const KIN = Hist.KIN;   // 跟着一版提示词走的几样（公用/历史记录.js；本机服务同进同出也照它挪）
 const own = (o, k) => !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);   // 自己有这个键（删一条、加减镜头都用）
 async function removePrompt(s, e) {
   const tf = taskOf(e.name), stem = e.name.replace(/\.txt$/i, ''), rel = ['提示词', segName(s.段)];
@@ -702,8 +702,7 @@ async function removePrompt(s, e) {
   if (ls.failed) { toast('本机服务连不上，这回没删', 'err'); return; }
   const files = new Set(ents.filter(x => x.kind === 'file').map(x => x.name));
   if (!files.has(e.name)) { toast('「' + e.name + '」已经不在了', 'err'); await loadSides(); await loadExtra(); rerender(); return; }
-  const kin = [...KIN.map(([t, lab]) => [stem + t, lab]), [tf, '出片任务书']].filter(([n]) => n !== e.name && files.has(n));
-  if (ents.some(x => x.kind === 'directory' && x.name === stem + SHOTS_TAIL)) kin.push([stem + SHOTS_TAIL, '批注截图']);
+  const kin = Hist.promptKin(e.name, ents.map(x => x.name));   // 写稿资料、批注、AI 批注、出片任务书、批注截图
   const crel = ['成片', segName(s.段)], cents = await ls(crel.join('/'));   // 它出的样片（只认名字）和跟着样片的
   if (ls.failed) { toast('本机服务连不上，这回没删', 'err'); return; }
   const cnames = cents.map(x => x.name), mine = ClipOf.ownOf(e, e.name, cents.filter(x => x.kind === 'file').map(x => x.name));
@@ -724,7 +723,7 @@ async function removePrompt(s, e) {
   await flush();
   if (F.err) { toast('流水线没存上，这回没删', 'err'); return; }
   const stamp = stampNow(), from = n => at([F.name, ...rel, n]), to = n => at([F.name, '历史记录', ...rel, n]);
-  const dated = n => { const d = n.lastIndexOf('.'); return d > 0 && !n.endsWith(SHOTS_TAIL) ? n.slice(0, d) + '__' + stamp + n.slice(d) : n + '__' + stamp; };   // 视频提示词_02.txt → 视频提示词_02__时间.txt
+  const dated = n => Hist.dated(n, stamp);   // 视频提示词_02.txt → 视频提示词_02__时间.txt
   try { await FS.move(from(e.name), to(dated(e.name))); }
   catch (err) { toast('没删成：' + err.message, 'err'); return; }
   const left = [];

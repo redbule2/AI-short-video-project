@@ -260,5 +260,5 @@ module.exports = function makeFilmed({ ROOT, TOOLS, live = () => [], withLocks =
     }
     throw err(405, '只能问，或者带着改好的字另存（POST，写 n）');
   }
-  return { promptAt, state, fresh: async (p, s, n) => freshOf(await segState(p, s), n), say, frozen, twin, fork, handle };
+  return { promptAt, seg: segState, state, fresh: async (p, s, n) => freshOf(await segState(p, s), n), say, frozen, twin, fork, handle };   // seg：这一段现在什么样（提示词和样片同进同出 pair-keeper.js 也用）
 };

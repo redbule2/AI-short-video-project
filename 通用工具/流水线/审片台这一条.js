@@ -4,7 +4,8 @@
    只摆这一条几版出的样片：成片里的、历史记录里的（认法在 公用/样片归属.js 的 ofPrompt，和提示词那一步「审片」数的一样）。
    顶上：关闭、换这一条的哪条样片、出自哪一版（不能换）、复制批注、这条不要了；旁边对照「另一条样片」也只摆这一条的。
    用到审片台.html 后面那段脚本里的 PJ、SEG、SEGD、VID、OLD、D、promptFams、flowScene、listRel、leave、host、goBack、clipLabel（用到时才找）。
-   「这条不要了」交给弹窗那一页挪（它管流水线.json）：window.DESK_HOST.retire(样片名) 给 '' 是挪好了，不然是为什么没挪
+   「这条不要了」交给弹窗那一页挪（它管流水线.json）：window.DESK_HOST.retire(样片名) 给 '' 是挪好了，不然是为什么没挪。
+   11-26 起这一版没有片留在成片里了，出它的提示词跟着收进历史记录（同进同出），问的时候说清楚（retireSay）
    11-25 起网址带 hp（历史记录里的一版，流水线历史记录那一页点「审片」）：只摆那一版出的样片，字和挂的图照那一版（oldPrompt），不能「这条不要了」
    ============================================================ */
 (function () {
@@ -80,11 +81,22 @@ async function copyNotes() {
   const head = '我审第' + SEG + '段的样片「' + VID + '」写了批注，文件在 ' + full(D.notesAt) + (pics ? '，截图在 ' + full(D.shotsDir) : '') + '。先跟我商量怎么改，商量定了再动手；改好了我回流水线重新走。';
   await copyText(head + '\n\n' + md + '\n', '复制好了：贴给你自己的 AI，商量怎么改');
 }
+/* 「这条不要了」先说清提示词怎么办（11-26 他定提示词和片同进同出）：这一版还有片留在成片里，提示词留着；没有了，提示词跟着收进历史记录（本机服务挪） */
+function retireSay() {
+  if (!(LINK.v >= 27)) return '提示词留在原处。';   // 本机服务还是老的：不会跟着挪
+  const me = ONE.items.find(x => same(x, VID, false)), ver = me && me.ver, fam = ONE.fam;
+  if (!ver) return '认不出是哪一版出的：提示词这回不动，本机服务过一会儿会照名字再对一遍。';
+  const rest = ONE.items.filter(x => !x.old && x.vid !== VID && x.ver === ver).length;
+  if (rest) return '「' + vpLabel(ver) + '」还有 ' + rest + ' 条片在成片里，提示词留着。';
+  const vers = fam ? fam.vers : [];
+  return '这是「' + vpLabel(ver) + '」留在成片里的最后一条：出它的提示词 ' + ver + ' 也一起收进历史记录（提示词和片同进同出）。'
+    + (fam && ver === fam.name ? (vers.length > 1 ? '这一条回到「' + vpLabel(vers[vers.length - 2]) + '」。' : '这一条在提示词页就没了。') : '');
+}
 /* 这条不要了：移进 历史记录/成片/第N段（名字不改，批注、截图跟着走），换到这一条成片里的下一条；没有了就收起 */
 async function retire() {
   const ho = host();
   if (!ho || typeof ho.retire !== 'function') { toast('从「提示词」那一步点「审片」打开，才能移走', 'err'); return; }
-  if (!(await confirmDlg({ title: '这条不要了', body: VID + ' 移进这个项目的「历史记录 / 成片 / ' + SEGD + '」，它的批注、截图跟着一起移，名字不改。提示词留在原处。', ok: '移进历史记录' }))) return;
+  if (!(await confirmDlg({ title: '这条不要了', body: VID + ' 移进这个项目的「历史记录 / 成片 / ' + SEGD + '」，它的批注、截图跟着一起移，名字不改。' + retireSay(), ok: '移进历史记录' }))) return;
   if (!(await leave())) return;
   D.checking = true;   // 批注马上要挪走：别去看它在不在
   const err = await ho.retire(VID);
@@ -106,7 +118,7 @@ function top(status) {
       : h('span', { class: 'dk-pr', title: '这条样片是这一条的哪一版出的：右边的「这一镜」「提示词」「资产」都照它摆' }, D.prompt ? '出自 ' + vpLabel(D.prompt) : D.promptKeep ? '出自 ' + baseName(D.promptKeep) + '（已经不在了）' : '认不出是哪一版出的'),
     status,
     h('button', { class: 'btn sm', type: 'button', title: '把这条的批注复制下来（带样片、提示词、截图的完整路径），贴给你自己的 AI 商量怎么改', onclick: copyNotes }, '复制批注'),
-    OLD || HIST ? null : h('button', { class: 'btn sm ghost', type: 'button', title: '不要这条样片了：移进历史记录，批注、截图跟着走，名字不改', onclick: retire }, '这条不要了'));   // 历史记录里的一版只看（11-25）
+    OLD || HIST ? null : h('button', { class: 'btn sm ghost', type: 'button', title: '不要这条样片了：移进历史记录，批注、截图跟着走，名字不改。这一版没有片留在成片里了，出它的提示词也跟着进历史记录', onclick: retire }, '这条不要了'));   // 历史记录里的一版只看（11-25）
 }
 window.DeskOne = { load, oldPrompt, others, top, get fam() { return ONE.fam; }, get items() { return ONE.items; } };
 })();
