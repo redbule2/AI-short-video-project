@@ -42,9 +42,9 @@ const PC_SKIP = '不读了';
 function pcForget() { for (const job of PC_Q.splice(0)) { PC_IMG.delete(job.k); job.rej(new Error(PC_SKIP)); } }   // 换了地方、去起名：还没轮到的先不读
 function pcClear() { pcForget(); for (const pr of PC_IMG.values()) pr.then(u => URL.revokeObjectURL(u), () => {}); PC_IMG.clear(); }   // 关弹窗：做好的也扔掉
 
-/* 打开找图弹窗。s：这一场；k：从哪一块点开的（人物、场景、道具、关键帧，空着是「用已有的图」）；row：给表里哪一行挑图（人物、道具那一格）。
+/* 打开找图弹窗。s：这一场；k：从哪一块点开的（人物、场景、道具、关键帧，空着是「用已有的图」）；row：给表里哪一行挑图（人物、道具那一格）；name：名字先填什么（给镜头挑关键帧的：镜头3_首帧）。
    复制好了返回 { file: 项目里的路径, kind: 当什么用, seg: 是不是只给这一场 }，没复制返回 null */
-async function pcFind({ s, k, row }) {
+async function pcFind({ s, k, row, name }) {
   closePop(); hideHov();
   let pl;
   try { pl = await pcReq('GET', 'places'); }
@@ -137,7 +137,7 @@ async function pcFind({ s, k, row }) {
       const big = h('img', { class: 'cv-big', alt: '' }), dims = h('span');
       big.addEventListener('load', () => { dims.textContent = big.naturalWidth + '×' + big.naturalHeight + ' · '; });
       pcImgUrl(x.path, 0).then(u => { big.src = u; }, () => { big.alt = '读不出来'; });
-      const def = row ? (row.文件 ? baseOf(row.文件) : row.名称 + (row.sub ? '_' + row.sub : '')) : stemOf(x.name).trim();   // 给哪一行挑的：照那一行的名字（图不在了的照原来的图名）
+      const def = row ? (row.文件 ? baseOf(row.文件) : row.名称 + (row.sub ? '_' + row.sub : '')) : name || stemOf(x.name).trim();   // 给哪一行挑的：照那一行的名字（图不在了的照原来的图名）
       const nameIn = h('input', { class: 'inp', value: def, spellcheck: 'false', maxlength: '60' });
       const err = h('div', { class: 'fld-err' }), dest = h('div', { class: 'pc-dest' }), hint = h('span');
       const okBtn = h('button', { class: 'btn ink', type: 'button' }, '复制进项目');
@@ -152,6 +152,7 @@ async function pcFind({ s, k, row }) {
         if (/_(候选|白模帧|批注)$/.test(n)) return '名字别以「_候选」「_白模帧」「_批注」结尾，这几个页面另有用处';
         if ((F.name && n.startsWith(F.name + '_')) || /第[0-9]+(-[0-9]+)*[段场]/.test(n) || /^(人物|场景|道具|特效|关键帧)[_ ]/.test(n)) return '名字只写内容：项目、类别、第几段看它放在哪个文件夹，不用写进名字';
         if (/(^|[_ -])[vV][0-9]+$|_改[0-9]+$|__[0-9]{8}-[0-9]{6}$/.test(n)) return '名字别带版本号';
+        if (kind === '关键帧' && !SB.isFrameName(n)) return '关键帧的名字要带「首帧」「关键帧」或「尾帧」，比如「镜头3_首帧」（挑关键帧那一栏只认这样的名字）';
         const parts = destParts(), low = n.toLowerCase();
         const same = (await listDir(parts.slice(0, -1))).find(e => e.kind === 'file' && IMG_RE.test(e.name) && stemOf(e.name).toLowerCase() === low);
         if (same) return '那里已经有「' + same.name + '」了，换个名字。要换掉那一张：先在资产页删了它（图不要了，会进历史记录），再来复制';
@@ -169,7 +170,7 @@ async function pcFind({ s, k, row }) {
         if (kind) dest.replaceChildren('复制到：', ...parts.slice(0, -1).flatMap(p => [p, ' / ']), h('b', null, (nameIn.value.trim() || '名字') + '.' + ext));
         else dest.replaceChildren('选了当什么用，这里写复制到哪。');
         hint.textContent = !kind ? '' : row ? '挂到「' + row.名称 + '」这一行。名字只写内容，不带项目名、类别、第几段、版本号。'
-          : kind === '关键帧' ? '名字带「首帧」「尾帧」「关键帧」的，提示词那一步认得出，比如「镜头3_首帧」。'
+          : kind === '关键帧' ? '名字要带「首帧」「关键帧」或「尾帧」，比如「镜头3_首帧」：提示词那一步、挑关键帧那一栏都靠它认。'
             : !seg && KIND[kind] ? '下划线前面是戏里的叫法：「童爸爸_三十出头」挂到' + kind + '表「童爸爸」那一行，表里没有就加一行。不带项目名、类别、第几段、版本号。'
               : '只写内容，比如「菜市场路口」；不带项目名、类别、第几段、版本号。';
         check();

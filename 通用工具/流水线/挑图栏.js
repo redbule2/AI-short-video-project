@@ -3,7 +3,7 @@
    从哪里点开，顶上就写明挑给谁，挑中的就给它；不再照图名悄悄猜挂给谁。四种：
      给一行挑图（人物、道具卡上「挑现成的图」「换图」）：全片的、删掉的、画布上的。点一张，再点「挂给××」（点两下也行）。
      只用文字写的场景挑一张图：全片的场景图、这一段的。点「这一段改用这张图」。
-     关键帧的一格（镜头几 · 开头、中间、结尾）：这一段文件夹里的图。点「绑到镜头几开头」。
+     关键帧的一格（镜头几 · 开头、中间、结尾）：这一段文件夹里名字合关键帧起名规矩的图（带首帧、关键帧、尾帧，点过「不是关键帧」的除外，11-26 他要）。点「绑到镜头几开头」。
      「＋ 加人物」那张卡：表里的（这一段还没选的）、全片的图、这一段的、删掉的、画布上的。挑一样这一段就加上；栏不收，能接着加。
        全片的图：挂给哪一行写在按钮上（这张图已经挂在哪一行，或者图名里的叫法对得上哪一行；都没有就新加一行），看清了再点。
    一栏分几个页签，一次看一组，能搜名字；左下角「＋ 从电脑里找」照旧（电脑找图.js）。只盖右边：左边的卡还看得见；Esc 或 × 收起。
@@ -130,16 +130,17 @@ async function cvShow(x) {
 }
 const cvTile = x => h('button', { type: 'button', class: 'fl-at cv ' + (x.类别 ? poolCls(x) : ''), title: '画布节点：' + x.title + '（' + x.w + '×' + x.h + '）\n' + (x.注 || '本地没有一样的图') + '\n点一下看大图', onclick: () => cvShow(x) },
   cvImg(x.rid, 220), h('span', null, x.名称 + (x.第几张 ? '（' + x.第几张 + '）' : '')), h('small', null, x.注 ? '和本地同名的不一样' : x.段 && !x.类别 ? '第' + x.段 + '段 · 只在画布' : '只在画布'));
-/* 画布上的、这一回要摆的：人物、场景、道具只摆名字是这一类的；关键帧只摆这一段的 */
-const cvMine = (k, s) => { const all = (CV.name === F.name && CV.data && CV.data.只在画布) || []; return k === '关键帧' ? all.filter(x => x.段 === s.段) : all.filter(x => x.类别 && (x.类别 === AP.CP ? !!KIND[k] : kindOf(x.类别) === k)); };   // 人物和道具_ 开头的节点：人物、道具两页都摆
-function cvPane(k, s, list) {
+/* 画布上的、这一回要摆的：人物、场景、道具只摆名字是这一类的；关键帧只摆这一段的，给镜头挑的只摆名字合关键帧起名规矩的（2026-11-26） */
+const cvMine = o => { const k = pbKind(o), all = (CV.name === F.name && CV.data && CV.data.只在画布) || []; return k === '关键帧' ? all.filter(x => x.段 === o.s.段 && (o.mode !== 'slot' || SB.isFrameName(x.名称))) : all.filter(x => x.类别 && (x.类别 === AP.CP ? !!KIND[k] : kindOf(x.类别) === k)); };   // 人物和道具_ 开头的节点：人物、道具两页都摆
+function cvPane(o, list) {
+  const k = pbKind(o);
   if (CV.name !== F.name) return [h('p', { class: 'fn-note' }, '还没读画布。')];
   if (CV.st === '没画布') return [h('p', { class: 'fn-note' }, '这个项目还没有即梦画布（资产 / 出片设置.json 里没写画布网址）。')];
   const d = CV.data, busy = !CV.st || CV.st === '在对', all = (d && d.只在画布) || [];
   const again = h('button', { class: 'fl-link', type: 'button', title: '重读即梦画布，再和本地的图比一遍', onclick: () => cvLoad(true) }, '再读一遍画布');
   const note = CV.st === '出错' ? h('p', { class: 'fn-note warn' }, '画布读不了：' + CV.err + '　', again)
     : busy ? h('p', { class: 'fn-note', id: 'cv-prog' }, cvProgText())
-      : h('p', { class: 'fn-note' }, '画布上一共 ' + d.共 + ' 张图：' + (d.一样 || []).length + ' 张本地有一样的，只摆本地的（标「画布有」）；本地没有一样的 ' + all.length + ' 张，这里摆' + (k === '关键帧' ? '这一段的' : k) + ' ' + list.length + ' 张。只能看，点一下看大图。　', again);
+      : h('p', { class: 'fn-note' }, '画布上一共 ' + d.共 + ' 张图：' + (d.一样 || []).length + ' 张本地有一样的，只摆本地的（标「画布有」）；本地没有一样的 ' + all.length + ' 张，这里摆' + (o.mode === 'slot' ? '这一段名字带首帧、关键帧、尾帧的' : k === '关键帧' ? '这一段的' : k) + ' ' + list.length + ' 张。只能看，点一下看大图。　', again);
   return [note, list.length ? h('div', { class: 'fl-ag' }, list.map(cvTile)) : null];
 }
 
@@ -167,7 +168,8 @@ function pbItems(o, tab) {
     return { id: 'pool:' + x.文件, kind: 'pool', name: x.名称, file: x.文件, x, used, note: cvN(x, used ? (o.mode === 'row' ? '已经挂着' : '这一段在用') : k === '场景' ? '' : owner(x) || '还没人用') };
   });
   if (tab === '这一段的') {
-    const list = k === '关键帧' ? [...PB.mine].sort((a, b) => (guessKind(b) === '关键帧') - (guessKind(a) === '关键帧')) : PB.mine;
+    const list = o.mode === 'slot' ? PB.mine.filter(x => SB.isFrameName(x.文件) && !arrOf(s.关键帧不用).includes(x.文件))   // 给镜头挑关键帧：只摆图名合关键帧起名规矩的，点过「不是关键帧」的也不摆（2026-11-26 他要：别的图掺在里面太多）
+      : k === '关键帧' ? [...PB.mine].sort((a, b) => (guessKind(b) === '关键帧') - (guessKind(a) === '关键帧')) : PB.mine;
     return list.map(x => { const u = segKind(s, x.文件), used = u === k && (k !== '关键帧' || o.mode !== 'slot' || SB.bindsOf(s)[x.文件] && SB.bindsOf(s)[x.文件].镜 === o.slot.no && SB.bindsOf(s)[x.文件].刻 === o.slot.刻);
       return { id: 'seg:' + x.文件, kind: 'seg', name: x.名称, file: x.文件, x, group: x.组, used: !!used, note: cvN(x, !u ? '' : u === k ? (k === '关键帧' && SB.bindsOf(s)[x.文件] ? '绑在' + SB.say(SB.bindsOf(s)[x.文件], s.段落).replace(/「[^」]*」/, '') : '这一段当' + u + '用着') : '这一段当' + u + '用着，挑了改当' + k) }; });
   }
@@ -214,7 +216,7 @@ function pbTitle(o) {
   const s = o.s;
   if (o.mode === 'row') return ['给「' + pbLabel(o) + '」挑图', KIND[o.row.类别].multi ? '挑中的挂到全片的「' + o.row.名称 + '」（一个道具可以挂几张，一个状态一张）' : '挑中的挂到全片的「' + o.row.名称 + '」，各段都用这张'];
   if (o.mode === 'text') return ['给场景「' + sceneLabel(o.text) + '」挑一张图', '用了图，这一段就不再只用文字写（全片设定里那一句还在）'];
-  if (o.mode === 'slot') return ['给「镜头' + o.slot.no + ' ' + SB.SAY[o.slot.刻] + '」挑关键帧', '资产 / 关键帧 / ' + segName(s.段) + ' 里的图（连下一层文件夹）。挑中的当现用，原来那张改备选'];
+  if (o.mode === 'slot') return ['给「镜头' + o.slot.no + ' ' + SB.SAY[o.slot.刻] + '」挑关键帧', '资产 / 关键帧 / ' + segName(s.段) + ' 里名字带「首帧」「关键帧」「尾帧」的图（连下一层文件夹；点过「不是关键帧」的不摆）。挑中的当现用，原来那张改备选'];
   return ['加' + o.k + ' · 第' + s.段 + '段', o.k === '关键帧' ? '资产 / 关键帧 / ' + segName(s.段) + ' 里的图，挑了就当关键帧，放在「还没绑」那一排' : '挑一样，这一段就加上。栏不收，能接着加'];
 }
 function pbPaint() {
@@ -222,7 +224,7 @@ function pbPaint() {
   if (!o || !PB.el) return;
   const tabs = pbTabs(o), k = pbKind(o), q = PB.q.trim().toLowerCase();
   if (!tabs.includes(PB.tab)) PB.tab = tabs[0];
-  const count = t => t === '画布上的' ? (CV.data && CV.name === F.name ? cvMine(k, o.s).length : '') : pbItems(o, t).length;
+  const count = t => t === '画布上的' ? (CV.data && CV.name === F.name ? cvMine(o).length : '') : pbItems(o, t).length;
   const [title, sub] = pbTitle(o);
   const list = PB.tab === '画布上的' ? [] : pbItems(o, PB.tab).filter(x => !q || x.name.toLowerCase().includes(q));
   const sel = list.find(x => x.id === PB.sel) || null, act = sel && !sel.used ? pbAct(o, sel) : null;
@@ -235,7 +237,7 @@ function pbPaint() {
     return el;
   };
   let body;
-  if (PB.tab === '画布上的') body = cvPane(k, o.s, cvMine(k, o.s).filter(x => !q || String(x.名称).toLowerCase().includes(q)));
+  if (PB.tab === '画布上的') body = cvPane(o, cvMine(o).filter(x => !q || String(x.名称).toLowerCase().includes(q)));
   else if (!list.length) body = [h('p', { class: 'fn-note' }, q ? '没有名字里带「' + PB.q.trim() + '」的。' : PB_EMPTY(o, PB.tab))];
   else if (PB.tab === '这一段的') body = segGroups(list.map(x => ({ ...x, 组: x.group }))).flatMap(([g, l]) => [h('div', { class: 'pick-lab' }, g || segName(o.s.段) + ' 本层'), h('div', { class: 'fl-ag' }, l.map(tile))]);
   else body = [h('div', { class: 'fl-ag' }, list.map(tile))];
@@ -254,6 +256,7 @@ function pbPaint() {
 const PB_EMPTY = (o, tab) => tab === '表里的' ? o.k + '表里的都选上了。表里没有的，点下面「＋ 新加一个' + o.k + '」。'
   : tab === '文字写的' ? '全片设定里写的场景都选上了。没写过的，点下面「＋ 新加一个场景」。'
     : tab === '全片的' ? '项目的 资产 / ' + (pbKind(o) === '场景' ? '场景' : '人物和道具') + ' 里还没有' + (pbKind(o) === '场景' ? '场景' : pbKind(o)) + '图。'
+      : tab === '这一段的' && o.mode === 'slot' ? '资产 / 关键帧 / ' + segName(o.s.段) + ' 里还没有名字带「首帧」「关键帧」「尾帧」的图（比如「镜头3_首帧」）。名字不带这几个字的、点过「不是关键帧」的不摆在这里；要用，在「加关键帧」里挑。'
       : tab === '这一段的' ? '资产 / 关键帧 / ' + segName(o.s.段) + ' 里还没有图。空镜、关键帧、参考图放进去（可以再分一层文件夹，比如「空镜」「关键帧」），这里就有。'
         : tab === '删掉的' ? '没有删掉的图。' : '';
 /* 点了按钮（或点两下）：做选中的那一样。给一行挑、给一格挑的做完就收起；加出场的不收，能接着加 */
@@ -281,7 +284,7 @@ async function pbNew(o) {
 /* 从电脑里找：找到、起好名字，复制进项目（电脑找图.js），再照这一栏挑给谁那样用上 */
 async function pbPc(o) {
   hideHov();
-  const k = pbKind(o), r = await pcFind({ s: o.s, k, row: o.row || null });
+  const k = pbKind(o), r = await pcFind({ s: o.s, k, row: o.row || null, name: o.mode === 'slot' ? '镜头' + o.slot.no + '_' + o.slot.刻 : '' });   // 给镜头挑的：名字先填好「镜头3_首帧」，复制进来以后这一栏还认得它
   if (!r) return;
   window.UI.dropThumbs();
   try { F.pool = await loadPool(F.name); } catch (e) { /* 下回再读 */ }

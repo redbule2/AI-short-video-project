@@ -6,6 +6,13 @@ const SB = require('../公用/关键帧绑定.js');
 
 const rows = (...ws) => ws.map(w => typeof w === 'string' ? { 写什么: w, 作用: '' } : w);
 
+test('关键帧的起名规矩：图名带首帧、关键帧、尾帧的才算；_候选、_白模帧结尾的、别的图、只有文件夹名带的都不算', () => {
+  for (const f of ['资产/关键帧/第3-4段/镜头11_首帧.png', '镜头11_关键帧.png', '镜头1_尾帧.jpg', '镜头2_首帧_雾.png', '航拍_首帧.webp', '镜头3_首帧'])
+    assert.ok(SB.isFrameName(f), f);
+  for (const f of ['资产/关键帧/第3-4段/机枪阵地_墙外回看.png', '机枪阵地_墙外回看_白模帧.png', '镜头11_首帧_候选.png', '镜头3_首帧_白模帧', '白模/f0001.png', '飞机导弹关键帧/镜头6_跟拍俯冲.png', '镜头1_全景.png', '', null])
+    assert.ok(!SB.isFrameName(f), String(f));
+});
+
 test('镜头号：没号的表 1、2、3；有号的照它，删了不挪', () => {
   assert.deepEqual(SB.nosOf(rows('a', 'b', 'c')), ['1', '2', '3']);
   assert.deepEqual(SB.nosOf([{ 号: '1' }, { 号: '2' }, { 号: 11 }, { 号: '镜头12' }]), ['1', '2', '11', '12']);

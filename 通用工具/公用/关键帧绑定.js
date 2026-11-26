@@ -133,6 +133,9 @@
   /* ---------- 关键帧绑定 ---------- */
   const MOMENTS = ['首帧', '关键帧', '尾帧'];   // 和「出关键帧…」里取哪一刻的三个一样：名字里也这么写（镜头11_首帧）
   const SAY = { 首帧: '开头', 关键帧: '中间', 尾帧: '结尾' };
+  /* 关键帧的起名规矩：图名带「首帧」「关键帧」「尾帧」（镜头11_首帧、镜头11_首帧_雾）；「_候选」「_白模帧」结尾的是过程图，不算。
+     给镜头挑关键帧那一栏只摆合规矩的图（2026-11-26 他要）。f：图的路径或名字，带不带后缀都行 */
+  const isFrameName = f => { const n = String(f || '').split('/').pop().replace(/\.(png|jpe?g|webp|gif|avif)$/i, ''); return MOMENTS.some(m => n.includes(m)) && !/_(候选|白模帧)$/.test(n); };
   function normBind(b) {
     if (!b || typeof b !== 'object') return null;
     const 镜 = normNo(b.镜), 刻 = MOMENTS.includes(b.刻) ? b.刻 : '';
@@ -244,5 +247,5 @@
     }
     return out;
   }
-  return Object.freeze({ normNo, nosOf, fillNos, expand, shotsOf, codeOf, keepNos, nosOk, MOMENTS, SAY, bindsOf, guess, currentOf, isCurrent, staleOf, table, slots, seq, forShots, order, say, regName, bind, setCurrent, keep, unbind, check });
+  return Object.freeze({ normNo, nosOf, fillNos, expand, shotsOf, codeOf, keepNos, nosOk, MOMENTS, SAY, isFrameName, bindsOf, guess, currentOf, isCurrent, staleOf, table, slots, seq, forShots, order, say, regName, bind, setCurrent, keep, unbind, check });
 });
