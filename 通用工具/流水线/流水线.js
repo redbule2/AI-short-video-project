@@ -1031,6 +1031,7 @@ function renderTop() {
       PAGE.name === '设定' ? h('span', { class: 'crumb-seg' }, '全片设定') : PAGE.crumb ? h('span', { class: 'crumb-seg' }, PAGE.crumb) : null,
       s ? h('span', { class: 'crumb-seg' }, '第' + s.段 + '段' + (s.名.trim() ? ' ' + s.名.trim() : '')) : null),
     h('div', { class: 'top-right' },
+      window.NameWatch ? NameWatch.topBtn() : null,   // 名字巡逻（11-26 加；在 命名巡逻.js）：项目里有名字、位置不合规矩的才出现
       window.BgTasks ? BgTasks.topBtn() : null,   // 后台任务（11-17 加；在 后台任务.js）：各项目在做的事都在一个抽屉里，点一行去那一页
       PAGE.name === '风格' ? null : h('a', { class: 'btn ghost sm wf-styles', href: pageUrl('风格', { p: F.name }), title: '风格库：每种风格现存的几条样片，都能在这里放', onclick: e => { e.preventDefault(); go('风格'); } }, icon('film'), '风格'),   // 11-14 加：风格.html
       PAGE.name === '网盘' ? null : h('a', { class: 'btn ghost sm wf-cloud', href: pageUrl('网盘', { p: F.name }), title: '这个项目在网盘上的那一份：传上去、拿下来、删网盘上的', onclick: e => { e.preventDefault(); go('网盘'); } }, icon('cloud'), '网盘'),
@@ -1914,3 +1915,5 @@ async function styleDlg(s, opt) {
 
 /* 后台任务（2026-11-17 加）：顶栏「后台任务」，各项目在做的事都在一个抽屉里，点一行去那一页。功能在 后台任务.js，这里替各页引上 */
 if (!window.BgTasks) document.head.append(Object.assign(document.createElement('script'), { src: new URL('后台任务.js', document.currentScript ? document.currentScript.src : location.href).href }));
+/* 名字巡逻（2026-11-26 加）：项目文件夹里名字、位置不合规矩的，顶栏亮个数、点开一条条看。功能在 命名巡逻.js，这里替各页引上 */
+if (!window.NameWatch) document.head.append(Object.assign(document.createElement('script'), { src: new URL('命名巡逻.js', document.currentScript ? document.currentScript.src : location.href).href }));
