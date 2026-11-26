@@ -37,8 +37,8 @@ const drafts = require('./draft-store.js')({ ROOT, RE_VP: Core.RE_VP, PF_FILE: C
 const filmed = require('./filmed.js')({ ROOT, TOOLS, log, live: () => jobs.liveJobs(), withLocks: drafts.withLocks });   // 出过片的提示词不能改，只能另存新的一版（11-22 他定）
 const jobs = require('./jobs.js')({ ROOT, TOOLS, log, withFileLocks: drafts.withLocks, filmed });   // AI 任务与页面共用文件锁
 const pc = require('./pc-files.js')({ ROOT, log, resolveParts, withLocks: drafts.withLocks });   // 资产页「从电脑里找」：整台电脑找图、复制进项目（11-14 加）
-const lib = require('./prompt-lib.js')({ ROOT, TOOLS, log });
-const pairs = require('./pair-keeper.js')({ ROOT, TOOLS, filmed, log, withLocks: drafts.withLocks });   // 提示词和它出的样片同进同出：谁挪了一样，另一样跟着收进历史记录（11-26 加）   // 写稿页「参考」：各项目现在的、历史记录里的视频提示词，挑一条摆在旁边（11-19 加）
+const lib = require('./prompt-lib.js')({ ROOT, TOOLS, log });   // 写稿页「参考」：各项目现在的、历史记录里的视频提示词，挑一条摆在旁边（11-19 加）
+const pairs = require('./pair-keeper.js')({ ROOT, TOOLS, filmed, log, withLocks: drafts.withLocks });   // 提示词和它出的样片同进同出：谁挪了一样，另一样跟着收进历史记录（11-26 加）
 /* 流水线「网盘」那一页：项目文件夹在阿里云网盘上的那一份（通用工具\网盘同步\网盘管理.js）。没装好不碍别的 */
 let wangpan = null;
 try { wangpan = require(path.join(TOOLS, '网盘同步', '网盘管理.js'))({ local: path.join(ROOT, '项目'), log }); }
