@@ -46,6 +46,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const Voice = (() => { try { return require(path.join(TOOLS, '公用', '音色.js')); } catch (e) { log('读不了 公用/音色.js：' + e.message); return null; } })();
   const isNarr = n => !!Voice && n === Voice.NARRATOR;   // 旁白是画外音（11-17）：不写字、不出图，只挂音色
   const TxtWord = (() => { try { return require(path.join(TOOLS, '公用', '文字描写.js')); } catch (e) { log('读不了 公用/文字描写.js：' + e.message); return null; } })();   // 只用文字写的资产的文字描写（11-17）
+  const FaceCard = (() => { try { return require(path.join(TOOLS, '公用', '人物卡.js')); } catch (e) { log('读不了 公用/人物卡.js：' + e.message); return null; } })();   // 人物卡（11-26）：人物图左边脸部特写、右边全身；成群的只要全身
   const AssetEdit = (() => { try { return require(path.join(TOOLS, '公用', '资产改过.js')); } catch (e) { log('读不了 公用/资产改过.js：' + e.message); return null; } })();   // 资产改了，照新资产改提示词（11-17）
   const AP = require(path.join(TOOLS, '公用', '资产路径.js'));   // 资产放哪（2026-11-20：人物和道具、场景、关键帧/第N段）；老路径换新的、画布节点名也照它
   const Scope = (() => { try { return require(path.join(TOOLS, '公用', '资产归类.js')); } catch (e) { log('读不了 公用/资产归类.js：' + e.message); return null; } })();   // 出场的分全局、用在哪几镜，删掉的（11-17）
@@ -627,7 +628,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   }
   /* 出图、照批注改图：一样开一个 Codex 对话，人在里面聊，说「定稿」就换上（11-23）。资产页「用新图」「用旧图」也走它的 take、drop */
   const Draw = require('./codex-draw.js')({ fsp, pj, str, fail, retry, exists, unbom, oneLine, nowText, stampOf, stemOf, archive, writeFile, readFlow, needFinal, wordPrep, noteList, logOf, mtimeOf,
-    TxtWord, handoff: (...a) => handoff(...a), withFileLocks, sha256, run, resultJson, sleep, CX, HOME, TOOLS, log, Src });
+    TxtWord, handoff: (...a) => handoff(...a), withFileLocks, sha256, run, resultJson, sleep, CX, HOME, TOOLS, log, Src, FaceCard });
   Object.assign(KINDS, Draw.KINDS);
   /* 记下字、图照的是哪一句描写（11-23，公用/资产照的.js）：pairs [[项目里的路径, 照的]]，time 不给就是现在。和页面共用一把锁；页面手里那份存的时候会并进来 */
   async function noteSrc(name, pairs, time) {
@@ -659,6 +660,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       out.push({ 参考: [], 要求: '', ...x, f, 图: f.img.join('/'), 有图, 有字, 确认, ...(旧 ? { 旧 } : {}), 写, 不写GEO, 旧字: 写 ? await read(f.txt) : '', 旧GEO: 写 && !不写GEO ? await read(f.geo) : '' });
     };
     const entry = (k, n) => (Array.isArray(flow[k]) ? flow[k] : []).find(e => e && e.名 === n) || null;
+    const body = (k, e) => k === '人物' && FaceCard && FaceCard.bodyOnly(e) ? { 只全身: true } : {};   // 成群的路人只要全身（11-26，公用/人物卡.js）
     const inGlobal = (k, g) => { const d = AP.catDir(k) + '/'; return g.startsWith(d) && !g.slice(d.length).includes('/'); };   // 人物、道具都在 资产/人物和道具，场景在 资产/场景（本层）
     if (j.只.length) {
       for (const x of j.只) {
@@ -670,7 +672,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         if (!nameOk(stem) || /_候选$/.test(stem)) continue;
         const 参考 = [];
         for (const g of x.参考) { const parts = g.split('/').filter(Boolean); if (parts[0] === '资产' && parts.every(nameOk) && IMG_RE.test(g) && await exists(pj(j.项目, ...parts))) 参考.push(parts.join('/')); }
-        await add({ 类别: x.类别, 名称: x.名称, 状态名: x.状态名, stem, 图: img ? img.join('/') : '', 描写: e ? str(e.描写).trim() : x.文字, 描写改: e ? timeOf(e.描写改) : 0, 要求: x.要求, 参考, 提示词: x.提示词 || '', 只: true, ...(只字 ? { 只字 } : {}) });
+        await add({ 类别: x.类别, 名称: x.名称, 状态名: x.状态名, stem, 图: img ? img.join('/') : '', 描写: e ? str(e.描写).trim() : x.文字, 描写改: e ? timeOf(e.描写改) : 0, 要求: x.要求, 参考, 提示词: x.提示词 || '', 只: true, ...(只字 ? { 只字 } : {}), ...body(x.类别, e) });
       }
       return out;
     }
@@ -678,8 +680,8 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     for (const k of ['人物', '道具']) for (const n of Array.isArray(s[k]) ? s[k] : []) {
       if (k === '人物' && isNarr(n)) continue;
       const e = entry(k, n), all = imgsOf(e), mine = all.filter(g => inGlobal(k, g));
-      if (mine.length) { for (const g of mine) await add({ 类别: k, 名称: n, 状态名: mine.length > 1 ? stateOfImg(n, g) : '', stem: stemOf(g), 图: g, 描写: e ? str(e.描写).trim() : '', 描写改: e ? timeOf(e.描写改) : 0 }); }
-      else if (!all.length && nameOk(n) && txt(k, n)) await add({ 类别: k, 名称: n, 状态名: '', stem: n, 图: '', 描写: e ? str(e.描写).trim() : '', 描写改: e ? timeOf(e.描写改) : 0, ...txt(k, n) });
+      if (mine.length) { for (const g of mine) await add({ 类别: k, 名称: n, 状态名: mine.length > 1 ? stateOfImg(n, g) : '', stem: stemOf(g), 图: g, 描写: e ? str(e.描写).trim() : '', 描写改: e ? timeOf(e.描写改) : 0, ...body(k, e) }); }
+      else if (!all.length && nameOk(n) && txt(k, n)) await add({ 类别: k, 名称: n, 状态名: '', stem: n, 图: '', 描写: e ? str(e.描写).trim() : '', 描写改: e ? timeOf(e.描写改) : 0, ...txt(k, n), ...body(k, e) });
     }
     for (const g of (Array.isArray(s.场景图) ? s.场景图 : []).map(x => String(x).replace(/\\/g, '/')).filter(g => inGlobal('场景', g))) await add({ 类别: '场景', 名称: stemOf(g), 状态名: '', stem: stemOf(g), 图: g, 描写: '' });
     for (const t of (Array.isArray(s.场景文字) ? s.场景文字 : []).map(str).filter(Boolean)) { const st = sceneStem(t); if (st && txt('场景', st)) await add({ 类别: '场景', 名称: st, 状态名: '', stem: st, 图: '', 描写: t.trim(), ...txt('场景', st) }); }
@@ -741,14 +743,14 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         if (Src) for (const x of items) if (x.写 && !x.只字) x.照 = Src.nowOf(flow, x.类别, x.名称);   // 字照的是这会儿的哪一句（11-23）：写好了记下
         j.images = [...items.filter(x => x.有图).map(x => pj(j.项目, ...x.图.split('/'))), ...items.flatMap(x => x.参考.map(g => pj(j.项目, ...g.split('/'))))];
         const geoW = items.some(x => x.写 && x.类别 === '场景' && !x.不写GEO), noGeoW = items.some(x => x.写 && x.不写GEO && !x.只字);   // 有没有要写 GEO 底稿的场景、有没有不写的（只用文字的本来就不写）
-        const RULE = { 人物: '人物：定妆照，画面里只有这一个人，正面全身站立，头到脚完整入画，竖幅 2:3，纯中灰色摄影棚背景；分「长相」「姿势」「穿着」「质感」几小段写；长相普通，不是明星脸，不是任何真人的肖像。',
+        const RULE = { 人物: FaceCard ? FaceCard.RULE : '人物：定妆照，画面里只有这一个人，正面全身站立，头到脚完整入画，竖幅 2:3，纯中灰色摄影棚背景；分「长相」「姿势」「穿着」「质感」几小段写；长相普通，不是明星脸，不是任何真人的肖像。',
           道具: '道具：画面里只有这一件道具，完整入画，四周留一点空，横幅 16:9，干净的中灰色背景或它平常所在的简单环境；写清结构、材质、颜色、新旧；有状态的画那个状态。',
           场景: '场景：空镜，横幅 16:9，不出现有名有姓的人物；写清是什么时候、在哪、有什么、各在哪、光从哪来。' + (geoW ? '先照 scene-geo 写 GEO 底稿（只给人审：什么在哪、从哪看得见什么、人往哪走），出图提示词照底稿写，两边对得上。' + (noGeoW ? '标了「不写 GEO 底稿」的不写底稿，直接写出图提示词。' : '') : ''),
           关键帧: '关键帧：这一条视频里某一刻的画面（要求里写着是哪一刻），横幅 16:9；人物、道具、场景的样子照给的参考图，正文里用「图1」「图2」……指它们，长相衣着不再用字描一遍；写清这一刻谁在哪、在做什么、朝哪、镜头从哪拍、光从哪来；画动着的那一刻，别画成摆拍。' };
         const cats = [...new Set(items.filter(x => x.写 && !x.只字).map(x => x.类别))], tcats = [...new Set(items.filter(x => x.写 && x.只字).map(x => x.类别))];   // tcats：只用文字、写文字描写的（11-17）
         const tag = x => '【' + x.类别 + '｜' + x.名称 + (x.状态名 ? '｜' + x.状态名 : '') + '】';
         const line = x => '- ' + tag(x) + [x.描写 ? '描写：' + x.描写 : '', x.只字 ? '' : x.有图 ? '有图：' + x.图 + '（' + (x.确认 ? '人确认过可用' : x.旧 ? '这张图照的是原来的描写、镜头，还没重画' : '人还没确认') + '）' : '还没有图',
-          x.写 ? (x.只字 ? '只用文字，不出图：要写文字描写' : '要写字' + (x.不写GEO ? '（不写 GEO 底稿：没有严格站位）' : '')) + (x.旧字 ? '（原来的字在最后，照要求改）' : '') : '不用写字', x.提示词 ? '是「' + x.提示词 + '」这一条视频里的一刻（这一条的提示词在下面）' : '', x.要求 ? '要求：' + x.要求 : '', x.参考.length ? '参考图：' + x.参考.map((g, i) => '图' + (i + 1) + '＝' + g).join('、') : ''].filter(Boolean).join('；');
+          x.写 ? (x.只字 ? '只用文字，不出图：要写文字描写' : '要写字' + (x.不写GEO ? '（不写 GEO 底稿：没有严格站位）' : '')) + (x.旧字 ? '（原来的字在最后，照要求改）' : '') : '不用写字', x.只全身 ? '只要全身（成群的路人：照旧出定妆照，不出人物卡）' : '', x.提示词 ? '是「' + x.提示词 + '」这一条视频里的一刻（这一条的提示词在下面）' : '', x.要求 ? '要求：' + x.要求 : '', x.参考.length ? '参考图：' + x.参考.map((g, i) => '图' + (i + 1) + '＝' + g).join('、') : ''].filter(Boolean).join('；');
         const olds = items.filter(x => x.写 && (x.旧字 || x.旧GEO)).map(x => '### ' + tag(x) + '\n' + (x.旧GEO ? '原来的 GEO 底稿：\n' + x.旧GEO + '\n\n' : '') + (x.旧字 ? '原来的字：\n' + x.旧字 : ''));
         const vps = [];   // 关键帧对着的那几条视频提示词：照它的分镜定这一刻
         for (const n of [...new Set(items.map(x => x.提示词).filter(Boolean))]) {

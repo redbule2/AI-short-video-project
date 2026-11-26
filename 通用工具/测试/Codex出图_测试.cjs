@@ -285,6 +285,49 @@ async function followTests() {
   console.log('Codex 出图：描写改了先改字、定稿记下照的哪一句 ✓');
 }
 
+/* ---------- 六、人物卡（11-26，公用/人物卡.js）：人物出图的话里带人物卡那一句；原图是竖幅的交过去照它出；只要全身的、道具、照批注改图不带 ---------- */
+async function faceCardTests() {
+  const FaceCard = require('../公用/人物卡.js'), P = '人物卡';
+  const filesOf = (cat, name) => { const d = cat === '场景' ? '场景' : '人物和道具'; return { txt: ['提示词', '全局资产', cat, name + '_提示词.txt'], note: ['提示词', '全局资产', cat, name + '_提示词_批注.md'], geo: null,
+    img: ['资产', d, name + '.png'], cand: ['资产', d, name + '_候选.png'], imgNote: ['资产', d, name + '_批注.md'], shots: ['资产', d, name + '_批注截图'] }; };
+  const png = (w, h) => { const b = Buffer.alloc(40); Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]).copy(b, 0); b.writeUInt32BE(13, 8); b.write('IHDR', 12, 'latin1'); b.writeUInt32BE(w, 16); b.writeUInt32BE(h, 20); return b; };
+  const flowP = pj(P, '定稿的剧本', '流水线.json');
+  put(flowP, JSON.stringify({ 人物: [{ 名: '童磊', 描写: '六岁', 资产: '资产/人物和道具/童磊.png' }, { 名: '我军士兵', 描写: '军装', 资产: '资产/人物和道具/我军士兵.png', 只全身: true }], 道具: [{ 名: '碗', 描写: '白瓷碗', 资产: '资产/人物和道具/碗.png' }] }));
+  const F1 = filesOf('人物', '童磊'), F2 = filesOf('人物', '我军士兵'), F3 = filesOf('道具', '碗');
+  for (const f of [F1, F2, F3]) { put(pj(P, ...f.txt), '用途：定妆图\n提示词\n正面全身站立，竖幅 2:3，纯中灰色摄影棚背景。\n'); put(pj(P, ...f.img), png(1024, 1536)); }
+  const reply = '定稿\n核图：没看出问题\n改了什么：改成人物卡\n出图提示词：\n一张横幅 16:9 的图，从左到右五格都是这个六岁男孩：正脸大特写、3/4 侧脸特写，后三格是脖子以下的正面、侧面、背面全身。';
+  let n = 0;
+  async function go(files, cat, name, kind = '出图') {
+    let said = '', D;
+    ({ D } = deps({ FaceCard, readFlow: async () => JSON.parse(read(flowP)), async handoff(j, f, how, imgs, check) {
+      said = D.KINDS[j.事].codexMsg(j, { reply: 'R' }, ['', 'node reply ' + j.id]);
+      put(pj(P, ...files.cand), 'NEW');
+      await check(reply);
+      return reply;
+    } }));
+    const j = { id: 'card' + (++n), 事: kind, 项目: P, 段: '1', 类别: cat, 名: name, 状态名: '', files, dir: path.join(TMP, 'card' + n) };
+    await D.KINDS[kind].run(j);
+    const lines = said.split('\n');
+    assert.ok(lines.every(l => l.trim()) && !lines.some(l => /^\s*[-*] /.test(l)), '还是不空行、不写列表');
+    return lines;
+  }
+  const [card, old] = FaceCard.drawLines(pj(P, ...F1.img));
+  let lines = await go(F1, '人物', '童磊');
+  assert.ok(lines.includes(card) && lines.includes(old), '竖幅原图：话里带人物卡那一句和原图的完整路径');
+  assert.ok(lines.indexOf(card) < lines.findIndex(l => l.startsWith('候选图路径：')), '写在候选图路径前面');
+  assert.ok(read(pj(P, ...F1.txt)).includes('正脸大特写、3/4 侧脸特写'), '定稿：出图提示词换成改好的人物卡');
+  lines = await go(F1, '人物', '童磊');   // 换上的这张不是竖的（测试里写的不是图）：只带人物卡那一句
+  assert.ok(lines.includes(card) && !lines.some(l => l.startsWith('原图（')), '原图不是竖幅的：不交原图');
+  lines = await go(F2, '人物', '我军士兵');
+  assert.ok(!lines.some(l => l.startsWith('这一张是人物卡') || l.startsWith('原图（')), '只要全身的：不带人物卡');
+  lines = await go(F3, '道具', '碗');
+  assert.ok(!lines.some(l => l.startsWith('这一张是人物卡') || l.startsWith('原图（')), '道具不带');
+  put(pj(P, ...F1.img), png(1024, 1536)); put(pj(P, ...F1.imgNote), '## 整体\n头发短一点');
+  lines = await go(F1, '人物', '童磊', '改图');
+  assert.ok(!lines.some(l => l.startsWith('这一张是人物卡') || l.startsWith('原图（')), '照批注改图不带：只改说到的地方');
+  console.log('Codex 出图：人物卡那一句、竖幅原图交过去 ✓');
+}
+
 (async () => {
   try {
     parseTests();
@@ -292,6 +335,7 @@ async function followTests() {
     await drawTests();
     await sendTests();
     await followTests();
+    await faceCardTests();
     console.log('Codex出图_测试 全部通过');
   } finally { fs.rmSync(TMP, { recursive: true, force: true }); }
 })().catch(e => { console.error(e); process.exit(1); });

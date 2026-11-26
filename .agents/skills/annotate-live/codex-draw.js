@@ -15,7 +15,7 @@ const os = require('os');
 
 module.exports = function makeDraw(d) {
   const { fsp, pj, str, fail, retry, exists, unbom, oneLine, nowText, stampOf, stemOf, archive, writeFile, readFlow, needFinal, wordPrep, noteList, logOf, mtimeOf,
-    TxtWord, handoff, withFileLocks, sha256, run, resultJson, sleep, CX, HOME, TOOLS, log, Src } = d;
+    TxtWord, handoff, withFileLocks, sha256, run, resultJson, sleep, CX, HOME, TOOLS, log, Src, FaceCard } = d;
   const TASK = path.join(TOOLS, '流水线', '任务书', '资产出图任务.txt');
   const SESSIONS = process.env.ANTOU_CODEX_SESSIONS || path.join(os.homedir(), '.codex', 'sessions');   // Codex 的会话记录；ANTOU_CODEX_SESSIONS：试验服务上换成假的
   const two = n => String(n).padStart(2, '0');
@@ -187,6 +187,7 @@ module.exports = function makeDraw(d) {
       ...(mode === 'edit' ? ['这回先照图上的批注改。原图：' + abs(f.img), '批注：' + abs(f.imgNote), ...(j.有标注 ? ['标注图：' + abs([...f.shots, '标注图.jpg'])] : [])] : []),
       ...(j.有字 ? [(mode === 'edit' ? '提示词文件（这张图本来要画什么，只用来了解，别照它重画）：' : '提示词文件：') + abs(f.txt)] : []),
       ...(mode === 'edit' || !Src ? [] : Src.msgLines(j.变了)),   // 描写改了、镜头多了（11-23）：先照现在的改字再出
+      ...(mode === 'edit' || !j.卡 || !FaceCard ? [] : FaceCard.drawLines(j.卡.原图)),   // 人物卡（11-26）：字没写成人物卡的先改；竖幅原图交过去照它出
       '候选图路径：' + abs(f.cand),
       '旧候选挪进：' + pj(j.项目, '历史记录', ...f.cand.slice(0, -1)),
       '回复文件：' + files.reply,
@@ -206,6 +207,12 @@ module.exports = function makeDraw(d) {
     } else {
       if (!j.有字) throw fail('还没有出图提示词：先让 AI 写，你看过再出图');
       if (TxtWord && TxtWord.isTxt(unbom(await fsp.readFile(abs(f.txt), 'utf8')))) throw fail('这份是只用文字时写的文字描写，不是出图提示词：先让 AI 改成出图提示词，再出图');   // 11-17
+      delete j.卡;
+      const e = FaceCard && j.类别 === '人物' ? (Array.isArray(flow.人物) ? flow.人物 : []).find(x => x && x.名 === j.名) : null;
+      if (FaceCard && j.类别 === '人物' && !FaceCard.bodyOnly(e)) {   // 人物卡（11-26，公用/人物卡.js）：点了「只要全身」的照旧；原图是竖幅全身照的，交给 Codex 照它改成人物卡
+        const z = await fsp.readFile(abs(f.img)).then(FaceCard.sizeOf, () => null);
+        j.卡 = { 原图: z && FaceCard.tall(z.w, z.h) ? abs(f.img) : '' };
+      }
     }
     if (!j.续) await drop(j.项目, f);   // 上一张候选没用上：收进历史记录。服务重开后接着等的不收：那一张可能就是聊出来的
     if (j.停) throw fail('停掉了');

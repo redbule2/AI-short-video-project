@@ -295,5 +295,14 @@ async function bookOf(s) { const j = job(); await s.K.写字.prep(j); return s.K
     assert.ok(hand.includes('旁白（画外音，不出镜）的音色') && !hand.includes('人物「旁白」的音色'), '手加的旁白挂错了');
   });
 
+  await check('人物卡（11-26，公用/人物卡.js）：写字的出图规矩是人物卡；点了「只要全身」的那一行标出来，照旧出定妆照', async () => {
+    const FaceCard = require('../公用/人物卡.js');
+    const book = await bookOf(setup(scene(), {}, { 人物: [{ 名: '老李', 描写: '五十岁' }, { 名: '路人甲', 描写: '三十岁', 只全身: true }] })), part = toWrite(book);
+    const line = x => part.split('\n').find(l => l.includes(x)) || '';
+    assert.ok(book.includes(FaceCard.RULE), '出图规矩没用人物卡那一句');
+    assert.match(line('【人物｜路人甲】'), /只要全身（成群的路人：照旧出定妆照，不出人物卡）/);
+    assert.doesNotMatch(line('【人物｜老李】'), /只要全身/);
+  });
+
   console.log(tested + ' 项检查通过；真实项目数据未读写。');
 })().catch(e => { console.error(e); process.exit(1); });
