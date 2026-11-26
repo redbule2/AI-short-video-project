@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>开发规范 · 审阅（桌面版）</title>
+<style>
+:root { --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --line: #d6cab6; --zhu: #a83a2c; --dai: #3e5c5e; --huang: #fff4c9; --lv: #2f6b3a; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.85 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif; }
+main { max-width: 780px; margin: 0 auto; padding: 32px 22px 120px; }
+h1 { margin: 0 0 4px; font: 600 26px/1.4 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .08em; }
+.sub { margin: 0 0 20px; font-size: 14.5px; color: var(--ink-2); }
+h2 { margin: 34px 0 10px; font: 600 19px/1.5 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .1em; }
+.card { margin: 12px 0; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+.card h3 { margin: 0 0 4px; font-size: 16.5px; font-weight: 600; }
+.card h3 .no { display: inline-block; min-width: 1.9em; color: var(--dai); }
+.card p { margin: 3px 0; color: var(--ink-2); }
+.opts { margin: 8px 0 2px; }
+.opts label { display: block; margin: 5px 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opts label:hover { background: #faf5ea; }
+.opts input { margin-right: 8px; }
+.opts .rec { color: var(--dai); font-size: 13px; margin-left: 4px; }
+textarea { display: block; width: 100%; margin-top: 8px; min-height: 2.6em; padding: 7px 10px; border: 1px dashed #c8b99f; border-radius: 8px; background: #fffef9; font: 15px/1.7 'Noto Sans SC', 'Microsoft YaHei', sans-serif; color: var(--ink); resize: vertical; }
+textarea:focus { outline: none; border-style: solid; border-color: var(--dai); background: #fff; }
+textarea.has { border-style: solid; border-color: #b9822f; background: var(--huang); }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; background: rgba(255,253,249,.96); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; justify-content: center; }
+.bar button { padding: 6px 14px; border: 1px solid var(--dai); border-radius: 8px; background: #fff; color: var(--dai); font: inherit; cursor: pointer; }
+.bar button:hover { background: #eef5f3; }
+#st { color: var(--ink-2); }
+.foot { margin-top: 26px; font-size: 13px; color: var(--ink-3); }
+.fig { margin: 10px 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff; font-size: 14.5px; color: var(--ink-2); line-height: 1.75; }
+.fig p { margin: 4px 0; }
+.fig b { color: var(--ink); }
+.del { color: var(--zhu); background: #fbeeee; text-decoration: line-through; padding: 1px 4px; border-radius: 4px; }
+.add { color: var(--lv); background: #eaf5ec; padding: 1px 4px; border-radius: 4px; }
+.keep { color: var(--ink-3); }
+.row { padding: 5px 0; border-top: 1px solid #ece3d3; }
+.row:first-child { border-top: 0; }
+.who { display: inline-block; min-width: 5.2em; font-weight: 600; color: var(--ink); }
+</style>
+</head>
+<body>
+<main>
+<h1>开发规范 · 审阅（桌面版）</h1>
+<p class="sub" id="sub"></p>
+<div id="sections"></div>
+<h2>其他意见</h2>
+<textarea data-k="其他" placeholder="还有什么想说的（可以不写）"></textarea>
+<p class="foot" id="foot"></p>
+</main>
+<div class="bar"><span id="st">写批注会自动存好</span><button id="copy" type="button">复制批注</button></div>
+
+<template id="why"><div class="fig">
+  <p><b>现在：</b>第 3 条写着「不装 npm 包、不打包」。桌面版做不了：壳子要装 Electron（把网页做成桌面软件的工具）和自动更新这几样包。</p>
+  <p><b>以后：</b>流水线照旧不装包，装好 Node 就能跑；壳子单放一处，用 pnpm 装包。</p>
+</div></template>
+
+<template id="chg"><div class="fig">
+  <div class="row"><span class="who">开头一句</span><span class="del">改 通用工具、.agents\skills 里的代码时照这十条。</span></div>
+  <div class="row"><span class="who"></span><span class="add">改 通用工具、.agents\skills 里的代码时照下面这些条。</span></div>
+  <div class="row"><span class="who">第 3 条</span><span class="del">不装 npm 包、不打包，装好 Node 就能跑。</span></div>
+  <div class="row"><span class="who"></span><span class="add">流水线不装包、不打包，装好 Node 就能跑；桌面壳除外，照「桌面版」。</span></div>
+  <p class="keep">别的九条一个字不改。</p>
+</div></template>
+
+<script>
+/* ===== 内容（改内容只改这一块；怎么摆、怎么存批注在 公用/说明页.js） ===== */
+const ROUND = 1;
+const SUB = '做桌面版之前，先把开发规范定下来：改两处，加一节「桌面版」。每条都能写批注，不写就是同意。你点头了我再写进 通用工具\\开发规范.md。';
+const FOOT = '2026-11-24 Claude 做的。开发规范.md 还没动。';
+const RULES = [
+  { id: 'r11', no: '11', t: '桌面壳放 通用工具\\桌面版，用 pnpm 装包、锁版本。', p: ['一级目录只许放五样，所以放这里。锁版本：今天装的和下个月装的一模一样。'] },
+  { id: 'r12', no: '12', t: '壳只管登录、窗口、更新、报错，流水线照旧跑。', p: ['流水线的网页和本机服务不为桌面版另抄一份，两边用同一套。'] },
+  { id: 'r13', no: '13', t: '壳的窗口只开本机服务，外链交给系统浏览器。', p: ['窗口里的页面能动本机文件；在里面开外面的网页，容易被人钻空子。'] },
+  { id: 'r14', no: '14', t: '写死本机的路径，改成先看设置、再自动找。', p: ['比如 Python 写死在 D:\\Apps\\Blender，ffmpeg 写死在剪映的文件夹；换台电脑就找不到。'] },
+  { id: 'r15', no: '15', t: '安装包只装 git 里登记过的工具文件。', p: ['本机才有的录音、样片、临时文件进不去，安装包也不会莫名变大。'] },
+  { id: 'r16', no: '16', t: '密钥、账号、登录凭证不进安装包，也不进仓库。', p: ['安装包谁都能拆开看，仓库是公开的。'] },
+  { id: 'r17', no: '17', t: '升级只换工具，禁止动工作文件夹里的「项目」。', p: ['同事的稿子、图、片子都在「项目」里，升级碰坏了找不回来。'] },
+  { id: 'r18', no: '18', t: '交给 AI 一律开看得见的新对话，开不了才给提示词复制。', p: ['豆包工作、DeepSeek、Codex 三家都这样：人看着它干，还能接着聊。'] },
+  { id: 'r19', no: '19', t: '对话名照【项目简称 · 做什么 · 哪一样】。', p: ['比如「童晓晓 · 写提示词 · 1-5」。简称别截成半个词。'] },
+  { id: 'r20', no: '20', t: '出错都记下，带报告号传回 video8.online；不带密钥。', p: ['换台电脑测出的毛病，在这个对话里一拉就能看、能修。'] },
+  { id: 'r21', no: '21', t: '版本号只升不降；先提交、本机装一遍点通，问过用户再发。', p: ['发坏了就发更高的版本修，不往回退。'] },
+  { id: 'r22', no: '22', t: '改 video8.online 后端，照 new-video8-8 自己的规矩。', p: ['那边的规矩多：数据库怎么写、接口只加不改、提交前跑检查。'] },
+];
+const SECTIONS = [
+  { h: '为什么改', fig: 'why' },
+  { h: '改的两处', fig: 'chg', note: '红的删，绿的加。', cards: [
+    { id: 'c1', no: '', t: '这两处', p: ['哪一处不同意，写在下面。'] } ] },
+  { h: '新加一节「桌面版」', note: '加在第 10 条后面，编号接着排。壳子就是把流水线装进去的那一层：登录、窗口、更新、报错。', cards: RULES },
+];
+window.DOC = { 名: '开发规范_审阅', 题: '开发规范（桌面版）', 存: 'antou:devrules', 轮: ROUND, 副题: SUB, 脚注: FOOT, 段: SECTIONS };
+</script>
+<script src="../公用/底座.js"></script>
+<script src="../公用/界面.js"></script>
+<script src="../公用/说明页.js"></script>
+</body>
+</html>
