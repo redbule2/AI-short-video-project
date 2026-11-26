@@ -39,7 +39,7 @@
 /* 一场 */
 .fl-scene { position: relative; margin-top: 16px; padding: 18px 22px 16px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--sheet); box-shadow: var(--shadow); }
 .fl-scene:first-child { margin-top: 0; }
-.fl-scene.done { background: rgb(from var(--sheet) r g b / .8); border-color: var(--line); box-shadow: none; }
+.fl-scene.done { background: color-mix(in srgb, var(--sheet) 80%, var(--paper)); border-color: var(--line); box-shadow: none; }
 .fs-h { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .fs-no { flex: none; font: 18px var(--kai); color: var(--dai); letter-spacing: .06em; white-space: nowrap; }
 .fs-name { flex: 1; min-width: 0; padding: 3px 9px; border: 1px solid transparent; border-radius: 6px; outline: 0; background: transparent; font: 600 18px/1.5 var(--serif); letter-spacing: .06em; transition: border-color .15s, background .15s; }
@@ -50,7 +50,7 @@
 .fs-state { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 2px 11px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; letter-spacing: .06em; color: var(--ink-3); white-space: nowrap; }
 .fs-state.ok { color: var(--dai); border-color: var(--dai-line); background: var(--dai-soft); }
 .fs-state .ic { width: 12px; height: 12px; stroke-width: 1.9; }
-.fl-link { flex: none; padding: 0; border: 0; background: none; cursor: pointer; font-size: 12.5px; color: var(--dai); text-decoration: underline; text-decoration-color: var(--dai-line); text-underline-offset: 3px; white-space: nowrap; }
+.fl-link { flex: none; padding: 0; border: 0; background: none; cursor: pointer; font-size: 12.5px; color: var(--link, var(--dai)); text-decoration: underline; text-decoration-color: var(--link-line, var(--dai-line)); text-underline-offset: 3px; white-space: nowrap; }
 .fl-link:hover { color: var(--ink); }
 .fs-lab { display: flex; align-items: baseline; gap: 10px; margin: 18px 0 8px; font: 15px var(--kai); color: var(--ink-2); letter-spacing: .26em; }
 .fs-lab em { font: normal 12px var(--sans); letter-spacing: .02em; color: var(--ink-4); }
@@ -278,6 +278,9 @@ a.wf-home:hover { color: var(--dai); }
 .wf-step small { font: 12px var(--sans); letter-spacing: .02em; color: var(--ink-3); }
 .wf-step.on { border-color: var(--ink); box-shadow: 0 0 0 3px rgb(from var(--ink) r g b / .07); color: var(--ink); font-weight: 600; }
 .wf-step.ok i { background: var(--dai); color: var(--on-dai); }
+/* 现在这一步：号填成墨色（做完了的在勾外面加一圈）。只靠外框认不出：校样台上纸面的墨色框挨着深桌子，看不见（11-26） */
+.wf-step.on i { background: var(--ink); color: var(--on-ink); }
+.wf-step.on.ok i { background: var(--dai); color: var(--on-dai); box-shadow: 0 0 0 2px var(--sheet), 0 0 0 3.5px var(--ink); }
 .wf-step.ok small { color: var(--dai); }
 .wf-step.you small { color: var(--zhu); }
 .wf-step.ai small { color: var(--zhe); }
@@ -398,6 +401,29 @@ body.wf-covered { overflow: hidden; }
 .wf-item-h { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .wf-item-h b { font: 600 17px/1.5 var(--serif); letter-spacing: .04em; }
 .wf-item-h .sp { flex: 1; }
+/* 提示词一行（11-26）：左边名字和标签，挤了在里头换行；右边按钮一组，不拆开，「⋯」不单落到下一行 */
+.wf-item-t { flex: 1 1 0; min-width: 12em; align-self: flex-start; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.wf-item-act { flex: none; align-self: flex-start; display: flex; align-items: center; gap: 10px; margin-left: auto; }
+/* ---------- 提示词那一步（body.wf-pp）的排版（11-26 他先嫌卡片窄、右边空一大片，又嫌砍太狠） ----------
+   窗口宽于 1400：正文最宽 1200，摆在镜头表右边那片空当的正中，两边留白一样多（158 = 镜头表右沿 316 的一半）；
+   292 = 镜头表离窗口 16 + 宽 300 + 再空 16 - wf-main 左边的 40：窗口再窄，正文也不压到镜头表上。
+   镜头表收起了、这一场没有（body.sf-none，镜头表浮窗.js 挂的）回到窗口正中。窄于 1400 照旧：正文 1000 居中，镜头表空得下才摆。
+   要留意的只把头几个字标红（页面里包成 <b>），后面用常用的字色。配色在下面「四步共用」那一块。 */
+@media (min-width: 1400px) {
+  .wf-pp .fl { max-width: 1200px; }
+  .wf-pp:not(.sf-none) .fl { margin-left: max(292px, calc((100% - 1200px) / 2 + 158px)); }
+}
+.wf-pp .wf-items { gap: 14px; }
+.wf-pp .wf-item { padding: 16px 20px; box-shadow: var(--shadow); }
+.wf-pp .wf-bar > .fn-note { flex: 1 1 0; min-width: 16em; }   /* 字长了在左边换行，按钮留在右边 */
+.wf-pp .wf-bar > .sp { display: none; }   /* 字那一格自己撑满：不和空格平分，字才不挤成窄窄一条 */
+.wf-pp .wf-filter { background-image: var(--grain); }   /* 钉住的那一条和页面一样铺纸纹，宣纸、青瓷下不露出一道浅色横条 */
+.wf-pp .wf-bar .fn-note.warn, .wf-pp .wf-asset { color: var(--ink-2); }
+.wf-pp .wf-bar .fn-note.warn b, .wf-pp .wf-asset > b { color: var(--zhu); font-weight: 600; }
+/* 只看：三格并成一条（纸面），选中的那一格照下面四步共用的样子加墨色细框 */
+.wf-pp .wf-filter .chips { gap: 2px; padding: 3px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--sheet); }
+.wf-pp .wf-filter .chips .chip:not(.on) { border-color: transparent; background: transparent; }
+
 .wf-item .fl-aibox { margin-top: 10px; }
 .wf-item .wf-jobs { margin-top: 10px; }
 select.inp { cursor: pointer; }
@@ -811,3 +837,19 @@ span.adm-th.none { cursor: default; }
 .oi-c.wide { grid-column: 1 / -1; }
 .oi-c span { white-space: pre-wrap; word-break: break-all; }
 .oi.sm .oi-c span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
+
+/* ---------- 四步的页面（剧本、提炼、资产、提示词：页面上有步骤条 #wf-steps）共用的配色（11-26 他嫌墨夜、校样台下难看） ----------
+   只用皮肤变量。light-dark()：前一个是亮底（宣纸、青瓷、校样台的纸面）照旧，后一个是暗底（墨夜、校样台的桌面）换的。
+   墨色按钮暗底上的样子挪进了 公用/样式.css（嵌着的编辑器也用）；链接不用冷青色（.fl-link 照 --link 走）；选中的小签加墨色细框，不整块填墨色
+   （校样台桌面上的小签跟着桌面取色，填了和没选的分不出来）；作用标签、时间条不掺金色的浑底；要留意的长句子暗底上淡一点，条子左边一道朱砂。
+   :where() 不加分量，所以这一块放在最后：分量一样的，后写的算数。 */
+:where(.wf:has(#wf-steps)) { --link: light-dark(var(--dai), var(--ink-2)); --link-line: light-dark(var(--dai-line), var(--ink-4)); }
+:where(.wf:has(#wf-steps)) .chip.on { border-color: transparent; background: var(--white); box-shadow: inset 0 0 0 1.5px var(--ink); color: var(--ink); font-weight: 600; }
+:where(.wf:has(#wf-steps)) .wf-bar:has(.fn-note.warn) { box-shadow: inset 3px 0 0 var(--zhu); }
+:where(.wf:has(#wf-steps)) .wf-bar .fn-note.warn { color: light-dark(var(--zhu), color-mix(in srgb, var(--zhu) 70%, var(--ink))); }
+:where(.wf:has(#wf-steps)) :is(.sf-list .n, .pz-no) { color: light-dark(var(--dai), var(--ink-3)); }   /* 镜头号：提示词页的镜头表、提炼页的镜头表 */
+:where(.wf:has(#wf-steps)) :is(.sw-t, .sw-b).jd { background: light-dark(var(--tag-jd), rgb(from var(--tag-jd-ink) r g b / .18)); }
+:where(.wf:has(#wf-steps)) :is(.sw-t, .sw-b).pd { background: light-dark(var(--tag-pd), rgb(from var(--tag-pd-ink) r g b / .18)); }
+:where(.wf:has(#wf-steps)) :is(.sw-t, .sw-b).zz { background: light-dark(var(--tag-zz), rgb(from var(--tag-zz-ink) r g b / .18)); }
+:where(.wf:has(#wf-steps)) :is(.sw-t, .sw-b).fy { background: light-dark(var(--tag-fy), rgb(from var(--tag-fy-ink) r g b / .18)); }
+:where(.wf:has(#wf-steps)) :is(.sw-t, .sw-b).sw { background: light-dark(var(--tag-sw), rgb(from var(--tag-sw-ink) r g b / .18)); }

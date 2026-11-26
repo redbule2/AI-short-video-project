@@ -43,8 +43,9 @@ p { margin: 0; }
   transition: background .15s, border-color .15s, color .15s, box-shadow .15s;
 }
 .btn:hover { background: var(--white); border-color: var(--ink-4); }
-.btn.ink { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
-.btn.ink:hover { background: var(--ink-up); border-color: var(--ink-up); }
+/* 墨色按钮：亮底上照旧一块墨色；暗底上（墨夜、校样台的桌面）不用一大块亮米色，换成比纸亮一档的灰调（2026-11-26 他嫌墨夜下刺眼） */
+.btn.ink { border-color: light-dark(var(--ink), color-mix(in srgb, var(--ink) 40%, var(--paper-3))); background: light-dark(var(--ink), color-mix(in srgb, var(--ink) 22%, var(--paper-3))); color: light-dark(var(--on-ink), var(--ink)); }
+.btn.ink:hover { border-color: light-dark(var(--ink-up), color-mix(in srgb, var(--ink) 52%, var(--paper-3))); background: light-dark(var(--ink-up), color-mix(in srgb, var(--ink) 30%, var(--paper-3))); }
 .btn.zhu { background: var(--zhu); border-color: var(--zhu); color: var(--on-accent); }
 .btn.zhu:hover { background: var(--zhu-up); }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--ink-2); }

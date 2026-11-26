@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="../公用/样式.css">
 <link rel="stylesheet" href="流水线.css">
 </head>
-<body class="wf">
+<body class="wf wf-pp">
 <div id="wf"></div>
 <div id="layer"></div>
 <div id="toasts" aria-live="polite"></div>
@@ -1065,7 +1065,7 @@ function frameWordLine(s, e, ws, edit) {   // edit：上面那一行没摆（挂
 /* 资产改了（11-17，公用/资产改过.js）：这一条写好以后又改了哪几样，一键交给 AI 照着改。
    11-17 晚他问「资产改了，怎么没有按钮更新提示词」：以前只有改过的字给按钮，换图、换音色、换出场的写「要你自己看」；现在哪一种都给 */
 function assetLine(s, e, ed, busy) {
-  return h('p', { class: 'fn-note warn', style: 'margin:8px 0 0' }, '资产改了：' + AssetEdit.say(ed) + '。',
+  return h('p', { class: 'fn-note wf-asset', style: 'margin:8px 0 0' }, h('b', null, '资产改了'), '：' + AssetEdit.say(ed) + '。',   // 只把头几个字标红（11-26）
     h('button', { class: 'btn sm', type: 'button', style: 'margin-left:8px', disabled: busy || !AI.ok, title: '把改了的资产现在什么样（新的字、新图在哪、现在出场的）写成这一条的批注，交给 ' + chName() + ' 按批注改：只改对不上的地方，别的一字不动；都对得上就一字不改，不再标待核对', onclick: () => fixByAssets(s, e, ed) }, '照新资产改'));
 }
 /* 照新资产改：改过的那几样现在的样子写进这一条的批注（原来有人写的批注照留），交给 AI 按批注改提示词。
@@ -1095,12 +1095,12 @@ function rowOf(s, e, made, list) {
   const btn = (label, fn, cls, title, off) => h('button', { class: 'btn sm ' + (cls || ''), type: 'button', title: title || null, disabled: !!off, onclick: fn }, label);
   const hand = isHandDraft(e), fz = X.filmed.get(e.name);   // fz：这一版出过片（11-22），原稿不能改
   return h('div', { class: 'wf-item', 'data-name': e.name },
-    h('div', { class: 'wf-item-h' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), ReviewPop.tag(made),   // 出过片的标出来（审片弹窗.js，历史记录里的一版也用它）
+    h('div', { class: 'wf-item-h' }, h('div', { class: 'wf-item-t' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), ReviewPop.tag(made),   // 出过片的标出来（审片弹窗.js，历史记录里的一版也用它）
       hand ? h('span', { class: 'fs-state', title: '你来写的稿：在写稿页接着写事件脚本，写好点「交给 AI 写完」，分镜和生成目标、素材这几块由 AI 写' }, '手写稿')
         : e.draft ? h('span', { class: 'fs-state', title: '在写稿页里改过：AI 估的每镜秒数可能不准，出片时会提醒' }, '改过') : null,
       stale ? [h('span', { class: 'fs-state', style: 'color:var(--zhu);border-color:var(--zhu-line)', title: imp ? '剧本重新定稿了，AI 对新旧剧本说这一条要再看：' + imp.为什么 : ed.length ? '这一条写好以后，这几样资产又改了：' + AssetEdit.say(ed) + '。点下面「照新资产改」交给 AI 对一遍；打开看一眼还对得上就沿用' : '这一条写好以后，前面（剧本、资产、拍摄风格）又动过。打开看一眼还对得上' }, imp ? '剧本改了，待核对' : ed.length ? '资产改了，待核对' : '待核对'),
-        h('button', { class: 'fl-link', type: 'button', title: '看过了，还对得上，就用这一版', onclick: () => { keepAsIs(s, '提示词/' + e.name); rerender(); } }, '还对得上，沿用')] : null,
-      h('span', { class: 'sp' }),
+        h('button', { class: 'fl-link', type: 'button', title: '看过了，还对得上，就用这一版', onclick: () => { keepAsIs(s, '提示词/' + e.name); rerender(); } }, '还对得上，沿用')] : null),
+      h('div', { class: 'wf-item-act' },   // 按钮一组：挤不下整组换行，「⋯」不单落到下一行（11-26 他要的）
       fz ? [forkBtn(s, e, fz, busy, btn),   // 11-24 他定：「打开看、写批注」拿掉；出过片的也能进写稿页，只是锁着不能改
           btn('进去看', () => openWrite(s.段, e.name, hand, false, true), '', '打开写稿页看这一版：出过片的原稿锁着，不能改。要改点「' + (fz.下一版 ? '另存成改' + vpVer(fz.下一版) : '另存') + '」，改了才存成新的一版')]
       : hand ? btn('接着写', () => openWrite(s.段, e.name, true), 'ink', '打开写稿页接着写：写好事件脚本，点「交给 AI 写完」，AI 拆成分镜、写好其余几块；右栏看资产（挂白模、关键帧点「插入」）、AI 批注、校对和剧本')
@@ -1110,8 +1110,8 @@ function rowOf(s, e, made, list) {
         : bmLost ? '挂的白模文件不在了：先去掉或者放回去' : stale ? '这一条待核对：先看一眼，点「沿用」或者改好' : bmOld ? '白模改过：先看一眼，点「还对得上」或者改好' : '选好怎么出（模型、清晰度、秒数、积分上限），页面排好任务书，流水线就照它去即梦出一条样片。要花积分', !!fz || busy || !AI.ok || stale || bmOld || bmLost),
       hasTask ? h('button', { class: 'fl-link', type: 'button', title: '上回批准出片时排的任务书：' + tf, onclick: () => showText(at([...dirOf(s), tf])) }, '看任务书') : null,
       ReviewPop.btn(s, e, list || promptsOf(s.段)),
-      h('button', { class: 'fl-ib', type: 'button', title: (fz ? '照审片批注交给 AI 改、' : '') + '出关键帧…、删除', 'aria-label': '更多：出关键帧、删除', onclick: ev => moreMenu(ev.currentTarget, s, e, busy) }, icon('more'))),
-    imp ? h('p', { class: 'fn-note warn', style: 'margin:8px 0 0' }, '剧本改了：' + imp.为什么) : null,
+      h('button', { class: 'fl-ib', type: 'button', title: (fz ? '照审片批注交给 AI 改、' : '') + '出关键帧…、删除', 'aria-label': '更多：出关键帧、删除', onclick: ev => moreMenu(ev.currentTarget, s, e, busy) }, icon('more')))),
+    imp ? h('p', { class: 'fn-note wf-asset', style: 'margin:8px 0 0' }, h('b', null, '剧本改了'), '：' + imp.为什么) : null,
     ed.length ? assetLine(s, e, ed, busy) : null,
     verLine(s, e),
     bmLine(s, e),
@@ -1188,7 +1188,7 @@ function render() {
   ShotFloat.paint(s);  // 左边的镜头表（镜头表浮窗.js）
   return [
     h('div', { class: 'wf-bar' },
-      h('span', { class: 'fn-note' + (stale.length ? ' warn' : '') }, stale.length ? stale.length + ' 条待核对：它们写好以后，前面（剧本、资产、拍摄风格）又动过。打开看一眼，还对得上就点「沿用」；资产改了的点「照新资产改」；别的对不上就写批注让 AI 改，或者进去自己改。'
+      h('span', { class: 'fn-note' + (stale.length ? ' warn' : '') }, stale.length ? [h('b', null, stale.length + ' 条待核对'), '：它们写好以后，前面（剧本、资产、拍摄风格）又动过。打开看一眼，还对得上就点「沿用」；资产改了的点「照新资产改」；别的对不上就写批注让 AI 改，或者进去自己改。']
         : list.length ? '一条提示词出一条视频。确认满意后点「批准出片」。'
           : PROMPT_BTN ? '还没有提示词。点「写提示词」，勾这一条拍哪几个镜头；写几条，这段戏就分几条（一条一般十五秒，Seedance 2.5 最长三十秒）。' : '还没有提示词。写提示词的入口先收起来了：稿子放进「提示词 / ' + segName(seg) + '」（名字是镜头号，像「1-5.txt」「4-9.txt」），这里自动出现。'),
       h('span', { class: 'sp' }),

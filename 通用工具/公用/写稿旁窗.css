@@ -9,7 +9,7 @@
 .rf-mini.ink:hover { background: var(--qing-soft); }
 .rf-mini .rf-ic { width: 13px; height: 13px; }
 .rf-ib { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 7px; background: none; cursor: pointer; color: var(--ink-3); transition: background .12s, color .12s; }
-.rf-ib:hover { background: rgba(40, 36, 30, .07); color: var(--ink); }
+.rf-ib:hover { background: rgb(from var(--ink) r g b / .07); color: var(--ink); }
 .rf-ib .rf-ic { width: 15px; height: 15px; }
 .rf-ib.x:hover { background: var(--zhu-soft); color: var(--zhu); }
 
@@ -20,7 +20,7 @@
 .rf-split.side > .rf-dock { flex: 0 0 var(--rf-size, 42%); min-width: 320px; max-width: 72%; border-left: 1px solid var(--line); }
 .rf-split.bottom > .rf-dock { flex: 0 0 var(--rf-size, 42%); min-height: 170px; max-height: 72%; border-top: 1px solid var(--line); }
 .rf-split.fold { flex-direction: column; }
-.rf-split.fold > .rf-dock { flex: none; min-width: 0; min-height: 0; max-width: none; border-left: 0; border-top: 1px solid var(--line); box-shadow: 0 -6px 18px -12px rgba(30, 26, 20, .25); }
+.rf-split.fold > .rf-dock { flex: none; min-width: 0; min-height: 0; max-width: none; border-left: 0; border-top: 1px solid var(--line); box-shadow: 0 -6px 18px -12px rgb(from var(--shade) r g b / .25); }
 .rf-split.fold > .rf-grip { display: none; }
 .rf-grip { flex: none; position: relative; z-index: 2; background: var(--paper-2); transition: background .15s; touch-action: none; }
 .rf-split.side > .rf-grip { width: 6px; cursor: col-resize; }
@@ -30,7 +30,7 @@
 .rf-split.side > .rf-grip::after { width: 2px; height: 28px; }
 .rf-split.bottom > .rf-grip::after { width: 28px; height: 2px; }
 
-.rf-dock { container: rfdock / inline-size; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #fbfaf7; }
+.rf-dock { container: rfdock / inline-size; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: color-mix(in srgb, var(--card-h2) 75%, var(--sheet)); }
 .rf-dock.rf-enter { animation: rf-in-r .22s ease-out; }
 .rf-split.bottom > .rf-dock.rf-enter, .rf-split.fold > .rf-dock.rf-enter { animation-name: rf-in-up; }
 @keyframes rf-in-r { from { opacity: 0; transform: translateX(14px); } }
@@ -41,7 +41,7 @@
 @container rfdock (min-width: 540px) { .rf-head { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "id tools win"; } }
 .rf-split.fold .rf-head { grid-template-areas: "id win"; border-bottom: 0; }
 .rf-id { grid-area: id; display: flex; align-items: center; gap: 9px; min-width: 0; }
-.rf-badge { flex: none; display: inline-grid; place-items: center; height: 22px; padding: 0 8px; border-radius: 6px; background: var(--qing); color: #fff; font: 600 11.5px/1 var(--sans); letter-spacing: .14em; }
+.rf-badge { flex: none; display: inline-grid; place-items: center; height: 22px; padding: 0 8px; border-radius: 6px; background: var(--qing); color: var(--on-acc); font: 600 11.5px/1 var(--sans); letter-spacing: .14em; }
 .rf-title { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .rf-title b { font: 600 14px/1.35 var(--sans); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rf-title small { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11.5px; line-height: 1.4; color: var(--ink-3); }

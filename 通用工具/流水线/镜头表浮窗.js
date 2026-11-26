@@ -51,6 +51,7 @@
   /* 量一下正文在哪、步骤条多高，摆好 */
   function place() {
     if (!box) return;
+    document.body.classList.toggle('sf-none', !has || prefNow() === 'off');   // 左边不钉镜头表：提示词页的正文回到正中（流水线.css .wf-pp）。只看收没收起，不看量出来的，先挂上再量
     if (!has) { box.hidden = tab.hidden = true; return; }
     const fl = document.getElementById('fl-body'), steps = document.getElementById('wf-steps');
     const top = Math.round(steps ? Math.max(0, steps.getBoundingClientRect().bottom) + 14 : 130);
