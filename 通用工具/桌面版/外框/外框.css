@@ -71,7 +71,8 @@ button:focus-visible { outline: 2px solid var(--k-on); outline-offset: -3px; }
 }
 #name { align-self: center; margin: 0 16px; white-space: nowrap; color: var(--k-ink-2); font: 600 13.5px/1 var(--k-serif); letter-spacing: .14em; }
 #title { flex: 1; min-width: 0; align-self: center; padding: 0 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--k-ink-3); font-size: 12.5px; letter-spacing: .04em; }
-#off { align-self: center; margin-right: 10px; padding: 1px 8px; border: 1px solid var(--k-line); border-radius: 10px; color: var(--k-ink-3); font-size: 12px; }
+#off, #srv { align-self: center; margin-right: 10px; padding: 1px 8px; border: 1px solid var(--k-line); border-radius: 10px; color: var(--k-ink-3); font-size: 12px; }
+#srv { border-color: var(--k-dot); color: var(--k-dot); }   /* 本机服务停着：和没看条数的圆点一个颜色 */
 #set { display: flex; align-items: center; gap: 6px; padding: 0 14px; color: var(--k-ink-3); font-size: 12.5px; letter-spacing: .08em; transition: background .12s, color .12s; }
 #set:hover { background: var(--k-hover); color: var(--k-ink); }
 #set:active { background: var(--k-press); }

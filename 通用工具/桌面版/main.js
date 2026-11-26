@@ -3,7 +3,7 @@
    壳只管登录、窗口、更新、报错；流水线照旧由工作文件夹里的本机服务跑，窗口只开本机服务，外链交给系统浏览器。
    窗口没有系统边框，也没有系统菜单：顶栏、三个窗口按钮、菜单、设置都是外框页（外框/外框.html，装在软件里）画的。
    菜单里每一项（lib/routes.js）各开一个视图摆在中间那块，切走不关；登录页也摆在那一块。点「设置」时右边拉出外框页画的设置那一栏，中间那一页让开、照样露着（换皮肤当场看得到）。
-   启动顺序：定工作文件夹 → 开窗口（外框）→ 把安装包里的工具同步进去 → 开本机服务 → 续上登录（没登录开登录页）→ 开流水线 → 查更新
+   启动顺序：定工作文件夹 → 开窗口（外框）→ 把安装包里的工具同步进去 → 开本机服务（软件开着就一直看着它，停了自己重开）→ 续上登录（没登录开登录页）→ 开流水线 → 查更新
    试验用的环境变量（scripts/smoke.mjs 用）：ANTOU_DESK_WORK（工作文件夹）、ANTOU_DESK_DATA（设置、登录、日志放哪）、ANTOU_PORT（端口）、
      ANTOU_DESK_API（登录服务器）、ANTOU_DESK_NO_UPDATE=1（不查更新）、ANTOU_DESK_NO_FOCUS=1（窗口出来不抢键盘）、
      ANTOU_DESK_AT=x,y（窗口摆在哪：试验时摆到屏幕外面，不挡正在用电脑的人）、ANTOU_DESK_NO_TOAST=1（来了新消息不弹提醒、不闪任务栏，只记一行日志） */
@@ -13,7 +13,7 @@ const path = require('path');
 const { makeLog } = require('./lib/log.js');
 const { makeSettings, writeAtomic, unbom } = require('./lib/settings.js');
 const { syncTools } = require('./lib/sync.js');
-const { startServer } = require('./lib/runner.js');
+const { keepServer } = require('./lib/runner.js');
 const { makeAuth } = require('./lib/auth.js');
 const { makeUpdater } = require('./lib/updater.js');
 const { makeChat } = require('./lib/chat.js');
@@ -51,7 +51,8 @@ process.on('uncaughtException', e => log.error('主进程出错', e));
 process.on('unhandledRejection', e => log.error('主进程有个出错没接住', e));
 
 let win = null, server = null, auth = null, updater = null, chat = null;
-let work = '', port = 0, quitting = false, user = null;
+let work = '', port = 0, user = null;
+let srv = '', srvTip = '';                  // 本机服务停着、没开起来时顶栏那块小牌子写什么、指上去看什么；好好的是空的
 let look = fixLook(settings.get('外观'));   // 菜单放左边还是顶部、用哪套皮肤
 const skinNow = () => skinOf(look.皮肤);     // 现在这套皮肤：{ 名, 底（页面还没画出来时的底色）, 纸面 }
 const pages = new Map();                    // 摆在中间那块的各页：菜单项的 id（或 LOGIN）→ { view, title }
@@ -187,23 +188,16 @@ function serverEnv() {
   return env;
 }
 
+/* 本机服务常驻（lib/runner.js 的 keepServer）：停了它自己重开、不弹窗，这里只在顶栏挂一块小牌子（点了打开日志文件夹）。
+   又好了：停着那会儿没打开的页重开一回；开着好好的页不动，免得冲掉没存的字 */
 async function openServer() {
-  server = await startServer({ nodeExe: nodeExe(), work, port, env: serverEnv(), log });
-  server.onExit((x, tail) => { if (!quitting) serverDied(tail); });
+  server = await keepServer({ nodeExe: nodeExe(), work, port, env: serverEnv(), log, onChange: serverChanged });
 }
-
-async function serverDied(tail) {
-  const r = await box({
-    type: 'error', title: '本机服务停了', noLink: true, defaultId: 0, cancelId: 2,
-    message: '流水线的本机服务停了', detail: (tail || '') + '\n\n日志：' + log.file(),
-    buttons: ['重开', '打开日志文件夹', '退出'],
-  });
-  if (r.response === 1) shell.openPath(log.dir);
-  if (r.response === 2) return app.quit();
-  if (r.response === 0) {
-    try { await openServer(); for (const p of pages.values()) p.view.webContents.reload(); }
-    catch (e) { fatal(e); }
-  }
+function serverChanged(s) {
+  srv = s.up ? '' : s.error ? '本机服务没开起来，正在重试' : '本机服务停了，正在重开';
+  srvTip = s.error ? s.error.split('\n').slice(0, 8).join('\n') + '\n\n点一下打开日志文件夹' : '';
+  if (s.up) for (const p of pages.values()) if (p.failed) { p.failed = false; p.view.webContents.reload(); }
+  tell();
 }
 
 /* ---------- 登录 ---------- */
@@ -308,7 +302,7 @@ function frameState() {
   return {
     app: APP_NAME, bar: BAR, rail: RAIL, drawer: DRAWER, menu: look.菜单, railOn: railOn(look, routesNow().length), setOpen,
     routes: routesNow().map(r => ({ id: r.id, 名: r.名, 图标: r.图标, 数: r.id === CHAT ? chat.unread() : 0 })), current, skin: look.皮肤,   // 数：菜单上写的没看条数（「消息」那一项）
-    title: p ? p.title : '', offline: !!(user && user.offline), busy: pages.size ? '' : '正在打开流水线…',
+    title: p ? p.title : '', offline: !!(user && user.offline), busy: pages.size ? '' : '正在打开流水线…', server: srv, serverTip: srvTip,
     maximized: win.isMaximized(), fullscreen: win.isFullScreen(), focused: win.isFocused(),
     user: user ? user.nickname || user.username : '', team: !user || !user.accountType ? '' : user.accountType === 'sub' ? `团队「${user.ownerUsername}」的成员` : '团队负责人', work, version: app.getVersion(), update: updateNow(),   // 这一行和下一行是设置里写的
     note: `本机服务 ${origin()}　登录服务器 ${API}　Electron ${process.versions.electron}`,
@@ -370,6 +364,8 @@ function openPage(id, url) {
     p = { view, title: '' };
     pages.set(id, p);
     view.webContents.on('page-title-updated', (e, title) => { p.title = title; tell(); });
+    view.webContents.on('did-fail-load', (e, code, desc, url, isMain) => { if (isMain && code !== -3) p.failed = true; });   // 本机服务停着时没打开：服务又好了重开它（serverChanged）
+    view.webContents.on('did-navigate', () => { p.failed = false; });
     win.contentView.addChildView(view);
     p.loaded = view.webContents.loadURL(url);
     p.loaded.catch(() => {});   // 没打开的在 guard 的 did-fail-load 里记了；要等结果的自己接 p.loaded
@@ -597,7 +593,6 @@ async function fatal(e) {
     buttons: ['打开日志文件夹', '退出'],
   });
   if (r.response === 0) await shell.openPath(log.dir);
-  quitting = true;
   if (server) server.stop();
   app.exit(1);
 }
@@ -612,7 +607,7 @@ async function boot() {
   ipc();
   Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: '快捷键', submenu: KEYS }]));   // 不露面，只为那几个快捷键
   work = await chooseWork();
-  if (!work) { quitting = true; return app.quit(); }
+  if (!work) return app.quit();
   port = Number(process.env.ANTOU_PORT) || Number(settings.get('端口')) || 8766;
   log.info('工作文件夹和端口', { work, port });
   win = makeWindow();
@@ -633,6 +628,6 @@ else {
   app.on('child-process-gone', (e, d) => log.error('子进程没了', d));
   app.on('window-all-closed', () => app.quit());
   app.on('before-quit', () => { quitAsked = true; });   // 窗口那头先一页页问过（makeWindow 的 close），都答应了才真退
-  app.on('will-quit', () => { quitting = true; if (server) server.stop(); });   // 窗口都关了才停本机服务：页面关的时候还要找它存东西
+  app.on('will-quit', () => { if (server) server.stop(); });   // 窗口都关了才停本机服务：页面关的时候还要找它存东西
   app.whenReady().then(boot).catch(fatal);
 }

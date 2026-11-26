@@ -3,6 +3,7 @@
      node scripts/smoke.mjs exe    打好的 release/win-unpacked/Liushuixian.exe（先跑 pnpm pack）；ANTOU_SMOKE_EXE=别的 exe 试那一个（装好的正式版）
    空的工作文件夹、空的设置，接一个假的登录服务器（不碰 video8.online），窗口出来不抢键盘。看这几样：
    工具同步进去、本机服务开起来、登录页出来、假账号登录后进总览、再开一回不用登录、页面没报错、关掉后本机服务也关了；
+   本机服务常驻：停掉它自己开回来、开不起来顶栏挂牌子、改好了自己开起来、停着时没打开的页自己重开；
    注册要填团队；考试（照搬的那一页）：经壳子问服务器、凭证过期自己续、图转到服务器拿；
    消息：壳子在后台等新消息、菜单上标没看几条、看过了数字跟着减、发字发图、从「我的团队」点「发消息」跳过去；
    视频教程：没有课时告诉人放哪、放一套课进去认得出、片子放得起来、看完打勾、切走自己停；
@@ -10,7 +11,7 @@
    页面有没存的时关窗口先问、设置改成菜单放顶部再开一回，各页都摆在该在的地方。
    截图放 build/smoke（「窗口」开头的是整个窗口，别的是单独一页）。
    窗口摆在屏幕外面跑，不挡正在用电脑的人（想看着它跑：ANTOU_SMOKE_AT=100,100）；试最大化时会在屏幕上露一下，一两秒就回去，回去后把前台还给原来的窗口（不占着键盘）。 */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -558,6 +559,28 @@ try {
   const bin = path.join(data, '登录.bin');
   check(fs.existsSync(bin) && !fs.readFileSync(bin).includes('fake-refresh'), '登录凭证加密存了（文件里看不到原文）');
 
+  console.log('本机服务常驻（停了自己重开，不弹窗）：');
+  const srvPid = () => { const row = spawnSync('netstat', ['-ano', '-p', 'TCP'], { encoding: 'utf8', windowsHide: true }).stdout.split('\n').map(l => l.trim().split(/\s+/)).find(x => x[1] === `127.0.0.1:${port}` && x[3] === 'LISTENING'); return row ? Number(row[4]) : 0; };
+  const stopSrv = () => { const pid = srvPid(); if (pid) spawnSync('taskkill', ['/PID', String(pid), '/F'], { windowsHide: true }); return pid; };   // 像别的 AI 改完代码那样：只停服务那一个号
+  const srvBack = old => until(async () => { const q = await ping(port); return !!q && samePath(q.abs, work) && srvPid() !== old; }, 20000);
+  const downFrom = logLines().length;
+  await evaluate(c, `window.__smokeKept = 1`);
+  let old = stopSrv();
+  check(!!old && await srvBack(old) && !!(await frameUntil(f, x => !x.server)) && app.exitCode === null, '停掉本机服务：几秒内自己开回来，顶栏不留牌子');
+  check(await evaluate(c, `window.__smokeKept === 1 && document.title === ${JSON.stringify(info.title)}`), '开着的那一页没被重开（没存的字不会丢）');
+  const serverJs = path.join(work, '.agents', 'skills', 'annotate-live', 'server.js');
+  fs.renameSync(serverJs, serverJs + '.挪开');   // 像别的会话正改着它、改坏了：开不起来
+  old = stopSrv();
+  s = await frameUntil(f, x => /没开起来/.test(x.server || ''), 15000);
+  check(!!s && await evaluate(f, `(() => { const b = document.getElementById('srv'); return !b.hidden && b.textContent === ${JSON.stringify(s ? s.server : '')} && b.dataset.do === 'logs' && b.title.includes('日志'); })()`), '服务开不起来：不弹窗，顶栏挂一块小牌子，点它开日志文件夹', JSON.stringify(s));
+  await shot(f, '8_本机服务没开起来.png');
+  await hitKey('刷新');   // 停着的时候刷新这一页：打不开
+  await sleep(800);
+  fs.renameSync(serverJs + '.挪开', serverJs);
+  check(await srvBack(old) && !!(await frameUntil(f, x => !x.server)), '改好了：自己开起来，牌子收掉');
+  check(await until(() => evaluate(c, `window.__smokeKept !== 1 && document.title === ${JSON.stringify(info.title)} && document.querySelectorAll('*').length > 30`).catch(() => false), 10000), '停着那会儿没打开的那一页，自己重开好了');
+  const downTo = logLines().length;   // 这一段里页面问不着服务记下的出错不算数
+
   console.log('页面里有没存的，点关闭钮：');
   await c.send('Runtime.evaluate', { expression: `addEventListener('beforeunload', e => { e.preventDefault(); e.returnValue = ''; }); true`, userGesture: true });
   const clickClose = () => evaluate(f, `document.querySelector('[data-win="close"]').click()`).catch(() => {});
@@ -596,7 +619,7 @@ try {
   app = null;
   check(!(await ping(port)), '关掉软件后，本机服务也关了');
 
-  const errs = logLines().filter(l => / ERROR /.test(l) || / WARN \[页面\]/.test(l));
+  const errs = logLines().filter((l, i) => / ERROR /.test(l) || (/ WARN \[页面\]/.test(l) && !(i >= downFrom && i < downTo)));
   check(errs.length === 0, '日志里没有出错', errs.slice(0, 12).join('\n'));
 } catch (e) {
   if (e.message !== '停') check(false, '冒烟中途出错', e.stack || e.message);

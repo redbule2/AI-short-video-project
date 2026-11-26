@@ -61,6 +61,9 @@ function draw(s) {
   $('name').textContent = s.app;
   $('title').textContent = s.title || '';
   $('off').hidden = !s.offline;
+  $('srv').hidden = !s.server;   // 本机服务停着、没开起来：挂一块小牌子（壳子在自己重开，好了就收掉），点了打开日志文件夹
+  $('srv').textContent = s.server || '';
+  $('srv').title = s.serverTip || '';
   document.querySelector('[data-win="max"]').title = s.fullscreen ? '退出全屏' : s.maximized ? '还原' : '最大化';
   $('max-use').setAttribute('href', s.maximized || s.fullscreen ? '#i-restore' : '#i-max');
 

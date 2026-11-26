@@ -30,7 +30,7 @@ function killTree(child) {
   else child.kill();
 }
 
-async function startServer({ nodeExe, work, port, env, log, timeoutMs = 20000 }) {
+async function startServer({ nodeExe, work, port, env, log, timeoutMs = 20000, onSpawn = () => {} }) {
   const p = await ping(port);
   if (p) {
     if (samePath(p.abs, work)) {
@@ -51,6 +51,7 @@ async function startServer({ nodeExe, work, port, env, log, timeoutMs = 20000 })
     }
   };
   const child = spawn(nodeExe, [serverJs], { cwd: work, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  onSpawn(child);   // 还没回话就要停的（keepServer 停下时），得先拿到它
   child.stdout.setEncoding('utf8');
   child.stderr.setEncoding('utf8');
   child.stdout.on('data', keep);
@@ -78,4 +79,56 @@ async function startServer({ nodeExe, work, port, env, log, timeoutMs = 20000 })
   throw new Error('本机服务没开起来' + why + (out.length ? '\n' + out.slice(-12).join('\n') : ''));
 }
 
-module.exports = { ping, startServer, killTree, samePath };
+/* 常驻（2026-11-26 用户要的：桌面软件开着，本机服务就一直开着）：一直看着它，停了自己重开，不弹窗、不用人点。
+   谁开的都看着：自己开的一退出就重开；接着用的（别人开的同一个文件夹的服务）问不应了，自己开一个，谁先开好用谁的。
+   自己开的还活着、只是一时没回话（忙着），不动它。开不起来、开起来没几秒又退了，隔得越来越久再试（2、4、8……秒，最多 most 毫秒一回）。
+   every：多久看一眼别人开的那个还在不在。
+   onChange 说给壳子：{ up: false } 停了、正在重开；{ up: false, error } 这一回没开起来；{ up: true } 又好了。
+   头一回就开不起来照旧抛出去（软件打不开，说清为什么）。 */
+async function keepServer({ every = 3000, retry = 1000, most = 30000, onChange = () => {}, ...opts }) {
+  const { port, work, log } = opts;
+  let cur = null, spawning = null, timer = null, stopped = false, down = false, fails = 0;   // spawning：正在开、还没回话的那个，这时候停下也得关掉它
+  const later = ms => { clearTimeout(timer); timer = stopped ? null : setTimeout(check, ms); };
+  const living = () => !!cur && cur.owned && cur.child.exitCode === null && cur.child.signalCode === null;
+  const wait = () => Math.min(retry * 2 ** fails, most);
+  async function open() {
+    let s;
+    try { s = await startServer({ ...opts, onSpawn: c => { spawning = c; } }); } finally { spawning = null; }
+    if (stopped) return s.stop();
+    const born = Date.now();
+    cur = s;
+    s.onExit(() => {
+      if (cur !== s) return;
+      if (Date.now() - born < 10000) fails++; else fails = 0;   // 开起来没几秒又退了：多半是代码坏了，别一秒一回地重开
+      later(fails ? wait() : 300);
+    });
+  }
+  async function check() {
+    timer = null;
+    if (stopped) return;
+    if (living()) return later(every);
+    const p = (await ping(port)) || (await ping(port, 5000));   // 问不应再多等一会儿问一回：别人开的那个可能只是忙
+    if (stopped) return;
+    if (p && samePath(p.abs, work)) {
+      if (!cur || cur.owned) { cur = { owned: false, info: p, stop() {} }; log.info('本机服务接着用别人开的', { port, v: p.v }); }
+    } else {
+      if (!down) { down = true; log.warn('本机服务停了，自己重开', { port }); onChange({ up: false }); }
+      try { await open(); }
+      catch (e) {
+        if (stopped) return;
+        fails++;
+        log.warn('本机服务没开起来，等一会儿再试', { 第几回: fails, 隔几秒: wait() / 1000, message: e.message });
+        onChange({ up: false, error: e.message });
+        return later(wait());
+      }
+      if (stopped) return;
+    }
+    if (down) { down = false; log.info('本机服务又开好了', { port, 自己开的: cur.owned }); onChange({ up: true }); }
+    later(every);
+  }
+  await open();
+  later(every);
+  return { stop() { stopped = true; clearTimeout(timer); if (spawning) killTree(spawning); if (cur) cur.stop(); } };
+}
+
+module.exports = { ping, startServer, keepServer, killTree, samePath };
