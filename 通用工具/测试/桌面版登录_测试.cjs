@@ -1,5 +1,5 @@
 'use strict';
-/* 桌面版/lib：登录（auth.js）、日志打码（log.js）、更新大小（updater.js） */
+/* 桌面版/lib：登录（auth.js）、日志打码（log.js）、更新大小和升级包签名（updater.js） */
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { makeAuth, decide, multipart, OFFLINE_DAYS } = require('../桌面版/lib/auth.js');
@@ -52,7 +52,7 @@ test('登录：账号密码不许空、注册两遍要一样还要填团队；�
 test('登录没成：照服务器的话说；连不上说看看网络；500 算连不上', async () => {
   const mk = fetch => makeAuth({ api: 'https://x', store: memStore(), log: quiet, now: () => NOW, fetch });
   assert.deepEqual(await mk(reply({ success: false, message: '账号或密码错误。', data: null })).login('a', 'b'), { ok: false, message: '账号或密码错误。' });
-  assert.deepEqual(await mk(async () => { throw new Error('net::ERR_CONNECTION_RESET'); }).login('a', 'b'), { ok: false, message: '连不上 video8.online，看看网络' });
+  assert.deepEqual(await mk(async () => { throw new Error('net::ERR_CONNECTION_RESET'); }).login('a', 'b'), { ok: false, message: '连不上服务器，看看网络' });
   const s = memStore({ refreshToken: 'r1', username: 'a', lastOk: NOW - DAY });
   const r = await makeAuth({ api: 'https://x', store: s, log: quiet, now: () => NOW, fetch: reply({}, 502) }).resume();
   assert.equal(r.ok, true);
@@ -80,6 +80,34 @@ test('更新大小：缺了、不是正整数的不下；合计含 blockmap', ()
   assert.equal(packageBytes({ files: [{ size: 1.5 }] }), null);
   assert.equal(packageBytes({ files: [{ size: 1, blockMapSize: -1 }] }), null);
   assert.equal(MAX_BYTES, 1073741824);
+});
+
+test('升级包的签名：签的是「版本号 + 安装包的 sha512」；包改过、版本换过、没签名、签名是乱的都不装', async () => {
+  const crypto = require('node:crypto'), fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { verifyPackage, signedText, UPDATE_KEY } = require('../桌面版/lib/updater.js');
+  assert.equal(crypto.createPublicKey(UPDATE_KEY).asymmetricKeyType, 'ed25519');   // 软件里那把是 ed25519 的公钥
+  const { privateKey, publicKey } = crypto.generateKeyPairSync('ed25519');   // 试用的一对，不是发版那把
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'antou-sign-'));
+  try {
+    const file = path.join(dir, 'Liushuixian-1.2.3-x64.exe');
+    fs.writeFileSync(file, Buffer.from('假装是安装包'));
+    const sum = crypto.createHash('sha512').update(fs.readFileSync(file)).digest('base64');
+    const sig = crypto.sign(null, Buffer.from(signedText('1.2.3', sum)), privateKey).toString('base64');
+    assert.equal(await verifyPackage(file, { version: '1.2.3', signature: sig }, publicKey), null);
+    assert.match(await verifyPackage(file, { version: '1.2.4', signature: sig }, publicKey), /签名对不上/);   // 拿旧包冒充新版本
+    assert.match(await verifyPackage(file, { version: '1.2.3', signature: sig }), /签名对不上/);              // 别的钥匙签的
+    assert.match(await verifyPackage(file, { version: '1.2.3' }, publicKey), /没有签名/);
+    assert.match(await verifyPackage(file, { version: '1.2.3', signature: '乱写的' }, publicKey), /签名对不上/);
+    assert.match(await verifyPackage(file, null, publicKey), /没有签名/);
+    fs.appendFileSync(file, 'x');   // 下好的包被改过一个字节
+    assert.match(await verifyPackage(file, { version: '1.2.3', signature: sig }, publicKey), /签名对不上/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  /* 打包那头：正式包、试装包都签；有 publisherName 软件才验；私钥不在仓库里 */
+  const pack = fs.readFileSync(path.join(__dirname, '../桌面版/scripts/pack.mjs'), 'utf8');
+  assert.equal((pack.match(/await signFeed\(out, /g) || []).length, 2);
+  assert.match(fs.readFileSync(path.join(__dirname, '../桌面版/electron-builder.yml'), 'utf8'), /^publish:\n(?:\s+.*\n)*?\s+publisherName:\n\s+- \S+/m);
+  assert.match(fs.readFileSync(path.join(__dirname, '../桌面版/lib/updater.js'), 'utf8'), /up\.verifyUpdateCodeSignature = /);
+  assert.match(pack, /os\.homedir\(\), '\.liushuixian'/);
 });
 
 /* 替页面问服务器（考试、团队页）：假服务器照 plan 里排好的一个个回 */
@@ -148,4 +176,22 @@ test('问服务器：传图拼成表单，名字里的引号换掉，等得久�
   assert.ok(c.body.toString('utf8').includes('filename="我的_图_.png"\r\nContent-Type: image/png\r\n\r\n'));
   assert.ok(text.endsWith('\x01\x02\x03\r\n--' + boundary + '--\r\n'));
   assert.equal(multipart({ bytes: new Uint8Array(0) }).body.toString('utf8').includes('filename="file"\r\nContent-Type: application/octet-stream'), true);
+});
+
+test('问服务器：等新消息（聊天）多等一截；拿图回的是图本身（类型和字节），拿不到照状态码回', async () => {
+  const png = new Uint8Array([137, 80, 78, 71]);
+  const pic = () => ({ ok: true, status: 200, headers: { get: k => (k === 'content-type' ? 'image/png' : null) }, arrayBuffer: async () => png.buffer, json: async () => { throw new Error('不是 JSON'); } });
+  const { auth, calls } = apiAuth([reply({ success: true, data: { messages: [] } }), pic, reply(null, 404), reply({ success: true })]);
+  await auth.api('GET', '/api/collaboration/chat/updates', { query: { after: 7, wait: 25 } });
+  assert.equal(calls[0].url, 'https://x/api/collaboration/chat/updates?after=7&wait=25');
+  assert.equal(calls[0].timeout, 40000);
+  const got = await auth.api('GET', '/api/collaboration/chat/messages/m1/image', { binary: true });
+  assert.equal(got.ok, true);
+  assert.equal(got.data.type, 'image/png');
+  assert.deepEqual([...got.data.bytes], [137, 80, 78, 71]);
+  assert.equal(calls[1].timeout, 120000);
+  assert.equal(calls[1].headers.Accept, '*/*');
+  assert.deepEqual(await auth.api('GET', '/api/collaboration/chat/messages/m2/image', { binary: true }), { ok: false, status: 404, data: null });
+  await auth.api('GET', '/api/collaboration/chat/inbox');
+  assert.equal(calls[3].timeout, undefined, '别的照常 10 秒（main.js 里定的）');
 });

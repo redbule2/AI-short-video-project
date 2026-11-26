@@ -1,0 +1,600 @@
+/* 壳子自己的（不是照搬的）：「消息」的样式（2026-11-26）。
+   颜色、两种按钮、小窗是和「我的团队」共用的，在 style/panel.css（这一页的根上挂着 desk-panel）。 */
+.chat-page {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr);
+  height: 100vh;
+  min-height: 480px;
+  overflow: hidden;
+  color: var(--c-text);
+  background:
+    radial-gradient(circle at 50% 8%, rgb(from var(--jin) r g b / 4%), transparent 32%),
+    var(--c-bg);
+}
+
+.chat-page.main-content {
+  margin: 0;
+}
+
+/* 读取中、没读出来、还没有消息 */
+.chat-state {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  font-size: 14px;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+.chat-state.wide {
+  grid-column: 1 / -1;
+}
+
+.chat-state strong {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--c-ink);
+}
+
+.chat-state p {
+  max-width: 44ch;
+  margin: 0;
+  line-height: 1.6;
+  color: var(--c-muted);
+}
+
+/* ---------- 左边：会话 ---------- */
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--sheet);
+  border-right: 1px solid var(--c-line);
+}
+
+.list-head,
+.room-head {
+  display: flex;
+  flex-shrink: 0;
+  gap: 12px;
+  align-items: center;
+  min-height: 64px;
+  border-bottom: 1px solid var(--c-line);
+}
+
+.list-head {
+  padding: 0 12px;
+}
+
+/* 找人的搜索框：底色是字色淡淡的一层，摆在亮的、暗的底上都合适 */
+.search {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 11px;
+  width: 14px;
+  height: 14px;
+  color: var(--c-muted);
+  pointer-events: none;
+}
+
+.search input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 36px;
+  padding: 0 32px 0 33px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--c-ink);
+  outline: none;
+  background: rgb(from var(--ink) r g b / 5%);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.search input::placeholder {
+  color: var(--c-muted);
+}
+
+.search input:focus {
+  background: transparent;
+  border-color: rgb(from var(--dai) r g b / 55%);
+}
+
+.search-clear {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  padding: 4px;
+  color: var(--c-muted);
+  cursor: pointer;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+}
+
+.search-clear:hover {
+  color: var(--c-ink);
+}
+
+.search-clear svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 两段的小标题：最近聊天、其他成员 */
+.list-label {
+  margin: 12px 10px 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--c-muted);
+}
+
+.conv-group:first-child .list-label {
+  margin-top: 4px;
+}
+
+.chat-warn {
+  padding: 9px 12px;
+  margin: 10px 10px 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--zhu);
+  background: rgb(from var(--zhu) r g b / 10%);
+  border: 1px solid rgb(from var(--zhu) r g b / 30%);
+  border-radius: 10px;
+}
+
+.conv-list {
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(from var(--scroll) r g b / .38) transparent;
+}
+
+.conv-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.conv-row:hover,
+.conv-row:focus-visible {
+  outline: none;
+  background: rgb(from var(--ink) r g b / 4%);
+}
+
+.conv-row.on {
+  background: var(--dai-soft);
+}
+
+/* 停用了、移出团队了的人：淡一点 */
+.conv-row.gone .avatar,
+.conv-row.gone .conv-main {
+  opacity: 0.55;
+}
+
+.list-empty {
+  margin: 14px 10px 4px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--c-muted);
+}
+
+/* 圆头像：克制一点——小、淡底、细边，字用次一档的墨色；群也一样，只是换成个小图标 */
+.avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  background: rgb(from var(--ink) r g b / 6%);
+  border: 1px solid rgb(from var(--ink) r g b / 9%);
+  border-radius: 50%;
+}
+
+.avatar.group svg {
+  width: 16px;
+  height: 16px;
+}
+
+.avatar.small {
+  width: 30px;
+  height: 30px;
+  font-size: 11px;
+}
+
+.conv-main {
+  min-width: 0;
+}
+
+.conv-main strong,
+.conv-main small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conv-main strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-ink);
+}
+
+.conv-main small {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+.conv-side {
+  display: grid;
+  gap: 5px;
+  justify-items: end;
+}
+
+.conv-side time {
+  font-size: 11.5px;
+  color: var(--c-muted);
+}
+
+.badge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--on-accent);
+  text-align: center;
+  background: var(--c-danger);
+  border-radius: 8px;
+}
+
+/* ---------- 右边：聊天 ---------- */
+.chat-room {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.room-head {
+  padding: 0 24px;
+}
+
+.room-head h2 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 650;
+  color: var(--c-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-head span {
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--c-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-scroll {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 18px 24px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(from var(--scroll) r g b / .38) transparent;
+}
+
+.more {
+  align-self: center;
+}
+
+.time-line {
+  align-self: center;
+  padding: 2px 10px;
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+.msg {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  max-width: 76%;
+}
+
+.msg.mine {
+  flex-direction: row-reverse;
+  align-self: flex-end;
+}
+
+/* 同一个人接着说的后几条：挨近一点，头像留着位置但不摆（字对齐） */
+.msg.follow {
+  margin-top: -8px;
+}
+
+.msg.follow .avatar {
+  visibility: hidden;
+}
+
+.msg-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.msg.mine .msg-body {
+  align-items: flex-end;
+}
+
+.msg-name {
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+.bubble {
+  max-width: 100%;
+  padding: 9px 13px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--c-ink);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  cursor: text;
+  user-select: text;
+  background: var(--white);
+  border: 1px solid var(--c-line);
+  border-radius: 4px 14px 14px;
+}
+
+.msg.mine .bubble {
+  color: var(--on-dai);
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+  border-radius: 14px 4px 14px 14px;
+}
+
+.msg-state {
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+.msg-state.failed {
+  color: var(--zhu);
+}
+
+.link {
+  padding: 0;
+  margin-left: 4px;
+  font: inherit;
+  color: var(--dai);
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.new-below {
+  position: absolute;
+  right: 28px;
+  bottom: 140px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 14px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--on-dai);
+  cursor: pointer;
+  background: var(--c-accent);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgb(from var(--shade) r g b / 35%);
+}
+
+.new-below svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 写字的地方：字和「图片」「发送」收在同一个框里，点进去框亮一圈 */
+.composer {
+  flex-shrink: 0;
+  padding: 6px 24px 16px;
+}
+
+.composer.blocked {
+  padding: 18px 24px;
+  font-size: 13px;
+  color: var(--c-muted);
+  border-top: 1px solid var(--c-line);
+}
+
+.composer-box {
+  display: grid;
+  background: var(--white);
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.composer-box:focus-within {
+  border-color: rgb(from var(--dai) r g b / 60%);
+  box-shadow: 0 0 0 3px rgb(from var(--dai) r g b / 10%);
+}
+
+.composer textarea {
+  box-sizing: border-box;
+  width: 100%;
+  height: 66px;
+  padding: 11px 14px 2px;
+  font: inherit;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--c-ink);
+  resize: none;
+  outline: none;
+  background: transparent;
+  border: 0;
+}
+
+.composer textarea::placeholder {
+  color: var(--ink-4);
+}
+
+.composer-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 0 8px 8px 6px;
+}
+
+/* 框里的「图片」：不描边，指上去才露底 */
+.tool {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  height: 30px;
+  padding: 0 9px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--c-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.tool:hover,
+.tool:focus-visible {
+  outline: none;
+  color: var(--c-ink);
+  background: rgb(from var(--ink) r g b / 5%);
+}
+
+.tool svg {
+  width: 15px;
+  height: 15px;
+}
+
+.hint {
+  flex: 1;
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+.primary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* 小窗里：要发的图 */
+.pending-image {
+  display: block;
+  max-width: 100%;
+  max-height: 56vh;
+  margin: 0 auto;
+  border-radius: 8px;
+}
+
+/* 大图 */
+.chat-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  cursor: zoom-out;
+  background: rgb(0 0 0 / 82%);
+}
+
+.chat-viewer img {
+  max-width: 92vw;
+  max-height: 92vh;
+  border-radius: 6px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 50%);
+}
+
+/* ---------- 校样台：深木桌上铺一张清样纸（2026-11-26） ----------
+   这套皮肤整页是深的桌子，只有拿 --sheet、--white、--warm 做底的东西是亮的纸（见 公用/皮肤.css 里校样台那段）。
+   原来左边会话栏是纸、右边聊天露着桌子，桌上又摆着亮的泡泡和写字框，一亮一暗拼在一起。
+   这里改成：会话栏直接摆在桌上（和外框左边的菜单一色）；右边整块聊天是一张纸，四周留一圈桌面，压出影子——纸里的颜色都取亮的那一档。别的皮肤不走这一段。 */
+:root[data-skin="校样台"] .chat-list {
+  padding-top: 12px;   /* 和右边那张纸的上沿一样高：两边标题底下那条线才对得齐 */
+  background: transparent;
+  border-right: 0;
+}
+
+:root[data-skin="校样台"] .chat-room {
+  margin: 12px 12px 12px 0;
+  overflow: hidden;
+  background: var(--sheet);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+}
+
+/* 窗口窄的时候（软件最窄 900）：会话那一栏收窄 */
+@media (width <= 1000px) {
+  .chat-page {
+    grid-template-columns: 236px minmax(0, 1fr);
+  }
+
+  .room-scroll,
+  .composer,
+  .room-head {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .msg {
+    max-width: 88%;
+  }
+}

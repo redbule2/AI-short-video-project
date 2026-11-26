@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ROUTES, BAR, RAIL, find, fixLook, railOn, stage } = require('../桌面版/lib/routes.js');
+const { ROUTES, BAR, RAIL, DRAWER, SKINS, find, fixLook, railOn, stage } = require('../桌面版/lib/routes.js');
 
 test('菜单里每一项：id 不重样，有名字、图标，页是本机服务开的路径', () => {
   assert.ok(ROUTES.length >= 1);
@@ -28,12 +28,14 @@ test('菜单里用到的图标，外框页里都画了；页也都在', () => {
   }
 });
 
-test('外观设置：认不出的换回菜单放左边', () => {
-  assert.deepEqual(fixLook(undefined), { 菜单: 'left' });
-  assert.deepEqual(fixLook('top'), { 菜单: 'left' });
-  assert.deepEqual(fixLook({ 菜单: 'right' }), { 菜单: 'left' });
-  assert.deepEqual(fixLook({ 菜单: 'top', 别的: 1 }), { 菜单: 'top' });
-  assert.deepEqual(fixLook({ 菜单: 'left' }), { 菜单: 'left' });
+test('外观设置：认不出的换回默认（菜单放左边、皮肤用头一套）', () => {
+  const 皮肤 = SKINS[0].名;
+  assert.deepEqual(fixLook(undefined), { 菜单: 'left', 皮肤 });
+  assert.deepEqual(fixLook('top'), { 菜单: 'left', 皮肤 });
+  assert.deepEqual(fixLook({ 菜单: 'right' }), { 菜单: 'left', 皮肤 });
+  assert.deepEqual(fixLook({ 菜单: 'top', 别的: 1 }), { 菜单: 'top', 皮肤 });
+  assert.deepEqual(fixLook({ 菜单: 'left', 皮肤: '没有这一套' }), { 菜单: 'left', 皮肤 });
+  assert.deepEqual(fixLook({ 皮肤: SKINS[1].名 }), { 菜单: 'left', 皮肤: SKINS[1].名 });
 });
 
 test('左边那一条：菜单放左边、有项可点才出来', () => {
@@ -48,6 +50,30 @@ test('中间那块：顶栏下面，菜单在左边时让出左边一条', () =>
   assert.deepEqual(stage(size, { 菜单: 'top' }, 1), { x: 0, y: BAR, width: 1440, height: 920 - BAR });
   assert.deepEqual(stage(size, { 菜单: 'left' }, 0), { x: 0, y: BAR, width: 1440, height: 920 - BAR });   // 登录页占满
   assert.deepEqual(stage({ width: 30, height: 20 }, { 菜单: 'left' }, 1), { x: RAIL, y: BAR, width: 0, height: 0 });   // 窗口再小也不出负数
+});
+
+test('设置开着：中间那一页让出右边那一栏，照样露着；窗口最小时也留得下', () => {
+  const size = { width: 1440, height: 920 };
+  assert.deepEqual(stage(size, { 菜单: 'left' }, 1, true), { x: RAIL, y: BAR, width: 1440 - RAIL - DRAWER, height: 920 - BAR });
+  assert.deepEqual(stage(size, { 菜单: 'top' }, 1, true), { x: 0, y: BAR, width: 1440 - DRAWER, height: 920 - BAR });
+  assert.deepEqual(stage(size, { 菜单: 'left' }, 0, true), { x: 0, y: BAR, width: 1440 - DRAWER, height: 920 - BAR });   // 登录页也让开
+  assert.deepEqual(stage({ width: 300, height: 600 }, { 菜单: 'left' }, 1, true).width, 0);
+  const main = fs.readFileSync(path.join(__dirname, '../桌面版/main.js'), 'utf8');
+  const minWidth = Number(/minWidth: (\d+)/.exec(main)[1]);
+  assert.ok(stage({ width: minWidth, height: 600 }, { 菜单: 'left' }, 1, true).width >= 400, '窗口拖到最小，设置开着时页面还得看得清');
+});
+
+test('设置那一栏：外框页照壳子给的宽画在右边，皮肤那一行在最上面', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../桌面版/外框/外框.html'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '../桌面版/外框/外框.css'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '../桌面版/外框/外框.js'), 'utf8');
+  const main = fs.readFileSync(path.join(__dirname, '../桌面版/main.js'), 'utf8');
+  assert.ok(/#set-page \{[^}]*width: var\(--drawer\)/.test(css), '设置那一栏的宽照 --drawer');
+  assert.ok(js.includes(`setProperty('--drawer', s.drawer + 'px')`) && main.includes('drawer: DRAWER'), '--drawer 是壳子给的，和让出来的一样宽');
+  assert.ok(main.includes('routesNow().length, setOpen)'), '摆页面时算上设置开没开');
+  const page = html.slice(html.indexOf('<aside id="set-page"'), html.indexOf('</aside>'));
+  assert.ok(page && !html.slice(html.indexOf('<main'), html.indexOf('</main>')).includes('set-page'), '设置不在中间那块里');
+  assert.ok(page.indexOf('data-do="skin"') < page.indexOf('data-do="menu"') && page.indexOf('data-do="menu"') < page.indexOf('data-do="logout"'), '先是皮肤，再是菜单放哪，再是账号');
 });
 
 test('外框页：没有菜单钮；用到的图标都画了；设置里每个钮要办的事壳子都接着', () => {

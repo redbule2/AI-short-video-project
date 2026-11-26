@@ -2,17 +2,18 @@
    流水线 · 历史记录（window.HistView）：提示词、资产两页的「历史记录」筛选（2026-11-19 他要的）；审片弹窗也照它摆历史记录里的样片。
    默认不摆历史记录里的东西；点顶上「历史记录」只看历史记录里的，再点一下回来（不记住：换一页、刷新就回到不看）。
    只看、不改、不挪：
-     提示词：历史记录/提示词/第N段 里收进去的视频提示词（改版、删掉时收进去的，原名__时间.txt）。点「看」看字，@图片 能点开，
+     提示词：历史记录/提示词/第N段 里收进去的视频提示词（改版、删掉时收进去的，原名__时间.txt）。11-25 起也筛「已出片 / 没出片」、出过片的标「已出片」，
+       点「审片」弹出审片台：左边放这一版出的样片，右边是这一版的字（流水线/审片弹窗.js 的 oldBtn；哪一版出的认法在 公用/历史记录.js 的 made）。点「看」看字，@图片 能点开，
        认图照那一版自己的登记：同一时间收进去的写稿资料里的挂图 → 参考素材映射（现在的、历史记录/资产 里留的底）里字正好对得上的那一份
        → 都没有，照现在同名那一条的登记（标出来：可能不是那时候挂的）。还能和现在那一版比。
      审片弹窗（11-22 起，流水线/审片弹窗.js）：历史记录/成片/第N段 里的样片（审完不要了的名字不改；删提示词时跟着走的带「__时间」，不摆）。
        弹窗里摆这一条的，在审片台对照看、写批注，批注存在它旁边（审片台.html?old=1）。
      资产：这一页签里各样的旧图（历史记录/同样的文件夹/图名__时间.png，换下来的候选图也算）；关键帧页签是 历史记录/资产/关键帧/第N段 里的图。
-   名字怎么认在 公用/历史记录.js（Hist）。要先引 流水线.js、公用/历史记录.js。
+   名字怎么认在 公用/历史记录.js（Hist）。要先引 流水线.js、公用/历史记录.js；提示词那一页还要 公用/样片归属.js、流水线/审片弹窗.js。
    ============================================================ */
 (function () {
 'use strict';
-const HV = { on: false, cache: new Map(), refs: new Map(), maps: null, mapsOf: '', seq: 0, ready: null };
+const HV = { on: false, cache: new Map(), refs: new Map(), maps: null, mapsOf: '', seq: 0, ready: null, made: null };
 const IMG = /\.(png|jpe?g|webp|gif|avif|bmp)$/i, VID = /\.(mp4|m4v|mov|webm)$/i, Core = window.Core;
 const dirOfFile = f => f.split('/').slice(0, -1).join('/');
 const fileName = f => f.split('/').pop();
@@ -30,7 +31,7 @@ function get(kind, s, load) {
   return c;
 }
 /* 文件夹里变了（页面的 sides 来了）：下回重读 */
-const drop = () => { HV.cache.clear(); HV.maps = null; };
+const drop = () => { HV.cache.clear(); HV.maps = null; HV.made = null; };
 
 /* ---------- 提示词 ---------- */
 function prompts(s) {
@@ -76,21 +77,39 @@ async function diffNow(s, it, text, cur) {
   try { tb = await textOf('提示词/' + segName(s.段) + '/' + cur); } catch (e) { toast('读不了：' + e.message, 'err'); return; }
   await dialog(close => { const el = dlgShell('历史记录里的一版 → 现在 · ' + it.label + ' → ' + vpLabel(cur), it.name + ' → ' + cur, [window.Diff.view(text, tb, h)], [h('button', { class: 'btn ink', 'data-focus': '', onclick: () => close() }, '看完了')]); el.classList.add('wide'); return el; });
 }
-/* 提示词那一页：历史记录里的一条一行，同一条（原稿名）的几版挨着，新的在前 */
-function promptView(s, c) {
+/* 历史记录里的每一版出过哪几条样片（11-25 他要的：历史记录里也看片、筛「已出片 / 没出片」）：Map 历史记录里的文件名 → [{ vid, old, mtime }]。
+   认法在 公用/历史记录.js 的 made（照名字认哪一条、照时间认哪一版；审片台、写稿页「参考」同一套）。提示词、样片的历史记录还没读好给 null */
+function made(s) {
+  const pc = prompts(s), hc = clips(s), c = clipsOf(s.段), rec = F.names.get(s.段);
+  if (!pc.items || !hc.items) return null;
+  const m = HV.made;
+  if (m && m.pc === pc.items && m.hc === hc.items && m.c === c && m.rec === rec) return m.out;
+  const out = Hist.made({ olds: pc.items.map(x => ({ name: x.name, mtime: x.mtime })), curs: rec ? [...rec.set].filter(n => Core.RE_VP.test(n)) : [],
+    here: c.vids.map(v => ({ name: v, mtime: c.time.get(v) || 0 })), hist: hc.items.map(x => ({ name: x.name, mtime: x.mtime })), now: o => nowName(s.段, o) }).old;
+  HV.made = { pc: pc.items, hc: hc.items, c, rec, out };
+  return out;
+}
+/* 提示词那一页：历史记录里的一条一行，同一条（原稿名）的几版挨着，新的在前。
+   pf：顶上筛的「全部 / 已出片 / 没出片」（和现在的提示词同一排）；all()：筛完一条不剩时「看全部」 */
+function promptView(s, c, pf = '全部', all = null) {
   if (!c.items) return h('p', { class: 'fn-note wf-none' }, '正在看历史记录…');
   if (c.err) return h('p', { class: 'fn-note wf-none warn' }, '历史记录读不了：' + c.err);
   if (!c.items.length) return h('p', { class: 'fn-note wf-none' }, '这一段的历史记录里没有视频提示词。');
-  const order = [...new Set(c.items.map(x => x.key))].sort(Core.vpSort), rows = [];
+  const mm = made(s), vids = it => (mm && mm.get(it.name)) || [];
+  const shown = !mm || pf === '全部' ? c.items : c.items.filter(it => (vids(it).length > 0) === (pf === '已出片'));
+  if (!shown.length) return h('p', { class: 'fn-note wf-none' }, pf === '已出片' ? '历史记录里的这几版都没出过片。' : '历史记录里的这几版都出过片。', all ? h('button', { class: 'fl-link', type: 'button', onclick: all }, '看全部') : null);
+  const order = [...new Set(shown.map(x => x.key))].sort(Core.vpSort), rows = [];
   for (const k of order) {
-    const vers = c.items.filter(x => x.key === k), cur = nowOf(s, vers[0]);
+    const vers = shown.filter(x => x.key === k), cur = nowOf(s, vers[0]);
     rows.push(h('div', { class: 'hist-fam' }, h('b', null, Core.vpLabel(k)), h('span', { class: 'faint small' }, cur ? '现在用的是「' + vpLabel(cur) + '」' : '这一条现在没有了')));
     for (const it of vers) rows.push(h('div', { class: 'wf-item hist', 'data-hist': it.file },
-      h('div', { class: 'wf-item-h' }, h('b', null, it.label), h('span', { class: 'faint small' }, it.name), it.when ? h('span', { class: 'fs-state', title: '收进历史记录的时间' }, it.when) : null, h('span', { class: 'sp' }),
+      h('div', { class: 'wf-item-h' }, h('b', null, it.label), h('span', { class: 'faint small' }, it.name), ReviewPop.tag(vids(it), true), it.when ? h('span', { class: 'fs-state', title: '收进历史记录的时间' }, it.when) : null, h('span', { class: 'sp' }),
         h('button', { class: 'btn sm ink', type: 'button', title: '看这一版的字；@图片 点一下看那时候挂的图', onclick: () => viewPrompt(s, it) }, '看'),
+        mm ? ReviewPop.oldBtn(s, it, vids(it)) : null,
         cur ? h('button', { class: 'fl-link', type: 'button', title: '一行一行比：删的划掉，加的标绿', onclick: async () => { try { diffNow(s, it, await textOf(it.file), cur); } catch (e) { toast('读不了：' + e.message, 'err'); } } }, '和现在的比') : null)));
   }
-  return [h('p', { class: 'fn-note wf-hist-note' }, '历史记录里的 ' + c.items.length + ' 版：改版、删掉时收进去的。只看不改；要写新的，在写稿页点「参考」把它摆在旁边。'), h('div', { class: 'wf-items' }, rows)];
+  const n = shown.length < c.items.length ? '筛出 ' + shown.length + ' 版（一共 ' + c.items.length + ' 版）' : '历史记录里的 ' + c.items.length + ' 版';
+  return [h('p', { class: 'fn-note wf-hist-note' }, n + '：改版、删掉时收进去的。只看不改；出过片的点「审片」，左边放片、右边是那一版的字。要写新的，在写稿页点「参考」把它摆在旁边。'), h('div', { class: 'wf-items' }, rows)];
 }
 /* 字里的 @图片N（公用/点图.js）：在历史记录的一版里的，照那一版挂的图认；不在里面给 undefined，页面照自己的认 */
 function refAt(ref, el) {
@@ -165,6 +184,6 @@ if (window.RefPic && RefPic.also) RefPic.also(refAt);   // 历史记录里那一
 window.HistView = {
   get on() { return HV.on; }, set on(v) { HV.on = !!v; },
   set ready(fn) { HV.ready = fn; },
-  drop, chip, count, prompts, promptView, clips, assets, assetView,
+  drop, chip, count, prompts, made, promptView, clips, assets, assetView,
 };
 })();

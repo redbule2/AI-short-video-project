@@ -62,3 +62,63 @@ test('老版本挂的图：字对得上的那一份登记；同一时间收进�
   r = await H.refsFor(fakeIo({}), maps.slice(0, 1), { ...it, old: false, file: '提示词/第3-4段/1_改3.txt', stamp: '' }, text);   // 现在用的：照现在的登记，不标
   assert.equal(r.note, '');
 });
+
+test('每一镜几秒（审片台标镜头用，11-25）：照字对得上的那一份登记；老版本认不出当时的登记就不给，现在用的照现在的', async () => {
+  const text = '老的字', sha = crypto.createHash('sha256').update(text).digest('hex'), key = '提示词/第3-4段/1.txt';
+  const it = { seg: '3-4', orig: '1.txt', file: '历史记录/提示词/第3-4段/1__20261117-201249.txt', old: true, stamp: '20261117-201249' };
+  const now = { from: '现在', prompts: { [key]: { prompt_sha256: 'f'.repeat(64), references: [], 秒数: [4, 4] } } };
+  const then = { from: '留底', prompts: { [key]: { prompt_sha256: sha, references: [], 秒数: [3, 5, 2] } } };
+  assert.deepEqual(H.refsBySha([now, then], key, sha).secs, [3, 5, 2]);
+  assert.deepEqual((await H.refsFor(fakeIo({}), [now, then], it, text)).secs, [3, 5, 2]);
+  assert.equal('secs' in (await H.refsFor(fakeIo({}), [now], it, text)), false, '老版本不照现在的秒数猜');
+  assert.deepEqual((await H.refsFor(fakeIo({}), [now], { ...it, old: false, file: '提示词/第3-4段/1.txt', stamp: '' }, text)).secs, [4, 4]);
+  assert.equal('secs' in H.refsBySha([{ from: 'x', prompts: { [key]: { prompt_sha256: sha, references: [] } } }], key, sha), false);
+});
+
+test('收进历史记录的时间（本机时间）换成毫秒；不像时间的给 0', () => {
+  assert.equal(H.ms('20261125-083015'), new Date(2026, 10, 25, 8, 30, 15).getTime());
+  assert.equal(H.ms(''), 0);
+  assert.equal(H.ms('2026-11-25'), 0);
+  assert.equal(H.ms(undefined), 0);
+});
+
+/* made：一段里每一版出过哪几条样片（11-25 他要的：历史记录里也看片、筛已出片） */
+const T = s => H.ms(s), names = list => list.map(x => x.vid);
+test('样片归哪一版：照名字认是哪一条，再照时间认——收进去以前出的归那一版，之后出的归现在这一版', () => {
+  const m = H.made({
+    olds: [{ name: '1-5__20261122-100000.txt' }, { name: '1-5__20261120-100000.txt' }],
+    curs: ['1-5.txt'],
+    here: [{ name: '1-5.mp4', mtime: T('20261123-090000') }, { name: '1-5_2.mp4', mtime: T('20261121-090000') }, { name: '1-5_批注.md', mtime: T('20261123-090000') }, { name: '1-5_改1.mp4', mtime: 1 }],
+    hist: [{ name: '1-5_3.mp4', mtime: T('20261119-090000') }],
+  });
+  assert.deepEqual(m.old.get('1-5__20261120-100000.txt'), [{ vid: '1-5_3.mp4', old: true, mtime: T('20261119-090000') }]);
+  assert.deepEqual(m.old.get('1-5__20261122-100000.txt'), [{ vid: '1-5_2.mp4', old: false, mtime: T('20261121-090000') }]);
+  assert.deepEqual(names(m.cur.get('1-5.txt')), ['1-5.mp4'], '批注不算样片；1-5_改1 是另一条（改1）的，不归 1-5');
+});
+
+test('删提示词时跟着收进去的样片（名字带同一个「__时间」）就是那一版的，不看修改时间', () => {
+  const m = H.made({ olds: [{ name: '2-1__20261118-000000.txt' }, { name: '2-1__20261121-120000.txt' }], hist: [{ name: '2-1__20261121-120000.mp4', mtime: T('20261117-000000') }] });
+  assert.deepEqual(names(m.old.get('2-1__20261121-120000.txt')), ['2-1__20261121-120000.mp4']);
+  assert.deepEqual(m.old.get('2-1__20261118-000000.txt'), []);
+});
+
+test('现在没有这一条了：收进去以后出的归最后收进去的那一版；改过名的照 now() 归现在那个名字', () => {
+  const a = H.made({ olds: [{ name: '3-1__20261110-000000.txt' }, { name: '3-1__20261112-000000.txt' }], here: [{ name: '3-1.mp4', mtime: T('20261113-000000') }] });
+  assert.deepEqual(names(a.old.get('3-1__20261112-000000.txt')), ['3-1.mp4']);
+  const olds = [{ name: '4-1__20261110-000000.txt' }], here = [{ name: '4-1.mp4', mtime: T('20261111-000000') }];
+  const b = H.made({ olds, curs: ['4-2.txt'], here, now: o => (o === '4-1.txt' ? '4-2.txt' : o) });
+  assert.deepEqual(names(b.cur.get('4-2.txt')), ['4-1.mp4']);
+  assert.deepEqual(b.old.get('4-1__20261110-000000.txt'), []);
+  assert.deepEqual(names(H.made({ olds, curs: ['4-2.txt'], here }).old.get('4-1__20261110-000000.txt')), ['4-1.mp4'], '没给 now：认不出改名，归最后收进去的那一版');
+});
+
+test('名字认不上的后期补、混剪照片子后来做的认；名字里没带时间的老文件照它的修改时间；成片里的在前、新的在前', () => {
+  const m = H.made({
+    olds: [{ name: '5-1.txt', mtime: T('20261105-000000') }],
+    curs: ['5-1.txt'],
+    here: [{ name: '5-1_后期补.mp4', mtime: T('20261107-000000') }, { name: '5-1_2.mp4', mtime: T('20261106-000000') }, { name: '5-1.mp4', mtime: T('20261104-000000') }],
+    hist: [{ name: '5-1_3.mp4', mtime: T('20261108-000000') }, { name: '5-1_4.mp4', mtime: T('20261101-000000') }],
+  });
+  assert.deepEqual(names(m.old.get('5-1.txt')), ['5-1.mp4', '5-1_4.mp4']);
+  assert.deepEqual(m.cur.get('5-1.txt').map(x => [x.vid, x.old]), [['5-1_后期补.mp4', false], ['5-1_2.mp4', false], ['5-1_3.mp4', true]]);
+});

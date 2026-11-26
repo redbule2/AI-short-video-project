@@ -26,7 +26,7 @@
 }
 
 .my-page .my-card:hover {
-  background: var(--paper-hi);
+  background: var(--white);
 }
 
 /* 待考卷:封条感——左缘朱砂封线 */

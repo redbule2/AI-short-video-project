@@ -1,26 +1,22 @@
 <script setup lang="ts">
-import Connection from "~icons/ep/connection";
-import Delete from "~icons/ep/delete";
-import Key from "~icons/ep/key";
-import Lock from "~icons/ep/lock";
-import Plus from "~icons/ep/plus";
-import UserFilled from "~icons/ep/user-filled";
-import View from "~icons/ep/view";
+// 「账号管理」（旧网站叫协作中心）：负责人给团队里的人建登录账号、停用、重置密码、移除。
+// 2026-11-26 壳子这边改了样子：底子照考试页的「清样纸」（views/exam/exam-shared.css），和旁边「我的团队」一样宽；
+// 详情抽屉去掉了（里面的话行上都有），停用、重置密码、移除收进每行后面的「管理」菜单。
 import { useCollaborationMock } from "@/features/collaboration/useCollaborationMock";
+import { avatarText } from "@/utils/avatar";
+import "../exam/exam-shared.css";
 
 defineOptions({ name: "CollaborationCenter" });
 
 const {
   canManageAccounts,
+  currentUsername,
   visibleAccounts,
-  selectedAccount,
   accountStats,
-  drawerVisible,
   createDialogVisible,
   isLoadingAccounts,
   isSavingAccount,
   newAccount,
-  openAccount,
   openCreateAccount,
   createAccount,
   toggleAccountStatus,
@@ -29,285 +25,189 @@ const {
   accountRoleLabel,
   accountStatusLabel
 } = useCollaborationMock();
+
+/** 每行「管理」菜单里点了哪一项 */
+function onCommand(command: string, accountId: string) {
+  if (command === "status") void toggleAccountStatus(accountId);
+  else if (command === "password") void resetPassword(accountId);
+  else if (command === "remove") void removeAccount(accountId);
+}
 </script>
 
 <template>
-  <section class="collab-page">
-    <header class="collab-topbar">
-      <div class="title-block">
-        <span class="brand-mark">
-          <Connection />
-        </span>
-        <div class="title-text">
-          <h1>协作中心</h1>
-          <span>管理主账号与团队子账号的登录权限</span>
-        </div>
-      </div>
-
-      <div class="top-actions">
-        <button
-          v-if="canManageAccounts"
-          class="primary-action"
-          type="button"
-          @click="openCreateAccount"
-        >
-          <Plus />
-          新子账号
-        </button>
-      </div>
-    </header>
-
-    <main class="collab-shell">
-      <section class="surface-panel">
-        <div class="surface-head">
-          <div class="surface-head-main">
-            <h2>团队账号</h2>
-            <div class="stat-chips">
-              <span class="stat-chip">共 {{ accountStats.total }}</span>
-              <span class="stat-chip">子账号 {{ accountStats.subTotal }}</span>
-              <span
-                class="stat-chip"
-                :class="{ alert: accountStats.disabledTotal > 0 }"
-              >
-                停用 {{ accountStats.disabledTotal }}
-              </span>
-            </div>
+  <div class="exam-page desk-panel accounts-page">
+    <section class="exam-sheet team-sheet">
+      <header class="exam-sheet-head">
+        <div>
+          <h1 class="exam-title">账号管理</h1>
+          <div class="exam-subtitle">
+            共 {{ accountStats.total }} 个账号<template v-if="accountStats.disabledTotal"
+              >，{{ accountStats.disabledTotal }} 个停用</template
+            >。停用、重置密码、移除：点每行后面的「管理」
           </div>
         </div>
-
-        <div v-if="isLoadingAccounts" class="simple-empty">
-          <span>加载账号中…</span>
-        </div>
-        <div
-          v-else-if="visibleAccounts.length === 0"
-          class="simple-empty empty-cta"
-        >
-          <strong>还没有子账号</strong>
-          <p>邀请成员加入协作，共享团队配置与项目进度。</p>
+        <div class="team-head-actions">
           <button
             v-if="canManageAccounts"
-            class="primary-action"
+            class="exam-btn is-primary"
             type="button"
+            data-do="new-account"
             @click="openCreateAccount"
           >
-            <Plus />
             新建子账号
           </button>
         </div>
-        <template v-else>
-          <div class="list-head" aria-hidden="true">
-            <span>账号</span>
-            <span>角色</span>
-            <span>最近活跃</span>
-            <span>状态</span>
-            <span />
-          </div>
-          <div class="simple-list account-list">
-            <article
-              v-for="account in visibleAccounts"
-              :key="account.id"
-              class="simple-row account-row"
-              :class="{ muted: account.status === 'disabled' }"
-            >
-              <button
-                class="row-identity"
-                type="button"
-                @click="openAccount(account.id)"
-              >
-                <span class="avatar">{{
-                  account.displayName.slice(0, 1)
-                }}</span>
-                <span>
-                  <strong>{{ account.displayName }}</strong>
-                  <small>{{ account.username }}</small>
-                </span>
-              </button>
+      </header>
 
-              <span class="role-text">{{
-                accountRoleLabel(account.role)
-              }}</span>
-              <span class="access-text">{{ account.lastActive }}</span>
-              <span class="status-pill" :class="account.status">
+      <div v-if="isLoadingAccounts && visibleAccounts.length === 0" class="team-loading">
+        <div v-for="n in 4" :key="n" class="exam-skeleton" />
+      </div>
+      <div v-else-if="visibleAccounts.length === 0" class="exam-empty">
+        <div class="lead">还没有子账号</div>
+        <div class="hint">邀请成员加入协作，共享团队配置与项目进度。</div>
+        <button
+          v-if="canManageAccounts"
+          class="exam-btn is-primary is-small"
+          type="button"
+          @click="openCreateAccount"
+        >
+          新建子账号
+        </button>
+      </div>
+      <template v-else>
+        <div class="account-grid account-head" aria-hidden="true">
+          <span>账号</span>
+          <span>最近登录</span>
+          <span>状态</span>
+          <span />
+        </div>
+        <ul class="account-list">
+          <li
+            v-for="account in visibleAccounts"
+            :key="account.id"
+            class="account-grid account-row"
+            :class="{ muted: account.status === 'disabled' }"
+          >
+            <div class="account-who">
+              <span
+                class="desk-avatar"
+                :class="{ owner: account.role === 'owner' }"
+                aria-hidden="true"
+              >
+                {{ avatarText(account.displayName) }}
+              </span>
+              <div class="account-text">
+                <div class="account-name">
+                  <strong>{{ account.displayName }}</strong>
+                  <span v-if="account.role === 'owner'" class="exam-stamp is-vermilion">
+                    {{ accountRoleLabel(account.role) }}
+                  </span>
+                  <span v-if="account.username === currentUsername" class="exam-stamp">
+                    我
+                  </span>
+                </div>
+                <div class="account-user">{{ account.username }}</div>
+              </div>
+            </div>
+            <span class="account-seen" :class="{ never: account.lastActive === '尚未登录' }">
+              {{ account.lastActive }}
+            </span>
+            <span class="account-status" :class="{ ok: account.status === 'active' }">
+              <span v-if="account.status === 'disabled'" class="exam-stamp is-vermilion">
                 {{ accountStatusLabel(account.status) }}
               </span>
-              <button
-                class="text-action compact"
-                type="button"
-                @click="openAccount(account.id)"
+              <template v-else>{{ accountStatusLabel(account.status) }}</template>
+            </span>
+            <span class="account-actions">
+              <el-dropdown
+                v-if="canManageAccounts && account.role === 'sub'"
+                trigger="click"
+                popper-class="account-menu"
+                @command="(command: string) => onCommand(command, account.id)"
               >
-                <View />
-                详情
-              </button>
-            </article>
-          </div>
-        </template>
-      </section>
-    </main>
-
-    <el-drawer
-      v-model="drawerVisible"
-      direction="rtl"
-      size="460px"
-      class="collab-drawer"
-    >
-      <template #header>
-        <div class="drawer-title">账号详情</div>
+                <button class="exam-link" type="button" data-do="account-menu">
+                  管理 ▾
+                </button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="status">
+                      {{ account.status === "active" ? "停用账号" : "启用账号" }}
+                    </el-dropdown-item>
+                    <el-dropdown-item command="password">重置密码</el-dropdown-item>
+                    <el-dropdown-item command="remove" divided class="is-danger">
+                      移除账号
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </span>
+          </li>
+        </ul>
+        <p v-if="canManageAccounts && accountStats.subTotal === 0" class="team-tip">
+          还没有子账号：点右上角「新建子账号」，给团队里的人各建一个。
+        </p>
       </template>
-
-      <el-scrollbar class="drawer-scroll">
-        <section class="drawer-section">
-          <div class="detail-hero">
-            <span class="avatar large">{{
-              selectedAccount.displayName.slice(0, 1)
-            }}</span>
-            <div>
-              <h3>{{ selectedAccount.displayName }}</h3>
-              <p>
-                {{ accountRoleLabel(selectedAccount.role) }} ·
-                {{ selectedAccount.username }}
-              </p>
-            </div>
-          </div>
-
-          <div class="detail-list">
-            <div>
-              <span>状态</span>
-              <strong>{{ accountStatusLabel(selectedAccount.status) }}</strong>
-            </div>
-            <div>
-              <span>最后活跃</span>
-              <strong>{{ selectedAccount.lastActive }}</strong>
-            </div>
-            <div>
-              <span>权限说明</span>
-              <strong>{{ selectedAccount.permissionNote }}</strong>
-            </div>
-          </div>
-
-          <div v-if="selectedAccount.role === 'sub'" class="drawer-actions">
-            <button
-              class="text-action"
-              type="button"
-              :disabled="!canManageAccounts"
-              @click="toggleAccountStatus(selectedAccount.id)"
-            >
-              <Lock />
-              {{
-                selectedAccount.status === "active" ? "停用账号" : "启用账号"
-              }}
-            </button>
-            <button
-              class="text-action"
-              type="button"
-              :disabled="!canManageAccounts"
-              @click="resetPassword(selectedAccount.id)"
-            >
-              <Key />
-              重置密码
-            </button>
-            <button
-              class="text-action danger"
-              type="button"
-              :disabled="!canManageAccounts"
-              @click="removeAccount(selectedAccount.id)"
-            >
-              <Delete />
-              移除账号
-            </button>
-          </div>
-        </section>
-      </el-scrollbar>
-    </el-drawer>
+    </section>
 
     <el-dialog
       v-model="createDialogVisible"
-      width="520px"
-      class="collab-dialog create-account-dialog"
-      :show-close="false"
+      title="新建子账号"
+      width="460px"
+      class="desk-dialog create-account-dialog"
     >
-      <div class="create-dialog-shell">
-        <header class="create-dialog-head">
-          <div>
-            <p>NEW SUB ACCOUNT</p>
-            <h2>新建子账号</h2>
-          </div>
-          <span class="dialog-mark">
-            <UserFilled />
-            子账号
-          </span>
-        </header>
-
-        <div class="create-dialog-body">
-          <div class="field-stack">
-            <label>
-              <span>成员名称</span>
-              <el-input
-                v-model="newAccount.displayName"
-                name="nv8-subaccount-display"
-                autocomplete="off"
-                data-form-type="other"
-                data-lpignore="true"
-                data-1p-ignore="true"
-                placeholder="例如：分镜助理"
-              />
-            </label>
-            <label>
-              <span>登录账号</span>
-              <el-input
-                v-model="newAccount.username"
-                name="nv8-subaccount-handle"
-                autocomplete="new-password"
-                data-form-type="other"
-                data-lpignore="true"
-                data-1p-ignore="true"
-                placeholder="例如：shot_assistant"
-              />
-            </label>
-            <label>
-              <span>初始密码</span>
-              <el-input
-                v-model="newAccount.password"
-                name="nv8-subaccount-secret"
-                type="password"
-                autocomplete="new-password"
-                data-form-type="other"
-                data-lpignore="true"
-                data-1p-ignore="true"
-                show-password
-                placeholder="用于子账号首次登录"
-              />
-            </label>
-          </div>
-
-          <aside class="dialog-note">
-            <strong>权限边界</strong>
-            <p>
-              子账号继承主账号的团队配置；本地 Codex 和 GPT 由各账号自己维护。
-            </p>
-          </aside>
-        </div>
-
-        <footer class="create-dialog-footer">
-          <button
-            class="text-action"
-            type="button"
-            @click="createDialogVisible = false"
-          >
-            取消
-          </button>
-          <button
-            class="primary-action"
-            type="button"
-            :disabled="isSavingAccount"
-            @click="createAccount"
-          >
-            <Plus />
-            {{ isSavingAccount ? "创建中" : "创建账号" }}
-          </button>
-        </footer>
-      </div>
+      <el-form label-position="top" @submit.prevent="createAccount">
+        <el-form-item label="成员名称">
+          <el-input
+            v-model="newAccount.displayName"
+            name="nv8-subaccount-display"
+            autocomplete="off"
+            data-form-type="other"
+            data-lpignore="true"
+            data-1p-ignore="true"
+            placeholder="例如：分镜助理"
+          />
+        </el-form-item>
+        <el-form-item label="登录账号">
+          <el-input
+            v-model="newAccount.username"
+            name="nv8-subaccount-handle"
+            autocomplete="new-password"
+            data-form-type="other"
+            data-lpignore="true"
+            data-1p-ignore="true"
+            placeholder="例如：shot_assistant"
+          />
+        </el-form-item>
+        <el-form-item label="初始密码">
+          <el-input
+            v-model="newAccount.password"
+            name="nv8-subaccount-secret"
+            type="password"
+            autocomplete="new-password"
+            data-form-type="other"
+            data-lpignore="true"
+            data-1p-ignore="true"
+            show-password
+            placeholder="用于子账号首次登录"
+          />
+        </el-form-item>
+      </el-form>
+      <p class="account-note">
+        子账号继承主账号的团队配置；本地 Codex 和 GPT 由各账号自己维护。
+      </p>
+      <template #footer>
+        <el-button @click="createDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="isSavingAccount"
+          data-do="create-account"
+          @click="createAccount"
+        >
+          创建账号
+        </el-button>
+      </template>
     </el-dialog>
-  </section>
+  </div>
 </template>
 
 <style scoped src="./index.css"></style>

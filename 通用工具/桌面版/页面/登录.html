@@ -4,25 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>登录</title>
+<link rel="stylesheet" href="../../公用/皮肤.css">   <!-- 另外几套皮肤的颜色；这一页自己只写默认的一套（宣纸） -->
 <style>
-:root { --paper: #f4efe6; --sheet: #fffdf9; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --line: #d6cab6; --zhu: #a83a2c; --dai: #3e5c5e; --lv: #2f6b3a; }
+:root { --paper: #f4efe6; --sheet: #fffdf9; --white: #fff; --ink: #2a2622; --ink-2: #554d45; --ink-3: #887e74; --line: #d6cab6; --zhu: #a83a2c; --dai: #3e5c5e; --on-dai: #fff; --lv: #2f6b3a; --shade: #3c2814; }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.8 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif; display: flex; align-items: center; justify-content: center; }
-.card { width: 380px; padding: 30px 32px 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--sheet); box-shadow: 0 6px 24px rgba(60, 40, 20, .07); }
+.card { width: 380px; padding: 30px 32px 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--sheet); box-shadow: 0 6px 24px rgb(from var(--shade) r g b / .07); }
 h1 { margin: 0 0 2px; font: 600 24px/1.4 'Noto Serif SC', 'Songti SC', SimSun, serif; letter-spacing: .08em; text-align: center; }
 .sub { margin: 0 0 18px; color: var(--ink-3); font-size: 14px; text-align: center; }
 .tabs { display: flex; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
 .tabs button { flex: 1; padding: 6px 0 8px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-3); font: inherit; cursor: pointer; }
 .tabs button.on { color: var(--dai); border-bottom-color: var(--dai); font-weight: 600; }
 label { display: block; margin: 10px 0 0; font-size: 14px; color: var(--ink-2); }
-input { display: block; width: 100%; margin-top: 4px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font: inherit; color: var(--ink); }
+input { display: block; width: 100%; margin-top: 4px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); font: inherit; color: var(--ink); }
 input:focus { outline: none; border-color: var(--dai); }
 .reg[hidden] { display: none; }
 label small { display: block; color: var(--ink-3); font-size: 13px; line-height: 1.5; margin-top: 3px; }
 .msg { min-height: 1.8em; margin: 12px 0 4px; font-size: 14px; color: var(--zhu); }
 .msg.ok { color: var(--lv); }
-.go { display: block; width: 100%; padding: 9px 0; border: 1px solid var(--dai); border-radius: 8px; background: var(--dai); color: #fff; font: inherit; letter-spacing: .1em; cursor: pointer; }
+.go { display: block; width: 100%; padding: 9px 0; border: 1px solid var(--dai); border-radius: 8px; background: var(--dai); color: var(--on-dai); font: inherit; letter-spacing: .1em; cursor: pointer; }
 .go:disabled { opacity: .6; cursor: default; }
 .foot { margin: 14px 0 0; font-size: 13px; color: var(--ink-3); text-align: center; }
 </style>
@@ -100,7 +101,7 @@ async function submit(e) {
 document.getElementById('app').append(
   h('form', { class: 'card', onsubmit: submit, novalidate: true },
     h('h1', null, 'AI短视频流水线'),
-    h('p', { class: 'sub' }, '用 video8.online 的账号登录'),
+    h('p', { class: 'sub' }, '用 video8 的账号登录'),
     h('div', { class: 'tabs' }, tabLogin, tabReg),
     h('label', null, '账号', user),
     h('label', null, '密码', pass),
@@ -108,7 +109,7 @@ document.getElementById('app').append(
     teamRow,
     msg,
     go,
-    h('p', { class: 'foot' }, '账号和 video8.online 网站通用。')));
+    h('p', { class: 'foot' }, '账号和 video8 网站通用。')));
 (user.value ? pass : user).focus();
 })();
 </script>

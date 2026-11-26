@@ -174,21 +174,21 @@
 }
 
 .assignment-page .assignment-row:hover {
-  background: rgb(255 255 255 / 12%);
+  background: rgb(from var(--ink) r g b / 4%);
 }
 
 .assignment-page .assignment-row.is-picked {
-  background: rgb(44 95 124 / 7%);
+  background: rgb(from var(--dai) r g b / 7%);
 }
 
 /* 改了还没落纸 = 一道朱批边 */
 .assignment-page .assignment-row.is-dirty {
-  background: rgb(200 68 43 / 5%);
+  background: rgb(from var(--zhu) r g b / 5%);
   box-shadow: inset 3px 0 0 var(--vermilion);
 }
 
 .assignment-page .assignment-row.is-complete {
-  background: rgb(60 106 76 / 4%);
+  background: rgb(from var(--lv) r g b / 4%);
 }
 
 .assignment-page .assignment-student {
@@ -301,10 +301,10 @@
   justify-content: space-between;
   padding: 11px 16px;
   margin: 14px -6px 0;
-  background: color-mix(in srgb, var(--paper-hi) 95%, transparent);
+  background: color-mix(in srgb, var(--white) 95%, transparent);
   border: 1px solid var(--field-edge);
   border-radius: 6px;
-  box-shadow: 0 10px 26px rgb(0 0 0 / 24%);
+  box-shadow: 0 10px 26px rgb(from var(--shade) r g b / 24%);
   backdrop-filter: blur(8px);
 }
 

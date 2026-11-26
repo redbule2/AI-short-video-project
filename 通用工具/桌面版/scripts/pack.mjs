@@ -1,10 +1,14 @@
 /* 桌面版打包（开发规范第 15、21 条）
      node scripts/pack.mjs stage      挑工具文件进 build/tools、写 清单.json，备好 build/node/node.exe，再自检一回
      node scripts/pack.mjs dir        stage 后打成不用装的文件夹 release/win-unpacked（本机试用，不带更新通道）
-     node scripts/pack.mjs installer  stage 后打安装包 release/Liushuixian-版本-x64.exe 和 latest.yml（只打不传；发版先问用户）
+     node scripts/pack.mjs installer  stage 后打安装包 build/installer/版本/Liushuixian-版本-x64.exe 和签好名的 latest.yml（只打不传）
+                                      不打到 release：那里是平时开着用的那份，开着删不掉
+     node scripts/pack.mjs publish    把打好的这一版传上更新源（开发规范第 21、30、34 条：先提交、本机装一遍点通、问过用户；后台先发）。
+                                      先核签名、线上的版本比它旧；安装包传完核对了才换 latest.yml，再从网上取回来核一遍
      node scripts/pack.mjs trial 0.0.N  试装包：只在本机试升级用（scripts/try-update.mjs），打到 build/trial/0.0.N。
                                       叫 LiushuixianTrial，装的位置、设置文件夹、更新缓存都和正式版分开；更新源是本机 127.0.0.1:18681；
                                       工具里多两份试装记号（版本.txt 每版不同、只在0.0.N.txt 只这一版有），看升级换没换新、删没删旧
+   安装包、试装包都签名（lib/updater.js 开头）：私钥在 %USERPROFILE%\.liushuixian\update-signing-key.pem（ANTOU_UPDATE_KEY 能换），不进 git、不进安装包。
    挑文件：stage、dir、trial 用工作区里 git 认得的（登记过的，加上没登记也没忽略的）；
            installer 只用登记过的，要装的工具文件有没提交的改动就停。
            考试页（页面/考试）不进 git：每回从 桌面版/考试 的源码现打一份装进去。 */
@@ -21,6 +25,7 @@ const require = createRequire(import.meta.url);
 const { pickFiles, checkRefs } = require('./bundle-list.cjs');
 const { safeRel, syncTools } = require('../lib/sync.js');
 const { ping, killTree } = require('../lib/runner.js');
+const { signedText, verifyPackage } = require('../lib/updater.js');
 
 const DESK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = path.resolve(DESK, '..', '..');
@@ -36,8 +41,12 @@ const SCOPE = ['AGENTS.md', '.agents', '通用工具'];
 const EXAM_SRC = '通用工具/桌面版/考试';        // 考试、团队页的源码（从 new-video8-8 照搬的 Vue 页面）
 const EXAM_OUT = '通用工具/桌面版/页面/考试';   // 打出来的那一页：不进 git，每回现打，和别的工具文件一起装进工作文件夹
 
+const SIGN_KEY = process.env.ANTOU_UPDATE_KEY || path.join(os.homedir(), '.liushuixian', 'update-signing-key.pem');
+const DEPLOY_SSH = process.env.ANTOU_DEPLOY_SSH || 'video8-deploy';   // 本机 ~/.ssh/config 里连服务器的别名
+const DEPLOY_DIR = '/home/video8deploy/public/desktop-updates/liushuixian/win';
+
 const mode = process.argv[2] || 'stage';
-if (!['stage', 'dir', 'installer', 'trial'].includes(mode)) { console.error('用法：node scripts/pack.mjs stage|dir|installer|trial 0.0.N'); process.exit(1); }
+if (!['stage', 'dir', 'installer', 'publish', 'trial'].includes(mode)) { console.error('用法：node scripts/pack.mjs stage|dir|installer|publish|trial 0.0.N'); process.exit(1); }
 const TRIAL = mode === 'trial' ? process.argv[3] || '' : '';
 if (mode === 'trial' && !/^0\.0\.\d+$/.test(TRIAL)) { console.error('试装包的版本号只用 0.0.N，一看就知道是试装的：node scripts/pack.mjs trial 0.0.1'); process.exit(1); }
 const TRIAL_FEED = 'http://127.0.0.1:18681/';
@@ -215,18 +224,79 @@ async function builder(extra, out = RELEASE) {
   else await run('pnpm', args, { cwd: DESK, env });
 }
 
+/* latest.yml 里顶层的一行 */
+const ymlGet = (yml, k) => ((yml.match(new RegExp('^' + k + ':\\s*(.+)$', 'm')) || [])[1] || '').trim().replace(/^['"]|['"]$/g, '');
+
 /* 安装包和 latest.yml 对得上：文件名、大小、sha512 */
-function verifyFeed(dir = RELEASE, version = pkg.version) {
+function verifyFeed(dir, version = pkg.version) {
   const yml = fs.readFileSync(path.join(dir, 'latest.yml'), 'utf8');
-  const get = k => ((yml.match(new RegExp('^' + k + ':\\s*(.+)$', 'm')) || [])[1] || '').trim().replace(/^['"]|['"]$/g, '');
-  const name = get('path'), sum = get('sha512'), ver = get('version');
+  const name = ymlGet(yml, 'path'), sum = ymlGet(yml, 'sha512'), ver = ymlGet(yml, 'version');
   if (ver !== version) throw new Error(`latest.yml 的版本 ${ver} 和要打的 ${version} 不一样`);
   const buf = fs.readFileSync(path.join(dir, name));
   if (hash('sha512', buf, 'base64') !== sum) throw new Error('latest.yml 的 sha512 和安装包对不上');
   console.log(`安装包：${path.relative(DESK, path.join(dir, name)).split(path.sep).join('/')}（${(buf.length / 1048576).toFixed(1)} MB），latest.yml 对得上`);
+  return { name, buf };
+}
+
+/* 签名（开发规范第 34 条）：签「版本号 + 安装包的 sha512」，写进 latest.yml 的 signature 一行；签完拿软件里那把公钥验一遍 */
+async function signFeed(dir, version) {
+  if (!fs.existsSync(SIGN_KEY)) throw new Error('没有升级签名的私钥：' + SIGN_KEY + '（丢了只能换一对，见 lib/updater.js 开头）');
+  const { name, buf } = verifyFeed(dir, version);
+  const file = path.join(dir, 'latest.yml');
+  const sig = crypto.sign(null, Buffer.from(signedText(version, hash('sha512', buf, 'base64'))), fs.readFileSync(SIGN_KEY)).toString('base64');
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/^signature:.*\r?\n?/m, '').replace(/\s*$/, '\n') + `signature: '${sig}'\n`);
+  if ((await verifyPackage(path.join(dir, name), { version, signature: sig })) !== null) throw new Error('签名和软件里的公钥对不上：私钥换过？');
+  const feedYml = fs.readFileSync(path.join(dir, 'win-unpacked', 'resources', 'app-update.yml'), 'utf8');
+  if (!/^publisherName:/m.test(feedYml)) throw new Error('包里的 app-update.yml 没有 publisherName：装上的软件不会验签名（electron-builder.yml 的 publish.publisherName）');
+  console.log('签好名了，软件里的公钥验得过');
+}
+
+/* 在服务器上跑一句；有 input 就把这个本机文件从标准输入灌进去（不用 scp：本机路径有中文） */
+function ssh(cmd, input) {
+  return new Promise((resolve, reject) => {
+    const c = spawn('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', DEPLOY_SSH, cmd], { stdio: [input ? 'pipe' : 'ignore', 'pipe', 'pipe'], windowsHide: true });
+    let out = '', err = '';
+    c.stdout.on('data', d => { out += d; });
+    c.stderr.on('data', d => { err += d; });
+    c.on('error', reject);
+    c.on('exit', code => (code === 0 ? resolve(out) : reject(new Error(`服务器上「${cmd.slice(0, 80)}」没成（${code}）：${err.trim()}`))));
+    if (input) fs.createReadStream(input).on('error', reject).pipe(c.stdin);
+  });
+}
+const newer = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i]; return false; };
+
+/* 传上更新源：安装包、blockmap 先传成 .part、核对了才改名，最后换 latest.yml（传到一半时别人查到的还是旧的那版）；Liushuixian-Setup.exe 指着最新的，给同事一个不变的下载地址 */
+async function publish() {
+  const dir = path.join(BUILD, 'installer', pkg.version);
+  const yml = fs.readFileSync(path.join(dir, 'latest.yml'), 'utf8');
+  const { name, buf } = verifyFeed(dir);
+  if ((await verifyPackage(path.join(dir, name), { version: pkg.version, signature: ymlGet(yml, 'signature') })) !== null) throw new Error('安装包的签名验不过，不传（先 pack.mjs installer）');
+  const feed = ((fs.readFileSync(path.join(DESK, 'electron-builder.yml'), 'utf8').match(/^\s+url:\s*(http\S+)/m) || [])[1] || '').replace(/\/*$/, '/');
+  if (!feed) throw new Error('electron-builder.yml 里找不到更新源的地址');
+  const live = await fetch(feed + 'latest.yml', { cache: 'no-store' }).then(r => (r.ok ? r.text() : '')).catch(() => '');
+  const liveVer = /^version:/m.test(live) ? ymlGet(live, 'version') : '';   // 没有这个文件时服务器回的是网站首页
+  if (liveVer && !newer(pkg.version, liveVer)) throw new Error(`线上已经是 ${liveVer}，要传的 ${pkg.version} 不比它新（开发规范第 21 条：版本号只升不降）`);
+  console.log(`线上现在：${liveVer || '还没有'}，要传：${pkg.version}`);
+  await ssh(`mkdir -p ${DEPLOY_DIR}`);
+  for (const f of [name, name + '.blockmap']) {
+    const local = path.join(dir, f), want = hash('sha512', fs.readFileSync(local));
+    console.log(`传 ${f}（${(fs.statSync(local).size / 1048576).toFixed(1)} MB）…`);
+    await ssh(`cat > ${DEPLOY_DIR}/${f}.part`, local);
+    const got = (await ssh(`sha512sum ${DEPLOY_DIR}/${f}.part`)).trim().split(/\s+/)[0];
+    if (got !== want) throw new Error(`${f} 传上去的和本机的对不上`);
+    await ssh(`mv -f ${DEPLOY_DIR}/${f}.part ${DEPLOY_DIR}/${f}`);
+  }
+  await ssh(`cat > ${DEPLOY_DIR}/latest.yml.part`, path.join(dir, 'latest.yml'));
+  await ssh(`cd ${DEPLOY_DIR} && mv -f latest.yml.part latest.yml && ln -sfn ${name} Liushuixian-Setup.exe`);
+  const back = await fetch(feed + 'latest.yml', { cache: 'no-store' }).then(r => r.text());
+  if (back !== yml) throw new Error('从网上取回来的 latest.yml 和本机的不一样');
+  const head = await fetch(feed + name, { method: 'HEAD' });
+  if (!head.ok || Number(head.headers.get('content-length')) !== buf.length) throw new Error(`网上取 ${name} 不对（${head.status}，${head.headers.get('content-length')} 字节）`);
+  console.log(`发好了：${feed}${name}\n给同事的下载地址：${feed}Liushuixian-Setup.exe`);
 }
 
 try {
+  if (mode === 'publish') { await publish(); process.exit(0); }
   const manifest = stage();
   const nodeExe = await ensureNode();
   await selfCheck(manifest, nodeExe);
@@ -236,9 +306,10 @@ try {
     console.log('打好了：release/win-unpacked/Liushuixian.exe（本机试用，不带更新通道）');
   } else if (mode === 'installer') {
     await ensureElectron();
-    await builder([]);
-    verifyFeed();
-    console.log('只打了没传。发版前先问用户（开发规范第 21 条）');
+    const out = path.join(BUILD, 'installer', pkg.version);
+    await builder([], out);
+    await signFeed(out, pkg.version);
+    console.log(`只打了没传：build/installer/${pkg.version}。本机装一遍点通、问过用户，再 pack.mjs publish（开发规范第 21 条）`);
   } else if (mode === 'trial') {
     await ensureElectron();
     const out = path.join(BUILD, 'trial', TRIAL);
@@ -253,7 +324,7 @@ try {
       '--config.publish.provider=generic',
       '--config.publish.url=' + TRIAL_FEED,
     ], out);
-    verifyFeed(out, TRIAL);
+    await signFeed(out, TRIAL);
     console.log(`试装包打好了：build/trial/${TRIAL}（只在本机试，不传）`);
   }
 } catch (e) {

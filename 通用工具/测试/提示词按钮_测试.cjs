@@ -32,11 +32,11 @@ function promptButtons(draft, busy, side, made = [], task = false, filmed = null
     AI: { ok: true, jobs: busy ? [{ 段: '1', 名: '1-5.txt', 标题: '正在写' }] : [] }, LINK: { v },
     jobLive: () => true, bmStale: () => false,
     vidRefs: empty, frameWs: empty, frameRefsOf: empty, framesOf: empty,
-    madeTag: none, verLine: none, patchesOf: empty, bmLine: none,
+    verLine: none, patchesOf: empty, bmLine: none,
     frameLine: none, frameWordLine: none, jobFailed: k => { fails.push(k); return null; }, jobLine: none,
     icon: none, at: parts => parts, dirOf: () => ['提示词', '第1段'],
     promptsOf: () => ['这一段的几条'],
-    ReviewPop: { btn: (s, e, list) => ({ tag: 'button', attrs: { class: 'btn sm', disabled: !made.length, onclick: () => calls.push(['审片', s, e, list]) }, children: ['审片'] }) },   // 审片弹窗（流水线/审片弹窗.js，11-22）：它自己的测试在 审片弹窗_测试.cjs
+    ReviewPop: { btn: (s, e, list) => ({ tag: 'button', attrs: { class: 'btn sm', disabled: !made.length, onclick: () => calls.push(['审片', s, e, list]) }, children: ['审片'] }), tag: none },   // 审片弹窗（流水线/审片弹窗.js，11-22；「已出片」标签 11-25 也挪过去了）：它自己的测试在 审片弹窗_测试.cjs
     openWrite: (...args) => calls.push(['编辑', ...args]),
     openShell: (...args) => calls.push(['查看', ...args]),
     approve: (...args) => calls.push(['出片', ...args]),
@@ -230,22 +230,19 @@ test('AI 批注怎么照改（11-24 拿掉「打开看、写批注」以后）�
   assert.match(how(null, false), /^点「进去改」/);
 });
 
-test('「已出片」标签：审完收进历史记录的也算（11-24），全在历史记录里的写「片在历史记录」；成片里老名字的照旧标第几条', () => {
-  const at = script.indexOf('function madeTag('), end = script.indexOf('\n}\n', at) + 3;
-  const ctx = { h: (tag, attrs, ...children) => ({ tag, attrs: attrs || {}, children: children.flat(Infinity).filter(x => x != null) }), icon: () => null, ClipOf: require('../公用/样片归属.js') };
-  vm.createContext(ctx);
-  vm.runInContext(script.slice(at, end), ctx);
-  assert.equal(ctx.madeTag([]), null);
-  const hist = ctx.madeTag([{ vid: '11-12_改5.mp4', old: true }]);
-  assert.equal(textOf(hist), '已出片 · 片在历史记录');
-  assert.match(hist.attrs.title, /11-12_改5\.mp4（在历史记录里）/);
-  assert.equal(textOf(ctx.madeTag([{ vid: '第3-4段_第14条_镜头1-5改6_样片480p.mp4', old: false }, { vid: '1-5_改6.mp4', old: true }])), '已出片 第14条');
-  assert.equal(textOf(ctx.madeTag([{ vid: '1-5.mp4', old: false }])), '已出片');
-});
-
 test('「已出片 / 没出片」筛选和标签照「审片」能不能点同一套算（11-24：审完收进历史记录的也算）', () => {
   const r = script.slice(script.indexOf('function render('));
   assert.match(r, /ReviewPop\.madeOf\(s, e, list\)/);
   assert.doesNotMatch(r, /cl\.made\(/);
   assert.match(html, /成片、历史记录里有这一版的样片就算/);
+  assert.doesNotMatch(script, /function madeTag\(/, '「已出片」标签 11-25 挪进 审片弹窗.js 的 ReviewPop.tag，历史记录那一页也用');
+  assert.match(rowCode, /ReviewPop\.tag\(made\)/);
+});
+
+test('历史记录里也能筛「已出片 / 没出片」（11-25）：数法照 HistView.made，列表照同一个筛子摆', () => {
+  const r = script.slice(script.indexOf('function render(')), fb = script.slice(script.indexOf('function filterBar('), script.indexOf('function render('));
+  assert.match(fb, /HistView\.made\(s\)/);
+  assert.match(fb, /出片时用的是这一版就算/);
+  assert.match(r, /HistView\.promptView\(s, hc, pf, /);
+  assert.match(r, /filterBar\(s, list, made, pf, hc\)/);
 });

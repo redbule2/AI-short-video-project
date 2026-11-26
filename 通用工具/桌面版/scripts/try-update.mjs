@@ -3,9 +3,11 @@
      node scripts/try-update.mjs --new    两个试装包都重打
      node scripts/try-update.mjs --keep   试完不卸，留着人自己点（再跑 --clean 卸掉、删干净）
      node scripts/try-update.mjs --clean  只卸掉、删干净
+     node scripts/try-update.mjs --bad-sign  更新源摆一个签名不对的 0.0.2：该下完验不过、报错、不装，装着的还是 0.0.1
      加 --outside：在 Claude 应用（或别的商店版软件）的命令行里跑必须加。商店版软件开出来的程序，往 AppData 写的是它私下的一份；
                    升级后软件自己重开那回走的是系统，看的是真的那份，两边对不上（11-24 头两回就栽在这里：重开后找不到设置、脚本读不到日志）。
                    加了它，脚本经 WMI 把自己在外面重开一遍，这边只跟着念日志。
+                   外面那一遍找不到 pnpm（11-26：它装在商店版私下的那份 AppData 里），试装包先在这边打好：pack.mjs trial 0.0.1、trial 0.0.2。
    做法：本机开个假更新源摆 0.0.2 → 装 0.0.1 → 开起来，它自己查到 0.0.2、下好、问要不要「现在重启装上」→ 替人点（人先点了也认）
    → 看它自己重开成 0.0.2：工具换新了（本机改过的先备份）、旧版才有的删了、「项目」一个字没动、再查更新说已经最新。
    试装版叫 LiushuixianTrial：装在 LOCALAPPDATA 的 Programs 里，设置在 APPDATA 的 LiushuixianTrial，和正式版各管各的。
@@ -50,7 +52,16 @@ function check(ok, text, detail) {
 /* ---------- 试装包 ---------- */
 const yml = (file, k) => (((read(file) || '').match(new RegExp('^' + k + ':\\s*(.+)$', 'm')) || [])[1] || '').trim().replace(/^['"]|['"]$/g, '');
 const setupOf = v => path.join(TRIAL, v, yml(path.join(TRIAL, v, 'latest.yml'), 'path'));
-const haveBuild = v => yml(path.join(TRIAL, v, 'latest.yml'), 'version') === v && fs.existsSync(setupOf(v));
+const haveBuild = v => yml(path.join(TRIAL, v, 'latest.yml'), 'version') === v && !!yml(path.join(TRIAL, v, 'latest.yml'), 'signature') && fs.existsSync(setupOf(v));   // 没签名的老试装包重打
+/* 签名不对的更新源：新版的安装包原样，latest.yml 的签名换成一串全零 */
+function badFeed() {
+  const dir = path.join(TRIAL, 'bad-sign'), name = path.basename(setupOf(NEW));
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+  for (const f of [name, name + '.blockmap']) fs.copyFileSync(path.join(TRIAL, NEW, f), path.join(dir, f));
+  fs.writeFileSync(path.join(dir, 'latest.yml'), read(path.join(TRIAL, NEW, 'latest.yml')).replace(/^signature:.*$/m, `signature: '${Buffer.alloc(64).toString('base64')}'`));
+  return dir;
+}
 function build(v) {
   console.log(`打试装包 ${v}…`);
   const r = spawnSync(process.execPath, [path.join(DESK, 'scripts', 'pack.mjs'), 'trial', v], { cwd: DESK, stdio: LOG_FILE ? 'pipe' : 'inherit', encoding: 'utf8' });
@@ -196,8 +207,9 @@ async function main() {
   const port = await freePort();
   fs.mkdirSync(DATA, { recursive: true });
   fs.writeFileSync(path.join(DATA, '设置.json'), JSON.stringify({ 工作文件夹: WORK, 端口: port }, null, 2));
-  const feed = await startFeed(feedPort, path.join(TRIAL, NEW));
-  console.log(`假更新源 ${url} 摆着 ${NEW}；工作文件夹 ${WORK}；端口 ${port}`);
+  const bad = flags.has('--bad-sign');
+  const feed = await startFeed(feedPort, bad ? badFeed() : path.join(TRIAL, NEW));
+  console.log(`假更新源 ${url} 摆着 ${NEW}${bad ? '（签名不对的）' : ''}；工作文件夹 ${WORK}；端口 ${port}`);
   let sawShortcut = false;
   try {
     const r = spawnSync(setupOf(OLD), ['/S', '/currentuser'], { windowsHide: true, timeout: 180000 });
@@ -212,6 +224,16 @@ async function main() {
     if (!check(await waitLog('工具同步完', 60000), '工具同步进工作文件夹了', tail())) return;
     check(read(path.join(MARK, '版本.txt')) === `试装 ${OLD}\n` && fs.existsSync(path.join(MARK, `只在${OLD}.txt`)), `工作文件夹里是 ${OLD} 的工具`);
     fs.appendFileSync(path.join(MARK, '版本.txt'), '本机改过\n');   // 用着用着本机改了一个工具文件：升级时要先备份它
+    if (bad) {
+      check(await waitLog('更新：error', 240000), '签名不对的升级包：下完验不过、报错了', tail() + '\n更新源被要过：\n' + feed.served.join('\n'));
+      check(logText().includes('签名对不上'), '日志里写着「签名对不上」', tail());
+      await sleep(3000);
+      check(!logText().includes('更新：downloaded'), '没说「下好了」，也就不会问装不装、关软件时也不装');
+      const man = JSON.parse(read(path.join(INSTALL, 'resources', 'tools', '清单.json')) || '{}');
+      check(man.版本 === OLD, `装着的还是 ${OLD}`, '装着的是 ' + man.版本);
+      check(feed.served.some(s => s.startsWith(`GET /${path.basename(setupOf(NEW))} → 200`)), '安装包是下完了的（验的就是下好的这个）', feed.served.join('\n'));
+      return;
+    }
     if (!check(await waitLog('更新：downloaded', 240000), `自己查到 ${NEW}、在后台下好了`, tail() + '\n更新源被要过：\n' + feed.served.join('\n'))) return;
 
     const mark = logText().length;

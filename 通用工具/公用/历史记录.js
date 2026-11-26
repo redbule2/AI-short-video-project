@@ -6,15 +6,19 @@
      Hist.newer(a, b)：排先后用，新的在前（带时间的照时间；没带的照修改时间 mtime）。
      Hist.promptSha(text)：提示词的 SHA-256（去掉 BOM、换行统一成 \n，和 通用工具/核对参考素材.py 一样），给 Promise。
      Hist.refsBySha(maps, key, sha)：几份参考素材映射（现在的和 历史记录/资产/参考素材映射__时间.json 留的底）里，
-       哪一份登记的这一条（key：提示词/第N段/原名）正好是这一版的字（prompt_sha256 对得上）；给 { refs, from } 或 null。
+       哪一份登记的这一条（key：提示词/第N段/原名）正好是这一版的字（prompt_sha256 对得上）；给 { refs, from }（登记了每一镜几秒的多一个 secs）或 null。
      Hist.mapsOf(io)、Hist.refsFor(io, maps, it, text)：一条提示词（现在的、历史记录里的一版）挂的是哪几张图（流水线历史记录、写稿页「参考」共用）。
-   网页里、node 里都能用。测试：node --test 通用工具/测试/历史记录_测试.cjs
+     Hist.ms(stamp)：收进去的那一刻（本机时间，毫秒）；不是时间给 0。
+     Hist.made(...)：一段里每一版（历史记录里的、现在的）出过哪几条样片（流水线历史记录、审片台、写稿页「参考」共用；样子写在它上面）。
+   网页里、node 里都能用（made 要先引 公用/样片归属.js）。测试：node --test 通用工具/测试/历史记录_测试.cjs
    ============================================================ */
 (function (G) {
 'use strict';
 const AP = () => G.AssetPath || require('./资产路径.js');   // 资产放哪（公用/资产路径.js）：老登记里的路径换成新的
+const CO = () => G.ClipOf || require('./样片归属.js');   // 样片是哪一条出的（公用/样片归属.js）
 const RE = /^(.+)__([0-9]{8})-([0-9]{6})(?:-[0-9a-z]+)?(\.[^./\\]+)?$/i;
 const when = stamp => /^[0-9]{8}-[0-9]{6}$/.test(stamp || '') ? stamp.slice(4, 6) + '-' + stamp.slice(6, 8) + ' ' + stamp.slice(9, 11) + ':' + stamp.slice(11, 13) : '';
+const ms = stamp => { const m = /^([0-9]{4})([0-9]{2})([0-9]{2})-([0-9]{2})([0-9]{2})([0-9]{2})$/.exec(stamp || ''); return m ? new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime() : 0; };
 function parse(name) {
   const n = String(name || ''), m = RE.exec(n);
   if (!m) return { name: n, orig: n, stamp: '', when: '' };
@@ -34,7 +38,7 @@ function refsBySha(maps, key, sha) {
   if (!sha) return null;
   for (const m of maps || []) {
     const v = m && m.prompts && m.prompts[key];
-    if (v && String(v.prompt_sha256 || '').toLowerCase() === sha.toLowerCase() && Array.isArray(v.references)) return { refs: v.references, from: m.from || '' };
+    if (v && String(v.prompt_sha256 || '').toLowerCase() === sha.toLowerCase() && Array.isArray(v.references)) return { refs: v.references, from: m.from || '', ...(v.秒数 ? { secs: v.秒数 } : {}) };
   }
   return null;
 }
@@ -49,7 +53,7 @@ async function mapsOf(io) {
   for (const x of snaps) await take('历史记录/资产/' + x.name);
   return out;
 }
-/* 一条视频提示词挂的图（现在用的，或者历史记录里的一版）：{ refs: [{ ref, path, sha }], note }。
+/* 一条视频提示词挂的图（现在用的，或者历史记录里的一版）：{ refs: [{ ref, path, sha }], note }；那一份登记了每一镜几秒的，多一个 secs（审片台跟着播放标镜头用）。
    it：{ seg: '3-1', orig: 原名, file: 项目里的路径, old: 历史记录里的, stamp }；maps：mapsOf 给的；text：这一版的字。
    照这一版自己的登记认：字正好对得上的那一份映射 → 认不出照现在同名那一条的登记（老版本标 note：可能不是那时候挂的）；
    写稿资料（现在的 原名_写稿.json，老版本是同一时间收进去的 原名_写稿__时间.json）里的挂图，同一个编号以它为准 */
@@ -67,9 +71,39 @@ async function refsFor(io, maps, it, text) {
       if (Object.keys(pics).length) note = '';
     } catch (e) { /* 不是网页上写的稿 */ }
   }
-  return { refs: [...out.values()], note };
+  const secs = hit ? hit.secs : !it.old && now ? now.秒数 : null;   // 老版本没认出当时的登记：秒数不照现在的猜
+  return { refs: [...out.values()], note, ...(secs ? { secs } : {}) };
 }
-const Hist = Object.freeze({ parse, when, newer, promptSha, refsBySha, mapsOf, refsFor });
+/* 一段里每一版出过哪几条样片（2026-11-25 他要的：流水线「历史记录」里也看片、筛已出片；审片台、写稿页「参考」同一套）。
+   照名字认是哪一条（公用/样片归属.js 的 carries；认不上的，片子后来做的 kinCarries 也算），再照时间认是哪一版：
+   收进历史记录的那一版管到它被收进去的那一刻，之后出的归现在这一版，现在没有了归最后收进去的那一版；
+   删提示词时跟着收进去的样片（名字带同一个「__时间」）就是那一版的。
+   olds：历史记录/提示词/第N段 里的视频提示词 [{ name, mtime }]；curs：提示词/第N段 里的视频提示词文件名；
+   here、hist：成片/第N段、历史记录/成片/第N段 里的文件 [{ name, mtime }]（毫秒；不是视频的跳过）；now(原名)：改过名的现在叫什么（不给照原名）。
+   给 { old: Map(历史记录里的文件名 → 样片), cur: Map(现在的文件名 → 样片) }，样片 [{ vid, old, mtime }]：成片里的在前、新的在前 */
+const VID = /\.(mp4|m4v|mov|webm)$/i;
+function made({ olds = [], curs = [], here = [], hist = [], now = n => n } = {}) {
+  const C = CO(), cur = new Set(curs), fams = new Map(), out = { old: new Map(olds.map(x => [x.name, []])), cur: new Map(curs.map(n => [n, []])) };
+  const fam = o => fams.get(o) || fams.set(o, { olds: [], cur: '' }).get(o);
+  for (const x of olds) { const p = parse(x.name); fam(p.orig).olds.push({ name: x.name, stamp: p.stamp, t: ms(p.stamp) || x.mtime || 0 }); }   // 名字里没带时间的老文件：照它的修改时间
+  for (const n of curs) fam(n);
+  for (const [o, f] of fams) { const n = now(o); f.cur = cur.has(n) ? n : cur.has(o) ? o : ''; f.olds.sort((a, b) => a.t - b.t); }
+  const put = (to, c) => { if (to && !to.some(y => y.vid === c.name && y.old === c.old)) to.push({ vid: c.name, old: c.old, mtime: c.mtime || 0 }); };
+  for (const c of [...here.map(x => ({ ...x, old: false })), ...hist.map(x => ({ ...x, old: true }))]) {
+    if (!VID.test(c.name)) continue;
+    const p = parse(c.name), vid = p.orig, all = [...fams.keys()];   // 跟着删掉的那一版收进去的（1-5__时间.mp4）：照原名认
+    let hit = all.filter(o => C.carries(vid, o));
+    if (!hit.length) hit = all.filter(o => C.kinCarries(vid, o));
+    for (const o of hit) {
+      const f = fams.get(o), at = (p.stamp && f.olds.find(x => x.stamp === p.stamp)) || f.olds.find(x => x.t > (c.mtime || 0));
+      put(at ? out.old.get(at.name) : f.cur ? out.cur.get(f.cur) : f.olds.length ? out.old.get(f.olds[f.olds.length - 1].name) : null, c);
+    }
+  }
+  const ord = (a, b) => (a.old - b.old) || b.mtime - a.mtime || String(a.vid).localeCompare(String(b.vid), 'zh', { numeric: true });
+  for (const m of [out.old, out.cur]) for (const v of m.values()) v.sort(ord);
+  return out;
+}
+const Hist = Object.freeze({ parse, when, ms, newer, promptSha, refsBySha, mapsOf, refsFor, made });
 if (typeof module !== 'undefined' && module.exports) module.exports = Hist;
 G.Hist = Hist;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

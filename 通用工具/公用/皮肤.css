@@ -1,0 +1,144 @@
+/* 皮肤：页面的颜色都是变量，四套都在这一份：头一段 :root 是默认的「宣纸」，后面几段只换那一组变量的值。
+   谁引它：流水线各页经 样式.css；登录页直接引；考试和团队页经 桌面版/考试/src/style/皮肤.css，打考试页时打进去（这里改了要重打考试页）。
+   用哪一套，桌面版的壳子写在 <html data-skin="…"> 上（桌面版/preload.js）；宣纸不写。外框自己的颜色在 桌面版/外框/外框.css，名字对着。
+   加一套：照下面抄一段，SKIN_KEYS 里的变量一个不少（测试会数）；再到 桌面版/lib/routes.js 的 SKINS、外框.css 各加一段。 */
+
+/* ---------- 宣纸：默认的一套。暖白纸底、墨色字、朱砂点题 ---------- */
+:root {
+  /* 不写 data-skin 时用这一套。别的皮肤在下面各一段，只换这一组的值；
+     各处样式不许再写死颜色（放片子的黑底、影子用的纯黑除外），测试 皮肤_测试.cjs 会查。 */
+  --paper: #f4efe6;        /* 页面的底 */
+  --paper-2: #ece5d8;
+  --paper-3: #e4dbca;
+  --paper-up: #faf6ef;     /* 页头、浮条：比纸亮一点 */
+  --sheet: #fffdf9;        /* 纸面：卡片、弹窗、按钮的底 */
+  --white: #fff;           /* 比纸面再亮一档：输入框、指上去的按钮 */
+  --warm: #fffaf0;         /* 暖一点的纸面：选中的、要留意的 */
+  --ink: #2a2622;
+  --ink-2: #554d45;
+  --ink-3: #887e74;
+  --ink-4: #b2a89b;
+  --ink-up: #3c3630;       /* 墨色按钮指上去 */
+  --line: #e5dccd;
+  --line-2: #d6cab6;
+  --zhu: #a83a2c;  --zhu-soft: rgb(from var(--zhu) r g b / .065);  --zhu-line: rgb(from var(--zhu) r g b / .26);
+  --dai: #3e5c5e;  --dai-soft: rgb(from var(--dai) r g b / .075);  --dai-line: rgb(from var(--dai) r g b / .28);
+  --zhe: #8d6a3c;  --zhe-soft: rgb(from var(--zhe) r g b / .085);  --zhe-line: rgb(from var(--zhe) r g b / .3);
+  --jin: #b39256;
+  --zi: #5e5384;   --zi-soft: rgb(from var(--zi) r g b / .075);    --zi-line: rgb(from var(--zi) r g b / .28);
+  --zhu-up: #95301f;       /* 朱砂按钮指上去 */
+  --zi2: #6b4f93; --lv: #3d7a55; --lan: #2e6c9e; --cheng: #a3651f;   /* 类别色：人物、关键帧、场景、道具 */
+  --on-ink: #f7f1e6; --on-accent: #fff8f2; --on-dai: #f3f7f6;        /* 压在墨色、朱砂（和别的重色）、黛色上的字 */
+  --on-shade: #fff;        /* 压在图上那层暗底上的字：哪套皮肤都是白的 */
+  --shade: #281c10;        /* 影子、遮罩 */
+  --scroll: #8c765c;       /* 滚动条 */
+  /* 镜头作用的五种小标签：底、字 */
+  --tag-jd: #e3eeed; --tag-jd-ink: #2f5355;   /* 交代 */
+  --tag-pd: #f4e7cb; --tag-pd-ink: #7a5a1e;   /* 铺垫 */
+  --tag-zz: #fbe3dc; --tag-zz-ink: #9a3326;   /* 转折 */
+  --tag-fy: #e5edd9; --tag-fy-ink: #46622f;   /* 反应 */
+  --tag-sw: #e9e3da; --tag-sw-ink: #4d453d;   /* 收尾 */
+  --night: #191714; --night-2: #23201c; --night-ink: #e6ddcf; --night-ink-2: #9a9084;   /* 放片子、看大图的深底：哪套皮肤都一样 */
+  --shadow: 0 1px 2px rgba(60, 45, 30, .05), 0 10px 32px -14px rgba(60, 45, 30, .2);
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .42  0 0 0 0 .34  0 0 0 0 .24  0 0 0 .055 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");   /* 纸纹 */
+}
+
+/* 不是宣纸的几套共用：这几样从主色算出来，各套不用再写（宣纸里它们是写定的颜色，见头一段） */
+:root[data-skin] {
+  --paper-up: color-mix(in srgb, var(--paper) 55%, var(--sheet));
+  --ink-up: color-mix(in srgb, var(--ink) 82%, var(--ink-3));
+  --zhu-up: color-mix(in srgb, var(--zhu) 86%, var(--ink));
+  --warm: color-mix(in srgb, var(--jin) 10%, var(--sheet));
+  --scroll: var(--ink-3);
+  --shadow: 0 1px 2px rgb(from var(--shade) r g b / .05), 0 10px 32px -14px rgb(from var(--shade) r g b / .2);
+  --tag-jd: color-mix(in srgb, var(--dai) 18%, var(--sheet)); --tag-jd-ink: color-mix(in srgb, var(--dai) 85%, var(--ink));
+  --tag-pd: color-mix(in srgb, var(--jin) 30%, var(--sheet)); --tag-pd-ink: color-mix(in srgb, var(--zhe) 85%, var(--ink));
+  --tag-zz: color-mix(in srgb, var(--zhu) 16%, var(--sheet)); --tag-zz-ink: color-mix(in srgb, var(--zhu) 88%, var(--ink));
+  --tag-fy: color-mix(in srgb, var(--lv) 18%, var(--sheet)); --tag-fy-ink: color-mix(in srgb, var(--lv) 85%, var(--ink));
+  --tag-sw: color-mix(in srgb, var(--ink) 10%, var(--sheet)); --tag-sw-ink: var(--ink-2);
+}
+
+/* ---------- 墨夜：全暗。深墨底、暖白字、朱砂提亮 ---------- */
+:root[data-skin="墨夜"] {
+  color-scheme: dark;
+  --paper: #1f1d19; --paper-2: #191714; --paper-3: #2e2b25; --sheet: #2a2722; --white: #33302a;
+  --ink: #e6ddcf; --ink-2: #c2b9aa; --ink-3: #948b7e; --ink-4: #6a6359;
+  --line: #34312b; --line-2: #464138;
+  --zhu: #cf5a44; --dai: #7fb0b2; --zhe: #c49a62; --jin: #c7a15c; --zi: #a596d6;
+  --zi2: #b192dc; --lv: #74b98f; --lan: #74ace0; --cheng: #d59c58;
+  --on-ink: #1f1d19; --on-accent: #fff8f2; --on-dai: #14201f;
+  --shade: #000; --toast-bg: #3b372f;
+  /* 深底上淡底、细线要重一些才看得见 */
+  --zhu-soft: rgb(from var(--zhu) r g b / .13);  --zhu-line: rgb(from var(--zhu) r g b / .39);
+  --dai-soft: rgb(from var(--dai) r g b / .15);  --dai-line: rgb(from var(--dai) r g b / .42);
+  --zhe-soft: rgb(from var(--zhe) r g b / .17);  --zhe-line: rgb(from var(--zhe) r g b / .45);
+  --zi-soft: rgb(from var(--zi) r g b / .15);    --zi-line: rgb(from var(--zi) r g b / .42);
+  --grain: none;
+}
+
+/* ---------- 青瓷：全亮。清冷浅底、黛青 ---------- */
+:root[data-skin="青瓷"] {
+  color-scheme: light;
+  --paper: #eef3f1; --paper-2: #e2ebe8; --paper-3: #d6e1dd; --sheet: #fbfdfc; --white: #fff;
+  --ink: #22302e; --ink-2: #485a58; --ink-3: #7a8b88; --ink-4: #a8b6b3;
+  --line: #dce6e3; --line-2: #c6d4d0;
+  --zhu: #b2473a; --dai: #2c6c70; --zhe: #86703f; --jin: #a99a62; --zi: #5a5c8f;
+  --zi2: #6a5596; --lv: #3b7d5c; --lan: #2e6c9e; --cheng: #9c6a2a;
+  --on-ink: #f1f6f4; --on-accent: #fbfffd; --on-dai: #f3f9f8;
+  --shade: #14302c; --toast-bg: #22302e;
+  --zhu-soft: rgb(from var(--zhu) r g b / .065); --zhu-line: rgb(from var(--zhu) r g b / .26);
+  --dai-soft: rgb(from var(--dai) r g b / .075); --dai-line: rgb(from var(--dai) r g b / .28);
+  --zhe-soft: rgb(from var(--zhe) r g b / .085); --zhe-line: rgb(from var(--zhe) r g b / .3);
+  --zi-soft: rgb(from var(--zi) r g b / .075);   --zi-line: rgb(from var(--zi) r g b / .28);
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .2  0 0 0 0 .34  0 0 0 0 .32  0 0 0 .045 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* ---------- 校样台：深木桌上铺亮的清样纸，朱砂点题（照老项目的「砚·校样台」；没有蓝字） ----------
+   桌面和纸面各用一组颜色，写成 light-dark(纸上, 桌上)：整页说自己是深的（color-scheme: dark），取后一个；
+   纸面（拿 --sheet、--white、--warm 做底的东西）由壳子逐条标成亮的（桌面版/preload.js），里面就取前一个。
+   所以纸面的底色只许写这三个变量，别的写法壳子认不出来。 */
+:root[data-skin="校样台"] {
+  color-scheme: dark;
+  --paper: light-dark(#ebe5d4, #211f1a); --paper-2: light-dark(#e2dbc9, #1a1815); --paper-3: light-dark(#d8d0bc, #302d27);
+  --paper-up: light-dark(#f7f2e7, #211f1a);
+  --sheet: #f2eddf; --white: #f7f2e7;
+  --ink: light-dark(#1c1b19, #d7d0be); --ink-2: light-dark(#47433b, #bfb7a5); --ink-3: light-dark(#6c665a, #979080); --ink-4: light-dark(#938c7b, #6f6a5f);
+  --line: light-dark(#d5cdbc, #393630); --line-2: light-dark(#bbb2a1, #4a463d);
+  --zhu: light-dark(#c8442b, #d7583e); --dai: light-dark(#6b4e2e, #c7a15c); --zhe: light-dark(#a7772b, #d5a04b); --jin: light-dark(#a68a5b, #c7a15c); --zi: light-dark(#74506f, #c3a3c6);
+  --zi2: light-dark(#7a4f86, #c9a3d6); --lv: light-dark(#4f7d5a, #82b18a); --lan: light-dark(#2f7563, #7fbfa6); --cheng: light-dark(#a3651f, #d59c58);
+  --on-ink: light-dark(#f2eddf, #1c1b19); --on-accent: #fff7eb; --on-dai: light-dark(#fbf6ea, #1c1b19);
+  --shade: light-dark(#0a0907, #000); --toast-bg: #302d27;
+  --zhu-soft: light-dark(rgb(200 68 43 / .065), rgb(215 88 62 / .13));    --zhu-line: light-dark(rgb(200 68 43 / .26), rgb(215 88 62 / .39));
+  --dai-soft: light-dark(rgb(107 78 46 / .075), rgb(199 161 92 / .15));   --dai-line: light-dark(rgb(107 78 46 / .28), rgb(199 161 92 / .42));
+  --zhe-soft: light-dark(rgb(167 119 43 / .085), rgb(213 160 75 / .17));  --zhe-line: light-dark(rgb(167 119 43 / .3), rgb(213 160 75 / .45));
+  --zi-soft: light-dark(rgb(116 80 111 / .075), rgb(195 163 198 / .15));  --zi-line: light-dark(rgb(116 80 111 / .28), rgb(195 163 198 / .42));
+  --shadow: 0 1px 2px rgb(10 9 7 / .3), 0 12px 30px -16px rgb(10 9 7 / .6);   /* 纸压在深桌子上的影子 */
+  --grain: none;   /* 桌面不铺纸纹：页面里几条平涂的横条（页头、筛选那一条）会比铺了纹的桌面暗一截，露出来 */
+}
+
+/* ---------- 考试各页在校样台下照原版 ----------
+   考试这几页原本就是照「砚·校样台」配的色（旧网站上的样子，清样纸偏灰、靛青标机器做的事），选了校样台就用回原版，不跟上面那套走。
+   考试页自己的一组变量（--paper、--azure 这些）在 桌面版/考试/src/views/exam/exam-shared.css 的 .exam-page；
+   这里给回它们原来的值，连同原来直接写着颜色、后来借了皮肤变量的那几处。下拉弹层、指派弹窗挂在 body 下，各补一份。 */
+:root[data-skin="校样台"] :is(.exam-page, .exam-popper, .exam-assign-dialog) {
+  --paper: #dcd6c5; --paper-2: #d2ccb9; --field: #d4cdba; --field-edge: #c2b9a4; --paper-edge: #c9c2ae; --rule: #c6bfab;
+  --ink: #1c1b19; --ink-body: #2c2a25; --graphite: #615d54;
+  --vermilion: #c8442b; --vermilion-deep: #a8331e; --azure: #2c5f7c; --azure-soft: #4a7e9b; --jade: #3c6a4c; --jade-soft: #4f7c5f;
+  --desk: #211f1a; --paper-up: #2c2a24; --g-paper-2: #19170f;
+  --white: #e7e1d1;   /* 原来的 --paper-hi：纸上最亮那一档 */
+  --hi: #fff;   /* 原来的白色高光（半透明的白） */
+  --on-accent: #e7e1d1; --on-ink: #e7e1d1; --on-shade: #e7e1d1; --on-dai: #f0ece0;
+  --zhu: #c8442b; --zhu-up: #a8331e; --dai: #2c5f7c; --lv: #3c6a4c;
+  --ink-2: #615d54; --ink-3: #909399; --line-2: #c2b9a4; --shade: #000;
+  --shadow: 0 1px 0 rgb(255 255 255 / 6%), 0 14px 38px rgb(0 0 0 / 42%), 0 3px 10px rgb(0 0 0 / 30%);
+}
+:root[data-skin="校样台"] .exam-page {
+  color-scheme: dark;   /* 页面底是深桌子（整页说自己是亮的，见下面）：桌上那层暗角取深的那一档；纸面由壳子标成亮的 */
+  --ink-2: #c4beaf;   /* 桌上的字 */
+}
+/* 整页（正开着考试页时）：顶上那排菜单、Element Plus 自己的下拉和提示，也照原版；Element Plus 用回它自己的颜色（考试/src/style/皮肤.css 那头不接） */
+:root[data-skin="校样台"]:has(.exam-page) {
+  color-scheme: light;
+  --white: #fff; --ink: rgb(0 0 0 / 88%); --ink-4: #9ca3af; --line: #e0e3e8; --shade: #000;
+  --shell-desk: #211f1a; --shell-line: rgb(220 210 190 / 12%); --shell-text: #a59c8c; --shell-ink: #eee4d1; --shell-mark: #c8442b;
+}

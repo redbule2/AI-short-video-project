@@ -9,6 +9,7 @@ import {
   deleteExamPaper,
   getExamErrorMessage,
   getExamPapers,
+  importExamPaper,
   publishExamAnswers,
   revertExamPaper
 } from "@/api/exam";
@@ -17,6 +18,7 @@ import {
   getCollaborationWorkspace
 } from "@/api/collaboration";
 import { message } from "@/utils/message";
+import { importSummary, readPaperFile } from "./paperImport";
 
 const PageSize = 20;
 
@@ -24,7 +26,9 @@ const PageSize = 20;
  * 试卷管理数据源(owner)。
  * 请求预算:进入页面 1 次列表(frontend.exam.papersPage.enter=1);
  * 指派弹窗打开时 1 次协作账号查询(frontend.exam.assignDialog.open=1);
- * 归档卷复制点击只发 1 次 POST(frontend.exam.archivedCopy.click=1)。
+ * 归档卷复制点击只发 1 次 POST(frontend.exam.archivedCopy.click=1);
+ * 导入试卷每份文件 1 次 POST(frontend.exam.paperImport.postPerFile=1),
+ * 全部发完 1 次列表(frontend.exam.paperImport.followupList=1)。
  */
 export function useExamPapers() {
   const papers = ref<ExamPaperSummaryDto[]>([]);
@@ -34,6 +38,8 @@ export function useExamPapers() {
   const loadError = ref(false);
   /** 行级动作忙碌:paperId → true(防连点)。 */
   const busy = ref<Record<string, boolean>>({});
+  /** 正在导入试卷文件(防连点;导入钮上显示「正在导入…」)。 */
+  const importing = ref(false);
 
   const totalPages = computed(() =>
     Math.max(1, Math.ceil(total.value / PageSize))
@@ -109,6 +115,45 @@ export function useExamPapers() {
         message(getExamErrorMessage(error), { type: "error" });
       }
       return null;
+    }
+  }
+
+  /**
+   * 导入试卷文件(AI 出好的整卷,一份文件一张卷):逐份发,一份不成不耽误别的;
+   * 发完只刷新一次列表,成了几张、哪几份没成一并说给人听。
+   * 导进来的都是草稿——发布还得人复核后自己点。逐份串行,不并发。
+   */
+  async function importPapers(files: File[]) {
+    if (importing.value || files.length === 0) return;
+    importing.value = true;
+    const done: string[] = [];
+    const failed: string[] = [];
+    try {
+      for (const file of files) {
+        const parsed = readPaperFile(await file.text());
+        if (!parsed.ok) {
+          failed.push(`${file.name}:${parsed.reason}`);
+          continue;
+        }
+        try {
+          await importExamPaper(parsed.paper);
+          done.push(parsed.paper.title);
+        } catch (error) {
+          failed.push(`${file.name}:${getExamErrorMessage(error)}`);
+        }
+      }
+      if (done.length > 0) await load(1);
+      const lines = importSummary(done, failed);
+      if (failed.length === 0) {
+        message(lines[0], { type: "success" });
+      } else {
+        await ElMessageBox.alert(lines.join("\n"), "导入试卷", {
+          confirmButtonText: "知道了",
+          customClass: "exam-import-result"
+        }).catch(() => undefined);
+      }
+    } finally {
+      importing.value = false;
     }
   }
 
@@ -262,6 +307,8 @@ export function useExamPapers() {
     load,
     goToPage,
     createPaper,
+    importing,
+    importPapers,
     copyArchived,
     revert,
     archive,

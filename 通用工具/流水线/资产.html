@@ -10,7 +10,7 @@
 /* 资产页（11-16 改版，照 资产页改版_设计稿.html）：顶上一条钉住（走到哪了、要按的、四个页签），下面一次只摆一样；
    人物、场景、道具一样一张大图卡，关键帧一镜一张小卡（三格：开头、中间、结尾），挑图在右边一栏（挑图栏.js）。只这一页用，样式就放在这里 */
 .as-head { position: sticky; top: 117px; z-index: 18; margin: -8px -14px 16px; padding: 10px 14px 0; border-bottom: 1px solid var(--line); background: var(--paper); }
-.as-head.stuck { box-shadow: 0 12px 18px -16px rgba(40, 28, 16, .4); }
+.as-head.stuck { box-shadow: 0 12px 18px -16px rgb(from var(--shade) r g b / .4); }
 .as-h1 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
 .as-h1 .sp, .as-tabs .sp { flex: 1; }
 .as-h1 .btn.ghost { color: var(--ink-3); }
@@ -23,7 +23,7 @@
 .ac-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 12px; }
 .ac { position: relative; min-width: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-top: 3px solid var(--k); border-radius: 10px; background: var(--sheet); transition: border-color .15s, box-shadow .15s; }
 .ac[role=button] { cursor: pointer; }
-.ac[role=button]:hover { box-shadow: 0 8px 18px -12px rgba(40, 28, 16, .4); }
+.ac[role=button]:hover { box-shadow: 0 8px 18px -12px rgb(from var(--shade) r g b / .4); }
 .ac.bad { box-shadow: 0 0 0 2px var(--zhu-line); }
 .ac.flash { animation: asFlash 1.6s ease; }
 .ac-pic { aspect-ratio: 4 / 3; display: grid; place-items: center; overflow: hidden; border-radius: 7px 7px 0 0; background: var(--paper-2); font: 13.5px var(--kai); color: var(--ink-4); }
@@ -52,7 +52,7 @@
 .ac.plus small { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-4); }
 .ac.plus:hover { border-color: var(--k); color: var(--k); }
 /* 关键帧：顶上「还没绑」一排，下面一镜一张小卡 */
-.kb-tray { margin: 0 0 14px; padding: 10px 12px; border: 1px dashed #c9b48e; border-radius: 10px; background: #fffaf0; }
+.kb-tray { margin: 0 0 14px; padding: 10px 12px; border: 1px dashed rgb(from var(--jin) r g b / .7); border-radius: 10px; background: var(--warm); }
 .kb-tray.done { padding: 7px 12px; border-color: var(--line-2); background: transparent; }
 .kb-tray.over { border-style: solid; border-color: var(--zhu); background: var(--zhu-soft); }
 .kb-tray-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 13px; }
@@ -80,15 +80,15 @@
 .kb-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .kb-slot.has { border-style: solid; border-color: var(--k-line); }
 .kb-slot:hover { border-color: var(--k); }
-.kb-k { position: absolute; left: 0; bottom: 0; z-index: 1; padding: 0 5px; border-top-right-radius: 5px; background: rgba(42, 38, 34, .55); font: 10.5px/1.6 var(--sans); color: #fff; }
-.kb-more { position: absolute; right: 3px; top: 3px; z-index: 1; padding: 0 5px; border-radius: 7px; background: var(--dai); font: 10.5px/1.6 var(--sans); color: #fff; }
-.kb-ok { position: absolute; left: 3px; top: 3px; z-index: 1; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; background: var(--dai); color: #fff; }
+.kb-k { position: absolute; left: 0; bottom: 0; z-index: 1; padding: 0 5px; border-top-right-radius: 5px; background: rgb(from var(--shade) r g b / .55); font: 10.5px/1.6 var(--sans); color: var(--on-shade); }
+.kb-more { position: absolute; right: 3px; top: 3px; z-index: 1; padding: 0 5px; border-radius: 7px; background: var(--dai); font: 10.5px/1.6 var(--sans); color: var(--on-dai); }
+.kb-ok { position: absolute; left: 3px; top: 3px; z-index: 1; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; background: var(--dai); color: var(--on-dai); }
 .kb-ok .ic { width: 10px; height: 10px; stroke-width: 2.4; }
 .kb-gone { font: 11px var(--kai); color: var(--zhu); }
 .kb-dragging .kb-slot:not(.has) { border-color: var(--zhu-line); background: var(--zhu-soft); color: var(--zhu); }
 .kb-slot.over { border: 2px solid var(--zhu); }
 /* 挑图栏（挑图栏.js）：右边滑出一栏，不盖左边 */
-.pb { position: fixed; top: 0; right: 0; bottom: 0; z-index: 40; width: min(620px, 64vw); display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 12px; border-left: 1px solid var(--line); background: var(--sheet); box-shadow: -18px 0 40px -24px rgba(40, 28, 16, .45); animation: pbIn .18s ease both; }
+.pb { position: fixed; top: 0; right: 0; bottom: 0; z-index: 40; width: min(620px, 64vw); display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 12px; border-left: 1px solid var(--line); background: var(--sheet); box-shadow: -18px 0 40px -24px rgb(from var(--shade) r g b / .45); animation: pbIn .18s ease both; }
 @keyframes pbIn { from { transform: translateX(24px); opacity: 0; } }
 .pb-h { display: flex; align-items: flex-start; gap: 10px; }
 .pb-t { flex: 1; min-width: 0; }

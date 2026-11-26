@@ -194,7 +194,7 @@
 /* ---------- 当前题 ---------- */
 .manual-grading-page .mg-question {
   padding: 18px 20px;
-  background: rgb(255 255 255 / 12%);
+  background: rgb(from var(--hi, var(--white)) r g b / 12%);
   border: 1px solid var(--paper-edge);
   border-radius: 5px;
 
@@ -216,7 +216,7 @@
   height: 32px;
   font-size: 14px;
   place-items: center;
-  color: var(--paper-hi);
+  color: var(--on-ink);
   background: var(--ink);
   border-radius: 50%;
 }
@@ -264,11 +264,11 @@
 .manual-grading-page .mg-answer {
   padding: 14px 16px;
   margin-top: 12px;
-  background: var(--paper-hi);
+  background: var(--white);
   border: 1px solid var(--field-edge);
   border-left: 4px solid var(--vermilion);
   border-radius: 4px;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 18%);
+  box-shadow: inset 0 0 0 1px rgb(from var(--hi, var(--white)) r g b / 18%);
 }
 
 /* 作答抬头：标签在左、一键复制在右（提示词要整段拿去生图，手选容易漏行） */
@@ -298,8 +298,8 @@
 
 /* ---------- 复核依据（次要信息，默认折叠） ---------- */
 .manual-grading-page .mg-reference {
-  background: rgb(44 95 124 / 6%);
-  border: 1px solid rgb(44 95 124 / 22%);
+  background: rgb(from var(--dai) r g b / 6%);
+  border: 1px solid rgb(from var(--dai) r g b / 22%);
   border-left: 4px solid var(--azure);
   border-radius: 4px;
 }
@@ -320,7 +320,7 @@
 }
 
 .manual-grading-page .mg-reference-toggle:hover {
-  background: rgb(44 95 124 / 8%);
+  background: rgb(from var(--dai) r g b / 8%);
 }
 
 .manual-grading-page .mg-reference-toggle:focus-visible {
@@ -371,7 +371,7 @@
 
 .manual-grading-page .mg-reference-row.is-ai {
   padding-top: 9px;
-  border-top: 1px dashed rgb(44 95 124 / 28%);
+  border-top: 1px dashed rgb(from var(--dai) r g b / 28%);
 }
 
 /* ---------- 评分面板 ---------- */
@@ -379,11 +379,11 @@
   display: grid;
   gap: 14px;
   padding: 16px;
-  background: linear-gradient(178deg, var(--paper-hi) 0%, var(--paper) 70%);
+  background: linear-gradient(178deg, var(--white) 0%, var(--paper) 70%);
   border: 1px solid var(--paper-edge);
   border-top: 3px solid var(--vermilion);
   border-radius: 6px;
-  box-shadow: 0 10px 26px rgb(0 0 0 / 30%);
+  box-shadow: 0 10px 26px rgb(from var(--shade) r g b / 30%);
 }
 
 .manual-grading-page .mg-pad-readout {
@@ -454,7 +454,7 @@
   font-size: 16px;
   color: var(--ink-body);
   cursor: pointer;
-  background: var(--paper-hi);
+  background: var(--white);
   border: 1px solid var(--field-edge);
   border-radius: 5px;
   transition:
@@ -466,7 +466,7 @@
 
 .manual-grading-page .mg-score-btn:hover:not(:disabled) {
   color: var(--vermilion-deep);
-  background: rgb(200 68 43 / 10%);
+  background: rgb(from var(--zhu) r g b / 10%);
   border-color: var(--vermilion);
 }
 
@@ -487,14 +487,14 @@
 /* 选中态 = 朱砂实底 + 深描边 + 轻微抬起，一眼可辨 */
 .manual-grading-page .mg-score-btn.is-active {
   font-weight: 500;
-  color: var(--paper-hi);
+  color: var(--on-accent);
   background: var(--vermilion);
   border-color: var(--vermilion-deep);
-  box-shadow: 0 2px 8px rgb(200 68 43 / 42%);
+  box-shadow: 0 2px 8px rgb(from var(--zhu) r g b / 42%);
 }
 
 .manual-grading-page .mg-score-btn.is-active:hover:not(:disabled) {
-  color: var(--paper-hi);
+  color: var(--on-accent);
   background: var(--vermilion-deep);
   border-color: var(--vermilion-deep);
 }
@@ -523,7 +523,7 @@
 .manual-grading-page .mg-slider .el-slider__button {
   width: 22px;
   height: 22px;
-  background: var(--paper-hi);
+  background: var(--white);
   border: 3px solid var(--vermilion);
 }
 
@@ -551,7 +551,7 @@
   font-size: 14px;
   color: var(--ink-body);
   cursor: pointer;
-  background: var(--paper-hi);
+  background: var(--white);
   border: 1px solid var(--field-edge);
   border-radius: 5px;
   transition:
@@ -568,7 +568,7 @@
 .manual-grading-page .mg-step-btn:hover:not(:disabled),
 .manual-grading-page .mg-quick-btn:hover:not(:disabled) {
   color: var(--vermilion-deep);
-  background: rgb(200 68 43 / 10%);
+  background: rgb(from var(--zhu) r g b / 10%);
   border-color: var(--vermilion);
 }
 
@@ -590,7 +590,7 @@
 }
 
 .manual-grading-page .mg-quick-btn.is-active {
-  color: var(--paper-hi);
+  color: var(--on-accent);
   background: var(--vermilion);
   border-color: var(--vermilion-deep);
 }
@@ -611,7 +611,7 @@
   min-height: 44px;
   padding: 0 10px;
   cursor: pointer;
-  background: rgb(255 255 255 / 22%);
+  background: rgb(from var(--ink) r g b / 5%);
   border: 1px dashed var(--field-edge);
   border-radius: 5px;
   transition:
@@ -620,7 +620,7 @@
 }
 
 .manual-grading-page .mg-comment-toggle:hover {
-  background: rgb(255 255 255 / 42%);
+  background: rgb(from var(--ink) r g b / 9%);
   border-color: var(--graphite);
 }
 
@@ -671,10 +671,10 @@
   gap: 10px;
   padding: 12px 16px;
   margin-top: 18px;
-  background: color-mix(in srgb, var(--paper-hi) 95%, transparent);
+  background: color-mix(in srgb, var(--white) 95%, transparent);
   border: 1px solid var(--field-edge);
   border-radius: 6px;
-  box-shadow: 0 10px 28px rgb(0 0 0 / 32%);
+  box-shadow: 0 10px 28px rgb(from var(--shade) r g b / 32%);
   backdrop-filter: blur(8px);
 }
 
@@ -705,7 +705,7 @@
   font-size: 13px;
   color: var(--graphite);
   cursor: pointer;
-  background: var(--paper-hi);
+  background: var(--white);
   border: 1px dashed var(--graphite);
   border-radius: 4px;
   transition:
@@ -717,7 +717,7 @@
 
 .manual-grading-page .mg-nav-chip:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgb(0 0 0 / 22%);
+  box-shadow: 0 2px 6px rgb(from var(--shade) r g b / 22%);
 }
 
 .manual-grading-page .mg-nav-chip:focus-visible {
@@ -726,7 +726,7 @@
 }
 
 .manual-grading-page .mg-nav-chip.is-scored {
-  color: #eef1e9;
+  color: var(--on-dai);
   background: var(--jade);
   border: 1px solid var(--jade);
 }
@@ -734,7 +734,7 @@
 .manual-grading-page .mg-nav-chip.is-current {
   position: relative;
   font-weight: 700;
-  color: var(--paper-hi);
+  color: var(--on-accent);
   background: var(--vermilion);
   border: 1px solid var(--vermilion-deep);
   box-shadow: 0 0 0 2px var(--ink);

@@ -4,6 +4,23 @@
   max-width: 1040px;
 }
 
+/* 右上两个钮:导入试卷、新建试卷;选文件的框不露面,由「导入试卷」代点 */
+.papers-page .papers-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.papers-page .papers-import-input {
+  display: none;
+}
+
+/* 导入结果的弹窗挂在 body 上(不在 .papers-page 里):一份没成的文件占一行 */
+.exam-import-result .el-message-box__message p {
+  white-space: pre-line;
+}
+
 .papers-page .papers-loading {
   padding: 8px 0;
 }

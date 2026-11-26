@@ -12,6 +12,7 @@ defineOptions({ name: "ExamPapers" });
 const router = useRouter();
 const papersApi = useExamPapers();
 const publishDialog = ref<InstanceType<typeof ExamPublishDialog> | null>(null);
+const importInput = ref<HTMLInputElement | null>(null);
 
 /** 发布走弹窗【计时 v2】:指定考试截止时间与考生后才发布。 */
 function openPublish(paper: ExamPaperSummaryDto) {
@@ -31,6 +32,7 @@ const {
   loadError,
   isEmpty,
   busy,
+  importing,
   assignVisible,
   assignPaper,
   assignSubs,
@@ -48,6 +50,14 @@ async function onCreate() {
       query: { paperId, setup: "rules" }
     });
   }
+}
+
+/** 选好试卷文件就导入;选完把框清空,同一份文件才能再选一回。 */
+async function onImportPicked(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const files = Array.from(input.files ?? []);
+  input.value = "";
+  await papersApi.importPapers(files);
 }
 
 async function copyPaper(paper: ExamPaperSummaryDto) {
@@ -83,9 +93,28 @@ function statusStampClass(status: string) {
             命题、发布、指派考试;AI 出的卷会先落在这里等你复核
           </div>
         </div>
-        <button class="exam-btn is-primary" type="button" @click="onCreate">
-          新建试卷
-        </button>
+        <div class="papers-head-actions">
+          <input
+            ref="importInput"
+            class="papers-import-input"
+            type="file"
+            accept=".json,application/json"
+            multiple
+            @change="onImportPicked"
+          />
+          <button
+            class="exam-btn is-ghost"
+            type="button"
+            :disabled="importing"
+            title="选 AI 出好的试卷文件(.json),一份文件一张卷,可以一次选好几份;导进来是草稿"
+            @click="importInput?.click()"
+          >
+            {{ importing ? "正在导入…" : "导入试卷" }}
+          </button>
+          <button class="exam-btn is-primary" type="button" @click="onCreate">
+            新建试卷
+          </button>
+        </div>
       </header>
 
       <div v-if="loading" class="papers-loading">
@@ -109,9 +138,8 @@ function statusStampClass(status: string) {
         <div class="icon">◎</div>
         <div class="lead">案上还没有试卷</div>
         <div class="hint">
-          可以点右上「新建试卷」手动出题;也可以让你的 AI 按 《考试模块 AI
-          接口契约》调用 /api/exam/papers/import
-          整卷导入,导入的卷会出现在这里等你复核发布。
+          可以点右上「新建试卷」手动出题;也可以让你的 AI
+          把整张卷出成文件,点右上「导入试卷」放进来,导入的卷会出现在这里等你复核发布。
         </div>
         <button class="exam-btn is-primary" type="button" @click="onCreate">
           新建试卷

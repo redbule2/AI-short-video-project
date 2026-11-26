@@ -1,0 +1,182 @@
+/* 壳子自己的样式（不是照搬的）：「我的团队」「账号管理」「消息」几页共用的——颜色、两种按钮（.text-action 描边的、.primary-action 实心的，「消息」用）、小窗、圆头像。
+   用法：页面的根上挂 desk-panel；小窗（el-dialog）的 class 写 desk-dialog。
+   「我的团队」「账号管理」两页的底子是考试页的「清样纸」（views/exam/exam-shared.css），和考试几页摆在一起才像一家；
+   颜色都接在皮肤的变量上（公用/皮肤.css），换皮肤跟着换。 */
+.desk-panel {
+  --c-bg: var(--paper);
+  --c-panel: var(--sheet);
+  --c-line: var(--line);
+  --c-line-soft: color-mix(in srgb, var(--line) 60%, transparent);
+  --c-ink: var(--ink);
+  --c-text: var(--ink-2);
+  --c-muted: var(--ink-3);
+  --c-accent: var(--dai);
+  --c-accent-hover: color-mix(in srgb, var(--dai) 85%, var(--ink));
+  --c-danger: var(--zhu);
+}
+
+.desk-panel .text-action,
+.desk-panel .primary-action {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 13px;
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  border-radius: 999px;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.desk-panel .text-action {
+  color: var(--c-text);
+  background: transparent;
+  border: 1px solid var(--c-line);
+}
+
+.desk-panel .primary-action {
+  color: var(--on-dai);
+  background: var(--c-accent);
+  border: 1px solid var(--c-accent);
+}
+
+.desk-panel .compact {
+  min-height: 30px;
+  padding: 0 11px;
+}
+
+.desk-panel .text-action svg,
+.desk-panel .primary-action svg {
+  width: 14px;
+  height: 14px;
+}
+
+.desk-panel .text-action:hover,
+.desk-panel .text-action:focus-visible {
+  color: var(--ink);
+  outline: none;
+  background: rgb(from var(--ink) r g b / 5%);
+  border-color: rgb(from var(--ink) r g b / 28%);
+}
+
+.desk-panel .primary-action:hover,
+.desk-panel .primary-action:focus-visible {
+  outline: none;
+  background: var(--c-accent-hover);
+}
+
+.desk-panel .text-action:disabled {
+  color: var(--ink-4);
+  cursor: not-allowed;
+  background: transparent;
+  border-color: var(--c-line);
+  opacity: 0.7;
+}
+
+.desk-panel .text-action.danger {
+  color: var(--zhu);
+}
+
+/* 小窗：跟着页面的皮肤。小窗画在页面里面（Element Plus 的 el-dialog 默认不挪到 body；下拉框写 :teleported="false"），
+   所以在这里换 Element Plus 的颜色变量就行。 */
+.desk-panel .desk-dialog {
+  --el-dialog-bg-color: var(--sheet);
+  --el-bg-color: var(--sheet);
+  --el-bg-color-overlay: var(--white);
+  --el-text-color-primary: var(--c-ink);
+  --el-text-color-regular: var(--c-text);
+  --el-text-color-secondary: var(--c-muted);
+  --el-text-color-placeholder: var(--ink-4);
+  --el-text-color-disabled: var(--ink-4);
+  --el-fill-color-blank: var(--c-bg);
+  --el-fill-color-light: color-mix(in srgb, var(--ink) 5%, var(--sheet));
+  --el-fill-color: color-mix(in srgb, var(--ink) 5%, var(--sheet));
+  --el-border-color: var(--line-2);
+  --el-border-color-light: var(--line);
+  --el-border-color-lighter: var(--line);
+  --el-border-color-hover: var(--ink-4);
+  --el-color-primary: var(--c-accent);
+  --el-color-primary-light-3: var(--c-accent-hover);
+  --el-color-primary-light-5: color-mix(in srgb, var(--dai) 50%, var(--sheet));
+  --el-color-primary-light-7: rgb(from var(--dai) r g b / 45%);
+  --el-color-primary-light-8: rgb(from var(--dai) r g b / 30%);
+  --el-color-primary-light-9: rgb(from var(--dai) r g b / 18%);
+  --el-color-primary-dark-2: color-mix(in srgb, var(--dai) 80%, var(--ink));
+  --el-disabled-bg-color: color-mix(in srgb, var(--ink) 4%, var(--sheet));
+  --el-disabled-text-color: var(--ink-4);
+
+  border: 1px solid var(--c-line);
+}
+
+.desk-panel .desk-dialog .el-dialog__title {
+  font-weight: 650;
+  color: var(--c-ink);
+}
+
+.desk-panel .desk-dialog .el-form-item__label {
+  color: var(--c-text);
+}
+
+/* 小窗铺在考试页的纸上时（「我的团队」「账号管理」）：考试页把输入框调成半透明（铺在纸上用），小窗里的照小窗的底 */
+.exam-page .desk-dialog {
+  --el-input-bg-color: var(--el-fill-color-blank);
+}
+
+/* 「我的团队」「账号管理」两页：纸一样宽（和试卷管理一样），两页切来切去标题不跳；右上角那一排钮 */
+.team-sheet {
+  max-width: 1040px;
+}
+
+.team-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+}
+
+.team-loading {
+  padding: 8px 0;
+}
+
+/* 给负责人的一句提示：还没有部门、还没有子账号 */
+.team-tip {
+  padding: 12px 16px;
+  margin: 18px 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--graphite);
+  border: 1px dashed var(--field-edge);
+  border-radius: 6px;
+}
+
+.team-tip:first-child {
+  margin-top: 0;
+}
+
+/* 圆头像：两个字（utils/avatar.ts），淡底深字；负责人用朱砂。字往墨色里掺一点：亮皮肤里更深、暗皮肤里更亮，都看得清 */
+.desk-avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: 13px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--dai) 80%, var(--ink));
+  background: color-mix(in srgb, var(--dai) 12%, var(--white));
+  border: 1px solid var(--dai-line);
+  border-radius: 50%;
+}
+
+.desk-avatar.owner {
+  color: color-mix(in srgb, var(--zhu) 75%, var(--ink));
+  background: color-mix(in srgb, var(--zhu) 10%, var(--white));
+  border-color: var(--zhu-line);
+}

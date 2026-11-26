@@ -13,25 +13,11 @@ import { accountRoleLabel, accountStatusLabel } from "./collaborationMock";
 
 export function useCollaborationMock() {
   const accounts = ref<TeamAccount[]>([]);
-  const selectedAccountId = ref("");
   const currentUsername = ref("");
   const canManageAccounts = ref(false);
-  const drawerVisible = ref(false);
   const createDialogVisible = ref(false);
   const isLoadingAccounts = ref(false);
   const isSavingAccount = ref(false);
-
-  const emptyAccount: TeamAccount = {
-    id: "",
-    username: "",
-    displayName: "",
-    role: "sub",
-    status: "disabled",
-    lastActive: "",
-    permissionNote: "",
-    createdAt: "",
-    updatedAt: null
-  };
 
   const newAccount = reactive({
     displayName: "",
@@ -58,31 +44,12 @@ export function useCollaborationMock() {
     resetNewAccount();
   }
 
-  const ownerAccount = computed<TeamAccount>(
-    () =>
-      accounts.value.find(item => item.role === "owner") ??
-      accounts.value[0] ??
-      emptyAccount
-  );
-
-  const currentAccount = computed<TeamAccount>(
-    () =>
-      accounts.value.find(item => item.username === currentUsername.value) ??
-      ownerAccount.value
-  );
-
   // 始终展示主账号及其名下的全部子账号，主账号置顶。
   const visibleAccounts = computed(() =>
     [...accounts.value].sort((a, b) => {
       if (a.role === b.role) return 0;
       return a.role === "owner" ? -1 : 1;
     })
-  );
-
-  const selectedAccount = computed(
-    () =>
-      accounts.value.find(item => item.id === selectedAccountId.value) ??
-      currentAccount.value
   );
 
   const accountStats = computed(() => {
@@ -105,17 +72,11 @@ export function useCollaborationMock() {
       accounts.value = workspace.accounts;
       currentUsername.value = workspace.currentUsername;
       canManageAccounts.value = workspace.canManageAccounts;
-      selectedAccountId.value = currentAccount.value.id;
     } catch (error) {
       ElMessage.error(getCollaborationErrorMessage(error));
     } finally {
       isLoadingAccounts.value = false;
     }
-  }
-
-  function openAccount(accountId: string) {
-    selectedAccountId.value = accountId;
-    drawerVisible.value = true;
   }
 
   async function openCreateAccount() {
@@ -158,13 +119,12 @@ export function useCollaborationMock() {
 
     isSavingAccount.value = true;
     try {
-      const created = await createSubAccount({
+      await createSubAccount({
         displayName: newAccount.displayName.trim(),
         username,
         password: newAccount.password
       });
       await loadAccounts();
-      selectedAccountId.value = created.id;
       createDialogVisible.value = false;
       resetNewAccount();
       ElMessage.success("已创建子账号");
@@ -196,7 +156,6 @@ export function useCollaborationMock() {
       accounts.value = accounts.value.map(item =>
         item.id === updated.id ? updated : item
       );
-      selectedAccountId.value = updated.id;
       ElMessage.success(
         nextStatus === "active" ? "子账号已启用" : "子账号已停用"
       );
@@ -214,6 +173,21 @@ export function useCollaborationMock() {
     const account = accounts.value.find(item => item.id === accountId);
     if (!account || account.role === "owner") {
       ElMessage.warning("主账号密码请在个人设置中修改");
+      return;
+    }
+
+    // 一点就换掉密码、旧的马上作废：先问一句（以前藏在详情抽屉里，现在挪到每行的「管理」菜单里，离手更近）
+    try {
+      await ElMessageBox.confirm(
+        `重置「${account.displayName}」的密码？旧密码马上不能用，新密码只显示这一次。`,
+        "重置密码",
+        {
+          confirmButtonText: "重置",
+          cancelButtonText: "取消",
+          type: "warning"
+        }
+      );
+    } catch {
       return;
     }
 
@@ -261,8 +235,6 @@ export function useCollaborationMock() {
     try {
       await removeSubAccount(account.username);
       accounts.value = accounts.value.filter(item => item.id !== accountId);
-      selectedAccountId.value = ownerAccount.value.id;
-      drawerVisible.value = false;
       ElMessage.success("已移除子账号");
     } catch (error) {
       ElMessage.error(getCollaborationErrorMessage(error));
@@ -273,15 +245,13 @@ export function useCollaborationMock() {
 
   return {
     canManageAccounts,
+    currentUsername,
     visibleAccounts,
-    selectedAccount,
     accountStats,
-    drawerVisible,
     createDialogVisible,
     isLoadingAccounts,
     isSavingAccount,
     newAccount,
-    openAccount,
     openCreateAccount,
     createAccount,
     toggleAccountStatus,

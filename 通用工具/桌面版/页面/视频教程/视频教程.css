@@ -1,0 +1,48 @@
+/* 视频教程页自己的样式，都是 vt- 开头。颜色只用 公用/样式.css 里的变量，换皮肤跟着变。 */
+body.vt { grid-template-rows: auto minmax(0, 1fr); }
+.vt-title { margin: 0; font: 600 18px/1.3 var(--serif); letter-spacing: .08em; }
+.vt-main { min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); }
+.vt-main > .welcome { grid-column: 1 / -1; }
+.vt-main > .welcome .acts { margin-top: 8px; }
+
+/* ---------- 左边：课表 ---------- */
+.vt-list { min-height: 0; overflow: auto; padding: 16px 12px 40px 20px; border-right: 1px solid var(--line); }
+.vt-course + .vt-course { margin-top: 22px; }
+.vt-course h2 { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0 0 6px; padding: 0 10px; font: 600 15px/1.5 var(--serif); letter-spacing: .06em; }
+.vt-seen { flex: none; font: 400 12px var(--sans); letter-spacing: 0; color: var(--ink-3); }
+.vt-row {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px;
+  border: 0; border-radius: 7px; background: transparent; cursor: pointer; text-align: left;
+  color: var(--ink-2); font-size: 13.5px; transition: background .15s, color .15s;
+}
+.vt-row:hover { background: var(--dai-soft); color: var(--ink); }
+.vt-row.on { background: var(--sheet); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--line-2); }
+.vt-no { flex: none; width: 22px; height: 22px; display: grid; place-items: center; border: 1px solid var(--line-2); border-radius: 50%; font: 400 12px/1 var(--mono); color: var(--ink-3); }
+.vt-no .ic { width: 12px; height: 12px; stroke-width: 1.8; }
+.vt-row.done .vt-no { border-color: var(--dai); background: var(--dai); color: var(--sheet); }
+.vt-row.on:not(.done) .vt-no { border-color: var(--zhu); color: var(--zhu); }
+.vt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vt-dur { flex: none; font: 400 12px var(--mono); color: var(--ink-4); }
+
+/* ---------- 右边：片子和它下面的字 ---------- */
+.vt-view { min-height: 0; overflow: auto; padding: 22px 30px 40px; }
+.vt-col { width: min(100%, calc((100vh - 290px) * 16 / 9)); min-width: min(100%, 480px); margin: 0 auto; }   /* 片子连同下面的标题一屏放得下 */
+.vt-stage { position: relative; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: var(--night); box-shadow: var(--shadow); }
+.vt-stage video { display: block; width: 100%; height: 100%; background: var(--night); }
+/* 盖在片子上的一层：开始看、正在打开、打不开、看完了 */
+.vt-cover { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px; background: var(--night); color: var(--night-ink); text-align: center; }
+.vt-cover[hidden] { display: none; }
+.vt-go { display: grid; place-items: center; width: 84px; height: 84px; border: 0; border-radius: 50%; cursor: pointer; background: var(--zhu); color: var(--sheet); transition: transform .15s; }
+.vt-go:hover { transform: scale(1.06); }
+.vt-go .ic { width: 34px; height: 34px; margin-left: 4px; }
+.vt-say { font: 15px var(--kai); letter-spacing: .2em; color: var(--night-ink-2); }
+.vt-cover .acts { margin-top: 0; }
+
+.vt-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-top: 18px; }
+.vt-lead { font: 13.5px var(--kai); letter-spacing: .12em; color: var(--ink-3); }
+.vt-h { margin: 2px 0 0; font: 600 24px/1.4 var(--serif); letter-spacing: .06em; }
+.vt-nav { flex: none; display: flex; gap: 8px; }
+.vt-mats { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); }
+.vt-mats h3 { margin: 0 0 6px; font: 400 12px var(--sans); letter-spacing: .24em; color: var(--ink-3); }
+.vt-mat { display: flex; align-items: center; gap: 10px; padding: 5px 0; color: var(--ink-2); }
+.vt-mat span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -36,9 +36,9 @@
 .wp-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) 190px 190px 200px; align-items: center; gap: 0 10px; padding: 6px 12px; border-top: 1px solid var(--line); font-size: 13px; }
 .wp-row:first-child { border-top: 0; }
 .wp-row.head { font-size: 12px; letter-spacing: .14em; color: var(--ink-3); background: var(--paper-2); }
-.wp-row.on { background: rgba(62, 92, 94, .07); }
-.wp-row:not(.head):hover { background: rgba(80, 60, 40, .035); }
-.wp-row.on:hover { background: rgba(62, 92, 94, .1); }
+.wp-row.on { background: rgb(from var(--dai) r g b / .07); }
+.wp-row:not(.head):hover { background: rgb(from var(--ink) r g b / .035); }
+.wp-row.on:hover { background: rgb(from var(--dai) r g b / .1); }
 .wp-name { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .wp-name .ic { color: var(--ink-3); }
 .wp-name .dir { color: var(--zhe); }

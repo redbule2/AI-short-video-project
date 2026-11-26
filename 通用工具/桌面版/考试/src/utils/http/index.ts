@@ -4,6 +4,8 @@ type Options = {
   params?: Record<string, unknown>;
   data?: unknown;
   headers?: unknown;
+  /** 要的是一张图（聊天里的图片）：回的是 { type, bytes }，不是服务器的那一整份 */
+  binary?: boolean;
 };
 
 type DeskReply = { ok: boolean; status: number; data: unknown };
@@ -11,7 +13,7 @@ type DeskReply = { ok: boolean; status: number; data: unknown };
 /** 抛出去的错长得像 axios 的：页面照 error.response.data.message 取话。 */
 export function toHttpError(reply: DeskReply) {
   if (reply.status === 0) {
-    return new Error("连不上 video8.online，看看网络");
+    return new Error("连不上服务器，看看网络");
   }
   return Object.assign(
     new Error(`Request failed with status code ${reply.status}`),
@@ -36,6 +38,9 @@ export async function toDeskOptions(options: Options = {}) {
     }
   } else if (options.data !== undefined) {
     send.body = JSON.parse(JSON.stringify(options.data));
+  }
+  if (options.binary) {
+    send.binary = true;
   }
   return send;
 }

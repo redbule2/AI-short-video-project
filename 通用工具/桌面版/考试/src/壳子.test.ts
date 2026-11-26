@@ -3,20 +3,36 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { reactive } from "vue";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HOME, MENU, allowed, cachedPages, routes } from "./pages";
+import {
+  ALL_MENU,
+  CHAT_HOME,
+  HOME,
+  MENU,
+  TEAM_HOME,
+  TEAM_MENU,
+  allowed,
+  cachedPages,
+  homeOf,
+  isTeamPath,
+  menuOf as menuAt,
+  routes,
+  setTeamMenuSplit
+} from "./pages";
 import { rolesOf, useUserStoreHook } from "@/store/modules/user";
 import { http, toDeskOptions, toHttpError } from "@/utils/http";
 
 const pages = routes.filter(route => route.component);
-const menuOf = (accountType: string) =>
-  MENU.filter(path =>
+/** 这个人在这一排里看得到哪几项 */
+const seen = (menu: string[], accountType: string) =>
+  menu.filter(path =>
     allowed(routes.find(route => route.path === path)?.meta?.roles, rolesOf(accountType))
   );
+const menuOf = (accountType: string) => seen(MENU, accountType);
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("有哪几页", () => {
-  it("十页都在，名字和页里写的一样（缓存靠这个名字认）", () => {
+  it("十二页都在，名字和页里写的一样（缓存靠这个名字认）", () => {
     expect(pages.map(route => route.path)).toEqual([
       "/exam/papers",
       "/exam/results",
@@ -27,7 +43,9 @@ describe("有哪几页", () => {
       "/exam/review",
       "/exam/manual-grading-assignments",
       "/exam/manual-grading",
-      "/collaboration"
+      "/team",
+      "/collaboration",
+      "/chat"
     ]);
     for (const route of pages) {
       const file = fileURLToPath(new URL(`./views${route.path}/index.vue`, import.meta.url));
@@ -43,14 +61,54 @@ describe("有哪几页", () => {
       "ExamMy",
       "ExamPaperEdit",
       "ExamReview",
-      "CollaborationCenter"
+      "MyTeam",
+      "CollaborationCenter",
+      "TeamChat"
     ]);
   });
 
-  it("菜单：团队负责人看不到「我的阅卷」，成员看不到「试卷管理」「团队」", () => {
-    expect(menuOf("owner")).toEqual(["/exam/papers", "/exam/results", "/exam/my", "/collaboration"]);
+  it("「消息」：人人能进；只有它一页，顶上不摆那一排；老壳子并成一排时不往里并（老壳子不在后台收新消息）", () => {
+    const chat = routes.find(route => route.path === CHAT_HOME);
+    expect([chat?.meta?.title, chat?.meta?.bare, allowed(chat?.meta?.roles, [])]).toEqual(["消息", true, true]);
+    expect(routes.filter(route => route.meta?.bare).map(route => route.path)).toEqual([CHAT_HOME]);
+    expect([...ALL_MENU, ...MENU, ...TEAM_MENU]).not.toContain(CHAT_HOME);
+  });
+
+  it("考试那一排：团队负责人看不到「我的阅卷」，成员看不到「试卷管理」；团队不在这一排了", () => {
+    expect(menuOf("owner")).toEqual(["/exam/papers", "/exam/results", "/exam/my"]);
     expect(menuOf("sub")).toEqual(["/exam/results", "/exam/manual-grading-tasks", "/exam/my"]);
     expect(allowed(routes.find(route => route.path === HOME)?.meta?.roles, [])).toBe(true);
+  });
+
+  it("我的团队那一排：人人有「我的团队」，「账号管理」只有团队负责人有", () => {
+    expect(seen(TEAM_MENU, "owner")).toEqual(["/team", "/collaboration"]);
+    expect(seen(TEAM_MENU, "sub")).toEqual(["/team"]);
+    expect(allowed(routes.find(route => route.path === TEAM_HOME)?.meta?.roles, [])).toBe(true);
+    const titleOf = (path: string) => routes.find(route => route.path === path)?.meta?.title;
+    expect([titleOf("/team"), titleOf("/collaboration")]).toEqual(["我的团队", "账号管理"]);
+  });
+
+  it("壳子菜单里有「我的团队」一项：在哪一项里就摆哪一排；进不去的页退回这一项自己的首页", () => {
+    setTeamMenuSplit(true);
+    try {
+      expect([isTeamPath("/team"), isTeamPath("/collaboration"), isTeamPath("/exam/my")]).toEqual([true, true, false]);
+      expect(menuAt("/team")).toBe(TEAM_MENU);
+      expect(menuAt("/collaboration")).toBe(TEAM_MENU);
+      expect(menuAt("/exam/results")).toBe(MENU);
+      expect(homeOf("/collaboration")).toBe(TEAM_HOME); // 成员进不了账号管理：回我的团队，不是掉到考试去
+      expect(homeOf("/exam/papers")).toBe(HOME);
+    } finally {
+      setTeamMenuSplit(false);
+    }
+  });
+
+  it("老壳子（菜单里没有「我的团队」一项）配上新页面：两排并成一排，团队那两页不会没处进", () => {
+    expect(ALL_MENU).toEqual([...MENU, "/team", "/collaboration"]);
+    expect(menuAt("/exam/my")).toBe(ALL_MENU);
+    expect(menuAt("/team")).toBe(ALL_MENU);
+    expect(seen(menuAt("/exam/my"), "owner")).toEqual(["/exam/papers", "/exam/results", "/exam/my", "/team", "/collaboration"]);
+    expect(seen(menuAt("/exam/my"), "sub")).toEqual(["/exam/results", "/exam/manual-grading-tasks", "/exam/my", "/team"]);
+    expect(homeOf("/collaboration")).toBe(HOME); // 只有一排、一个首页
   });
 });
 
@@ -78,10 +136,11 @@ describe("问服务器", () => {
     const file = (await toDeskOptions({ data: form })).file as { name: string; type: string; bytes: ArrayBuffer };
     expect([file.name, file.type, [...new Uint8Array(file.bytes)]]).toEqual(["图.png", "image/png", [1, 2, 3]]);
     expect(await toDeskOptions()).toEqual({});
+    expect(await toDeskOptions({ binary: true })).toEqual({ binary: true }); // 要一张图（聊天里的）：壳子回图本身
   });
 
   it("连不上说看看网络；状态码不对带着服务器的话抛出去", () => {
-    expect(toHttpError({ ok: false, status: 0, data: null }).message).toBe("连不上 video8.online，看看网络");
+    expect(toHttpError({ ok: false, status: 0, data: null }).message).toBe("连不上服务器，看看网络");
     const error = toHttpError({ ok: false, status: 500, data: { message: "坏了" } }) as Error & { response: unknown };
     expect(error.response).toEqual({ status: 500, data: { message: "坏了" } });
   });
@@ -92,7 +151,7 @@ describe("问服务器", () => {
     expect(await http.request("get", "/api/exam/my", { params: { a: 1 } })).toEqual({ success: true, data: 1 });
     expect(api).toHaveBeenCalledWith("get", "/api/exam/my", { query: { a: 1 } });
     api.mockResolvedValueOnce({ ok: false, status: 0, data: null } as never);
-    await expect(http.post("/api/exam/papers", { data: {} })).rejects.toThrow("连不上 video8.online");
+    await expect(http.post("/api/exam/papers", { data: {} })).rejects.toThrow("连不上服务器");
   });
 
   it("不在桌面软件里：说清楚", async () => {

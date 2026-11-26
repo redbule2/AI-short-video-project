@@ -1,0 +1,169 @@
+/* 壳子自己的（不是照搬的）：「我的团队」的样式。
+   底子是考试页的「清样纸」（views/exam/exam-shared.css：桌面、纸、标题、章、按钮）；
+   两页团队页共用的（纸一样宽、右上那一排、圆头像、小窗、一句提示）在 style/panel.css。这里只管一组组的人。颜色都接在皮肤的变量上。 */
+
+/* 一个部门一组：组名（下级部门把上级写在前头）、几个人，下面一道细线；负责人指到这一组，右头浮出改名、删除 */
+.team-group + .team-group {
+  margin-top: 26px;
+}
+
+.team-group-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 34px;
+  padding-bottom: 4px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 400;
+  border-bottom: 1px solid var(--rule);
+}
+
+.team-group-name {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--exam-serif);
+  font-size: 17px;
+  color: var(--ink);
+  letter-spacing: 0.12em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-group-name small {
+  font-size: 13px;
+  color: var(--graphite);
+  letter-spacing: 0.04em;
+}
+
+.team-group-count {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.team-group-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.team-group:hover .team-group-actions,
+.team-group:focus-within .team-group-actions {
+  opacity: 1;
+}
+
+.team-group-empty {
+  padding: 6px 12px 2px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--graphite);
+}
+
+/* 一组里的人：像名册那样一行排三个（窄了两个）；指到谁，谁后面浮出「发消息」「调整」 */
+.team-roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 2px 12px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.team-person {
+  --person-bg: color-mix(in srgb, var(--dai) 7%, var(--white));
+
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 64px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.team-person:hover,
+.team-person:focus-within {
+  background: var(--person-bg);
+}
+
+/* 停用的人：名字、头像淡下去，「调整」照常 */
+.team-person.muted > .desk-avatar,
+.team-person.muted > .team-person-text {
+  opacity: 0.5;
+}
+
+.team-person-text {
+  min-width: 0;
+}
+
+.team-person-name {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.team-person-name strong {
+  overflow: hidden;
+  font-family: var(--exam-serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-person-name .exam-stamp {
+  flex-shrink: 0;
+  padding: 0 5px;
+  font-size: 11px;
+  line-height: 1.55;
+  letter-spacing: 0.1em;
+  border-width: 1px;
+}
+
+.team-person-title {
+  margin-top: 3px;
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--graphite);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-person-title.empty {
+  color: var(--ink-3);
+}
+
+/* 指到人上才浮出来的两个钮：盖在这一格的右半边，底色和指上去的那格一样，名字长了被盖住也不乱 */
+.team-person-actions {
+  position: absolute;
+  inset: 0 0 0 auto;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 0 10px 0 28px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--person-bg) 22px);
+  border-radius: 0 6px 6px 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.team-person:hover .team-person-actions,
+.team-person:focus-within .team-person-actions {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.team-person-actions .exam-btn {
+  min-height: 30px;
+  padding: 2px 12px;
+  letter-spacing: 0.06em;
+}

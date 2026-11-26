@@ -5,10 +5,35 @@
    装的时候不出安装向导（静默装）、装完自己重开：我们的安装包能选装哪（oneClick 关着），不静默的话升级也会停在向导最后一页等人点「完成」
    （11-24 试升级时看到；new-video8-8 那边是 quitAndInstall(false, true)，没照它）。
    开发规范第 21 条：版本号只升不降（allowDowngrade 关着）。 */
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
 const MAX_BYTES = 1073741824;   // 一次更新的文件合计不超过 1 GiB
+
+/* 升级包的签名（开发规范第 34 条）：线路不加密，路上的人能把升级包调包，所以每个包都签名，软件验过才装。
+   发版时 scripts/pack.mjs 拿发版电脑上的私钥（%USERPROFILE%\.liushuixian\update-signing-key.pem，不进 git、不进安装包）
+   签「版本号 + 安装包的 sha512」，写进 latest.yml 的 signature 一行；这里拿公钥验下好的安装包。
+   私钥丢了只能换一对：新公钥写在这里，装着旧版的人得手动重装一次。 */
+const UPDATE_KEY = `-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAXUxCfHH3yRxtxjYFqnAWEby8eqzm0KOA6N4WCTLDvZk=
+-----END PUBLIC KEY-----
+`;
+const signedText = (version, sha512) => `liushuixian-update\n${version}\n${sha512}`;
+
+/* 下好的安装包和签名对不对得上：对得上回 null，对不上回原因（electron-updater 的约定：回原因它就删掉这个包、报错） */
+async function verifyPackage(file, info, key = UPDATE_KEY) {
+  const sig = info && typeof info.signature === 'string' ? info.signature.trim() : '';
+  if (!sig) return '升级包没有签名';
+  if (!info.version) return '升级信息里没有版本号';
+  const sum = await new Promise((resolve, reject) => {
+    const h = crypto.createHash('sha512');
+    fs.createReadStream(file).on('error', reject).on('data', d => h.update(d)).on('end', () => resolve(h.digest('base64')));
+  });
+  let ok = false;
+  try { ok = crypto.verify(null, Buffer.from(signedText(String(info.version), sum)), key, Buffer.from(sig, 'base64')); } catch (e) { ok = false; }
+  return ok ? null : '升级包的签名对不上，可能被人改过';
+}
 
 /* 这一版要下的文件合计多大；大小缺了、不是正整数的回 null（不下） */
 function packageBytes(info) {
@@ -29,7 +54,7 @@ function packageBytes(info) {
 
 function makeUpdater({ app, dialog, getWindow, log, onChange }) {
   let up = null, enabled = false, status = 'disabled', message = '';
-  let checking = null, downloading = null, allowed = false, prompted = false;
+  let checking = null, downloading = null, allowed = false, prompted = false, pending = null;
   const set = (s, m = '') => { status = s; message = m; log.info('更新：' + s + (m ? '　' + m : '')); if (onChange) onChange(); };   // 一变就说一声：设置里「版本」那一行跟着变
   const result = () => ({ status, message });
 
@@ -45,8 +70,12 @@ function makeUpdater({ app, dialog, getWindow, log, onChange }) {
   function configure() {
     if (!app.isPackaged) return set('unsupported', '开发时不查更新');
     if (process.env.ANTOU_DESK_NO_UPDATE === '1') return set('disabled', '环境变量关了更新');
-    if (!fs.existsSync(path.join(process.resourcesPath, 'app-update.yml'))) return set('disabled', '这个包没带更新通道');
+    const feed = path.join(process.resourcesPath, 'app-update.yml');
+    if (!fs.existsSync(feed)) return set('disabled', '这个包没带更新通道');
+    /* electron-updater 只在 app-update.yml 有 publisherName 时才验下好的包（electron-builder.yml 的 publish 里写着）：没有就不查，免得装没验过的 */
+    if (!/^publisherName:/m.test(fs.readFileSync(feed, 'utf8'))) return set('disabled', '这个包不验升级包的签名，不查更新');
     up = require('electron-updater').autoUpdater;
+    up.verifyUpdateCodeSignature = (names, file) => verifyPackage(file, pending);   // 换掉它自带的（那个认 Windows 的证书，我们没买）
     enabled = true;
     set('idle');
     up.logger = { info: m => log.info('[更新] ' + m), warn: m => log.warn('[更新] ' + m), error: m => log.error('[更新] ' + m), debug() {} };
@@ -61,6 +90,7 @@ function makeUpdater({ app, dialog, getWindow, log, onChange }) {
       if (n === null) { allowed = false; return set('error', '更新文件缺少大小信息，没下'); }
       if (n > MAX_BYTES) { allowed = false; return set('error', '更新文件超过 1 GiB，没下'); }
       allowed = true;
+      pending = info;   // 带着 latest.yml 里的签名：下好以后拿它验
       set('available', '发现新版本 ' + info.version);
       download();
     });
@@ -107,4 +137,4 @@ function makeUpdater({ app, dialog, getWindow, log, onChange }) {
   return { configure, check, status: result, install, get enabled() { return enabled; } };
 }
 
-module.exports = { makeUpdater, packageBytes, MAX_BYTES };
+module.exports = { makeUpdater, packageBytes, MAX_BYTES, UPDATE_KEY, signedText, verifyPackage };

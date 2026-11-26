@@ -38,4 +38,9 @@ nsis:
   shortcutName: AI短视频流水线
 publish:
   provider: generic
-  url: https://video8.online/desktop-updates/liushuixian/win
+  # 直接连服务器的 IP、不加密（2026-11-26 用户定，和 main.js 的 API 一个道理）：所以升级包都签名，软件验过才装（lib/updater.js）
+  # 服务器上是 /home/video8deploy/public/desktop-updates/liushuixian/win（网站根目录里的 desktop-updates 链到 public 下面），发版：pack.mjs publish
+  url: http://43.143.83.166/desktop-updates/liushuixian/win
+  # 写进 app-update.yml：有它 electron-updater 才验下好的升级包（怎么验在 lib/updater.js：验我们自己的签名，不是 Windows 证书，exe 本身不签）
+  publisherName:
+    - AI短视频流水线

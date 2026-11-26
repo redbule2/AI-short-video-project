@@ -18,7 +18,7 @@ function page({ here = {}, hist = {}, extra = [], jobs = [], sel = null, moveFai
   const ctx = {
     URLSearchParams, TextEncoder, TextDecoder, Map, Set, console,
     h: (tag, attrs, ...kids) => { const x = el(tag, attrs, ...kids); els.push(x); return x; },
-    toast: (t, k) => log.push(['提示', t, k || '']), closePop: () => {}, hideHov: () => {},
+    toast: (t, k) => log.push(['提示', t, k || '']), closePop: () => {}, hideHov: () => {}, icon: () => null,
     SHELL: null, F: { name: '试验' }, PAGE: { sides: w => log.push(['重读', [...w].join()]) },
     refresh: async () => { log.push(['刷新']); },
     clipsOf: () => ({ vids: Object.keys(here), all: new Set([...Object.keys(here), ...extra]), time: new Map(Object.entries(here)) }),
@@ -95,6 +95,39 @@ test('成片里没有、只在历史记录里的：照样打开，网址带 old=
   const q = srcOf(els);
   assert.equal(q.get('v'), '11-13_改1.mp4');
   assert.equal(q.get('old'), '1');
+});
+
+const textOf = n => typeof n === 'string' ? n : Array.isArray(n) ? n.map(textOf).join('') : n && typeof n === 'object' ? n.children.map(textOf).join('') : '';
+
+test('「已出片」标签：审完收进历史记录的也算（11-24），全在历史记录里的写「片在历史记录」；成片里老名字的照旧标第几条；历史记录里的一版只写「已出片」（11-25）', () => {
+  const { RP } = page();
+  assert.equal(RP.tag([]), null);
+  const hist = RP.tag([{ vid: '11-12_改5.mp4', old: true }]);
+  assert.equal(textOf(hist), '已出片 · 片在历史记录');
+  assert.match(hist.attrs.title, /11-12_改5\.mp4（在历史记录里）/);
+  assert.equal(textOf(RP.tag([{ vid: '第3-4段_第14条_镜头1-5改6_样片480p.mp4', old: false }, { vid: '1-5_改6.mp4', old: true }])), '已出片 第14条');
+  assert.equal(textOf(RP.tag([{ vid: '1-5.mp4', old: false }])), '已出片');
+  const inHist = RP.tag([{ vid: '11-12_改5.mp4', old: true }], true);
+  assert.equal(textOf(inHist), '已出片', '历史记录那一页那一排都是历史记录里的，不再写「片在历史记录」');
+  assert.match(inHist.attrs.title, /^这一版出的样片：\n11-12_改5\.mp4（在历史记录里）$/);
+});
+
+test('历史记录里的一版「审片」（11-25）：没出过片是灰的；点开网址带 hp＝那一版的文件、v＝它出的头一条，不带 k、pr', () => {
+  const { RP, s, els, ctx } = page();
+  const it = { file: '历史记录/提示词/第3-4段/11-13_改1__20261120-101010.txt', label: '镜头11-13 改1', name: '11-13_改1__20261120-101010.txt' };
+  const b0 = RP.oldBtn(s, it, []);
+  assert.equal(b0.attrs.disabled, true);
+  assert.equal(b0.attrs.title, '这一版没出过片');
+  const b1 = RP.oldBtn(s, it, [{ vid: '11-13_改1.mp4', old: false, mtime: 9 }, { vid: '11-13_改1_2.mp4', old: true, mtime: 5 }]);
+  assert.equal(b1.attrs.disabled, false);
+  assert.match(b1.attrs.title, /成片里 1 条、历史记录里 1 条.*这一版的字/);
+  b1.attrs.onclick();
+  const q = srcOf(els);
+  assert.deepEqual([q.get('p'), q.get('s'), q.get('v'), q.get('hp'), q.get('k'), q.get('pr'), q.get('old')], ['试验', '3-4', '11-13_改1.mp4', it.file, null, null, null]);
+  assert.match(els.find(x => x.tag === 'iframe').attrs.title, /镜头11-13 改1/);
+  assert.equal(typeof ctx.DESK_HOST.close, 'function');
+  RP.oldBtn(s, it, [{ vid: '11-13_改1_2.mp4', old: true, mtime: 5 }]).attrs.onclick();
+  assert.equal(srcOf(els.filter(x => x.tag === 'iframe').slice(-1)).get('old'), '1', '头一条在历史记录里：带 old=1');
 });
 
 test('收起：先问审片台（没存的批注先存上），它说不行就留着；收起以后重读', async () => {

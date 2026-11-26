@@ -3,6 +3,7 @@
    审片不再单独一页：「提示词」那一步每条上点「审片」，弹出审片台（看片、对照提示词、白模、关键帧，写批注）。
    只摆这一条出的样片（它几版出的都算，成片里的、历史记录里的；公用/样片归属.js 的 ofPrompt），进去以后换不到别的提示词（流水线/审片台这一条.js）。
    「这条不要了」在这里挪（流水线.json 的选定、沿用跟着去掉）：移进 历史记录/成片/第N段，名字不改，批注、截图跟着走。
+   11-25 起历史记录里的一版也能审（oldBtn：网址带 hp＝那一版的文件，审片台照它摆字、只摆它出的样片）。
    要先引 流水线.js、公用/样片归属.js、流水线/历史记录.js。测试：测试/审片弹窗_测试.cjs
    ============================================================ */
 (function () {
@@ -21,6 +22,14 @@ function firstOf(items) {
 /* 最新这一版（e.name）出的样片，成片、历史记录里的都算。「审片」能不能点、提示词页「已出片 / 没出片」筛选和「已出片」标签都照它
    （11-24 他问「没有出片的提示词为什么会有审片按钮」：筛选原来只数成片，审完收进历史记录的算成没出片，审片却能点） */
 const madeOf = (s, e, list, items = clipsFor(s, e, list)) => items.filter(x => x.ver === e.name);
+/* 出过片的那一条标出来（11-25 从 提示词.html 挪来，历史记录里的一版也用）：哪几条样片（悬停看名字）。made：[{ vid, old }]，
+   审完收进历史记录的也算（11-24），全在历史记录里的写明；inHist：历史记录里的一版（那一排都是历史记录里的，不再写「片在历史记录」） */
+function tag(made, inHist) {
+  if (!made.length) return null;
+  const here = made.filter(x => !x.old), nos = [...new Set(here.map(x => ClipOf.noOf(x.vid)).filter(Boolean))].sort((a, b) => a - b);
+  return h('span', { class: 'fs-state ok', title: '这一版出的样片：\n' + made.map(x => x.vid + (x.old ? '（在历史记录里）' : '')).join('\n') }, icon('check'),
+    '已出片' + (inHist ? '' : !here.length ? ' · 片在历史记录' : nos.length ? ' 第' + nos.join('、') + '条' : ''));
+}
 /* 那一行的「审片」：最新这一版出过片才能点。
    前几版出过、最新这一版还没出的也灰掉（11-22 晚他定：「没出片」里的不该能审）；能点以后，弹窗里几版的片照样都摆 */
 function btn(s, e, list) {
@@ -36,12 +45,24 @@ function open(s, e, list, want) {
   const items = clipsFor(s, e, list);
   if (!items.length) { toast('这一条还没有样片', 'err'); return; }
   const it = (want && items.find(x => x.vid === want.vid && !!x.old === !!want.old)) || firstOf(items);
-  closePop(); hideHov();
-  if (SHELL) SHELL.remove();
   const q = new URLSearchParams({ p: F.name, s: s.段, v: it.vid, k: e.key });
   if (it.ver) q.set('pr', it.ver);
   if (it.old) q.set('old', '1');
-  const frame = h('iframe', { class: 'wf-shell-frame', title: '审片 · ' + e.label, src: '审片台.html?' + q });
+  show(s, q, e.label);
+}
+/* 历史记录里的一版（11-25 他要的：历史记录里也看片）：it 是 HistView 列的那一版（{ file: 历史记录/提示词/第N段/原名__时间.txt, label, name }），
+   items：它出的样片 [{ vid, old, mtime }]（HistView.made）。审片台照网址的 hp 摆这一版的字、只摆这一版出的样片 */
+function oldBtn(s, it, items) {
+  const here = items.filter(x => !x.old).length, old = items.length - here, say = [here ? '成片里 ' + here + ' 条' : '', old ? '历史记录里 ' + old + ' 条' : ''].filter(Boolean).join('、');
+  return h('button', { class: 'btn sm', type: 'button', disabled: !items.length,
+    title: items.length ? '弹出来看片：左边放这一版出的样片（' + say + '），右边对照这一版的字' : '这一版没出过片',
+    onclick: () => { const x = items[0]; show(s, new URLSearchParams({ p: F.name, s: s.段, v: x.vid, hp: it.file, ...(x.old ? { old: '1' } : {}) }), it.label); } }, '审片');
+}
+/* 盖上审片台（iframe）：q 是它的网址参数 */
+function show(s, q, label) {
+  closePop(); hideHov();
+  if (SHELL) SHELL.remove();
+  const frame = h('iframe', { class: 'wf-shell-frame', title: '审片 · ' + label, src: '审片台.html?' + q });
   const box = h('div', { class: 'wf-shell wf-rv' }, h('div', { class: 'wf-rv-box' }, frame));
   const keep = async () => {   // 审片台没存的批注先存上；它说不行（正在写的那一条没存）就留着
     try { const w = frame.contentWindow; if (w && w.DESK && await w.DESK.leave() === false) return false; } catch (err) { /* 那一页坏了：照样收起 */ }
@@ -78,5 +99,5 @@ async function retire(s, vid) {
   toast(left.length ? '样片移走了，这几样没跟上：' + left.join('、') : '「' + vid + '」移进 历史记录 / ' + crel.join(' / ') + ' 了', left.length ? 'err' : undefined);
   return '';
 }
-window.ReviewPop = Object.freeze({ clipsFor, madeOf, firstOf, btn, open, retire });
+window.ReviewPop = Object.freeze({ clipsFor, madeOf, firstOf, tag, btn, oldBtn, open, retire });
 })();

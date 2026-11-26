@@ -85,6 +85,8 @@
      11-24 他问「没有出片的提示词为什么会有审片按钮」（11-12_改5、13b-14_改2 的片审完收进了历史记录，筛选算没出片，审片却能点）：
      筛选和标签改成和「审片」能不能点同一套（ReviewPop.madeOf）：历史记录/成片 里的也算，全在历史记录里的标「已出片 · 片在历史记录」。
    2026-11-19 筛选那一排最右边加「历史记录」（他要的：默认不摆，点了只看历史记录里收进去的视频提示词：看字、@图片 能点开、和现在的比；流水线/历史记录.js）。
+     11-25 他问「历史记录里为什么只能看到提示词、看不到视频」：看历史记录时「全部 / 已出片 / 没出片」照样筛（数历史记录里的几版），
+     出过片的那一版标「已出片」、点「审片」弹出审片台，左边放它出的样片、右边是那一版的字（哪一版出的照名字和出片时间认：公用/历史记录.js 的 made）。
    2026-11-21 他定：一条提示词那一行只摆 接着写（AI 写的稿是 进去改）、批准出片、看任务书、审片。
      审片：这一版出过片才能点（没出是灰的），直接到审片那一步、打开这条样片对照看、写批注；这一版出了几条，先挑一条。
      出关键帧…、删除 收进最右边的「⋯」；挂白模、挂关键帧 到写稿页右栏「资产」里点「插入」；看排好的 拿掉了。
@@ -1060,13 +1062,6 @@ function frameWordLine(s, e, ws, edit) {   // edit：上面那一行没摆（挂
       edit && e.draft && hung.size && !X.filmed.has(e.name) ? h('button', { class: 'fl-link mute', type: 'button', title: '多挂几张、去掉几张：素材里的关键帧句子跟着重排', onclick: () => framesDlg(s, e) }, '改…') : null),
     h('div', { class: 'wf-grid' }, ws.map(w => kfChip(s, e, w, hung.get(w.img) || ''))));
 }
-/* 出过片的那一条标出来：哪几条样片（悬停看名字）。made：ReviewPop.madeOf 给的 [{ vid, old }]，审完收进历史记录的也算（11-24），全在历史记录里的写明 */
-function madeTag(made) {
-  if (!made.length) return null;
-  const here = made.filter(x => !x.old), nos = [...new Set(here.map(x => ClipOf.noOf(x.vid)).filter(Boolean))].sort((a, b) => a - b);
-  return h('span', { class: 'fs-state ok', title: '这一版出的样片：\n' + made.map(x => x.vid + (x.old ? '（在历史记录里）' : '')).join('\n') }, icon('check'),
-    '已出片' + (!here.length ? ' · 片在历史记录' : nos.length ? ' 第' + nos.join('、') + '条' : ''));
-}
 /* 资产改了（11-17，公用/资产改过.js）：这一条写好以后又改了哪几样，一键交给 AI 照着改。
    11-17 晚他问「资产改了，怎么没有按钮更新提示词」：以前只有改过的字给按钮，换图、换音色、换出场的写「要你自己看」；现在哪一种都给 */
 function assetLine(s, e, ed, busy) {
@@ -1100,7 +1095,7 @@ function rowOf(s, e, made, list) {
   const btn = (label, fn, cls, title, off) => h('button', { class: 'btn sm ' + (cls || ''), type: 'button', title: title || null, disabled: !!off, onclick: fn }, label);
   const hand = isHandDraft(e), fz = X.filmed.get(e.name);   // fz：这一版出过片（11-22），原稿不能改
   return h('div', { class: 'wf-item', 'data-name': e.name },
-    h('div', { class: 'wf-item-h' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), madeTag(made),
+    h('div', { class: 'wf-item-h' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), ReviewPop.tag(made),   // 出过片的标出来（审片弹窗.js，历史记录里的一版也用它）
       hand ? h('span', { class: 'fs-state', title: '你来写的稿：在写稿页接着写事件脚本，写好点「交给 AI 写完」，分镜和生成目标、素材这几块由 AI 写' }, '手写稿')
         : e.draft ? h('span', { class: 'fs-state', title: '在写稿页里改过：AI 估的每镜秒数可能不准，出片时会提醒' }, '改过') : null,
       stale ? [h('span', { class: 'fs-state', style: 'color:var(--zhu);border-color:var(--zhu-line)', title: imp ? '剧本重新定稿了，AI 对新旧剧本说这一条要再看：' + imp.为什么 : ed.length ? '这一条写好以后，这几样资产又改了：' + AssetEdit.say(ed) + '。点下面「照新资产改」交给 AI 对一遍；打开看一眼还对得上就沿用' : '这一条写好以后，前面（剧本、资产、拍摄风格）又动过。打开看一眼还对得上' }, imp ? '剧本改了，待核对' : ed.length ? '资产改了，待核对' : '待核对'),
@@ -1171,21 +1166,25 @@ const pfSet = v => { store(PF_KEY, v === '全部' ? null : v); rerender(); };
 const pfPin = () => window.UI.pinUnder(document.getElementById('wf-filter'), document.getElementById('wf-steps'));
 window.addEventListener('scroll', pfPin, { passive: true });
 window.addEventListener('resize', pfPin);
-function filterBar(list, made, pf, hn) {   // hn：历史记录里有几版（还在读是 null）
-  const n = list.filter(e => made.get(e.name).length).length, cnt = { 全部: list.length, 已出片: n, 没出片: list.length - n }, pfOn = list.length > 1 && !HistView.on;
+/* 11-25 起看历史记录时也筛（他要的）：数的是历史记录里的几版，出片时用的是哪一版照 HistView.made 认（还没读好不写数） */
+function filterBar(s, list, made, pf, hc) {   // hc：历史记录里的几版（HistView.prompts，还在读 items 是 null）
+  const on = HistView.on, hm = on ? HistView.made(s) : null, all = on ? hc.items || [] : list;
+  const n = on ? (hm ? all.filter(it => (hm.get(it.name) || []).length).length : null) : list.filter(e => made.get(e.name).length).length;
+  const cnt = { 全部: all.length, 已出片: n, 没出片: n == null ? null : all.length - n }, pfOn = all.length > 1;
   setTimeout(pfPin, 0);   // 画上去以后再量钉在哪
   return h('div', { class: 'wf-filter', id: 'wf-filter' }, h('span', { class: 'faint small' }, '只看'),
-    pfOn ? window.UI.chips(PF.map(([v, t]) => [v, t + ' ' + cnt[v]]), pf, pfSet) : null,
-    !pfOn ? null : h('span', { class: 'faint small', title: '和「审片」能不能点同一套：成片 / 第N段、历史记录 / 成片 / 第N段 里有这一版出的样片，名字和这一版对得上（如「1-5_改1.mp4」，老名字里带「镜头1-5改6」「提示词01」）。成片里的还认以前在审片页选定过的、这一段只有一条提示词的。\n审完收进历史记录的也算出过片；删提示词时带「__时间」挪走的不算。样片名是自己起的、对不上的，认不出来，算没出片。' }, '成片、历史记录里有这一版的样片就算'),
-    h('span', { class: 'sp' }), HistView.chip(hn, () => rerender(), '视频提示词'));
+    pfOn ? window.UI.chips(PF.map(([v, t]) => [v, t + (cnt[v] == null ? '' : ' ' + cnt[v])]), pf, pfSet) : null,
+    !pfOn ? null : on ? h('span', { class: 'faint small', title: '照名字认是哪一条，照出片的时间认是哪一版：收进历史记录以前出的算这一版的，以后出的算后来那一版的。\n删提示词时跟着收进去的样片（名字带同一个时间）就是那一版的；样片后来做的（后期补的、混剪的）也算。' }, '出片时用的是这一版就算')
+      : h('span', { class: 'faint small', title: '和「审片」能不能点同一套：成片 / 第N段、历史记录 / 成片 / 第N段 里有这一版出的样片，名字和这一版对得上（如「1-5_改1.mp4」，老名字里带「镜头1-5改6」「提示词01」）。成片里的还认以前在审片页选定过的、这一段只有一条提示词的。\n审完收进历史记录的也算出过片；删提示词时带「__时间」挪走的不算。样片名是自己起的、对不上的，认不出来，算没出片。' }, '成片、历史记录里有这一版的样片就算'),
+    h('span', { class: 'sp' }), HistView.chip(HistView.count(hc), () => rerender(), '视频提示词'));
 }
 function render() {
   const s = sceneNow(), seg = s.段;   // 不等资产：什么时候写你自己定（没图的写的时候用文字锁）
   const list = promptsOf(seg).sort((a, b) => ((vpNo(a.name) || 1e9) - (vpNo(b.name) || 1e9)) || window.Core.vpSort(a.key, b.key)), stale = list.filter(e => promptStale(s, e.name));   // 第1条、第2条……在前，别的按原稿名排：4-6 在 4-6_补1 前面，接力稿前半条在后半条前面（公用/核心.js）
   const writing = AI.jobs.filter(j => j.事 === '写提示词' && j.段 === seg && jobLive(j) && !list.some(e => e.name === j.名));
-  const made = new Map(list.map(e => [e.name, ReviewPop.madeOf(s, e, list)])), pf = list.length > 1 ? pfNow() : '全部';   // 只有一条不摆筛选。made：和「审片」能不能点同一套（11-24）
-  const shown = pf === '全部' ? list : list.filter(e => (made.get(e.name).length > 0) === (pf === '已出片'));
   const hc = HistView.prompts(s), hn = HistView.count(hc);   // 历史记录里收进去的（11-19）：点「历史记录」只看它们
+  const made = new Map(list.map(e => [e.name, ReviewPop.madeOf(s, e, list)])), pf = (HistView.on ? (hc.items || []).length : list.length) > 1 ? pfNow() : '全部';   // 只有一条不摆筛选。made：和「审片」能不能点同一套（11-24）；看历史记录时数历史记录里的几版（11-25）
+  const shown = pf === '全部' ? list : list.filter(e => (made.get(e.name).length > 0) === (pf === '已出片'));
   ShotFloat.paint(s);  // 左边的镜头表（镜头表浮窗.js）
   return [
     h('div', { class: 'wf-bar' },
@@ -1197,8 +1196,8 @@ function render() {
       PROMPT_BTN ? h('button', { class: 'btn sm' + (list.length ? '' : ' ink'), onclick: () => newPrompt(s) }, icon('plus'), list.length ? '再写一条提示词' : '写提示词') : null),
     writing.length ? h('div', { class: 'wf-jobs' }, writing.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题)))) : null,
     jobFailed('写提示词', seg, j => !list.some(e => e.name === j.名)),
-    list.length > 1 || hn || HistView.on ? filterBar(list, made, pf, hn) : null,
-    HistView.on ? HistView.promptView(s, hc)
+    list.length > 1 || hn || HistView.on ? filterBar(s, list, made, pf, hc) : null,
+    HistView.on ? HistView.promptView(s, hc, pf, () => pfSet('全部'))
       : shown.length || !list.length ? h('div', { class: 'wf-items' }, shown.map(e => rowOf(s, e, made.get(e.name), list)))
       : h('p', { class: 'fn-note wf-none' }, pf === '已出片' ? '这一段还没有出过片的提示词。' : '这一段的提示词都出过片了。', h('button', { class: 'fl-link', type: 'button', onclick: () => pfSet('全部') }, '看全部')),
   ];

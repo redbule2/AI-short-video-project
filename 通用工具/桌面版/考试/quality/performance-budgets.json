@@ -175,6 +175,8 @@
     "frontend.exam.assignDialog.open": 1,
     "frontend.exam.publishDialog.open": 1,
     "frontend.exam.archivedCopy.click": 1,
+    "frontend.exam.paperImport.postPerFile": 1,
+    "frontend.exam.paperImport.followupList": 1,
     "frontend.exam.take.pause": 1,
     "frontend.exam.take.resume": 1,
     "frontend.exam.resultsPage.enter": 2,
@@ -700,6 +702,12 @@
       "frontend/src/features/exam/examRequestBudget.test.ts"
     ],
     "frontend.exam.archivedCopy.click": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.paperImport.postPerFile": [
+      "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.paperImport.followupList": [
       "frontend/src/features/exam/examRequestBudget.test.ts"
     ],
     "frontend.exam.take.pause": [

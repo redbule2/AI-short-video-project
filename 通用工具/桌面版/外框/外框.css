@@ -1,8 +1,10 @@
 /* 外框页的样子：顶栏、窗口三个按钮、菜单、设置。
-   颜色全走 --k- 开头的变量：换皮肤只换这一组（现在只有一套「宣纸」，和流水线 公用/样式.css 的颜色对着）。 */
+   颜色全走 --k- 开头的变量：换皮肤只换这一组。:root 里是默认的「宣纸」，另外几套在下面各一段，
+   壳子把现在用哪一套写在 <html data-skin> 上（名字对着 lib/routes.js 的 SKINS；流水线各页的那一半在 公用/样式.css、公用/皮肤.css）。 */
 :root {
-  --bar: 40px;                         /* 顶栏高、左边菜单宽：壳子给（lib/routes.js），这两行是它还没给时的数 */
+  --bar: 40px;                         /* 顶栏高、左边菜单宽、设置那一栏宽：壳子给（lib/routes.js），这三行是它还没给时的数 */
   --rail: 64px;
+  --drawer: 360px;
   --k-bg: #ece5d8;                     /* 顶栏、左边菜单的底 */
   --k-line: #d6cab6;                   /* 和中间那块之间的细线 */
   --k-stage: #f4efe6;                  /* 中间那块（模块页还没出来时看得到） */
@@ -15,15 +17,44 @@
   --k-on: #3e5c5e;                     /* 现在在的那一项 */
   --k-on-bg: rgba(62, 92, 94, .12);
   --k-close: #b3372a;                  /* 关闭钮指上去 */
+  --k-close-ink: #fff;                 /* 那时候钮上的叉 */
+  --k-dot: #b3372a;                    /* 菜单上没看条数的那个红圆点 */
+  --k-dot-ink: #fff;                   /* 圆点上的字 */
   --k-serif: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
   --k-sans: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+/* 墨夜：全暗 */
+:root[data-skin="墨夜"] {
+  color-scheme: dark;
+  --k-bg: #191714; --k-line: #302c26; --k-stage: #1f1d19; --k-sheet: #2a2722;
+  --k-ink: #e6ddcf; --k-ink-2: #c2b9aa; --k-ink-3: #948b7e;
+  --k-hover: rgba(230, 221, 207, .08); --k-press: rgba(230, 221, 207, .15);
+  --k-on: #8fbdbf; --k-on-bg: rgba(127, 176, 178, .15); --k-close: #c8442b;
+  --k-dot: #c8442b; --k-dot-ink: #fff;
+}
+/* 青瓷：全亮，清冷 */
+:root[data-skin="青瓷"] {
+  --k-bg: #e2ebe8; --k-line: #c6d4d0; --k-stage: #eef3f1; --k-sheet: #fbfdfc;
+  --k-ink: #22302e; --k-ink-2: #485a58; --k-ink-3: #7a8b88;
+  --k-hover: rgba(34, 48, 46, .07); --k-press: rgba(34, 48, 46, .13);
+  --k-on: #2c6c70; --k-on-bg: rgba(44, 108, 112, .12); --k-close: #b3372a;
+  --k-dot: #b3372a; --k-dot-ink: #fff;
+}
+/* 校样台：深木桌（纸铺在流水线各页里；外框整个是桌面），现在在的那一项用朱砂衬着 */
+:root[data-skin="校样台"] {
+  color-scheme: dark;
+  --k-bg: #1a1815; --k-line: #34312b; --k-stage: #211f1a; --k-sheet: #2a2822;
+  --k-ink: #d7d0be; --k-ink-2: #bfb7a5; --k-ink-3: #979080;
+  --k-hover: rgba(215, 208, 190, .08); --k-press: rgba(215, 208, 190, .15);
+  --k-on: #f2eddf; --k-on-bg: rgba(200, 68, 43, .34); --k-close: #c8442b;
+  --k-dot: #c8442b; --k-dot-ink: #fff;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
 body {
   margin: 0; overflow: hidden; user-select: none; cursor: default;
-  display: grid; grid-template: var(--bar) minmax(0, 1fr) / auto minmax(0, 1fr);
+  display: grid; grid-template: var(--bar) minmax(0, 1fr) / auto minmax(0, 1fr) auto;   /* 左边菜单、中间那块、设置那一栏 */
   color: var(--k-ink); background: var(--k-stage); font: 13px/1.4 var(--k-sans);
   -webkit-font-smoothing: antialiased;
 }
@@ -52,7 +83,7 @@ button:focus-visible { outline: 2px solid var(--k-on); outline-offset: -3px; }
 #win svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1; }
 #win button:hover { background: var(--k-hover); color: var(--k-ink); }
 #win button:active { background: var(--k-press); }
-#win button[data-win="close"]:hover { background: var(--k-close); color: #fff; }
+#win button[data-win="close"]:hover { background: var(--k-close); color: var(--k-close-ink); }
 #win button[data-win="close"]:active { background: var(--k-close); opacity: .82; }
 html[data-blur] #name, html[data-blur] #title, html[data-blur] #set, html[data-blur] #win svg { opacity: .5; }   /* 窗口不在前面时更淡 */
 
@@ -70,31 +101,51 @@ html[data-rail] #rail { display: flex; }
 #rail button:hover { background: var(--k-hover); color: var(--k-ink); }
 #rail button.on { background: var(--k-on-bg); color: var(--k-on); font-weight: 600; }
 
-/* ---------- 中间那块：模块页盖在上面；还没有页时写一句话；点了「设置」露出设置 ---------- */
+/* ---------- 没看的条数：左边那一条贴在图标右上角，顶栏里跟在名字后面 ---------- */
+.dot { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--k-dot); color: var(--k-dot-ink); font: 600 10.5px/16px var(--k-sans); letter-spacing: 0; text-align: center; }
+#rail button { position: relative; }
+#rail .dot { position: absolute; top: 3px; left: 30px; }
+#tabs .dot { margin-left: 2px; }
+
+/* ---------- 中间那块：模块页盖在上面；还没有页时写一句话 ---------- */
 #stage { grid-column: 2; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; }
 #busy { margin: 0; color: var(--k-ink-2); font-size: 16px; letter-spacing: .06em; }
 
-/* ---------- 设置：一行一件事，左边写是什么，右边是能点的 ---------- */
-#set-page { place-self: stretch; overflow-y: auto; padding: 40px 28px 48px; }
-#set-page > * { max-width: 640px; margin-inline: auto; }
-#set-page header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-#set-page h1 { margin: 0; font: 600 22px/1.2 var(--k-serif); letter-spacing: .22em; }
-.row { display: flex; align-items: center; gap: 10px; min-height: 72px; padding: 14px 0; border-top: 1px solid var(--k-line); }
-.row h2 { flex: none; width: 104px; margin: 0; color: var(--k-ink-3); font: 400 13px/1.4 var(--k-sans); letter-spacing: .08em; }
-.row p { flex: 1; min-width: 0; margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+/* ---------- 设置：从右边拉出来的一栏，宽照壳子给的 --drawer（中间那一页正好让开这么宽）。一行一件事，上面写是什么，下面是能点的 ---------- */
+#set-page {
+  grid-column: 3; grid-row: 2; width: var(--drawer); overflow-y: auto; padding: 16px 20px 28px;
+  background: var(--k-bg); border-left: 1px solid var(--k-line);
+  animation: set-in .2s cubic-bezier(.2, .8, .2, 1);
+}
+@keyframes set-in { from { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { #set-page { animation: none; } }
+#set-page header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+#set-page h1 { margin: 0; font: 600 18px/1.2 var(--k-serif); letter-spacing: .22em; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px 0; border-top: 1px solid var(--k-line); }
+.row h2 { flex: 1 0 100%; margin: 0; color: var(--k-ink-3); font: 400 12.5px/1.4 var(--k-sans); letter-spacing: .08em; }
+.row p { flex: 1 0 100%; margin: 0 0 2px; font-size: 13.5px; overflow-wrap: anywhere; }
 .row p span { user-select: text; cursor: text; }
 .row small { display: block; margin-top: 3px; color: var(--k-ink-3); font-size: 12px; }
+.row > small { flex: 1 0 100%; margin-top: 0; }
 .btn { flex: none; padding: 6px 14px; border: 1px solid var(--k-line); border-radius: 6px; background: var(--k-sheet); font-size: 13px; letter-spacing: .06em; white-space: nowrap; transition: background .12s, border-color .12s; }
 .btn:hover { border-color: var(--k-ink-3); }
 .btn:active { background: var(--k-press); }
 .btn:focus-visible, .pick button:focus-visible { outline-offset: 2px; }
-/* 菜单放哪：两张小图挑一张 */
-.pick { flex: 1; display: flex; gap: 10px; }
-.pick button { display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 10px; border: 1px solid var(--k-line); border-radius: 8px; background: var(--k-sheet); color: var(--k-ink-2); font-size: 13px; letter-spacing: .06em; transition: background .12s, border-color .12s; }
+/* 菜单放哪：两张小图挑一张；一排两张 */
+.pick { flex: 1 0 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pick button { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--k-line); border-radius: 8px; background: var(--k-sheet); color: var(--k-ink-2); font-size: 13px; letter-spacing: .06em; transition: background .12s, border-color .12s; }
 .pick button:hover { border-color: var(--k-ink-3); }
 .pick button.on { border-color: var(--k-on); background: var(--k-on-bg); color: var(--k-on); font-weight: 600; }
 .pick i { position: relative; width: 40px; height: 28px; overflow: hidden; border: 1.5px solid currentColor; border-radius: 4px; opacity: .85; }
 .pick i::before { content: ''; position: absolute; left: 0; top: 0; background: currentColor; opacity: .4; }
 .pick [data-arg="left"] i::before { width: 9px; height: 100%; }
 .pick [data-arg="top"] i::before { width: 100%; height: 7px; }
-#set-note { margin-block: 0; padding-top: 16px; border-top: 1px solid var(--k-line); color: var(--k-ink-3); font-size: 12px; user-select: text; cursor: text; }
+/* 皮肤：四张小样挑一张。小样上三块：底、纸、点题色，是各套皮肤自己的颜色（不跟着现在这套变），所以写在这里 */
+.pick.skins i { border: 1px solid var(--s-line); opacity: 1; background: var(--s-bg); }
+.pick.skins i::before { left: 6px; top: 5px; width: 19px; height: 16px; border-radius: 2px; background: var(--s-sheet); opacity: 1; box-shadow: 0 0 0 1px var(--s-line); }
+.pick.skins i::after { content: ''; position: absolute; right: 5px; bottom: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--s-dot); }
+.pick [data-arg="宣纸"] { --s-bg: #f4efe6; --s-sheet: #fffdf9; --s-line: #d6cab6; --s-dot: #a83a2c; }
+.pick [data-arg="墨夜"] { --s-bg: #1f1d19; --s-sheet: #2a2722; --s-line: #464138; --s-dot: #cf5a44; }
+.pick [data-arg="青瓷"] { --s-bg: #eef3f1; --s-sheet: #fbfdfc; --s-line: #c6d4d0; --s-dot: #2c6c70; }
+.pick [data-arg="校样台"] { --s-bg: #211f1a; --s-sheet: #f2eddf; --s-line: #4a463d; --s-dot: #c8442b; }
+#set-note { margin-block: 0; padding-top: 14px; border-top: 1px solid var(--k-line); color: var(--k-ink-3); font-size: 12px; overflow-wrap: anywhere; user-select: text; cursor: text; }

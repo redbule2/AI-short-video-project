@@ -95,12 +95,12 @@
   /* ---------- 页面上的：顶栏按钮、抽屉、隔一会儿问一次 ---------- */
   const CSS = `
 .bg-btn .wt-ring { font-size: 12.5px; color: var(--zhe); }
-.bg-btn.on { background: rgba(80, 60, 40, .08); color: var(--ink); }
+.bg-btn.on { background: rgb(from var(--ink) r g b / .08); color: var(--ink); }
 @media (max-width: 1279px) { .bg-btn .bg-tx { display: none; } .bg-btn { padding-left: 9px; padding-right: 9px; } }   /* 窗口窄：只留转圈和个数，给左边的项目名让地方 */
-.bg-n { min-width: 18px; height: 18px; padding: 0 5px; display: inline-grid; place-items: center; box-sizing: border-box; border-radius: 9px; background: var(--zhe); color: #fff; font: 600 11px/1 var(--sans); letter-spacing: 0; }
+.bg-n { min-width: 18px; height: 18px; padding: 0 5px; display: inline-grid; place-items: center; box-sizing: border-box; border-radius: 9px; background: var(--zhe); color: var(--on-accent); font: 600 11px/1 var(--sans); letter-spacing: 0; }
 .bg-n.you { background: var(--zhu); }
 .bg-drawer { position: fixed; top: 60px; right: 0; bottom: 0; z-index: 45; width: min(420px, 100vw); display: flex; flex-direction: column; box-sizing: border-box;
-  border-left: 1px solid var(--line-2); background: var(--sheet); box-shadow: -18px 0 44px -26px rgba(40, 28, 16, .45); transform: translateX(104%); transition: transform .18s ease; }
+  border-left: 1px solid var(--line-2); background: var(--sheet); box-shadow: -18px 0 44px -26px rgb(from var(--shade) r g b / .45); transform: translateX(104%); transition: transform .18s ease; }
 .bg-drawer.on { transform: none; }
 .bg-drawer[hidden] { display: none; }
 .bg-h { flex: none; display: flex; align-items: baseline; gap: 10px; padding: 14px 14px 10px 20px; border-bottom: 1px solid var(--line); }
@@ -108,7 +108,7 @@
 .bg-sum { font-size: 12.5px; color: var(--ink-3); }
 .bg-h .sp { flex: 1; }
 .bg-x { align-self: center; width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; background: none; color: var(--ink-3); cursor: pointer; }
-.bg-x:hover { background: rgba(80, 60, 40, .07); color: var(--ink); }
+.bg-x:hover { background: rgb(from var(--ink) r g b / .07); color: var(--ink); }
 .bg-list { flex: 1; overflow: auto; padding: 6px 10px 18px; }
 .bg-g { display: flex; align-items: baseline; gap: 8px; margin: 14px 10px 4px; font: 600 12.5px var(--sans); color: var(--ink-2); }
 .bg-g em { font-style: normal; font-weight: 400; color: var(--ink-3); }

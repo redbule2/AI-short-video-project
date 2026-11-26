@@ -632,6 +632,24 @@ export async function createExamPaper(body: SavePaperMetaRequest) {
   return unwrap(response);
 }
 
+/** 整卷导入的请求体:卷面信息 + 全部题目(后端 ImportPaperRequest)。 */
+export interface ImportPaperRequest extends SavePaperMetaRequest {
+  questions: ExamQuestionInput[];
+}
+
+/**
+ * 整卷导入:一次 POST 落成一张草稿(题目、答案、解析一起进),等主账号复核后再发布。
+ * 题目合不合规矩由后端逐题校验,错在第几题会写在 message 里。
+ */
+export async function importExamPaper(body: ImportPaperRequest) {
+  const response = await http.request<ApiResponse<{ paperId: string }>>(
+    "post",
+    "/api/exam/papers/import",
+    { data: body }
+  );
+  return unwrap(response);
+}
+
 export async function updateExamPaperMeta(
   paperId: string,
   body: SavePaperMetaRequest

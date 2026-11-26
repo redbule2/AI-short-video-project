@@ -7,23 +7,21 @@
    ============================================================ */
 
 .exam-page {
-  --paper: #dcd6c5;
-  --paper-2: #d2ccb9;
-  --paper-hi: #e7e1d1;
-  --field: #d4cdba;
-  --field-edge: #c2b9a4;
-  --paper-edge: #c9c2ae;
-  --rule: #c6bfab;
-  --ink: #1c1b19;
-  --ink-body: #2c2a25;
-  --graphite: #615d54;
-  --vermilion: #c8442b;
-  --vermilion-deep: #a8331e;
-  --azure: #2c5f7c;
-  --azure-soft: #4a7e9b;
-  --jade: #3c6a4c;
-  --jade-soft: #4f7c5f;
-  --desk: #211f1a;
+  --paper: var(--sheet);
+  --paper-2: color-mix(in srgb, var(--sheet) 60%, var(--g-paper-2));
+  --field: color-mix(in srgb, var(--sheet) 70%, var(--g-paper-2));
+  --field-edge: var(--line-2);
+  --paper-edge: var(--line-2);
+  --rule: var(--line);
+  --ink-body: color-mix(in srgb, var(--ink) 85%, var(--ink-2));
+  --graphite: var(--ink-2);
+  --vermilion: var(--zhu);
+  --vermilion-deep: var(--zhu-up);
+  --azure: var(--dai);
+  --azure-soft: color-mix(in srgb, var(--dai) 80%, var(--white));
+  --jade: var(--lv);
+  --jade-soft: color-mix(in srgb, var(--lv) 80%, var(--white));
+  --desk: var(--g-paper);
   --exam-serif:
     georgia, "Source Han Serif SC", "Noto Serif SC", "Noto Serif CJK SC",
     "Songti SC", simsun, serif;
@@ -41,14 +39,14 @@
   padding: clamp(24px, 4vh, 56px) 20px;
   overflow-x: hidden;
   font-family: var(--exam-sans);
-  color: #c4beaf;
+  color: var(--ink-2);
   background:
-    radial-gradient(80% 55% at 50% -8%, rgb(0 0 0 / 20%), transparent 70%),
+    radial-gradient(80% 55% at 50% -8%, light-dark(rgb(from var(--shade) r g b / 5%), rgb(from var(--shade) r g b / 20%)), transparent 70%),
     radial-gradient(
       120% 95% at 16% -8%,
-      #2c2a24 0%,
+      var(--paper-up) 0%,
       var(--desk) 52%,
-      #19170f 100%
+      var(--g-paper-2) 100%
     );
 }
 
@@ -64,7 +62,7 @@
   pointer-events: none;
   background: repeating-linear-gradient(
     180deg,
-    rgb(255 255 255 / 1.4%) 0 1px,
+    rgb(from var(--ink) r g b / 1.4%) 0 1px,
     transparent 1px 64px
   );
   opacity: 0.5;
@@ -79,16 +77,14 @@
   color: var(--ink-body);
   background: linear-gradient(
     178deg,
-    var(--paper-hi) 0%,
+    var(--white) 0%,
     var(--paper) 38%,
     var(--paper-2) 100%
   );
   border: 1px solid var(--paper-edge);
   border-radius: 6px;
   box-shadow:
-    0 1px 0 rgb(255 255 255 / 6%),
-    0 14px 38px rgb(0 0 0 / 42%),
-    0 3px 10px rgb(0 0 0 / 30%);
+    var(--shadow);
 }
 
 .exam-sheet-head {
@@ -148,7 +144,7 @@
 }
 
 .exam-stamp.is-solid-vermilion {
-  color: var(--paper-hi);
+  color: var(--on-accent);
   background: var(--vermilion);
   border-color: var(--vermilion-deep);
 }
@@ -191,7 +187,7 @@
 
 /* 朱砂实底:页面唯一主行动 */
 .exam-btn.is-primary {
-  color: var(--paper-hi);
+  color: var(--on-accent);
   background: var(--vermilion);
   border: 1px solid var(--vermilion-deep);
 }
@@ -215,7 +211,7 @@
 
 .exam-btn.is-outline-primary:hover:not(:disabled) {
   color: var(--vermilion-deep);
-  background: rgb(200 68 43 / 8%);
+  background: rgb(from var(--zhu) r g b / 8%);
   border-color: var(--vermilion-deep);
 }
 
@@ -225,9 +221,9 @@
 }
 
 .exam-btn.is-azure {
-  color: #f0ece0;
+  color: var(--on-dai);
   background: var(--azure);
-  border: 1px solid #234c64;
+  border: 1px solid color-mix(in srgb, var(--dai) 80%, var(--ink));
 }
 
 .exam-btn.is-azure:hover:not(:disabled) {
@@ -318,22 +314,22 @@
    弹层 teleport 出 .exam-page 拿不到这些变量,见下方 .exam-popper。 */
 .exam-page {
   --el-color-primary: var(--azure);
-  --el-fill-color-blank: rgb(255 255 255 / 14%);
+  --el-fill-color-blank: rgb(from var(--hi, var(--white)) r g b / 14%);
   --el-border-color: var(--field-edge);
   --el-border-color-hover: var(--graphite);
-  --el-input-bg-color: rgb(255 255 255 / 14%);
+  --el-input-bg-color: rgb(from var(--hi, var(--white)) r g b / 14%);
   --el-input-border-color: var(--field-edge);
   --el-input-hover-border-color: var(--graphite);
   --el-input-focus-border-color: var(--azure);
   --el-input-text-color: var(--ink);
   --el-text-color-regular: var(--ink-body);
   --el-text-color-placeholder: var(--graphite);
-  --el-checkbox-bg-color: rgb(255 255 255 / 14%);
+  --el-checkbox-bg-color: rgb(from var(--hi, var(--white)) r g b / 14%);
   --el-checkbox-text-color: var(--ink-body);
   --el-checkbox-checked-text-color: var(--ink);
   --el-checkbox-input-border: 1px solid var(--field-edge);
   --el-disabled-bg-color: transparent;
-  --el-fill-color-light: rgb(44 95 124 / 10%);
+  --el-fill-color-light: rgb(from var(--dai) r g b / 10%);
 }
 
 /* 安静控件:平时是纸上的一行字 + 虚线空格,hover/focus 才浮出可写的槽。
@@ -353,13 +349,13 @@
 
 .exam-field-quiet:hover .el-select__wrapper,
 .exam-field-quiet:hover .el-input__wrapper {
-  background: rgb(255 255 255 / 20%);
+  background: rgb(from var(--ink) r g b / 4%);
   border-bottom-color: var(--graphite);
 }
 
 .exam-field-quiet .el-select__wrapper.is-focused,
 .exam-field-quiet .el-input__wrapper.is-focus {
-  background: rgb(44 95 124 / 8%);
+  background: rgb(from var(--dai) r g b / 8%);
   border-bottom: 1.5px solid var(--azure);
 }
 
@@ -375,14 +371,14 @@
 
 /* 弹层(teleport 到 body,同 .exam-assign-dialog:必须自带一份令牌,否则回落成白底) */
 .exam-popper.el-popper {
-  --el-bg-color-overlay: #e7e1d1;
-  --el-fill-color-light: rgb(44 95 124 / 10%);
-  --el-text-color-regular: #2c2a25;
-  --el-text-color-secondary: #615d54;
-  --el-color-primary: #2c5f7c;
+  --el-bg-color-overlay: var(--white);
+  --el-fill-color-light: rgb(from var(--dai) r g b / 10%);
+  --el-text-color-regular: var(--ink);
+  --el-text-color-secondary: var(--ink-2);
+  --el-color-primary: var(--dai);
 
-  border-color: #c2b9a4 !important;
-  box-shadow: 0 10px 28px rgb(0 0 0 / 32%);
+  border-color: var(--line-2) !important;
+  box-shadow: 0 10px 28px rgb(from var(--shade) r g b / 32%);
 }
 
 .exam-popper .el-select-dropdown__item {
@@ -409,23 +405,23 @@
 .exam-popper .exam-option em {
   font-size: 11px;
   font-style: normal;
-  color: #615d54;
+  color: var(--ink-2);
 }
 
 .exam-popper .exam-option i {
   font-size: 11px;
   font-style: normal;
-  color: #c8442b;
+  color: var(--zhu);
 }
 
 .exam-popper .el-select-dropdown__item.is-selected {
   font-weight: 500;
-  color: #2c5f7c;
+  color: var(--dai);
 }
 
 .exam-popper .el-popper__arrow::before {
-  background: #e7e1d1 !important;
-  border-color: #c2b9a4 !important;
+  background: var(--white) !important;
+  border-color: var(--line-2) !important;
 }
 
 /* ---------- 数字 ---------- */
@@ -441,7 +437,7 @@
   background: linear-gradient(
     90deg,
     var(--field) 25%,
-    var(--paper-hi) 45%,
+    var(--white) 45%,
     var(--field) 65%
   );
   background-size: 240% 100%;
@@ -509,7 +505,7 @@
 
 .exam-link:hover {
   color: var(--azure-soft);
-  background: rgb(44 95 124 / 8%);
+  background: rgb(from var(--dai) r g b / 8%);
 }
 
 .exam-link:focus-visible {
@@ -523,7 +519,7 @@
 
 .exam-link.is-danger:hover {
   color: var(--vermilion-deep);
-  background: rgb(200 68 43 / 8%);
+  background: rgb(from var(--zhu) r g b / 8%);
 }
 
 /* ---------- 指派/发布弹窗(teleport 到 body,试卷管理与出题工作台共用) ----------
@@ -531,15 +527,14 @@
    否则 .exam-btn.is-primary 的 var(--vermilion) 失效、主按钮变透明。 */
 .exam-assign-dialog {
   max-width: calc(100vw - 24px);
-  --paper-hi: #e7e1d1;
-  --field: #d4cdba;
-  --field-edge: #c2b9a4;
-  --ink-body: #2c2a25;
-  --graphite: #615d54;
-  --vermilion: #c8442b;
-  --vermilion-deep: #a8331e;
-  --azure: #2c5f7c;
-  --azure-soft: #4a7e9b;
+  --field: color-mix(in srgb, var(--sheet) 70%, var(--g-paper-2));
+  --field-edge: var(--line-2);
+  --ink-body: color-mix(in srgb, var(--ink) 85%, var(--ink-2));
+  --graphite: var(--ink-2);
+  --vermilion: var(--zhu);
+  --vermilion-deep: var(--zhu-up);
+  --azure: var(--dai);
+  --azure-soft: color-mix(in srgb, var(--dai) 80%, var(--white));
   --exam-sans:
     "Noto Sans SC", system-ui, -apple-system, "Segoe UI", "PingFang SC",
     "Microsoft YaHei", sans-serif;
@@ -548,7 +543,7 @@
 .exam-assign-dialog .assign-label {
   margin: 12px 0 6px;
   font-size: 13px;
-  color: #606266;
+  color: var(--ink-2);
 }
 
 .exam-assign-dialog .assign-subs {
@@ -562,15 +557,15 @@
 .exam-assign-dialog .assign-sub-username {
   margin-left: 6px;
   font-size: 12px;
-  color: #909399;
+  color: var(--ink-3);
 }
 
 .exam-assign-dialog .assign-sub-owner {
   padding: 1px 6px;
   margin-left: 6px;
   font-size: 11px;
-  color: #c8442b;
-  border: 1px solid #c8442b;
+  color: var(--zhu);
+  border: 1px solid var(--zhu);
   border-radius: 3px;
 }
 
@@ -590,7 +585,7 @@
 .exam-assign-dialog .assign-empty {
   padding: 18px 0;
   font-size: 13px;
-  color: #909399;
+  color: var(--ink-3);
   text-align: center;
 }
 

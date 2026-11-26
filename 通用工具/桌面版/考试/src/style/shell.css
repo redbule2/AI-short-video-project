@@ -2,11 +2,11 @@
    菜单高 56px：考试、团队各页都按「整屏高减 56px」排的（旧网站原来的顶栏就这么高）。 */
 :root {
   --shell-nav: 56px;
-  --shell-desk: #211f1a;
-  --shell-line: rgb(220 210 190 / 12%);
-  --shell-text: #a59c8c;
-  --shell-ink: #eee4d1;
-  --shell-mark: #c8442b;
+  --shell-desk: var(--paper);
+  --shell-line: var(--line);
+  --shell-text: var(--ink-3);
+  --shell-ink: var(--ink);
+  --shell-mark: var(--zhu);
 }
 
 body {
@@ -53,6 +53,11 @@ body {
   width: 100%;
   height: calc(100vh - var(--shell-nav));
   overflow-x: hidden;
+}
+
+/* 顶上不摆那一排的页（「消息」）：整屏都给它 */
+.app-main.bare {
+  height: 100vh;
 }
 
 .main-content {

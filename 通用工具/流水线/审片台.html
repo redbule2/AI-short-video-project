@@ -299,6 +299,7 @@ body.dk { display: block; height: 100vh; overflow: hidden; background: var(--nig
 <script src="../公用/核心.js"></script>
 <script src="../公用/资产路径.js"></script>
 <script src="../公用/样片归属.js"></script>
+<script src="../公用/历史记录.js"></script>
 <script src="../公用/底座.js"></script>
 <script src="../公用/界面.js"></script>
 <script src="../公用/审片.js"></script>
@@ -358,7 +359,7 @@ async function readText(rel) { return unbom(C.decodeText((await FS.read(pjAt(rel
 const D = {
   fps: 24, frames: 0, dur: 0, url: '',
   notesAt: [], shotsDir: [], notes: [], general: '', mdMtime: 0, q: Promise.resolve(), saveT: 0, saving: false, err: '', thumbs: new Map(),
-  prompts: [], prompt: '', promptKeep: '', text: '', refs: [], shots: [], timed: '', cuts: [],
+  prompts: [], prompt: '', promptRel: '', promptKeep: '', text: '', refs: [], shots: [], timed: '', cuts: [],
   clips: [], cur: -1, pick: -1, loop: false, loopAt: -1, rate: 1, muted: false, tab: 'shot',
   form: null, sel: null, opening: false, box: null, checking: false,
 };
@@ -520,16 +521,20 @@ function frameShots() {
     s.kf = s.kfs.length ? s.kfs[0].ref : '';
   });
 }
-async function loadPrompt(name) {
-  Object.assign(D, { prompt: name, text: '', refs: [], shots: [], timed: '', cuts: [], cur: -1, pick: -1, secs: SECS.get(name) || null, kfAt: '', kfPin: '' });
-  if (!name) return;
+async function loadPrompt(name, old) {   // old：历史记录里的一版（11-25，审片台这一条.js 的 oldPrompt）：字、挂的图、每一镜几秒照它
   const dir = '提示词/' + SEGD + '/';
-  try { D.text = await readText(dir + name); } catch (e) { toast('提示词读不了：' + e.message, 'err'); return; }
-  let side = null;
-  try { side = JSON.parse(await readText(dir + name.replace(/\.txt$/i, '') + '_写稿.json')); } catch (e) { /* 不是网页上写的稿 */ }
+  Object.assign(D, { prompt: old && old.err ? '' : name, promptRel: old ? old.rel : dir + name, text: '', refs: [], shots: [], timed: '', cuts: [], cur: -1, pick: -1, secs: (old ? old.secs : SECS.get(name)) || null, kfAt: '', kfPin: '' });
+  if (old && old.err) toast('历史记录里的这一版读不了：' + old.err, 'err');
+  if (!D.prompt) return;
   const out = new Map();   // 参考素材映射里登记的，和写稿页挂的（同一个编号以挂图为准）
-  for (const r of MAP.get(name) || []) if (r && /^@(图片|视频|音频)\d+$/.test(r.ref)) out.set(r.ref, { ref: r.ref, rel: AP.fromOld(clean(r.path)), name: str(r.name).trim(), sha: str(r.sha256) });
-  for (const [ref, p] of Object.entries((side && side.挂图) || {})) if (/^@(图片|视频|音频)\d+$/.test(ref)) { const o = out.get(ref), same = !!o && o.rel === AP.fromOld(clean(p)); out.set(ref, { ref, rel: AP.fromOld(clean(p)), name: same ? o.name : '', sha: same ? o.sha : '' }); }
+  if (old) { D.text = old.text; for (const r of old.refs) out.set(r.ref, { ref: r.ref, rel: r.path, name: '', sha: r.sha }); }
+  else {
+    try { D.text = await readText(dir + name); } catch (e) { toast('提示词读不了：' + e.message, 'err'); return; }
+    let side = null;
+    try { side = JSON.parse(await readText(dir + name.replace(/\.txt$/i, '') + '_写稿.json')); } catch (e) { /* 不是网页上写的稿 */ }
+    for (const r of MAP.get(name) || []) if (r && /^@(图片|视频|音频)\d+$/.test(r.ref)) out.set(r.ref, { ref: r.ref, rel: AP.fromOld(clean(r.path)), name: str(r.name).trim(), sha: str(r.sha256) });
+    for (const [ref, p] of Object.entries((side && side.挂图) || {})) if (/^@(图片|视频|音频)\d+$/.test(ref)) { const o = out.get(ref), same = !!o && o.rel === AP.fromOld(clean(p)); out.set(ref, { ref, rel: AP.fromOld(clean(p)), name: same ? o.name : '', sha: same ? o.sha : '' }); }
+  }
   D.refs = [...out.values()].filter(r => r.rel).map(r => ({ ...r, label: r.name || stem(fileOf(r.rel)) }));
   for (const r of D.refs) r.kind = kindOfRef(r);
   D.refs.sort((a, b) => refType(a.ref) - refType(b.ref) || refNum(a.ref) - refNum(b.ref));
@@ -941,7 +946,7 @@ function cmpNote() {   // 写批注这一刻旁边摆着什么（写进批注的
   if (CMP.src === 'img') return '资产图 ' + (CMP.item && CMP.item.ref ? CMP.item.ref + ' ' : '') + shown(pjAt(atOf(CMP.rel)));
   return '';
 }
-const mdText = () => Review.notesText({ title: VID, video: shown(pjAt(VID_REL)), prompt: D.prompt ? shown(pjAt('提示词/' + SEGD + '/' + D.prompt)) : D.promptKeep, fps: D.fps, general: D.general, notes: D.notes,
+const mdText = () => Review.notesText({ title: VID, video: shown(pjAt(VID_REL)), prompt: D.prompt ? shown(pjAt(D.promptRel)) : D.promptKeep, fps: D.fps, general: D.general, notes: D.notes,
   where: '流水线「审片」', shotWord: '镜头 N', rel: !LINK.abs, show: shown, shotsDir: D.shotsDir, kfShow: kf => kf.rel ? shown(pjAt(kf.rel)) : kf.raw });
 const readMd = () => Review.readNotes(D);
 const saveNow = () => Review.saveNotes(D, mdText, () => { paintStatus(); paintTabs(); });   // 写进文件；批注全删光就删掉文件
@@ -1167,7 +1172,7 @@ function panePrompt() {
     if (isHead(t)) { box.append(h('div', { class: 'pl head' }, t)); return; }
     box.append(h('div', { class: 'pl' + (i != null ? ' ln' + (i === D.cur ? ' on' : '') : ''), 'data-shot': i != null ? String(i) : null, title: i != null ? (D.timed ? '点一下跳到镜头' + D.shots[i].no + '开头' : '点一下看镜头' + D.shots[i].no) : null, onclick: i != null ? () => gotoShot(i) : null }, rich(line)));
   });
-  return [h('div', { class: 'pt-h' }, h('b', null, vpLabel(D.prompt)), h('span', { class: 'faint small' }, D.prompt)), box];
+  return [h('div', { class: 'pt-h' }, h('b', null, vpLabel(D.prompt)), h('span', { class: 'faint small' }, fileOf(D.promptRel))), box];
 }
 /* 只滚右边这一栏（scrollIntoView 会连外面几层一起滚） */
 function scrollPane(el, center) {
@@ -1443,9 +1448,10 @@ setInterval(async () => {
   await loadPromptList();
   const fam = await DeskOne.load(), it = DeskOne.items.find(x => x.vid === VID && !!x.old === OLD);   // 这一条（网址的 k）和它出过的样片
   const md = await readMd(), has = n => !!n && !!fam && fam.vers.includes(n) && D.prompts.some(p => p.name === n);   // 只认这一条的几版
-  const want = [it && it.ver, md && md.prompt, Q.get('pr')].find(has) || (fam ? fam.name : '');   // 照名字认的那一版 → 批注里记过的 → 弹窗给的 → 这一条最新的一版
+  const old = await DeskOne.oldPrompt();   // 历史记录里的一版（11-25）：就照它，不认批注里记的
+  const want = old ? fam.name : [it && it.ver, md && md.prompt, Q.get('pr')].find(has) || (fam ? fam.name : '');   // 照名字认的那一版 → 批注里记过的 → 弹窗给的 → 这一条最新的一版
   if (md && md.prompt && !fam) D.promptKeep = md.promptLine;   // 认不出是哪一条：批注里原来记的照原样留着
-  await loadPrompt(want);
+  await loadPrompt(want, old);
   await kfLoad();
   D.clips = DeskOne.others();
   restoreCmp();

@@ -1,5 +1,5 @@
 'use strict';
-/* 登录 video8.online（new-video8-8 后端 AuthController）：
+/* 登录 video8 的服务器（new-video8-8 后端 AuthController；地址在 main.js 的 API，现在直接连 IP）：
    POST /api/auth/login 带 { username, password }；/api/auth/register 多带 ownerUsername（团队负责人的账号）；/api/auth/refresh-token 带 { refreshToken }
    回的都是 { success, message, data }；账号密码不对、账号停用、凭证过期也是 200 + success:false。
    规矩：账号、密码不许空，注册要再输一遍密码、还要填对一个团队（注册完是这个团队的成员，不能自己新建团队）。
@@ -7,6 +7,8 @@
 const OFFLINE_DAYS = 7;   // 连不上服务器时：上回联网登录成功 7 天之内照样能用
 const API_OK = ['/api/exam/', '/api/collaboration/'];   // 页面能经 api() 问的只有这两块
 const CRLF = String.fromCharCode(13, 10);
+const SLOW = 120000;   // 毫秒：传图、拿图等这么久（别的 10 秒，main.js 里定的）
+const LONG = { '/api/collaboration/chat/updates': 40000 };   // 等新消息：服务器最多挂 25 秒才回，这边多等一截
 
 const KEEP = ['accessToken', 'refreshToken', 'expires', 'username', 'nickname', 'avatar', 'accountType', 'ownerUsername'];
 const pick = d => Object.fromEntries(KEEP.filter(k => d && d[k] != null).map(k => [k, d[k]]));
@@ -18,7 +20,7 @@ function decide(saved, r, now) {
   if (r.ok) return { ok: true, saved: { ...saved, ...pick(r.data), lastOk: now } };
   if (r.offline) {
     if ((saved.lastOk || 0) + OFFLINE_DAYS * 864e5 > now) return { ok: true, offline: true, saved };
-    return { ok: false, keep: true, why: `连不上 video8.online，离上回联网登录已过 ${OFFLINE_DAYS} 天。联上网再开，或者重新登录。` };
+    return { ok: false, keep: true, why: `连不上服务器，离上回联网登录已过 ${OFFLINE_DAYS} 天。联上网再开，或者重新登录。` };
   }
   return { ok: false, why: r.message || '登录过期了，请重新登录' };
 }
@@ -38,16 +40,16 @@ function makeAuth({ api, fetch, store, log, now = () => Date.now() }) {
     try {
       res = await fetch(api + pathname, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body) });
     } catch (e) {
-      log.warn('连不上 video8.online', { path: pathname, error: String(e && e.message || e) });
-      return { ok: false, offline: true, message: '连不上 video8.online，看看网络' };
+      log.warn('连不上服务器', { path: pathname, error: String(e && e.message || e) });
+      return { ok: false, offline: true, message: '连不上服务器，看看网络' };
     }
     let j = null;
     try { j = await res.json(); } catch (e) { /* 不是 JSON */ }
     if (!res.ok) {
-      log.warn('video8.online 回了 ' + res.status, { path: pathname, message: j && j.message });
-      return { ok: false, offline: res.status >= 500, message: (j && j.message) || `video8.online 出错了（${res.status}），稍后再试` };
+      log.warn('服务器回了 ' + res.status, { path: pathname, message: j && j.message });
+      return { ok: false, offline: res.status >= 500, message: (j && j.message) || `服务器出错了（${res.status}），稍后再试` };
     }
-    if (!j || j.success !== true || !j.data) return { ok: false, message: (j && j.message) || 'video8.online 的回答看不懂' };
+    if (!j || j.success !== true || !j.data) return { ok: false, message: (j && j.message) || '服务器的回答看不懂' };
     return { ok: true, data: j.data, message: j.message || '' };
   }
 
@@ -82,17 +84,20 @@ function makeAuth({ api, fetch, store, log, now = () => Date.now() }) {
     return renewing;
   }
 
-  /* 替页面问服务器：method、路径、{ query, body, file }。回 { ok, status, data }；status 0 连不上，401 要重新登录 */
+  /* 替页面问服务器：method、路径、{ query, body, file, binary }。回 { ok, status, data }；status 0 连不上，401 要重新登录。
+     binary：要的是一张图（聊天里的图片），回的 data 是 { type, bytes } */
   async function ask(method, pathname, opts, again) {
     const saved = store.read();
     if (!saved || !saved.accessToken) return { ok: false, status: 401, data: null };
     const q = new URLSearchParams(Object.entries((opts && opts.query) || {}).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])).toString();
-    const init = { method, headers: { Accept: 'application/json', Authorization: 'Bearer ' + saved.accessToken } };
+    const init = { method, headers: { Accept: opts && opts.binary ? '*/*' : 'application/json', Authorization: 'Bearer ' + saved.accessToken } };
+    if (LONG[pathname]) init.timeout = LONG[pathname];
+    if (opts && opts.binary) init.timeout = SLOW;
     if (opts && opts.file) {
       const m = multipart(opts.file);
       init.headers['Content-Type'] = m.type;
       init.body = m.body;
-      init.timeout = 120000;
+      init.timeout = SLOW;
     } else if (opts && opts.body !== undefined) {
       init.headers['Content-Type'] = 'application/json';
       init.body = JSON.stringify(opts.body);
@@ -100,7 +105,7 @@ function makeAuth({ api, fetch, store, log, now = () => Date.now() }) {
     let res;
     try { res = await fetch(api + pathname + (q ? '?' + q : ''), init); }
     catch (e) {
-      log.warn('连不上 video8.online', { path: pathname, error: String(e && e.message || e) });
+      log.warn('连不上服务器', { path: pathname, error: String(e && e.message || e) });
       return { ok: false, status: 0, data: null };
     }
     if (res.status === 401 && !again) {
@@ -108,9 +113,13 @@ function makeAuth({ api, fetch, store, log, now = () => Date.now() }) {
       if (ok) return ask(method, pathname, opts, true);
       if (ok === null) return { ok: false, status: 0, data: null };
     }
+    if (opts && opts.binary && res.ok) {
+      try { return { ok: true, status: res.status, data: { type: (res.headers && res.headers.get('content-type')) || '', bytes: new Uint8Array(await res.arrayBuffer()) } }; }
+      catch (e) { log.warn('图没拿全', { path: pathname, error: String(e && e.message || e) }); return { ok: false, status: 0, data: null }; }
+    }
     let data = null;
     try { data = await res.json(); } catch (e) { /* 不是 JSON */ }
-    if (!res.ok) log.warn('video8.online 回了 ' + res.status, { path: pathname, message: data && data.message });
+    if (!res.ok) log.warn('服务器回了 ' + res.status, { path: pathname, message: data && data.message });
     return { ok: res.ok, status: res.status, data };
   }
 
@@ -129,7 +138,7 @@ function makeAuth({ api, fetch, store, log, now = () => Date.now() }) {
       else log.info('要重新登录', { why: d.why });
       return d.ok ? { ok: true, user: who({ ...(d.saved || saved), offline: !!d.offline }) } : { ok: false, why: d.why };
     },
-    /* 页面（考试、团队）问服务器：只许 API_OK 里的地址 */
+    /* 页面（考试、团队、消息）、壳子收消息（lib/chat.js）问服务器：只许 API_OK 里的地址 */
     api(method, pathname, opts) {
       const m = String(method || '').toUpperCase(), p = String(pathname || '');
       if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(m) || !API_OK.some(x => p.startsWith(x)) || p.includes('..') || /[?#]/.test(p)) {

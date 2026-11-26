@@ -2,12 +2,12 @@
 /* 流水线桌面版（开发规范第 11–22 条）
    壳只管登录、窗口、更新、报错；流水线照旧由工作文件夹里的本机服务跑，窗口只开本机服务，外链交给系统浏览器。
    窗口没有系统边框，也没有系统菜单：顶栏、三个窗口按钮、菜单、设置都是外框页（外框/外框.html，装在软件里）画的。
-   菜单里每一项（lib/routes.js）各开一个视图摆在中间那块，切走不关；登录页也摆在那一块。点「设置」时各页收起来，露出外框页画的设置。
+   菜单里每一项（lib/routes.js）各开一个视图摆在中间那块，切走不关；登录页也摆在那一块。点「设置」时右边拉出外框页画的设置那一栏，中间那一页让开、照样露着（换皮肤当场看得到）。
    启动顺序：定工作文件夹 → 开窗口（外框）→ 把安装包里的工具同步进去 → 开本机服务 → 续上登录（没登录开登录页）→ 开流水线 → 查更新
    试验用的环境变量（scripts/smoke.mjs 用）：ANTOU_DESK_WORK（工作文件夹）、ANTOU_DESK_DATA（设置、登录、日志放哪）、ANTOU_PORT（端口）、
      ANTOU_DESK_API（登录服务器）、ANTOU_DESK_NO_UPDATE=1（不查更新）、ANTOU_DESK_NO_FOCUS=1（窗口出来不抢键盘）、
-     ANTOU_DESK_AT=x,y（窗口摆在哪：试验时摆到屏幕外面，不挡正在用电脑的人） */
-const { app, BrowserWindow, WebContentsView, Menu, dialog, shell, ipcMain, session, net, safeStorage, crashReporter } = require('electron');
+     ANTOU_DESK_AT=x,y（窗口摆在哪：试验时摆到屏幕外面，不挡正在用电脑的人）、ANTOU_DESK_NO_TOAST=1（来了新消息不弹提醒、不闪任务栏，只记一行日志） */
+const { app, BrowserWindow, WebContentsView, Menu, dialog, shell, ipcMain, session, net, safeStorage, crashReporter, webContents, Notification } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { makeLog } = require('./lib/log.js');
@@ -16,20 +16,26 @@ const { syncTools } = require('./lib/sync.js');
 const { startServer } = require('./lib/runner.js');
 const { makeAuth } = require('./lib/auth.js');
 const { makeUpdater } = require('./lib/updater.js');
-const { ROUTES, BAR, RAIL, find, fixLook, railOn, stage } = require('./lib/routes.js');
+const { makeChat } = require('./lib/chat.js');
+const { ROUTES, BAR, RAIL, DRAWER, find, fixLook, railOn, stage, skinOf, skinForPage } = require('./lib/routes.js');
 
 const APP_NAME = 'AI短视频流水线';
 const APP_ID = 'online.video8.liushuixian.desktop';
-const API = (process.env.ANTOU_DESK_API || 'https://video8.online').replace(/\/+$/, '');
+/* 登录服务器：直接连服务器的 IP，不加密（2026-11-26 用户定）。
+   为什么不用域名：video8.online 没备案，被腾讯云按域名拦着，不开代理连不上；直接连 IP 不拦（服务器上 nginx 的 video8-assets 那一路，和域名是同一个网站、同一个后台）。
+   不加密的意思：账号密码、登录凭证、升级清单在网上都是明文。以后补加密（自己签一张证书、软件只认这一张），改这一行和 electron-builder.yml 的升级地址。
+   服务器的 IP 变了，这里要跟着改，装过的人都得重装。 */
+const API = (process.env.ANTOU_DESK_API || 'http://43.143.83.166').replace(/\/+$/, '');
 const LOGIN = 'login';   // 登录页占的那个视图；不在菜单里
-const SET = 'settings';   // 设置：外框页自己画在中间那块，不另开视图
+const SET = 'settings';   // 设置：外框页自己画在右边那一栏，不另开视图
+const CHAT = 'chat';      // 「消息」那一项（lib/routes.js）
 const LOGIN_PAGE = '通用工具/桌面版/页面/登录.html';
 const PRELOAD = path.join(__dirname, 'preload.js');
 const FRAME_PAGE = path.join(__dirname, '外框', '外框.html');
 const FRAME_PRELOAD = path.join(__dirname, '外框', 'preload.js');
-const PAPER = '#f4efe6';   // 页面还没画出来时的底色
 const PAGE_PREFS = { preload: PRELOAD, contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true, spellcheck: false };
 const NO_FOCUS = process.env.ANTOU_DESK_NO_FOCUS === '1';
+const NO_TOAST = process.env.ANTOU_DESK_NO_TOAST === '1';
 const AT = (process.env.ANTOU_DESK_AT || '').split(',').map(Number);
 const PLACE = AT.length === 2 && AT.every(Number.isFinite) ? { x: AT[0], y: AT[1] } : {};
 const ALLOWED_PERMS = new Set(['clipboard-sanitized-write', 'clipboard-read', 'fullscreen']);
@@ -44,15 +50,18 @@ const settings = makeSettings(path.join(app.getPath('userData'), '设置.json'))
 process.on('uncaughtException', e => log.error('主进程出错', e));
 process.on('unhandledRejection', e => log.error('主进程有个出错没接住', e));
 
-let win = null, server = null, auth = null, updater = null;
+let win = null, server = null, auth = null, updater = null, chat = null;
 let work = '', port = 0, quitting = false, user = null;
-let look = fixLook(settings.get('外观'));   // 菜单放左边还是顶部
+let look = fixLook(settings.get('外观'));   // 菜单放左边还是顶部、用哪套皮肤
+const skinNow = () => skinOf(look.皮肤);     // 现在这套皮肤：{ 名, 底（页面还没画出来时的底色）, 纸面 }
 const pages = new Map();                    // 摆在中间那块的各页：菜单项的 id（或 LOGIN）→ { view, title }
-let current = '', before = '';              // 现在摆着哪一页（SET 是设置）；点开设置前摆着的那一页
+let current = '';                           // 现在摆着哪一页
+let setOpen = false;                        // 设置那一栏开着没有：开着时中间那一页往左让开，照样露着、照样能换页
 let closing = false, asking = false, quitAsked = false;   // 关窗口：各页都答应了 / 正在一页页问 / 是点了退出（不只是关窗口）
 
 const origin = () => `http://127.0.0.1:${port}`;
 const pageUrl = rel => origin() + '/' + rel.split('/').map(encodeURIComponent).join('/');
+const routeUrl = r => pageUrl(r.页) + (r.起 || '');   // 菜单里一项的网址：有「起」的接在后面（「我的团队」和「考试」同一份页面，靠它进各自那一页）
 const alive = w => (w && !w.isDestroyed() ? w : null);
 const box = (opts, w = win) => (alive(w) ? dialog.showMessageBox(w, opts) : dialog.showMessageBox(opts));
 const boxSync = (opts, w = win) => (alive(w) ? dialog.showMessageBoxSync(w, opts) : dialog.showMessageBoxSync(opts));
@@ -221,6 +230,7 @@ function tokenStore() {
 
 function afterLogin(u) {
   user = u;
+  chat.start(u.username);
   setTimeout(async () => {   // 先让登录页说一声「登录好了」，再换成流水线（菜单这时才出来）
     if (!alive(win) || user !== u) return;
     await closePage(LOGIN);
@@ -229,9 +239,58 @@ function afterLogin(u) {
 }
 async function logout(why) {
   if (!(await closePages())) return;   // 有一页还有没存的、选了留下：先不退
+  chat.stop();
+  chatReady = null;
+  chatWant = null;
   auth.logout();
   user = null;
+  setOpen = false;   // 回登录页：设置那一栏收起来
   openPage(LOGIN, pageUrl(LOGIN_PAGE) + (typeof why === 'string' && why ? '#why=' + encodeURIComponent(why) : ''));
+}
+/* 替页面、替收消息问服务器：凭证续不上了（401）就回登录页 */
+let expiring = false;
+async function serverApi(method, pathname, opts) {
+  const r = await auth.api(method, pathname, opts);
+  if (r.status === 401 && user && !expiring) {
+    expiring = true;
+    logout('登录过期了，请重新登录').finally(() => { expiring = false; });
+  }
+  return r;
+}
+
+/* ---------- 消息（团队聊天）：壳子在后台收新消息（lib/chat.js），转给「消息」那一页；没看的条数写在菜单上，人不在眼前时右下角提醒 ---------- */
+let chatReady = null;   // 「消息」那一页准备好收了：它的 webContents（页面调 desk.onChat 时说的）
+let chatWant = null;    // 等它准备好了要打开的会话：{ conversationId } 或 { with: 对方账号 }
+let toast = null;       // 右下角那一条：来了新的先收掉旧的，免得一摞；也留着它，点它才叫得应
+const chatHooked = new WeakSet();
+function sendChat(payload) {
+  if (chatReady && !chatReady.isDestroyed()) chatReady.send('desk:chat', payload);
+}
+function flushChat() {
+  if (!chatWant || !chatReady || chatReady.isDestroyed()) return;
+  sendChat({ open: chatWant });
+  chatWant = null;
+}
+/* 打开「消息」，进某个会话（点了右下角的提醒、「我的团队」里点了「发消息」）；target 空的只打开 */
+function openChat(target) {
+  if (!user || !alive(win)) return;
+  if (win.isMinimized()) win.restore();
+  if (NO_FOCUS) win.showInactive(); else { win.show(); win.focus(); }   // 试验时不抢正在用电脑的人的键盘
+  chatWant = target;
+  go(CHAT);
+  flushChat();
+}
+/* 要提醒（lib/chat.js 的 onNotice）：正看着「消息」不提醒新消息；不然任务栏闪、右下角弹一条，点它进那个会话 */
+function notice(n) {
+  if (!alive(win)) return;
+  if (!n.storage && win.isFocused() && current === CHAT) return;
+  if (NO_TOAST) { log.info(n.storage ? '硬盘快满提醒' : '新消息提醒', { 条数: n.count }); return; }
+  if (!n.storage && !win.isFocused()) win.flashFrame(true);
+  if (!Notification.isSupported()) return;
+  if (toast) toast.close();
+  toast = new Notification({ title: n.title, body: n.body });
+  toast.on('click', () => openChat(n.conversationId ? { conversationId: n.conversationId } : null));
+  toast.show();
 }
 
 /* ---------- 窗口、外框 ---------- */
@@ -247,9 +306,9 @@ function updateNow() {
 function frameState() {
   const p = pages.get(current);
   return {
-    app: APP_NAME, bar: BAR, rail: RAIL, menu: look.菜单, railOn: railOn(look, routesNow().length),
-    routes: routesNow().map(r => ({ id: r.id, 名: r.名, 图标: r.图标 })), current,
-    title: current === SET ? '设置' : p ? p.title : '', offline: !!(user && user.offline), busy: pages.size ? '' : '正在打开流水线…',
+    app: APP_NAME, bar: BAR, rail: RAIL, drawer: DRAWER, menu: look.菜单, railOn: railOn(look, routesNow().length), setOpen,
+    routes: routesNow().map(r => ({ id: r.id, 名: r.名, 图标: r.图标, 数: r.id === CHAT ? chat.unread() : 0 })), current, skin: look.皮肤,   // 数：菜单上写的没看条数（「消息」那一项）
+    title: p ? p.title : '', offline: !!(user && user.offline), busy: pages.size ? '' : '正在打开流水线…',
     maximized: win.isMaximized(), fullscreen: win.isFullScreen(), focused: win.isFocused(),
     user: user ? user.nickname || user.username : '', team: !user || !user.accountType ? '' : user.accountType === 'sub' ? `团队「${user.ownerUsername}」的成员` : '团队负责人', work, version: app.getVersion(), update: updateNow(),   // 这一行和下一行是设置里写的
     note: `本机服务 ${origin()}　登录服务器 ${API}　Electron ${process.versions.electron}`,
@@ -262,16 +321,16 @@ function tell() {
   win.setTitle((s.title ? s.title + ' — ' : '') + APP_NAME + (s.offline ? '（离线）' : ''));
   win.webContents.send('frame:state', s);
 }
-/* 各页摆到中间那块；只让现在这一页露出来 */
+/* 各页摆到中间那块（设置开着时让出右边那一栏）；只让现在这一页露出来 */
 function layout() {
   if (!alive(win)) return;
-  const rect = stage(win.contentView.getBounds(), look, routesNow().length);   // 窗口里面实际多大，问装各页的那一层：最大化那一下 getContentSize() 报的还是没变完的数
+  const rect = stage(win.contentView.getBounds(), look, routesNow().length, setOpen);   // 窗口里面实际多大，问装各页的那一层：最大化那一下 getContentSize() 报的还是没变完的数
   for (const [id, p] of pages) { p.view.setBounds(rect); p.view.setVisible(id === current); }
 }
 
 function makeWindow() {
   const w = new BrowserWindow({
-    width: 1440, height: 920, ...PLACE, minWidth: 900, minHeight: 600, show: false, backgroundColor: PAPER, title: APP_NAME,
+    width: 1440, height: 920, ...PLACE, minWidth: 900, minHeight: 600, show: false, backgroundColor: skinNow().底, title: APP_NAME,
     frame: false,   // 没有系统边框：顶栏和三个窗口按钮在外框页里
     webPreferences: { preload: FRAME_PRELOAD, contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true, spellcheck: false },
   });
@@ -280,6 +339,7 @@ function makeWindow() {
   w.contentView.on('bounds-changed', layout);   // 拖边、最大化、还原、全屏：里面大小一变就重摆
   for (const ev of ['maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen']) w.on(ev, () => { layout(); tell(); });
   for (const ev of ['focus', 'blur']) w.on(ev, tell);
+  w.on('focus', () => w.flashFrame(false));   // 来了新消息时任务栏闪着：人回来了就停
   w.on('close', e => {
     if (closing || !pages.size) return;
     e.preventDefault();   // 先一页页问有没有没存的，都答应了再真关
@@ -306,7 +366,7 @@ function openPage(id, url) {
   let p = pages.get(id);
   if (!p) {
     const view = new WebContentsView({ webPreferences: PAGE_PREFS });
-    view.setBackgroundColor(PAPER);
+    view.setBackgroundColor(skinNow().底);
     p = { view, title: '' };
     pages.set(id, p);
     view.webContents.on('page-title-updated', (e, title) => { p.title = title; tell(); });
@@ -317,7 +377,7 @@ function openPage(id, url) {
   show(id);
   return p.loaded;
 }
-/* 把一页摆到前面（SET 是设置：各页都收起来，露出外框页画的那一块） */
+/* 把一页摆到前面（设置那一栏开着就还开着） */
 function show(id) {
   current = id;
   layout();
@@ -325,20 +385,23 @@ function show(id) {
   const p = pages.get(id);
   if (!NO_FOCUS) (p ? p.view.webContents : win.webContents).focus();
 }
-/* 点「设置」：打开；开着时再点一下（或点它的「返回」）回原来那一页 */
+/* 点「设置」：右边拉出那一栏；开着时再点一下（或点它的「收起」、按 Esc）收回去。开着时照样能点菜单换页，挨个看换了皮肤的样子 */
 function toggleSet() {
-  if (current !== SET) { before = current; return show(SET); }
-  show(pages.has(before) ? before : [...pages.keys()][0] || '');
+  setOpen = !setOpen;
+  layout();
+  tell();
+  const p = pages.get(current);
+  if (!NO_FOCUS) (setOpen || !p ? win.webContents : p.view.webContents).focus();
 }
 /* 点菜单里的一项 */
 function go(id) {
   const r = find(id);
-  return r && user && alive(win) ? openPage(r.id, pageUrl(r.页)) : Promise.resolve();
+  return r && user && alive(win) ? openPage(r.id, routeUrl(r)) : Promise.resolve();
 }
 /* 现在这一块回它的首页（流水线回总览） */
 function home() {
   const r = find(current), p = pages.get(current);
-  if (r && p) p.view.webContents.loadURL(pageUrl(r.页)).catch(() => {});
+  if (r && p) p.view.webContents.loadURL(routeUrl(r)).catch(() => {});
 }
 /* 关一页：页里有没存的会先问（guard 里的「离开／留下」）；选了留下回 false，这一页照旧开着 */
 function closePage(id) {
@@ -381,7 +444,7 @@ function guard(wc) {
   wc.setWindowOpenHandler(({ url }) => {
     const far = farFile(url);
     if (far) { openOutside(far); return { action: 'deny' }; }   // 点开考试里的图：交给系统浏览器看大图
-    if (isOurs(url)) return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: PAPER, webPreferences: { preload: PRELOAD, contextIsolation: true, sandbox: true, nodeIntegration: false } } };
+    if (isOurs(url)) return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: skinNow().底, webPreferences: { preload: PRELOAD, contextIsolation: true, sandbox: true, nodeIntegration: false } } };
     openOutside(url);
     return { action: 'deny' };
   });
@@ -421,7 +484,7 @@ function ipc() {
     if (only && decodeURIComponent(new URL(u).pathname) !== '/' + only) { log.warn('拦下了别的页面的调用', { 只许: only }); return false; }
     return true;
   };
-  ipcMain.handle('desk:info', e => (from(e) ? { app: APP_NAME, version: app.getVersion(), user, work, port, api: API } : null));
+  ipcMain.handle('desk:info', e => (from(e) ? { app: APP_NAME, version: app.getVersion(), user, work, port, api: API, menus: routesNow().map(r => r.id) } : null));   // menus：左边菜单里现在有哪几项（考试页靠它知道「我的团队」是不是已经单独成一项）
   ipcMain.handle('desk:login', async (e, u, p) => {
     if (!from(e, LOGIN_PAGE)) return { ok: false, message: '不许' };
     const r = await auth.login(u, p);
@@ -435,16 +498,31 @@ function ipc() {
     return r;
   });
   ipcMain.handle('desk:logout', e => { if (from(e)) logout(); return true; });
-  let expiring = false;
+  /* 页面一开头就问现在用哪套皮肤（preload.js 照它写 <html data-skin>）：要当场答，所以是同步的；不是本机页面的不答 */
+  ipcMain.on('desk:skin', e => { const u = e.senderFrame && e.senderFrame.url; e.returnValue = u && isOurs(u) ? skinForPage(skinNow()) : null; });
   ipcMain.handle('desk:api', async (e, method, pathname, opts) => {
     if (!from(e, find('exam').页)) return { ok: false, status: 400, data: null };
-    const r = await auth.api(method, pathname, opts);
-    if (r.status === 401 && user && !expiring) {   // 凭证续不上了：回登录页
-      expiring = true;
-      logout('登录过期了，请重新登录').finally(() => { expiring = false; });
-    }
+    const r = await serverApi(method, pathname, opts);
+    chat.observe(method, pathname, opts, r);   // 页面标了已读：菜单上「消息」的数字跟着减
     return r;
   });
+  /* 「消息」那一页调了 desk.onChat：准备好收了。它刷新（重新读一遍）时先当没准备好，等它再说一声 */
+  ipcMain.on('desk:chat-ready', e => {
+    const p = pages.get(CHAT);
+    if (!p || e.sender !== p.view.webContents) return;
+    chatReady = e.sender;
+    if (!chatHooked.has(e.sender)) {
+      chatHooked.add(e.sender);
+      const wc = e.sender;
+      wc.on('did-start-navigation', (d, url, inPlace, mainFrame) => {
+        const main = d && d.isMainFrame !== undefined ? d.isMainFrame : mainFrame, same = d && d.isSameDocument !== undefined ? d.isSameDocument : inPlace;
+        if (main && !same && chatReady === wc) chatReady = null;
+      });
+    }
+    flushChat();
+  });
+  /* 「我的团队」里点了「发消息」：打开「消息」，进和这个人的私聊 */
+  ipcMain.on('desk:open-chat', (e, who) => { if (from(e, find('exam').页) && who) openChat({ with: String(who) }); });
 
   const fromFrame = e => !!alive(win) && e.sender === win.webContents;
   ipcMain.handle('frame:state', e => (fromFrame(e) ? frameState() : null));
@@ -464,10 +542,19 @@ function ipc() {
 
 /* ---------- 设置、快捷键：窗口上没有系统菜单。设置是外框页画的，这里是它那几个钮要办的事 ---------- */
 function setLook(patch) {
+  const was = look.皮肤;
   look = fixLook({ ...look, ...patch });
   settings.set('外观', look);
+  if (look.皮肤 !== was) paintSkin();
   layout();
   tell();
+}
+/* 换了皮肤：窗口和各页「还没画出来时」的底色跟着换，再告诉开着的各页（preload.js 听着，不用重开）；外框页照 tell() 给的 skin 换 */
+function paintSkin() {
+  const s = skinNow();
+  if (alive(win)) win.setBackgroundColor(s.底);
+  for (const p of pages.values()) p.view.setBackgroundColor(s.底);
+  for (const wc of webContents.getAllWebContents()) if (!wc.isDestroyed() && isOurs(wc.getURL())) wc.send('desk:skin', skinForPage(s));
 }
 /* 设置里的钮（外框页经 frame:do 叫；钮上的 data-do 对着这里的名字） */
 const DO = {
@@ -475,6 +562,7 @@ const DO = {
   work: () => shell.openPath(work),
   'change-work': changeWork,
   menu: where => setLook({ 菜单: where }),
+  skin: name => setLook({ 皮肤: name }),
   update: () => updater.check(),   // 查到什么：updater 一变就 tell()，写回设置里
   install: () => updater.install(),
   logs: () => shell.openPath(log.dir),
@@ -520,6 +608,7 @@ async function boot() {
   app.on('web-contents-created', (_, wc) => guard(wc));
   auth = makeAuth({ api: API, fetch: (u, { timeout = 10000, ...o }) => net.fetch(u, { ...o, signal: AbortSignal.timeout(timeout) }), store: tokenStore(), log });
   updater = makeUpdater({ app, dialog, getWindow: () => win, log, onChange: tell });
+  chat = makeChat({ ask: serverApi, log, onChange: tell, onMessages: messages => sendChat({ messages }), onNotice: notice });
   ipc();
   Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: '快捷键', submenu: KEYS }]));   // 不露面，只为那几个快捷键
   work = await chooseWork();
@@ -532,6 +621,7 @@ async function boot() {
   session.defaultSession.webRequest.onBeforeRequest({ urls: [origin() + '/uploads/exam/*'] }, (d, cb) => cb({ redirectURL: farFile(d.url) }));   // 考试页里的图：转到登录服务器去拿
   const r = await auth.resume();
   user = r.ok ? r.user : null;
+  if (user) chat.start(user.username);
   await (user ? go(ROUTES[0].id) : openPage(LOGIN, pageUrl(LOGIN_PAGE) + (r.why ? '#why=' + encodeURIComponent(r.why) : '')));
   updater.configure();
 }

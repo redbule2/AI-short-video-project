@@ -10,6 +10,7 @@ import { store } from "@/store";
  *   frontend.exam.papersPage.enter / frontend.exam.paperEdit.enter /
  *   frontend.exam.assignDialog.open / frontend.exam.publishDialog.open /
  *   frontend.exam.archivedCopy.click /
+ *   frontend.exam.paperImport.postPerFile / frontend.exam.paperImport.followupList /
  *   frontend.exam.resultsPage.enter / frontend.exam.results.switchPaper /
  *   frontend.exam.results.sheetDetail /
  *   frontend.exam.results.reopenTimedOut /
@@ -51,7 +52,13 @@ const storageLocalMock = vi.hoisted(() => () => ({
 }));
 
 const httpRequest = vi.hoisted(() =>
-  vi.fn(async (method: string, url: string) => {
+  vi.fn(async (method: string, url: string, options?: { data?: any }) => {
+    if (url === "/api/exam/papers/import" && method === "post") {
+      // 卷名叫「后端不收」的那张装作被后端的逐题校验拦下
+      return options?.data?.title === "后端不收"
+        ? { success: false, message: "第 2 题必须附带解析", data: null }
+        : { success: true, message: "", data: { paperId: "p-imported" } };
+    }
     if (
       (url === "/api/exam/papers" || url === "/api/exam/result-papers") &&
       method === "get"
@@ -501,6 +508,7 @@ vi.mock("@/utils/message", () => ({
 vi.mock("element-plus", () => ({
   ElMessageBox: {
     confirm: vi.fn(async () => "confirm"),
+    alert: vi.fn(async () => "confirm"),
     prompt: vi.fn(async () => ({ value: "x" }))
   }
 }));
@@ -558,6 +566,23 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** 一份能导入的试卷文件(只带页面会用到的 name 和 text())。 */
+function paperFile(name: string, title: string) {
+  const paper = {
+    title,
+    questions: [
+      {
+        type: "essay",
+        stem: "说说看",
+        answer: { reference: "参考答案" },
+        analysis: "解析",
+        score: 10
+      }
+    ]
+  };
+  return { name, text: async () => JSON.stringify(paper) } as unknown as File;
+}
+
 describe("exam request budgets", () => {
   it("papersPage.enter: 试卷管理首进只拉 1 次列表", async () => {
     const { useExamPapers } = await import("./useExamPapers");
@@ -613,6 +638,64 @@ describe("exam request budgets", () => {
     expect(callsTo("/api/exam/papers/p1/copy", "post")).toBe(
       budgets["frontend.exam.archivedCopy.click"]
     );
+  });
+
+  it("paperImport: 每份文件只发 1 次 POST,全部发完只刷 1 次列表", async () => {
+    const { useExamPapers } = await import("./useExamPapers");
+    const papers = useExamPapers();
+    await flushMounted();
+    httpRequest.mockClear();
+
+    await papers.importPapers(
+      ["第一张", "第二张", "第三张"].map(title => paperFile(title + ".json", title))
+    );
+
+    expect(callsTo("/api/exam/papers/import", "post")).toBe(
+      3 * budgets["frontend.exam.paperImport.postPerFile"]
+    );
+    expect(callsTo("/api/exam/papers", "get")).toBe(
+      budgets["frontend.exam.paperImport.followupList"]
+    );
+    expect(papers.importing.value).toBe(false);
+  });
+
+  it("paperImport: 选错的文件不发请求,一份不成不耽误别的,哪份没成说给人听", async () => {
+    const { useExamPapers } = await import("./useExamPapers");
+    const { ElMessageBox } = await import("element-plus");
+    const papers = useExamPapers();
+    await flushMounted();
+    httpRequest.mockClear();
+    vi.mocked(ElMessageBox.alert).mockClear();
+
+    await papers.importPapers([
+      { name: "不是试卷.json", text: async () => "这不是 JSON" } as unknown as File,
+      paperFile("好的.json", "好的"),
+      paperFile("被拦的.json", "后端不收")
+    ]);
+
+    expect(callsTo("/api/exam/papers/import", "post")).toBe(
+      2 * budgets["frontend.exam.paperImport.postPerFile"]
+    );
+    expect(callsTo("/api/exam/papers", "get")).toBe(
+      budgets["frontend.exam.paperImport.followupList"]
+    );
+    const said = String(vi.mocked(ElMessageBox.alert).mock.calls[0]?.[0]);
+    expect(said).toContain("导入了 1 张");
+    expect(said).toContain("不是试卷.json:不是试卷文件");
+    expect(said).toContain("被拦的.json:第 2 题必须附带解析");
+  });
+
+  it("paperImport: 一份都没成就不刷列表;没选文件什么都不做", async () => {
+    const { useExamPapers } = await import("./useExamPapers");
+    const papers = useExamPapers();
+    await flushMounted();
+    httpRequest.mockClear();
+
+    await papers.importPapers([]);
+    await papers.importPapers([paperFile("被拦的.json", "后端不收")]);
+
+    expect(callsTo("/api/exam/papers/import", "post")).toBe(1);
+    expect(callsTo("/api/exam/papers", "get")).toBe(0);
   });
 
   it("paperEdit.enter: 出题工作台进入只拉 1 次详情", async () => {

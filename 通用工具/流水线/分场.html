@@ -9,8 +9,8 @@
 <style>
 /* 提炼页（11-16 改版，照 提炼页改版_设计稿.html）：顶上一条钉住（段名、要按的、三个页签），下面一次只摆一页：镜头表 / 出场的 / 梗概。只这一页用，样式就放在这里 */
 .pz-head { position: sticky; top: 117px; z-index: 18; margin: -18px -22px 14px; padding: 12px 22px 0; border-bottom: 1px solid var(--line); border-radius: 10px 10px 0 0; background: var(--sheet); }
-.fl-scene.done .pz-head { background: #fcf9f3; }
-.pz-head.stuck { border-radius: 0; box-shadow: 0 12px 18px -16px rgba(40, 28, 16, .4); }
+.fl-scene.done .pz-head { background: color-mix(in srgb, var(--sheet) 70%, var(--paper)); }
+.pz-head.stuck { border-radius: 0; box-shadow: 0 12px 18px -16px rgb(from var(--shade) r g b / .4); }
 .pz-head .fs-h { flex-wrap: wrap; row-gap: 6px; margin-bottom: 2px; }
 .pz-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
 .pz-all { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
@@ -34,7 +34,7 @@
 .pz-f .fq-in.why { min-height: 76px; }
 .pz-f .fq-in.nt { min-height: 0; }
 .pz-f.z > span { color: var(--zhu); }
-.pz-f.z .fq-in { border-color: var(--zhu-line); background: #fffaf7; color: var(--zhu); font-family: var(--kai); }
+.pz-f.z .fq-in { border-color: var(--zhu-line); background: color-mix(in srgb, var(--zhu) 3%, var(--white)); color: var(--zhu); font-family: var(--kai); }
 .pz-ops { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 2px; }
 .pz-ops .sp { flex: 1; }
 .fl-link.danger { color: var(--zhu); text-decoration-color: var(--zhu-line); }
@@ -61,13 +61,13 @@
 .pz-r.chg { box-shadow: inset 3px 0 0 var(--zhu-line); }
 .pz-r.on { border-color: var(--dai); box-shadow: 0 0 0 3px var(--dai-soft); }
 .pz-tb.dragging, .pz-tb.dragging * { cursor: grabbing !important; user-select: none; }
-.pz-r.drag { z-index: 2; border-color: var(--dai); background: #fff; box-shadow: 0 10px 24px -10px rgba(40, 28, 16, .45); }
+.pz-r.drag { z-index: 2; border-color: var(--dai); background: var(--white); box-shadow: 0 10px 24px -10px rgb(from var(--shade) r g b / .45); }
 .pz-tb.ro .pz-r { grid-template-columns: 36px minmax(0, 1fr) auto; padding-left: 8px; }
 /* 每镜的秒数；鼠标停着（或点开）的那一镜是选中的，只它一个；作用里接镜N、为镜N 连着的那几镜虚线框，色带上画箭头（11-16 他说点镜1 像同时选中了 1 和 4，不能有歧义） */
 .pz-sec { padding: 0 4px 0 8px; font-size: 13px; color: var(--ink-3); white-space: nowrap; }
 .pz-sec.miss { color: var(--ink-4); }
 .pz-sec.mine { color: var(--dai); }
-.pz-r.hot { border-color: var(--ink-3); background: #fff8e4; }
+.pz-r.hot { border-color: var(--ink-3); background: var(--warm); }
 .pz-r.hot .pz-no { color: var(--zhu); }
 .pz-r.lnk { border-style: dashed; border-color: var(--dai); }
 /* 镜头表顶上的色带：一块一镜，宽窄照秒数、颜色照标签；每 15 秒一道红虚线（一条视频一般 15 秒） */
@@ -95,14 +95,14 @@
 .pz-tags button.on { opacity: 1; filter: none; outline: 2px solid var(--ink-3); outline-offset: 1px; }
 .pz-secf { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
 .pz-secf > span { font: 13px var(--kai); color: var(--ink-3); letter-spacing: .1em; }
-.pz-secf input { width: 72px; padding: 4px 8px; border: 1px solid var(--line-2); border-radius: 7px; background: #fff; font: 15px var(--sans); color: var(--ink); }
+.pz-secf input { width: 72px; padding: 4px 8px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--white); font: 15px var(--sans); color: var(--ink); }
 .pz-secf input:focus { outline: 0; border-color: var(--dai-line); box-shadow: 0 0 0 3px var(--dai-soft); }
 .pz-secf small { font-size: 12.5px; color: var(--ink-3); }
 .pz-secf small.mine { color: var(--dai); }
 .pz-add { border: 1px dashed var(--line-2); border-radius: 7px; background: none; cursor: pointer; font-size: 13.5px; letter-spacing: .08em; color: var(--ink-3); }
-.pz-add:hover { border-color: var(--ink-4); color: var(--ink); background: rgba(255, 253, 249, .7); }
-.pz-ed { position: absolute; z-index: 6; padding: 10px 16px 12px; border: 1px solid var(--dai-line); border-radius: 10px; background: #fffefa; box-shadow: 0 22px 48px -16px rgba(40, 28, 16, .5); }
-.pz-ed.chg { box-shadow: inset 3px 0 0 var(--zhu-line), 0 22px 48px -16px rgba(40, 28, 16, .5); }
+.pz-add:hover { border-color: var(--ink-4); color: var(--ink); background: rgb(from var(--sheet) r g b / .7); }
+.pz-ed { position: absolute; z-index: 6; padding: 10px 16px 12px; border: 1px solid var(--dai-line); border-radius: 10px; background: var(--sheet); box-shadow: 0 22px 48px -16px rgb(from var(--shade) r g b / .5); }
+.pz-ed.chg { box-shadow: inset 3px 0 0 var(--zhu-line), 0 22px 48px -16px rgb(from var(--shade) r g b / .5); }
 .pz-ed-h { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; }
 .pz-ed-h .sp { flex: 1; }
 .pz-ed .fq-was { margin: -4px 0 8px; }
@@ -140,8 +140,8 @@
 .pz-c.sug { border-style: dashed; border-color: var(--k-line, var(--line-2)); background: var(--k-soft, transparent); padding-right: 9px; }
 .pz-c.sug .ds { color: var(--dai); }
 .pz-c.plus { display: grid; place-items: center; grid-template-columns: 1fr; min-height: 66px; padding: 9px; border-style: dashed; background: none; color: var(--ink-3); font-size: 13.5px; letter-spacing: .06em; }
-.pz-c.plus:hover { color: var(--ink); background: rgba(255, 253, 249, .7); }
-.pz-c.open { grid-column: 1 / -1; grid-template-columns: 64px minmax(0, 1fr); padding: 12px 14px; cursor: default; border-color: var(--dai-line); background: #fffefa; box-shadow: inset 3px 0 0 var(--dai); }
+.pz-c.plus:hover { color: var(--ink); background: rgb(from var(--sheet) r g b / .7); }
+.pz-c.open { grid-column: 1 / -1; grid-template-columns: 64px minmax(0, 1fr); padding: 12px 14px; cursor: default; border-color: var(--dai-line); background: var(--sheet); box-shadow: inset 3px 0 0 var(--dai); }
 .pz-c.open .pz-im { width: 64px; height: 64px; }
 .pz-c.open .pz-ct > b { display: block; margin-bottom: 6px; }
 .pz-c.open .pz-ct > b small { display: inline; margin-left: 10px; font-weight: 400; }
@@ -157,7 +157,7 @@
 .pz-sc { margin-left: 7px; font: normal 12px var(--sans); color: var(--k, var(--dai)); white-space: nowrap; }
 .pz-sc.none { color: var(--zhu); }
 .pz-glb { display: flex; flex-wrap: wrap; gap: 5px; }   /* 用在哪几镜的小牌子是 .fl-shots（流水线.css，和资产页共用） */
-.pz-glb button { min-width: 32px; padding: 2px 8px; border: 1px solid var(--line-2); border-radius: 6px; background: #fff; cursor: pointer; font: 13px/1.5 var(--sans); color: var(--ink-3); }
+.pz-glb button { min-width: 32px; padding: 2px 8px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--white); cursor: pointer; font: 13px/1.5 var(--sans); color: var(--ink-3); }
 .pz-glb button:hover { border-color: var(--ink-4); color: var(--ink); }
 .pz-glb button.on { border-color: var(--k, var(--dai)); background: var(--k-soft, var(--dai-soft)); color: var(--k, var(--dai)); font-weight: 600; }
 .pz-glb-say { margin: 0; font-size: 13px; color: var(--ink-2); }

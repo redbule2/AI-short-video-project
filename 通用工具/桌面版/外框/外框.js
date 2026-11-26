@@ -1,7 +1,7 @@
 'use strict';
-/* 外框页：顶栏（名字、设置钮、窗口三个按钮）、菜单（左边一条，或排进顶栏）、设置（画在中间那块）。
+/* 外框页：顶栏（名字、设置钮、窗口三个按钮）、菜单（左边一条，或排进顶栏）、设置（从右边拉出来的一栏）。
    画成什么样全照壳子给的状态（deskFrame.state、onState）；模块页不在这一页里，壳子另开视图盖在中间那块（#stage）上，
-   点「设置」时壳子把它们收起来，露出这一页自己画的设置。 */
+   点「设置」时壳子把模块页往左让开（lib/routes.js 的 DRAWER），露出这一页画在右边的设置；模块页照样露着，换皮肤当场看得到。 */
 (function () {
 const api = window.deskFrame;
 const SVG = 'http://www.w3.org/2000/svg';
@@ -23,10 +23,16 @@ function navBtn(r, on) {
   const t = document.createElement('span');
   t.textContent = r.名;
   b.type = 'button';
-  b.title = r.名;
+  b.title = r.名 + (r.数 ? `（${r.数} 条没看）` : '');
   b.dataset.go = r.id;
   if (on) b.className = 'on';
   b.append(icon(r.图标), t);
+  if (r.数 > 0) {   // 没看的条数（「消息」那一项）：右上角一个红圆点写着数，过了 99 写 99+
+    const n = document.createElement('b');
+    n.className = 'dot';
+    n.textContent = r.数 > 99 ? '99+' : String(r.数);
+    b.append(n);
+  }
   return b;
 }
 function flag(k, on) {
@@ -37,8 +43,11 @@ function draw(s) {
   if (!s) return;
   root.style.setProperty('--bar', s.bar + 'px');
   root.style.setProperty('--rail', s.rail + 'px');
+  root.style.setProperty('--drawer', s.drawer + 'px');
   root.dataset.menu = s.menu;
+  root.dataset.skin = s.skin;   // 外框.css 照它换那一组 --k- 颜色
   flag('rail', s.railOn);
+  flag('set', s.setOpen);
   flag('max', s.maximized);
   flag('full', s.fullscreen);
   flag('blur', !s.focused);
@@ -55,15 +64,15 @@ function draw(s) {
   document.querySelector('[data-win="max"]').title = s.fullscreen ? '退出全屏' : s.maximized ? '还原' : '最大化';
   $('max-use').setAttribute('href', s.maximized || s.fullscreen ? '#i-restore' : '#i-max');
 
-  const set = s.current === SET;
-  $('set').classList.toggle('on', set);
-  $('set-page').hidden = !set;
-  $('busy').hidden = set || !s.busy;
+  $('set').classList.toggle('on', s.setOpen);
+  $('set-page').hidden = !s.setOpen;
+  $('busy').hidden = !s.busy;
   $('busy').textContent = s.busy || '';
   $('set-user').textContent = s.user ? s.user + (s.team ? '　' + s.team : '') + (s.offline ? '（离线）' : '') : '没登录';
   $('set-logout').hidden = !s.user;
   $('set-work').textContent = s.work;
   for (const b of document.querySelectorAll('[data-do="menu"]')) b.classList.toggle('on', b.dataset.arg === s.menu);
+  for (const b of document.querySelectorAll('[data-do="skin"]')) b.classList.toggle('on', b.dataset.arg === s.skin);
   $('set-ver').textContent = s.version;
   $('set-up').textContent = s.update.text;
   $('set-update').hidden = s.update.can !== 'check';
@@ -71,7 +80,7 @@ function draw(s) {
   $('set-note').textContent = s.note;
 }
 
-/* 钮都在这里接：窗口三个按钮、去哪一页（菜单里的各项、设置和它的「返回」）、设置里要壳子办的事 */
+/* 钮都在这里接：窗口三个按钮、去哪一页（菜单里的各项、设置和它的「收起」）、设置里要壳子办的事 */
 document.addEventListener('click', e => {
   const b = e.target.closest('button');
   if (!b) return;
@@ -79,6 +88,8 @@ document.addEventListener('click', e => {
   else if (b.dataset.go) api.go(b.dataset.go);
   else if (b.dataset.do) api.do(b.dataset.do, b.dataset.arg);
 });
+/* 设置开着时按 Esc 收起来（键盘在设置那一栏里时；在中间那一页里按的归那一页） */
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && root.dataset.set) api.go(SET); });
 api.onState(draw);
 api.state().then(draw);
 })();

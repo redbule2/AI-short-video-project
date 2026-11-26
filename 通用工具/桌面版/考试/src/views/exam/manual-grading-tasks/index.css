@@ -10,8 +10,8 @@
   align-items: center;
   padding: 14px 16px;
   margin: 16px 0 12px;
-  background: rgb(200 68 43 / 7%);
-  border: 1px solid rgb(200 68 43 / 25%);
+  background: rgb(from var(--zhu) r g b / 7%);
+  border: 1px solid rgb(from var(--zhu) r g b / 25%);
   border-left: 4px solid var(--vermilion);
   border-radius: 5px;
 }
@@ -22,7 +22,7 @@
   width: 42px;
   height: 42px;
   place-items: center;
-  color: var(--paper-hi);
+  color: var(--on-accent);
   background: var(--vermilion);
   border-radius: 50%;
 }
@@ -111,15 +111,15 @@
   height: 36px;
   place-items: center;
   color: var(--vermilion);
-  background: rgb(200 68 43 / 8%);
-  border: 1px solid rgb(200 68 43 / 30%);
+  background: rgb(from var(--zhu) r g b / 8%);
+  border: 1px solid rgb(from var(--zhu) r g b / 30%);
   border-radius: 50%;
 }
 
 .grading-tasks-page .grading-task-mark.is-complete {
   color: var(--jade);
-  background: rgb(60 106 76 / 8%);
-  border-color: rgb(60 106 76 / 30%);
+  background: rgb(from var(--lv) r g b / 8%);
+  border-color: rgb(from var(--lv) r g b / 30%);
 }
 
 .grading-tasks-page .grading-task-mark svg {

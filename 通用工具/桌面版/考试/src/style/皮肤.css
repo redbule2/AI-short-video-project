@@ -1,0 +1,92 @@
+/* 壳子自己的（不是照搬的）：考试、团队、消息各页的颜色跟着桌面版的皮肤走（开发规范第 31–33 条）。
+   颜色本身和流水线各页是同一份：公用/皮肤.css（四套）。这里只做三件事：
+   ① 考试页里 --paper、--paper-2 另有所指（纸面），页面底的那两个先在这里起个别名 --g-paper、--g-paper-2；
+   ② Element Plus 的颜色变量接到那一份上：输入框、下拉、弹窗、提示跟着换；
+   ③ 校样台：Element Plus 的弹层（下拉、弹窗、抽屉、提示）一律是摊在桌上的纸。
+   例外：考试各页（.exam-page）在校样台下照原版（颜色在 公用/皮肤.css 末尾那段），Element Plus 也用回它自己原来的颜色，②③ 两段就不接。
+   各页自己的颜色写在各自的样式里，一律用变量，不写死（测试 皮肤_测试.cjs 会查）。 */
+@import "../../../../公用/皮肤.css";
+
+:root {
+  --g-paper: var(--paper);
+  --g-paper-2: var(--paper-2);
+  --g-surface: light-dark(var(--white), var(--paper-3));   /* 控件、弹层的底：亮的地方用最亮那档，深的地方（墨夜、校样台的桌面）浅一档 */
+}
+
+:root:not([data-skin="校样台"]:has(.exam-page)) {
+  --el-color-white: var(--on-dai);   /* 压在主色上的字、勾、滑块的圆钮 */
+  --el-color-primary: var(--dai);
+  --el-color-success: var(--lv);
+  --el-color-warning: var(--zhe);
+  --el-color-danger: var(--zhu);
+  --el-color-error: var(--zhu);
+  --el-color-info: var(--ink-3);
+  --el-color-primary-light-3: color-mix(in srgb, var(--el-color-primary) 70%, var(--el-bg-color));
+  --el-color-primary-light-5: color-mix(in srgb, var(--el-color-primary) 50%, var(--el-bg-color));
+  --el-color-primary-light-7: color-mix(in srgb, var(--el-color-primary) 30%, var(--el-bg-color));
+  --el-color-primary-light-8: color-mix(in srgb, var(--el-color-primary) 20%, var(--el-bg-color));
+  --el-color-primary-light-9: color-mix(in srgb, var(--el-color-primary) 10%, var(--el-bg-color));
+  --el-color-primary-dark-2: color-mix(in srgb, var(--el-color-primary) 80%, var(--ink));
+  --el-color-success-light-3: color-mix(in srgb, var(--el-color-success) 70%, var(--el-bg-color));
+  --el-color-success-light-5: color-mix(in srgb, var(--el-color-success) 50%, var(--el-bg-color));
+  --el-color-success-light-7: color-mix(in srgb, var(--el-color-success) 30%, var(--el-bg-color));
+  --el-color-success-light-8: color-mix(in srgb, var(--el-color-success) 20%, var(--el-bg-color));
+  --el-color-success-light-9: color-mix(in srgb, var(--el-color-success) 10%, var(--el-bg-color));
+  --el-color-success-dark-2: color-mix(in srgb, var(--el-color-success) 80%, var(--ink));
+  --el-color-warning-light-3: color-mix(in srgb, var(--el-color-warning) 70%, var(--el-bg-color));
+  --el-color-warning-light-5: color-mix(in srgb, var(--el-color-warning) 50%, var(--el-bg-color));
+  --el-color-warning-light-7: color-mix(in srgb, var(--el-color-warning) 30%, var(--el-bg-color));
+  --el-color-warning-light-8: color-mix(in srgb, var(--el-color-warning) 20%, var(--el-bg-color));
+  --el-color-warning-light-9: color-mix(in srgb, var(--el-color-warning) 10%, var(--el-bg-color));
+  --el-color-warning-dark-2: color-mix(in srgb, var(--el-color-warning) 80%, var(--ink));
+  --el-color-danger-light-3: color-mix(in srgb, var(--el-color-danger) 70%, var(--el-bg-color));
+  --el-color-danger-light-5: color-mix(in srgb, var(--el-color-danger) 50%, var(--el-bg-color));
+  --el-color-danger-light-7: color-mix(in srgb, var(--el-color-danger) 30%, var(--el-bg-color));
+  --el-color-danger-light-8: color-mix(in srgb, var(--el-color-danger) 20%, var(--el-bg-color));
+  --el-color-danger-light-9: color-mix(in srgb, var(--el-color-danger) 10%, var(--el-bg-color));
+  --el-color-danger-dark-2: color-mix(in srgb, var(--el-color-danger) 80%, var(--ink));
+  --el-color-error-light-3: color-mix(in srgb, var(--el-color-error) 70%, var(--el-bg-color));
+  --el-color-error-light-5: color-mix(in srgb, var(--el-color-error) 50%, var(--el-bg-color));
+  --el-color-error-light-7: color-mix(in srgb, var(--el-color-error) 30%, var(--el-bg-color));
+  --el-color-error-light-8: color-mix(in srgb, var(--el-color-error) 20%, var(--el-bg-color));
+  --el-color-error-light-9: color-mix(in srgb, var(--el-color-error) 10%, var(--el-bg-color));
+  --el-color-error-dark-2: color-mix(in srgb, var(--el-color-error) 80%, var(--ink));
+  --el-color-info-light-3: color-mix(in srgb, var(--el-color-info) 70%, var(--el-bg-color));
+  --el-color-info-light-5: color-mix(in srgb, var(--el-color-info) 50%, var(--el-bg-color));
+  --el-color-info-light-7: color-mix(in srgb, var(--el-color-info) 30%, var(--el-bg-color));
+  --el-color-info-light-8: color-mix(in srgb, var(--el-color-info) 20%, var(--el-bg-color));
+  --el-color-info-light-9: color-mix(in srgb, var(--el-color-info) 10%, var(--el-bg-color));
+  --el-color-info-dark-2: color-mix(in srgb, var(--el-color-info) 80%, var(--ink));
+  --el-bg-color: var(--g-surface);
+  --el-bg-color-overlay: var(--g-surface);
+  --el-bg-color-page: var(--paper);
+  --el-text-color-primary: var(--ink);
+  --el-text-color-regular: var(--ink-2);
+  --el-text-color-secondary: var(--ink-3);
+  --el-text-color-placeholder: var(--ink-4);
+  --el-text-color-disabled: color-mix(in srgb, var(--ink-4) 70%, var(--el-bg-color));
+  --el-border-color: var(--line-2);
+  --el-border-color-light: var(--line);
+  --el-border-color-lighter: var(--line);
+  --el-border-color-extra-light: color-mix(in srgb, var(--line) 60%, var(--el-bg-color));
+  --el-border-color-dark: color-mix(in srgb, var(--line-2) 75%, var(--ink-4));
+  --el-border-color-darker: color-mix(in srgb, var(--line-2) 50%, var(--ink-4));
+  --el-fill-color: color-mix(in srgb, var(--ink) 6%, var(--el-bg-color));
+  --el-fill-color-light: color-mix(in srgb, var(--ink) 4%, var(--el-bg-color));
+  --el-fill-color-lighter: color-mix(in srgb, var(--ink) 2.5%, var(--el-bg-color));
+  --el-fill-color-extra-light: color-mix(in srgb, var(--ink) 1.5%, var(--el-bg-color));
+  --el-fill-color-dark: color-mix(in srgb, var(--ink) 8%, var(--el-bg-color));
+  --el-fill-color-darker: color-mix(in srgb, var(--ink) 10%, var(--el-bg-color));
+  --el-fill-color-blank: var(--el-bg-color);
+  --el-mask-color: rgb(from var(--paper) r g b / .9);
+  --el-mask-color-extra-light: rgb(from var(--paper) r g b / .3);
+}
+
+/* 校样台：壳子只认拿 --sheet、--white、--warm 做底的是纸面（桌面版/preload.js）；
+   Element Plus 的弹层用的是它自己的变量，认不出来，这里点名 */
+:root[data-skin="校样台"]:not(:has(.exam-page)) :is(.el-popper, .el-dialog, .el-drawer, .el-message-box, .el-message, .el-notification) {
+  color-scheme: light;
+}
+:root[data-skin="校样台"]:not(:has(.exam-page)) :is(.el-popper.is-light, .el-dialog, .el-drawer, .el-message-box) {
+  color: var(--ink);
+}

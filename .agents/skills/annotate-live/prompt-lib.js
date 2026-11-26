@@ -7,7 +7,7 @@
      GET /api/prompts?q=词 词     项目名、段、名字、正文里这几个词都有的（不分大小写），带一句「在哪」；最多 300 条
    一条：{ p: 项目, seg: '3-1', name: 文件名, orig: 原名, file: 项目里的路径, old: 历史记录里的, when: '11-19 16:37', t: 毫秒（老版本照收进去的时间）,
           size, label: 镜头1 改3, clips: [{ file: 样片在项目里的路径, old }], lead: 一句话说它拍什么（挑的时候每行底下摆着，好认）, hit: 「在哪」那一句（有 q 才有） }
-   样片照名字认是哪一条出的（公用/样片归属.js，和审片那一步同一套），再照时间认是哪一版（见 attach）。
+   样片照名字认是哪一条出的，再照时间认是哪一版（公用/历史记录.js 的 made，和流水线「历史记录」、审片台同一套）。
    正文记在内存里，文件没动过不再读；目录二十秒内再问用记下的。
    测试：node --test 通用工具/测试/提示词库_测试.cjs
    ============================================================ */
@@ -18,13 +18,11 @@ const path = require('path');
 module.exports = function makePromptLib({ ROOT, TOOLS, log = () => {} }) {
   const Core = require(path.join(TOOLS, '公用', '核心.js'));
   const Hist = require(path.join(TOOLS, '公用', '历史记录.js'));
-  const ClipOf = (() => { try { return require(path.join(TOOLS, '公用', '样片归属.js')); } catch (e) { log('读不了 公用/样片归属.js：' + e.message); return null; } })();
   const PROJ = path.join(ROOT, '项目'), SEG = /^第([0-9]+(?:-[0-9]+)*)段$/, VID = /\.(mp4|m4v|mov|webm)$/i;
   const FRESH = 20e3, MAX = 300;
   let idx = null, idxAt = 0, building = null;
   const texts = new Map();   // 完整路径 → { mtime, text }
   const ls = async dir => { try { return await fsp.readdir(dir, { withFileTypes: true }); } catch (e) { return []; } };
-  const stampMs = st => { const m = /^([0-9]{4})([0-9]{2})([0-9]{2})-([0-9]{2})([0-9]{2})([0-9]{2})$/.exec(st || ''); return m ? new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime() : 0; };
 
   async function build() {
     const out = [];
@@ -42,36 +40,32 @@ module.exports = function makePromptLib({ ROOT, TOOLS, log = () => {} }) {
             if (!Core.RE_VP.test(orig) || (!old && hp.stamp)) continue;
             let st;
             try { st = await fsp.stat(path.join(dir, f.name)); } catch (e) { continue; }
-            mine.push({ p, seg: m[1], segDir: sd.name, name: f.name, orig, file: rel + '/' + sd.name + '/' + f.name, old, when: old ? hp.when : '', t: (old && stampMs(hp.stamp)) || Math.floor(st.mtimeMs), size: st.size, label: Core.vpLabel(orig), clips: [], abs: path.join(dir, f.name), mtime: Math.floor(st.mtimeMs) });
+            mine.push({ p, seg: m[1], segDir: sd.name, name: f.name, orig, file: rel + '/' + sd.name + '/' + f.name, old, when: old ? hp.when : '', t: (old && Hist.ms(hp.stamp)) || Math.floor(st.mtimeMs), size: st.size, label: Core.vpLabel(orig), clips: [], abs: path.join(dir, f.name), mtime: Math.floor(st.mtimeMs) });
           }
         }
       }
-      if (ClipOf) await attach(base, mine);
+      try { await attach(base, mine); } catch (e) { log('认不出样片是哪一版出的：' + e.message); }
       for (const it of mine) it.lead = leadOf(await textOf(it));
       out.push(...mine);
     }
     return out.sort((a, b) => b.t - a.t || a.p.localeCompare(b.p, 'zh') || a.file.localeCompare(b.file, 'zh', { numeric: true }));
   }
-  /* 样片归哪一版：照名字认是哪一条（公用/样片归属.js，和审片那一步同一套），再照时间认是哪一版——
+  /* 样片归哪一版：照名字认是哪一条，再照时间认是哪一版（公用/历史记录.js 的 made）——
      收进历史记录的那一版管到它被收进去的那一刻，之后出的归现在这一版（现在没有了就归最后收进去的那一版） */
   async function attach(base, items) {
     const segs = new Map();
-    for (const it of items) { if (!segs.has(it.segDir)) segs.set(it.segDir, new Map()); const fams = segs.get(it.segDir); if (!fams.has(it.orig)) fams.set(it.orig, []); fams.get(it.orig).push(it); }
-    for (const [segDir, fams] of segs) {
-      for (const [rel, old] of [['成片', false], ['历史记录/成片', true]]) {
-        const dir = path.join(base, ...rel.split('/'), segDir);
+    for (const it of items) { if (!segs.has(it.segDir)) segs.set(it.segDir, []); segs.get(it.segDir).push(it); }
+    for (const [segDir, its] of segs) {
+      const files = async rel => {
+        const dir = path.join(base, ...rel.split('/'), segDir), out = [];
         for (const f of await ls(dir)) {
           if (!f.isFile() || !VID.test(f.name)) continue;
-          let mt;
-          try { mt = (await fsp.stat(path.join(dir, f.name))).mtimeMs; } catch (e) { continue; }
-          for (const [orig, vers] of fams) {
-            if (!ClipOf.carries(f.name, orig)) continue;
-            const olds = vers.filter(v => v.old).sort((a, b) => a.t - b.t);
-            const to = olds.find(v => v.t > mt) || vers.find(v => !v.old) || olds[olds.length - 1];
-            to.clips.push({ file: rel + '/' + segDir + '/' + f.name, old });
-          }
+          try { out.push({ name: f.name, mtime: (await fsp.stat(path.join(dir, f.name))).mtimeMs }); } catch (e) { /* 刚挪走 */ }
         }
-      }
+        return out;
+      };
+      const m = Hist.made({ olds: its.filter(x => x.old).map(x => ({ name: x.name, mtime: x.mtime })), curs: its.filter(x => !x.old).map(x => x.name), here: await files('成片'), hist: await files('历史记录/成片') });
+      for (const it of its) it.clips = ((it.old ? m.old : m.cur).get(it.name) || []).map(c => ({ file: (c.old ? '历史记录/成片/' : '成片/') + segDir + '/' + c.vid, old: c.old }));
     }
   }
   async function index() {

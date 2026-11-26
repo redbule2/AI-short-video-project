@@ -76,7 +76,7 @@
 }
 
 .paper-edit-page .pe-cover-main:hover {
-  background: var(--paper-hi);
+  background: var(--white);
 }
 
 .paper-edit-page .pe-cover-main:focus-visible {
@@ -168,7 +168,7 @@
 }
 
 .paper-edit-page .pe-ov-q:hover {
-  background: var(--paper-hi);
+  background: var(--white);
 }
 
 .paper-edit-page .pe-ov-q:focus-visible {
@@ -288,7 +288,7 @@
 }
 
 .paper-edit-page .pe-ov-opt.is-correct .pe-ov-opt-mark {
-  color: var(--paper-hi);
+  color: var(--on-accent);
   background: var(--vermilion);
   border-color: var(--vermilion-deep);
 }
@@ -678,7 +678,7 @@
 }
 
 .paper-edit-page .pe-opt-mark.is-correct {
-  color: var(--paper-hi);
+  color: var(--on-accent);
   background: var(--vermilion);
   border-color: var(--vermilion-deep);
 }
@@ -733,7 +733,7 @@
 }
 
 .paper-edit-page .pe-choice-btn:hover:not(:disabled) {
-  background: var(--paper-hi);
+  background: var(--white);
 }
 
 .paper-edit-page .pe-choice-btn:focus-visible {
@@ -742,7 +742,7 @@
 }
 
 .paper-edit-page .pe-choice-btn.is-on {
-  color: var(--paper-hi);
+  color: var(--on-ink);
   background: var(--ink);
   border-color: var(--ink);
 }
@@ -809,9 +809,9 @@
   width: 20px;
   height: 20px;
   font-size: 11px;
-  color: var(--paper-hi);
+  color: var(--on-shade);
   cursor: pointer;
-  background: rgb(28 27 25 / 70%);
+  background: rgb(from var(--shade) r g b / 70%);
   border: none;
   border-radius: 50%;
 }
@@ -915,10 +915,10 @@
   width: 232px;
   padding: 16px;
   color: var(--ink-body);
-  background: linear-gradient(178deg, var(--paper-hi) 0%, var(--paper) 60%);
+  background: linear-gradient(178deg, var(--white) 0%, var(--paper) 60%);
   border: 1px solid var(--paper-edge);
   border-radius: 6px;
-  box-shadow: 0 10px 28px rgb(0 0 0 / 38%);
+  box-shadow: 0 10px 28px rgb(from var(--shade) r g b / 38%);
 }
 
 /* 桌沿常驻【sol 必改#3】:sticky 在考试页被 overflow 祖先击穿(R9 教训),
@@ -1010,7 +1010,7 @@
 }
 
 .paper-edit-page .pe-cell.is-complete {
-  color: var(--paper-hi);
+  color: var(--on-ink);
   background: var(--ink);
   border-color: var(--ink);
 }
@@ -1167,9 +1167,9 @@
     gap: 10px;
     align-items: center;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-    background: var(--paper-hi);
+    background: var(--white);
     border-top: 1px solid var(--paper-edge);
-    box-shadow: 0 -6px 18px rgb(0 0 0 / 30%);
+    box-shadow: 0 -6px 18px rgb(from var(--shade) r g b / 30%);
   }
 
   .paper-edit-page .pe-mobile-sum {
