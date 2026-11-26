@@ -101,6 +101,8 @@
      交给 AI 照审片批注改挪进那一行的「⋯」（reviewFork）。
    2026-11-22 他定：审片改成弹窗（流水线/审片弹窗.js），不再单独一页（第五步「审片」拿掉了）。「审片」最新这一版出过片才能点（成片、历史记录里的都算）；
      当晚又定：前几版出过、最新这一版没出的也灰掉。弹窗里摆这一条几版出的样片、能换着看，进去以后换不到别的提示词；复制批注、这条不要了也在弹窗里。
+   2026-11-26 他定（删 11-12 时点了五回删除，每回一版顶上来，看着像没删）：不管几版都摆出来，一版一行，不再藏在最新一版后面；删哪一版只少那一行。
+     最新那一版照旧能改、出片；前几版那一行（oldRowOf）只有 进去看、看任务书、审片（只摆这一版的片先开）、⋯ 里的删除。
    共用的东西（读写流水线.json、顶栏、步骤条、AI 任务）在 流水线.js。
    ============================================================ */
 'use strict';
@@ -565,7 +567,7 @@ async function newPrompt(s) {
     else {
       const rows = pickedRows(), pk = Why.pickSay(rows), line = rows.map(x => x.写什么 || '内容待填写').join(' → ');
       lead.replaceChildren(h('div', { class: 'np-got', title: line }, h('b', null, name.replace(/\.txt$/i, '')), line + (pk.say ? ' · ' + pk.say : '')),
-        usedWhy ? h('p', { class: 'fn-note warn' }, '「' + SB.codeOf(shotNumbers(), nos).replace(/\.txt$/i, '') + '」这个名字用过（' + usedWhy + '），这一条存成 ' + name + '，免得旧样片算到它头上') : null);
+        usedWhy ? h('p', { class: 'fn-note warn' }, '「' + SB.codeOf(shotNumbers(), nos).replace(/\.txt$/i, '') + '」这个名字用过（' + usedWhy + '），这一条存成 ' + name + '，免得旧样片算到它头上') : '');   // 给 null 会显示成「null」（11-26）
       const keep = bm ? bm.value : '', n = X.vids.filter(v => cover(v).length).length;
       bm = bmSelect(null, keep, cover); bmBox.replaceChildren(bm);
       bmHint.textContent = n ? '管到这几镜的 ' + n + ' 段排在最前' : ''; bmHint.hidden = !n;
@@ -708,14 +710,14 @@ async function removePrompt(s, e) {
   const cnames = cents.map(x => x.name), mine = ClipOf.ownOf(e, e.name, cents.filter(x => x.kind === 'file').map(x => x.name));
   const clipGo = st => ClipOf.retireAs(mine, cnames, st), goVids = clipGo('').map(x => x[0]).filter(n => VIDEO_RE.test(n));
   const list = promptsOf(s.段), guess = ClipOf.scene(s).made(e, list).filter(v => !goVids.includes(v));   // 「已出片」算它的、名字又认不出：不挪
-  const lastOne = !e.vers || e.vers.length < 2, prev = lastOne ? '' : e.vers[e.vers.length - 2];   // 改过几版的：删的是最新这一版，这一条回到上一版
+  const lastOne = !e.vers || e.vers.length < 2, others = lastOne ? [] : e.vers.filter(v => v !== e.name);   // 改过几版的：只删这一版那一行，别的几版各自那一行不动（11-26）
   const sel = own(s.选定, e.key) ? s.选定[e.key] : '', picked = lastOne && sel && !goVids.includes(sel) ? sel : '';   // 以前在审片页选定的（11-22 起没有审片页了）
   const later = lastOne && vpNo(e.name) > 0 && list.some(x => vpNo(x.name) > vpNo(e.name));
   const ok = await dialog(close => dlgShell('删除 · ' + e.label, [...rel, e.name].join(' / '),
     [h('p', { class: 'fn-note' }, '移进这个项目的「历史记录」，不是彻底删掉。' + (kin.length ? '它的' + kin.map(x => x[1]).join('、') + '一起移走。' : '')),
       goVids.length ? h('p', { class: 'fn-note' }, '它出的 ' + goVids.length + ' 条样片一起移进 历史记录 / ' + crel.join(' / ') + '（名字加上删的时间），批注、批注截图跟着走：' + goVids.join('、')) : null,
       guess.length ? h('p', { class: 'fn-note warn' }, '这几条样片名字认不出是不是它出的，留在成片里：' + guess.join('、')) : null,
-      prev ? h('p', { class: 'fn-note' }, '删的只是「' + vpLabel(e.name) + '」这一版；删了以后，这一条回到「' + vpLabel(prev) + '」（' + prev + '）。') : null,
+      others.length ? h('p', { class: 'fn-note' }, '只删「' + vpLabel(e.name) + '」这一版、这一行；' + others.map(vpLabel).join('、') + ' 各自那一行不动。') : null,
       picked ? h('p', { class: 'fn-note' }, '以前给它选定的样片「' + picked + '」不再算它的，样片还在成片里。') : null,
       later ? h('p', { class: 'fn-note' }, '后面几条不改名，还叫原来的第几条。') : null],
     [h('button', { class: 'btn ghost', 'data-focus': '', onclick: () => close(false) }, '取消'), h('button', { class: 'btn zhu', onclick: () => close(true) }, '删除')]));
@@ -827,13 +829,34 @@ async function renameShots(s, name, picked) {
 }
 window.PromptShots = Object.freeze({ lock: (seg, name) => shotLock(sceneOfSeg(seg), name), rename: (seg, name, picked) => renameShots(sceneOfSeg(seg), name, picked) });
 /* ---------- 写稿页里加减镜头：完 ---------- */
-/* 一条改过几版（审片以后另存的 _改1、_改2……）：摆的是最新那一版；能和上一版比、看上一版 */
+/* 一条改过几版（审片以后另存的 _改1、_改2……）：最新那一版能和上一版比；前几版各占一行，摆在它下面（oldRowOf） */
 function verLine(s, e) {
   if (!e.vers || e.vers.length < 2) return null;
   const prev = e.vers[e.vers.length - 2];
-  return h('p', { class: 'fn-note', style: 'margin:8px 0 0' }, '这一条审片以后改过，摆的是最新的「' + vpLabel(e.name) + '」：改稿、出片都用它。前几版（' + e.vers.slice(0, -1).map(vpLabel).join('、') + '）留在原处没动。',
-    h('button', { class: 'fl-link', type: 'button', title: '一行一行比：删的划掉，加的标绿', onclick: () => diffDlg(s, prev, e.name) }, '和上一版比'),
-    h('button', { class: 'fl-link', type: 'button', onclick: () => openShell(at([...dirOf(s), prev]), '第' + s.段 + '段 · ' + vpLabel(prev)) }, '看上一版'));
+  return h('p', { class: 'fn-note', style: 'margin:8px 0 0' }, '这是最新的一版，改稿、出片都用它；前几版各占一行，在下面。',
+    h('button', { class: 'fl-link', type: 'button', title: '一行一行比：删的划掉，加的标绿', onclick: () => diffDlg(s, prev, e.name) }, '和上一版比'));
+}
+/* 前几版（11-26 他定：不管几版都摆出来，一版一行；删哪一版只少那一行，不再藏在最新一版后面）。
+   e 是那一条（promptsOf），v 是前面的一版：照最新那一版的样子换成这一版，old 记着最新那一版叫什么 */
+function oldVer(s, e, v) {
+  const rec = F.names.get(s.段);
+  return { ...e, name: v, ver: vpVer(v), label: vpLabel(v), tok: vpTok(v), draft: !!rec && rec.set.has(v.replace(/\.txt$/i, '') + '_写稿.json'), old: e.name };
+}
+const verRows = (s, list) => list.flatMap(e => [e, ...(e.vers || []).slice(0, -1).reverse().map(v => oldVer(s, e, v))]);   // 每一条最新的在前，前几版跟在后面
+const rowEntry = (s, name) => { const e = famOf(s, name); return !e ? null : e.name === name ? e : oldVer(s, e, name); };   // 页面上那一行（data-name）是哪一版
+/* 前几版那一行：只能看、审片、删（改稿、出片用最新那一版） */
+function oldRowOf(s, e, made, list) {
+  const tf = taskOf(e.name), fz = X.filmed.get(e.name), busy = AI.jobs.some(j => j.段 === s.段 && jobLive(j) && (j.名 === e.name || j.名 === tf));
+  const btn = (label, fn, title, off) => h('button', { class: 'btn sm', type: 'button', title: title || null, disabled: !!off, onclick: fn }, label);
+  return h('div', { class: 'wf-item', 'data-name': e.name },
+    h('div', { class: 'wf-item-h' }, h('div', { class: 'wf-item-t' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), ReviewPop.tag(made),
+      h('span', { class: 'fs-state', title: '改稿、出片都用最新的「' + vpLabel(e.old) + '」；这一版只能看、审片、删' }, '前一版')),
+      h('div', { class: 'wf-item-act' },
+        fz ? btn('进去看', () => openWrite(s.段, e.name, false, false, true), '打开写稿页看这一版：出过片的锁着，不能改')
+          : btn('进去看', () => openShell(at([...dirOf(s), e.name]), '第' + s.段 + '段 · ' + e.label), '看这一版的字'),
+        X.tasks.has(tf) ? h('button', { class: 'fl-link', type: 'button', title: '这一版批准出片时排的任务书：' + tf, onclick: () => showText(at([...dirOf(s), tf])) }, '看任务书') : null,
+        btn('审片', () => ReviewPop.open(s, e, list, made[0]), made.length ? '弹出来看这一版出的样片、写批注' : '这一版没出过片', !made.length),
+        h('button', { class: 'fl-ib', type: 'button', title: '删除', 'aria-label': '更多：删除', onclick: ev => moreMenu(ev.currentTarget, s, e, busy) }, icon('more')))));
 }
 async function diffDlg(s, a, b) {
   let ta, tb;
@@ -1123,12 +1146,12 @@ function rowOf(s, e, made, list) {
 }
 /* 不常用的收进「⋯」（11-21 他定：那一行只摆 接着写、批准出片、看任务书、审片） */
 function moreMenu(anchor, s, e, busy) {
-  const fz = X.filmed.get(e.name), no = fz ? reviewWhy(fz, busy) : '';   // 出过片的：多一样「照审片批注交给 AI 改」（11-23 晚）
+  const fz = e.old ? null : X.filmed.get(e.name), no = fz ? reviewWhy(fz, busy) : '';   // 出过片的：多一样「照审片批注交给 AI 改」（11-23 晚）；前几版只有删除
   popover(anchor, close => {
     const item = (label, tip, fn, off) => h('button', { type: 'button', class: 'fl-pi', disabled: !!off, onclick: () => { close(); fn(); } }, h('span', { class: 'pn' }, h('b', null, label), h('small', null, off || tip)));
     return h('div', { class: 'fl-pl', style: 'padding-top:6px' },
       fz ? item('照审片批注交给 AI 改', no ? '' : '把' + fz.批注.map(noteSay).join('、') + '交给 ' + chName() + '，改好的另存成「' + vpLabel(fz.下一版) + '」；AI 一处没改就不另存', () => reviewFork(s, e), no) : null,
-      item('出关键帧…', '定取哪一刻，AI 照分镜先写字，你批过再出图', () => outFrameDlg(s, e)),
+      e.old ? null : item('出关键帧…', '定取哪一刻，AI 照分镜先写字，你批过再出图', () => outFrameDlg(s, e)),
       item('删除', busy ? 'AI 正在做这一条，做完再删' : '移进历史记录，不是彻底删掉', () => removePrompt(s, e)));
   });
 }
@@ -1182,8 +1205,9 @@ function render() {
   const list = promptsOf(seg).sort((a, b) => ((vpNo(a.name) || 1e9) - (vpNo(b.name) || 1e9)) || window.Core.vpSort(a.key, b.key)), stale = list.filter(e => promptStale(s, e.name));   // 第1条、第2条……在前，别的按原稿名排：4-6 在 4-6_补1 前面，接力稿前半条在后半条前面（公用/核心.js）
   const writing = AI.jobs.filter(j => j.事 === '写提示词' && j.段 === seg && jobLive(j) && !list.some(e => e.name === j.名));
   const hc = HistView.prompts(s), hn = HistView.count(hc);   // 历史记录里收进去的（11-19）：点「历史记录」只看它们
-  const made = new Map(list.map(e => [e.name, ReviewPop.madeOf(s, e, list)])), pf = (HistView.on ? (hc.items || []).length : list.length) > 1 ? pfNow() : '全部';   // 只有一条不摆筛选。made：和「审片」能不能点同一套（11-24）；看历史记录时数历史记录里的几版（11-25）
-  const shown = pf === '全部' ? list : list.filter(e => (made.get(e.name).length > 0) === (pf === '已出片'));
+  const rows = verRows(s, list);   // 几版都摆，一版一行（11-26）
+  const made = new Map(rows.map(e => [e.name, ReviewPop.madeOf(s, e, list)])), pf = (HistView.on ? (hc.items || []).length : rows.length) > 1 ? pfNow() : '全部';   // 只有一行不摆筛选。made：和「审片」能不能点同一套（11-24）；看历史记录时数历史记录里的几版（11-25）
+  const shown = pf === '全部' ? rows : rows.filter(e => (made.get(e.name).length > 0) === (pf === '已出片'));
   ShotFloat.paint(s);  // 左边的镜头表（镜头表浮窗.js）
   return [
     h('div', { class: 'wf-bar' },
@@ -1195,9 +1219,9 @@ function render() {
       PROMPT_BTN ? h('button', { class: 'btn sm' + (list.length ? '' : ' ink'), onclick: () => newPrompt(s) }, icon('plus'), list.length ? '再写一条提示词' : '写提示词') : null),
     writing.length ? h('div', { class: 'wf-jobs' }, writing.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题)))) : null,
     jobFailed('写提示词', seg, j => !list.some(e => e.name === j.名)),
-    list.length > 1 || hn || HistView.on ? filterBar(s, list, made, pf, hc) : null,
+    rows.length > 1 || hn || HistView.on ? filterBar(s, rows, made, pf, hc) : null,
     HistView.on ? HistView.promptView(s, hc, pf, () => pfSet('全部'))
-      : shown.length || !list.length ? h('div', { class: 'wf-items' }, shown.map(e => rowOf(s, e, made.get(e.name), list)))
+      : shown.length || !list.length ? h('div', { class: 'wf-items' }, shown.map(e => (e.old ? oldRowOf : rowOf)(s, e, made.get(e.name), list)))
       : h('p', { class: 'fn-note wf-none' }, pf === '已出片' ? '这一段还没有出过片的提示词。' : '这一段的提示词都出过片了。', h('button', { class: 'fl-link', type: 'button', onclick: () => pfSet('全部') }, '看全部')),
   ];
 }
@@ -1215,7 +1239,7 @@ document.addEventListener('mouseover', ev => {
   const it = ev.target.closest && ev.target.closest('.wf-item[data-name]'), name = it ? it.dataset.name : '';
   if (name === SF_AT) return;
   SF_AT = name;
-  const s = sceneNow(), e = s && name ? promptsOf(s.段).find(x => x.name === name) : null;
+  const s = sceneNow(), e = s && name ? rowEntry(s, name) : null;
   ShotFloat.mark(e ? shotsOfPrompt(s, e) || [] : []);
 });
 
@@ -1225,7 +1249,7 @@ document.addEventListener('click', ev => { const it = ev.target.closest && ev.ta
 const imgType = f => 'image/' + (/\.jpe?g$/i.test(f) ? 'jpeg' : f.split('.').pop().toLowerCase());
 if (window.RefPic) RefPic.watch((ref, el) => {
   const s = sceneNow(), row = el.closest('.wf-item[data-name]'), name = row ? row.dataset.name : el.closest('.mask') ? REF_AT : '';
-  const e = s && name ? promptsOf(s.段).find(x => x.name === name) : null, r = e ? refsOf(e).find(x => x.ref === ref) : null;
+  const e = s && name ? rowEntry(s, name) : null, r = e ? refsOf(e).find(x => x.ref === ref) : null;
   if (!r || !/\.(png|jpe?g|webp|gif|avif|bmp)$/i.test(r.path)) return null;
   const file = r.path.split('/').pop(), label = ref + ' · ' + file.replace(/\.[^.]+$/, '');
   const m = (X.map.get(e.name) || []).find(x => x && x.ref === ref && String(x.path || '').replace(/\\/g, '/') === r.path);   // 参考素材映射登记的

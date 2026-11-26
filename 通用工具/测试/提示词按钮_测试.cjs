@@ -184,7 +184,7 @@ test('审片（11-22 改成弹窗）：那一行的「审片」交给审片弹�
   assert.equal(calls.at(-1)[2], entry);
   assert.deepEqual([...calls.at(-1)[3]], ['这一段的几条']);   // render 没给 list：照 promptsOf 认
   assert.ok(!calls.some(c => c[0] === '去'));
-  assert.match(script, /rowOf\(s, e, made\.get\(e\.name\), list\)/);   // render 把这一段的几条带进去
+  assert.match(script, /\(e\.old \? oldRowOf : rowOf\)\(s, e, made\.get\(e\.name\), list\)/);   // render 把这一段的几条带进去（前几版那一行也是，11-26）
   assert.match(html, /<script src="审片弹窗\.js"><\/script>/);
 });
 
@@ -244,5 +244,54 @@ test('历史记录里也能筛「已出片 / 没出片」（11-25）：数法照
   assert.match(fb, /HistView\.made\(s\)/);
   assert.match(fb, /出片时用的是这一版就算/);
   assert.match(r, /HistView\.promptView\(s, hc, pf, /);
-  assert.match(r, /filterBar\(s, list, made, pf, hc\)/);
+  assert.match(r, /filterBar\(s, rows, made, pf, hc\)/);   // 11-26 起一版一行：数的是摆出来的几行
+});
+
+test('几版都摆，一版一行（11-26 他定：删 11-12 点了五回删除，每回一版顶上来，看着像没删）：前几版那一行只有 进去看、看任务书、审片、⋯', () => {
+  const Core = require('../公用/核心.js'), calls = [];
+  const fam = { name: '11-12_改2.txt', key: '11-12.txt', ver: 2, vers: ['11-12.txt', '11-12_改1.txt', '11-12_改2.txt'], label: '镜头11-12 改2', draft: true };
+  const one = { name: '15.txt', key: '15.txt', ver: 0, vers: ['15.txt'], label: '镜头15', draft: false };
+  const ctx = {
+    h: (tag, attrs, ...children) => ({ tag, attrs: attrs || {}, children: children.flat(Infinity).filter(x => x != null) }),
+    vpVer: Core.vpVer, vpLabel: Core.vpLabel, vpTok: Core.vpTok, taskOf: Core.vpTask,
+    F: { names: new Map([['3-4', { set: new Set(['11-12_改1_写稿.json']) }]]) },
+    famOf: (s, n) => [fam, one].find(x => x.vers.includes(n)) || null,
+    X: { filmed: new Map([['11-12_改1.txt', { 出过片: true }]]), tasks: new Set([Core.vpTask('11-12_改1.txt')]) },
+    AI: { jobs: [] }, jobLive: () => true, icon: () => null, at: p => p, dirOf: () => ['提示词', '第3-4段'],
+    ReviewPop: { tag: () => null, open: (...a) => calls.push(['审片', ...a]) },
+    openWrite: (...a) => calls.push(['进去看', ...a]), openShell: (...a) => calls.push(['看字', ...a]), showText: (...a) => calls.push(['任务书', ...a]),
+    moreMenu: (...a) => calls.push(['⋯', ...a]),
+  };
+  vm.createContext(ctx);
+  vm.runInContext(script.slice(script.indexOf('function oldVer('), script.indexOf('async function diffDlg(')) + '\nObject.assign(globalThis, { verRows, rowEntry });', ctx, { filename: page });
+  const s = { 段: '3-4' }, rows = ctx.verRows(s, [fam, one]);
+  assert.deepEqual(rows.map(e => e.name), ['11-12_改2.txt', '11-12_改1.txt', '11-12.txt', '15.txt']);   // 最新的在前，前几版跟着
+  assert.equal(rows[0], fam);
+  assert.deepEqual(rows.map(e => e.old || ''), ['', '11-12_改2.txt', '11-12_改2.txt', '']);
+  assert.deepEqual(rows.map(e => e.label), ['镜头11-12 改2', '镜头11-12 改1', '镜头11-12', '镜头15']);
+  assert.deepEqual(rows.map(e => e.draft), [true, true, false, false]);
+  assert.equal(ctx.rowEntry(s, '11-12_改1.txt').old, '11-12_改2.txt');   // 鼠标停在前几版那一行、点 @图片N：认得出是哪一版
+  assert.equal(ctx.rowEntry(s, '11-12_改2.txt'), fam);
+  assert.equal(ctx.rowEntry(s, '9.txt'), null);
+
+  const made = [{ vid: '11-12_改1.mp4', ver: '11-12_改1.txt', old: true }], bs = buttonsOf(ctx.oldRowOf(s, rows[1], made, 'list'));
+  assert.deepEqual(bs.map(labelOf), ['进去看', '看任务书', '审片', '⋯']);   // 不能改、不能批准出片：改稿、出片用最新那一版
+  bs[0].attrs.onclick();
+  assert.deepEqual(calls.at(-1), ['进去看', '3-4', '11-12_改1.txt', false, false, true]);   // 出过片的：写稿页锁着只能看
+  bs[2].attrs.onclick();
+  assert.deepEqual(calls.at(-1), ['审片', s, rows[1], 'list', made[0]]);   // 先开这一版出的片
+  bs[3].attrs.onclick({ currentTarget: bs[3] });
+  assert.deepEqual(calls.at(-1), ['⋯', bs[3], s, rows[1], false]);
+
+  const bare = buttonsOf(ctx.oldRowOf(s, rows[2], [], 'list'));
+  assert.deepEqual(bare.map(labelOf), ['进去看', '审片', '⋯']);
+  assert.equal(bare[1].attrs.disabled, true);   // 没出过片：审片灰着
+  bare[0].attrs.onclick();
+  assert.equal(calls.at(-1)[0], '看字');   // 没出过片的前几版只给看字，不进写稿页改
+
+  const menu = script.slice(script.indexOf('function moreMenu('), script.indexOf('/* 你来写的稿（11-19 又能写了）'));
+  assert.match(menu, /e\.old \? null : item\('出关键帧…'/);   // 前几版的「⋯」里只有删除
+  const del = script.slice(script.indexOf('async function removePrompt('), script.indexOf('/* ---------- 写稿页里加减镜头'));
+  assert.match(del, /只删「' \+ vpLabel\(e\.name\) \+ '」这一版、这一行/);
+  assert.doesNotMatch(del, /这一条回到「/);   // 删了不再是上一版顶上来
 });
