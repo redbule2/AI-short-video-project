@@ -132,6 +132,7 @@
 <script src="../公用/资产归类.js"></script>
 <script src="../公用/资产照的.js"></script>
 <script src="../公用/资产认图.js"></script>
+<script src="../公用/人物卡.js"></script>
 <script src="流水线.js"></script>
 <script src="资产旧图.js"></script>
 <script src="资产详情.js"></script>
@@ -166,6 +167,8 @@
        单出一样：弹窗里「在 Codex 里出图」，同一个做法。
      已经有图的再出，新图先当候选（「看新图」：旧图、新图并排，挑「用旧图」或「用新图」；没挑以前卡上不摆旧图的「可用」）。
      只用文字写的场景也能写字、出图：图出好了点「用上这张图」，这一场改用图。道具能「加一种样子」（一个状态一张图）。
+     人物卡（2026-11-26 他定，公用/人物卡.js）：人物图一张横图：正脸大特写、侧脸特写，加脖子以下的正、侧、背全身（无头三视图；当天先做的左脸右全身，他看过调研改成这样）。以前的竖幅全身照卡上标「缺脸部特写」，点「重画成人物卡」（没字的先「写成人物卡」）；
+       成群的路人，名字右边点「只要全身」（记在人物那一行的「只全身」），照旧出竖幅全身，点「要人物卡」改回来。
    确认可用：一张图一张图确认（2026-11-12 他定的）。确认记在全片，确认过的图别的场不用再确认；这一场要的图都确认了，这一步自动过。图重出过、它的描写改过，那一张要再确认。
    项目里本来就有的图（2026-11-25 他要：前一条出的图后一条接着用，项目也可能自带图）：放进 资产/人物和道具、资产/场景，名字和表里那一行（只用文字写的场景：地方名）对得上的，
      自动挂上、算确认可用（公用/资产认图.js，流水线.js 的 loadSides 挂着）；自己在挑图栏里挑上的，挑上也算确认可用（挑图栏.js 的 pickedOk；关键帧照旧）。认错了点卡上的 × 取下，取下的不再自己挂回。
@@ -228,10 +231,12 @@ function cardEl(s, it, voice) {
   const geoKey = k === '场景' && it.own && !txt ? (it.文字 ? sceneStem(it.文字) : it.类别 === '场景图' ? baseOf(it.文件) : '') : '', offGeo = !!geoKey && noGeo(s, geoKey);   // 不要 GEO 的场景（11-17）
   const img = !!it.at && IMG_RE.test(it.at), ok = img && okOf(it), again = img && !ok && !!F.doc.可用[it.at], cand = !!w && w.step === 'cand';
   const old = !!w && OldImg.of(w), tag = old ? OldImg.tag(w) : '';   // 旧了（11-23，资产旧图.js）：描写改了、镜头改了、字改了
+  const fe = isRow && it.类别 === '人物' && it.own && !txt && typeof FaceCard === 'object' ? entryOf('人物', it.名称) : null, only = !!fe && FaceCard.bodyOnly(fe);   // 人物卡（11-26）：只要全身的成群路人
+  const face = !!w && !!w.noFace && !['ai-img', 'ai-word', 'cand'].includes(w.step);   // 缺脸部特写：竖幅全身照（AI 在做、新图等你挑的先办那个）
   const open = w ? () => openWord(s, w) : img ? () => openImage(it.at, shellActs(s, it, w)) : it.own && !txt && (isRow || it.文字) ? () => pickFor(s, it) : null;
   /* 走到哪了：一行小字 */
   const sc = scopeTx(s, it), canSc = !!sc && Scope.marked(s);   // 用在哪几镜：标过了的能点开改
-  const tx = [tag, txt ? ['只用文字', w ? wordTx(w) : ''].filter(Boolean).join(' · ') : it.文字 ? (w ? (w.hasImg ? (tag ? '' : '图出好了') : wordTx(w)) : '只用文字写，不用图')
+  const tx = [face ? '缺脸部特写' : '', only ? '只要全身' : '', tag, txt ? ['只用文字', w ? wordTx(w) : ''].filter(Boolean).join(' · ') : it.文字 ? (w ? (w.hasImg ? (tag ? '' : '图出好了') : wordTx(w)) : '只用文字写，不用图')
     : !img ? [it.own ? '' : 'AI 列的', w ? chipTx(it, w) : it.状态 || '还没有图'].filter(Boolean).join(' · ')
       : [cand || ok || tag ? '' : again ? '图改过、描写改过，再看一眼' : '还没确认', w ? chipTx(it, w) : ''].filter(Boolean).join(' · '), offGeo ? '不写 GEO' : ''].filter(Boolean).join(' · ');
   const good = ok && !(w && (checkBad(w.checkImg) || w.geoBack || cand)) && !old;
@@ -240,6 +245,8 @@ function cardEl(s, it, voice) {
   const acts = [
     it.own && !txt && !img && !(w && (w.hasImg || w.drawing)) && (isRow || it.文字) ? h('button', { class: 'fl-asset-ok go', type: 'button', title: isRow ? '从项目里现成的图挑一张，挂给「' + it.名称 + '」' : '从项目里现成的图挑一张，这一段改用图', onkeydown: stop, onclick: ev => { stop(ev); pickFor(s, it); } }, '挑现成的图') : null,
     ...(w ? (old && w.follow ? OldImg.acts(s, it, w, mk) : [...wordPills(s, it, w), ...(old ? OldImg.acts(s, it, w, mk) : [])]) : []),   // 旧了的图：只给「重画」「旧图还能用」
+    face && !(old && w.follow) ? (w.hasTxt ? mk('重画成人物卡', '开一个 Codex 新对话：照这张图的长相、穿着出人物卡（' + FaceCard.SHORT + '）；字没写成人物卡的先改，告诉你改了哪几句。满意了在那个对话里说「定稿」，定稿前旧图照用', () => OldImg.redraw(s, w))
+      : mk('写成人物卡', '还没有出图提示词：AI 照这张图和全片设定写人物卡的出图提示词，你看过再出图', async () => { if (await askWords(s, [w], FaceCard.ASK)) await pageRepaint(); })) : null,   // 缺脸部特写（11-26）
     img && !cand && !(old && w.follow) ? h('button', { class: 'fl-asset-ok' + (ok ? ' on' : ''), type: 'button', onkeydown: stop,
       title: ok ? '确认过可用（' + F.doc.可用[it.at].slice(5, 16) + '）。点一下取消' : again ? '你确认过，可后来这张图重出过、或者它的描写改过：再看一眼，能用就再确认' : '这张图看过了、能用。确认过的图，别的段不用再确认',
       onclick: ev => { stop(ev); confirmImg(s, it, !ok); paint(); } }, ok ? [icon('check'), '可用'] : again ? '再确认' : '确认可用') : null].filter(Boolean);
@@ -260,12 +267,15 @@ function cardEl(s, it, voice) {
       title: offGeo ? '改回来：要写 GEO 底稿，锁住谁站哪、朝哪看、往哪走' : '这一场没有严格站位：只写出图提示词，不写 GEO 底稿；出了图不核 GEO，写视频提示词也不用 GEO',
       onclick: ev => { stop(ev); setNoGeo(s, geoKey, !offGeo); touch(); paint(); } }, offGeo ? '要GEO' : '不要GEO') : null;
   const swap = isRow && it.own && img && !KIND[it.类别].multi ? h('button', { class: 'ac-swap', type: 'button', title: '另挑一张现成的图挂给「' + it.名称 + '」', onkeydown: stop, onclick: ev => { stop(ev); pickFor(s, it); } }, '换图') : null;
-  const el = h('div', { class: 'ac ' + kindCls(k) + (good ? ' ok' : '') + (w && checkBad(w.checkImg) || old ? ' bad' : ''), 'data-key': cardKey(it), 'data-img': w ? w.img : it.at || null, role: open ? 'button' : null, tabindex: open ? '0' : null,
+  const body = fe ? h('button', { class: 'ac-swap', type: 'button', style: swap || lock ? 'margin-left:0' : null, onkeydown: stop,   // 人物卡（11-26）：成群的路人只要全身
+      title: only ? '改回来：出人物卡（' + FaceCard.SHORT + '）' : '成群出现的路人（一个样子代表一群人）：照旧出竖幅全身，不出脸部特写，免得一群人长一张脸',
+      onclick: ev => { stop(ev); FaceCard.setBodyOnly(fe, !only); touch(); paint(); } }, only ? '要人物卡' : '只要全身') : null;
+  const el = h('div', { class: 'ac ' + kindCls(k) + (good ? ' ok' : '') + (w && checkBad(w.checkImg) || old || face ? ' bad' : ''), 'data-key': cardKey(it), 'data-img': w ? w.img : it.at || null, role: open ? 'button' : null, tabindex: open ? '0' : null,
       title: [w ? (txt ? '点一下弹出来：文字描写（自己写，或者让 AI 写）' : '点一下弹出来：字、图、AI 做过的事') : img ? '点开看大图' : open ? '点一下挑现成的图' : '', txt ? '只用文字写，不出图' + (isRow ? '：' + String((entryOf(it.类别, it.名称) || {}).描写 || '').trim() : '') : '', it.at || it.文字 || it.说明 || '', w && w.checkImg ? 'AI 核图：' + w.checkImg : '', w && w.need ? '要撑住：' + w.need : '', old ? tag + '：原来和现在并排在卡上，点开看全的' : ''].filter(Boolean).join('\n'),
       onclick: open, onkeydown: open ? ev => { if (ev.key === 'Enter' && ev.target === ev.currentTarget) open(); } : null },
     h('div', { class: 'ac-pic' + (img || old && w.hasImg ? '' : ' none') }, img ? thumbImg(it.at, 400) : old && w.hasImg ? thumbImg(w.img, 400) : txt ? '只用文字写' : it.状态 === '图不在了' ? '图不在了' : '还没有图'),
     h('div', { class: 'ac-bd' },
-      h('div', { class: 'ac-nm' }, h('span', null, it.名称), it.sub ? h('small', null, it.sub) : null, swap || lock, geo),
+      h('div', { class: 'ac-nm' }, h('span', null, it.名称), it.sub ? h('small', null, it.sub) : null, swap || lock, geo, body),
       sc || tx ? h('div', { class: 'ac-st' + (good ? ' ok' : !it.own || txt ? '' : ' todo') }, canSc ? scBtn(s, it, sc) : sc, sc && tx ? ' · ' : '', tx) : null,
       old ? OldImg.compare(w, 30) : null,
       h('div', { class: 'ac-acts' }, acts),

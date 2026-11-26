@@ -1625,6 +1625,7 @@ function wordFor(s, cat, stem, img, it) {
   w.geoing = cat === '场景' && live('核GEO', j => j.名 === stem);
   w.follow = w.hasImg && !frame && !txtOnly ? oldOf(img, [cat, w.name]) : null;   // 这张图旧了（11-23，资产旧图.js）：照的描写变了、场景多了镜头、字又改过
   w.wordFollow = !frame && !txtOnly && w.hasTxt ? AssetSrc.wordStale(F.doc, w.txt, cat, w.name, F.words.get(w.txt) || 0, w.hasImg ? img : '', imgTime(img)) : null;   // 字照的那一句变了
+  w.noFace = cat === '人物' && w.hasImg && typeof FaceCard === 'object' && FaceCard.lacks(entryOf('人物', w.name), at([F.name, ...img.split('/')]), imgTime(img), () => { if (!(PAGE.repaint && PAGE.repaint() !== false)) rerender(); });   // 缺脸部特写（11-26，公用/人物卡.js）：竖幅全身照
   w.ok = w.hasImg && !w.follow && (it && it.at === img ? okOf(it) : markOk(img, 0));
   w.step = w.drawing ? 'ai-img' : w.writing ? 'ai-word' : w.hasCand ? 'cand' : w.hasImg ? (w.ok ? 'ok' : 'img') : w.hasTxt ? (txtOnly ? 'txt' : 'word') : 'none';
   return w;

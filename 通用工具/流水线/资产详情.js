@@ -512,6 +512,9 @@ function adNowEls(s, it, w, jobs) {
   if (old) t = !w.follow ? OldImg.tag(w) + '：这份字照的是原来那一句（下面并排写着）。出图时 Codex 先照现在的描写改字，告诉你改了哪几句再出；字照样对得上就点「字还能用」。'
     : d.描写 || d.镜头 ? OldImg.tag(w) + '：这张图照的是原来那一句' + (d.镜头 && !d.描写 ? '，后来用到它的镜头多了' : '') + '（下面并排写着）。点「重画」：开一个 Codex 新对话，先照现在的' + (d.描写 ? '描写' : '镜头') + '改出图提示词，告诉你改了哪几句再出；旧图照样能用就点图下面「旧图还能用」。'
       : '字改了：出图提示词在这张图出好以后又改过。照新字重出点「重画」；旧图照样能用就点图下面「旧图还能用」。';
+  if (w.noFace && !old && !['ai-img', 'ai-word', 'cand'].includes(w.step)) t = '缺脸部特写：人物图要做成人物卡，一张横图：' + FaceCard.SHORT + '，几格是同一个人。'   // 11-26，公用/人物卡.js
+    + (w.hasTxt ? '点「重画成人物卡」：开一个 Codex 新对话，照这张图的长相、穿着出；字没写成人物卡的，Codex 先改，告诉你改了哪几句。' : '还没有出图提示词：先点「让 ' + chName() + ' 写成人物卡」，字定了再出。')
+    + '成群的路人：关掉弹窗，卡上名字右边点「只要全身」。';
   if (w.step === 'img' && checkBad(w.checkImg)) t += 'AI 核图说有问题，看图下面它怎么说。';
   if (w.step === 'ok' && !txtScene && w.cat === '场景' && w.hasGeo) t += '图和 GEO 底稿对不上，点图下面「照图核 GEO」：AI 先判断要不要改，对不上才改。';
   if (w.geoBack) t += 'AI 照图核了 GEO，说要拿回去批图：' + w.geoBack;
@@ -569,6 +572,8 @@ function adMain(s, it, w) {
   if (w.txtOnly) return w.step === 'none' ? (typed('ta') ? b('save', '存', () => adSave(s, w), '存上你写的文字描写') : b('write', '让 ' + chName() + ' 写文字描写', () => adWrite(s, w), 'AI 读定稿的剧本写这一样的文字描写；批注框里写的当要求'))
     : typed('nta') ? b('fix', '交给 ' + chName() + ' 改', () => adAskFix(s, w), '照批注改：只改你说到的地方，改之前的那一版收进历史记录') : null;
   if (w.follow && OldImg.of(w)) return b('draw', '重画', () => adDraw(s, w), '开一个 Codex 新对话：先照现在的描写、镜头改出图提示词，告诉你改了哪几句，再出图。满意了在那个对话里说「定稿」，定稿前旧图照用');   // 旧了（11-23）
+  if (w.noFace && w.step !== 'cand') return w.hasTxt ? b('draw', '重画成人物卡', () => adDraw(s, w), '开一个 Codex 新对话：照这张图的长相、穿着出人物卡（' + FaceCard.SHORT + '）。满意了在那个对话里说「定稿」，定稿前旧图照用')   // 缺脸部特写（11-26）
+    : b('write', '让 ' + chName() + ' 写成人物卡', async () => { if (await adSave(s, w, true) && await askWords(s, [w], FaceCard.ASK)) await pageRepaint(); }, 'AI 照这张图和全片设定写人物卡的出图提示词，你看过再出图');
   if (it && it.文字 && w.hasImg && w.step !== 'cand') return b('scene', '用上这张图', () => adUseScene(s, it, w), '这一段改用这张图（全片设定里那一句还在）');
   if (w.step === 'none') return typed('ta') ? b('draw', '在 Codex 里出图', () => adDraw(s, w), '字定了：先存上，再开一个 Codex 新对话照这份字出图。在那个对话里聊，满意了说「定稿」')
     : b('write', '让 ' + chName() + ' 写出图提示词', () => adWrite(s, w), 'AI 读定稿的剧本写这一样的出图提示词；批注框里写的当要求');
@@ -700,7 +705,7 @@ function adRepaint() {
   u.now.replaceChildren(...now.kids.filter(Boolean));
   adPaintWord(s, it, w);   // 字，连底边（adPaintActs）
   const main = adMain(s, it, w), skip = main ? main.key : '';
-  const isig = [skip, w.step, !!w.txtOnly, adIsTxt(), w.hasImg, w.hasCand, w.checkImg, w.checkCand, w.geoNote, w.geoBack, w.hasImgNote, imgOk(it, w), adBusy(s, w), pt, F.doc.可用[w.img] || '', OldImg.of(w) ? OldImg.tag(w) : ''].join('|');
+  const isig = [skip, w.step, !!w.txtOnly, adIsTxt(), w.hasImg, w.hasCand, w.checkImg, w.checkCand, w.geoNote, w.geoBack, w.hasImgNote, imgOk(it, w), adBusy(s, w), pt, F.doc.可用[w.img] || '', OldImg.of(w) ? OldImg.tag(w) : '', !!w.noFace].join('|');
   if (isig !== AD.imgSig) { AD.imgSig = isig; u.img.replaceChildren(...adImgEls(s, it, w, skip).filter(Boolean)); }
   const lsig = JSON.stringify([w.rec && w.rec.过程, AD.scan, AD.hist && [AD.hist.txt, AD.hist.geo]]);
   if (lsig !== AD.logSig) {
