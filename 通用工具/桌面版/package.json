@@ -1,7 +1,7 @@
 {
   "name": "antou-pipeline-desktop",
   "productName": "AI短视频流水线",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "流水线桌面版：登录、窗口、更新、报错，流水线照旧由本机服务跑",
   "main": "main.js",
