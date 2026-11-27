@@ -7,6 +7,8 @@
    有哪几个号：默认的那一个，加上首页「即梦授权」里登记过的登录位（流水线.js 的 jmNames）。
    服务那头（jobs.js）：GET /api/jimeng?canvases 列那个号名下的画布，POST /api/jimeng?switch 换过去——只改 资产/出片设置.json 的「画布」「登录位」，
    换下来的那一对记在「换下的」里，要换回去照样在这里换。
+   「批准出片」弹窗最上面那一块也在这里（card，同一天他要）：批准的时候把具体哪个号、哪张画布摆给他看——
+   号写登录位和昵称、还剩多少积分，画布写名字（到这个号名下的画布里找）；画布不在这个号名下、号没登录的标红。
    只提示词页用。用到 流水线.js 的 F、at、jmNames、go 和 公用 的 h、dialog、dlgShell、LINK、FS、C。
    ============================================================ */
 const JmSwap = (() => {
@@ -26,8 +28,37 @@ const JmSwap = (() => {
       return { p: /^[A-Za-z0-9_-]{1,40}$/.test(d.登录位 || '') && d.登录位 !== 'default' ? d.登录位 : '', 画布: String(d.画布 || ''), 换下的: Array.isArray(d.换下的) ? d.换下的 : [] };
     } catch (e) { return { p: '', 画布: '', 换下的: [] }; }
   }
-  /* 现在用的这个号：{ p, 画布, 换下的, on, nick, credits } */
-  const now = async () => { const s = await setting(); return { ...s, ...(await account(s.p)) }; };
+  const idOf = u => (/[0-9a-f]{8}-[0-9a-f-]{27}/i.exec(String(u)) || [''])[0].toLowerCase();   // 画布网址里的编号
+  /* 设置里记的那张画布叫什么：到这个号名下的画布里找。找到回 { 画布名 }；不在这个号名下回 { 画布错: true }（出片时服务会拦下）；
+     没写画布、没查到（没登录、即梦没回音）回 {} */
+  async function canvasOf(p, url) {
+    const id = idOf(url);
+    if (!id) return {};
+    const r = await ask('GET', 'canvases=1&profile=' + encodeURIComponent(p));
+    if (!r.ok) return {};
+    const hit = (r.items || []).find(x => String(x.id).toLowerCase() === id);
+    return hit ? { 画布名: hit.name || id.slice(0, 8) } : { 画布错: true };
+  }
+  /* 现在用的这个号、这张画布：{ p, 画布, 换下的, on, nick, credits, 画布名 或 画布错 }（号和画布一起查，不多等） */
+  const now = async () => { const s = await setting(), [a, c] = await Promise.all([account(s.p), canvasOf(s.p, s.画布)]); return { ...s, ...a, ...c }; };
+
+  /* 「批准出片」弹窗最上面那一块里摆的东西：这一条用哪个号、哪张画布出。
+     a：now() 查回来的，还在查是 null；cost：这一条估价多少积分（估不出是 0），比这个号剩的多就标红；swap：点了「换个号」 */
+  function card(a, cost, swap) {
+    if (!a) return [h('span', null, '用哪个号、哪张画布出'), h('div', { class: 'fn-note' }, '在查用哪个即梦号、哪张画布…')];
+    const row = (k, v, note, bad) => h('div', { style: 'display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px' },
+      h('span', { class: 'fn-note', style: 'flex:none;width:3.4em' }, k), h('b', { style: 'font-weight:600' }, v), note ? h('span', { class: 'fn-note' + (bad ? ' warn' : '') }, note) : null);
+    const few = a.on && a.credits != null && cost > a.credits, id = idOf(a.画布), no = id.slice(0, 8);
+    const link = h('button', { class: 'fl-link', type: 'button', style: 'float:right;letter-spacing:0', title: '换到别的即梦号，挑那个号名下的画布（没有就新建一张）。换了以后这个项目都用新号出', onclick: swap }, '换个号');
+    return [h('span', null, '用这个号、这张画布出', link),
+      h('div', { style: 'display:flex;flex-direction:column;gap:6px;padding:9px 12px;border:1px solid var(--line-2);border-radius:7px;background:var(--white)' },
+        row('即梦号', who(a.p, a.nick), !a.on ? '没登录：到首页「即梦授权」登录，或者换个号' : (a.credits != null ? '还剩 ' + a.credits + ' 积分' : '') + (few ? '，估计不够出这一条' : ''), !a.on || few),
+        !a.画布.trim() ? row('画　布', '还没有', '批准以后新建一张，名字写「' + F.name + '」')
+          : !id ? row('画　布', '网址不对', '资产/出片设置.json 里记的不是即梦画布的网址，出片会被拦下', true)
+          : a.画布名 ? row('画　布', '「' + a.画布名 + '」')
+          : a.画布错 ? row('画　布', '编号 ' + no + ' 的那张', '不在这个号名下，出片会被拦下：换个号', true)
+          : row('画　布', '编号 ' + no + ' 的那张', '名字没查到'))];
+  }
 
   /* 弹窗。lack：{ 要, 有, 登录位, 账号 }（出片时发现不够的）；没有就是自己点「换个号」进来的。
      换好回 { 画布, 登录位, 账号, 画布名, 新建 }，没换回 null */
@@ -45,7 +76,7 @@ const JmSwap = (() => {
         const t = ++tok, r = await ask('GET', 'canvases=1&profile=' + encodeURIComponent(a.p));
         if (t !== tok) return;   // 中间又挑了别的号
         if (!r.ok) { cv.replaceChildren(h('option', { value: '' }, '没查到')); err.textContent = r.error || '这个号名下的画布没查到'; return; }
-        const items = r.items || [], idOf = u => (/[0-9a-f]{8}-[0-9a-f-]{27}/i.exec(String(u)) || [''])[0].toLowerCase();
+        const items = r.items || [];
         const used = new Set(set.换下的.filter(x => x && (x.登录位 || '') === a.p).map(x => idOf(x.画布)));
         const def = items.find(x => used.has(x.id.toLowerCase())) || items.find(x => x.name === F.name) || null;
         cv.replaceChildren(h('option', { value: '' }, '新建一张，名字写「' + F.name + '」'),
@@ -85,5 +116,5 @@ const JmSwap = (() => {
         [h('button', { class: 'btn ghost', type: 'button', onclick: () => close(null) }, lack ? '先不出' : '取消'), okBtn]);
     });
   }
-  return { who, now, dlg };
+  return { who, now, card, dlg };
 })();

@@ -629,6 +629,7 @@ function priceOf(model, res, secs, vid) {
    没估过的（老稿）取事件脚本写到的最后一秒；也没写秒数、挂了白模的取白模时长（11-15：白模可以只管其中几秒）。
    用哪个即梦账号不在这里选：和画布一起记在项目的 资产/出片设置.json，服务排任务书时先核对这个号能不能改这张画布（11-14：两样分开选，出过对不上）。
    11-26 他要：原来的号没积分了能换号——弹窗里写着用哪个号出、还剩多少积分，点「换个号」换到别的号和它的画布（号和画布还是一起换，换号出片.js）；
+   同一天又要：批准的时候把具体哪个号、哪张画布摆给他看——挪到弹窗最上面一块，号写登录位和昵称，画布写名字（换号出片.js 的 card）；
    出片报完价才发现不够的，服务停在草稿、任务上记「缺积分」，这里问要不要换个号接着出（lackAsk） */
 async function approve(s, e) {
   const vids = vidRefs(e), gap = await gapOf(s, e), fix = !!gap && e.draft && !gap.p.blocked;   // 编号有空号：你来写的稿，生成以前先往前挪（11-15）
@@ -645,14 +646,11 @@ async function approve(s, e) {
     + (es.st === 'changed' ? '估完以后稿子又改过，秒数可能不准。' : es.st === 'missing' ? '镜头' + es.lack.join('、') + ' 没估。' : '') : '这份稿没估过秒数（AI 写稿、改稿时才估）。';
   const sec = h('input', { class: 'inp', type: 'number', min: '4', max: '30', value: String(def) }), cap = h('input', { class: 'inp', type: 'number', min: '0', value: '', placeholder: '比如 300' });
   const err = h('div', { class: 'fld-err' }), price = h('div', { class: 'fn-note' }), warn = h('div', { class: 'fn-note warn' });
-  const acctEl = h('div', { class: 'fn-note' }, '在查用哪个即梦号出…');   // 用哪个号出、还剩多少积分；估价比它多就标红，能点「换个号」（11-26）
+  const acctEl = h('div', { class: 'fld' });   // 弹窗最上面那一块：具体用哪个号、哪张画布出（换号出片.js 的 card）；估价比这个号剩的积分多就标红，能点「换个号」（11-26）
   let acct = null;
   const paintAcct = () => {
-    if (!acct) return;
-    const p = priceOf(model.value, res.value, Math.round(+sec.value || 0), vids.length > 0), few = acct.on && acct.credits != null && !!p && p.total > acct.credits;
-    acctEl.className = 'fn-note' + (few || !acct.on ? ' warn' : '');
-    acctEl.replaceChildren(acct.on ? '用' + JmSwap.who(acct.p, acct.nick) + '出' + (acct.credits != null ? '，还剩 ' + acct.credits + ' 积分' : '') + (few ? '：估计不够出这一条。' : '。') : JmSwap.who(acct.p) + '没登录：到首页「即梦授权」登录，或者',
-      h('button', { class: 'fl-link', type: 'button', title: '换到别的即梦号，挑那个号名下的画布（没有就新建一张）。换了以后这个项目都用新号出', onclick: async () => { if (await JmSwap.dlg(null)) { acct = await JmSwap.now(); paintAcct(); } } }, '换个号'));
+    const p = priceOf(model.value, res.value, Math.round(+sec.value || 0), vids.length > 0);
+    acctEl.replaceChildren(...JmSwap.card(acct, p ? p.total : 0, async () => { if (!(await JmSwap.dlg(null))) return; acct = null; paintAcct(); acct = await JmSwap.now(); paintAcct(); }));
   };
   JmSwap.now().then(a => { acct = a; paintAcct(); });
   const gapNote = !gap ? null : h('div', { class: 'fn-note warn' }, fix ? RefNo.say(gap.p) + '点「批准出片」先挪好再出，改之前的一版收进历史记录。'
@@ -673,9 +671,9 @@ async function approve(s, e) {
   for (const x of [model, res, sec]) x.addEventListener('input', paint);
   paint();
   const r = await dialog(close => dlgShell('批准出片 · ' + e.label, '点「批准出片」：页面先排好任务书（用哪份提示词、挂哪几个素材、怎么出、存到哪），流水线再照它去即梦出一条样片：传素材、报价、提交、等出完、下载进成片。要花积分；出了错会停下说为什么。',
-    [gapNote, kbNote, field('模型', model), field('清晰度', res, resHint), field('时长（秒）', sec, aiSay + (end ? '事件脚本写到第 ' + end + ' 秒；' : '') + (vids.length && dur ? '白模' + (vids.length > 1 ? '合计' : '') + ' ' + dur.toFixed(1) + ' 秒；' : '') + '可填 4 到 30'), price, warn,
+    [acctEl, gapNote, kbNote, field('模型', model), field('清晰度', res, resHint), field('时长（秒）', sec, aiSay + (end ? '事件脚本写到第 ' + end + ' 秒；' : '') + (vids.length && dur ? '白模' + (vids.length > 1 ? '合计' : '') + ' ' + dur.toFixed(1) + ' 秒；' : '') + '可填 4 到 30'), price, warn,
       field('最多花多少积分', cap, '不填：报完价直接提交。填了：报价超过这个数就停在草稿，不花积分'),
-      acctEl, err],
+      err],
     [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'),
       h('button', { class: 'btn zhu', onclick: () => {
         const n = +sec.value;

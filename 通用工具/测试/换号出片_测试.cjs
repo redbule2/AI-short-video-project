@@ -63,6 +63,50 @@ test('now：这个项目现在用哪个号、还剩多少积分；还没有出�
   assert.equal(page().Swap.who('', ''), '默认号');
 });
 
+/* 同一天他又要：批准出片的时候，把具体哪个号、哪张画布摆给他看（「批准出片」弹窗最上面那一块） */
+test('now 连画布一起查：设置里那张画布叫什么；不在这个号名下的记「画布错」；没写画布的不查，没查到的两样都不记', async () => {
+  const hit = page({ set: { 画布: PRE + B1.toUpperCase(), 登录位: 'benpao' }, canvases: { benpao: [{ id: B2, name: '别的项目' }, { id: B1, name: '药膳鸡配方' }] } }), a = await hit.Swap.now();
+  assert.deepEqual([a.画布名, a.画布错, a.nick, a.credits], ['药膳鸡配方', undefined, '奔跑', 52643]);
+  assert.ok(hit.calls.includes('GET canvases=1&profile=benpao'), '到这个号名下的画布里找');
+  assert.equal((await page({ canvases: { '': [{ id: OLD, name: '' }] } }).Swap.now()).画布名, OLD.slice(0, 8), '画布没起名：写编号头八位');
+  const wrong = await page({ canvases: { '': [{ id: B2, name: '别的项目' }] } }).Swap.now();
+  assert.deepEqual([wrong.画布名, wrong.画布错], [undefined, true]);
+  const none = page({ set: null }), n = await none.Swap.now();
+  assert.deepEqual([n.画布名, n.画布错], [undefined, undefined]);
+  assert.ok(!none.calls.some(c => /canvases/.test(c)), '没写画布：不查');
+  const lost = await page({ set: { 画布: PRE + B1, 登录位: 'benpao' }, canvases: { benpao: '查不到' } }).Swap.now();
+  assert.deepEqual([lost.画布名, lost.画布错, lost.nick], [undefined, undefined, '奔跑'], '画布没查到，不碍着号');
+});
+
+test('批准出片弹窗最上面那一块：写明哪个号（登录位、昵称、还剩多少积分）、哪张画布（名字）；估价比剩的多、没登录、画布对不上的标红；能点「换个号」', () => {
+  const S = page().Swap;
+  const view = (a, cost) => {
+    const [label, box] = S.card(a, cost || 0, () => '点了换个号');
+    return { label: label.children[0], rows: box.children.map(r => r.children.map(x => x.textContent).join('｜')), red: box.children.map(r => r.all('span').some(x => /warn/.test(x.attrs.class))), link: label.all('button')[0] };
+  };
+  const ok = { p: 'benpao', nick: '奔跑', on: true, credits: 52643, 画布: PRE + B1, 画布名: '药膳鸡配方' };
+  let v = view(ok, 180);
+  assert.equal(v.label, '用这个号、这张画布出');
+  assert.deepEqual(v.rows, ['即梦号｜「benpao」号「奔跑」｜还剩 52643 积分', '画　布｜「药膳鸡配方」']);
+  assert.deepEqual(v.red, [false, false]);
+  assert.equal(v.link.textContent, '换个号');
+  assert.equal(v.link.onclick(), '点了换个号');
+  v = view({ ...ok, p: '', nick: '用户597', credits: 137 }, 180);
+  assert.deepEqual([v.rows[0], v.red[0]], ['即梦号｜默认号「用户597」｜还剩 137 积分，估计不够出这一条', true]);
+  assert.equal(view({ ...ok, credits: 137 }, 0).red[0], false, '估不出价的不标红');
+  assert.equal(view({ ...ok, credits: null }, 180).rows[0], '即梦号｜「benpao」号「奔跑」', '查不到余额：不写积分');
+  v = view({ ...ok, on: false, nick: '', credits: null }, 180);
+  assert.deepEqual([v.rows[0], v.red[0]], ['即梦号｜「benpao」号｜没登录：到首页「即梦授权」登录，或者换个号', true]);
+  v = view({ ...ok, 画布名: undefined, 画布错: true });
+  assert.deepEqual([v.rows[1], v.red[1]], ['画　布｜编号 0b0b0b0b 的那张｜不在这个号名下，出片会被拦下：换个号', true]);
+  assert.equal(view({ ...ok, 画布名: undefined }).rows[1], '画　布｜编号 0b0b0b0b 的那张｜名字没查到');
+  assert.equal(view({ ...ok, 画布: '', 画布名: undefined }).rows[1], '画　布｜还没有｜批准以后新建一张，名字写「试验换号」');
+  v = view({ ...ok, 画布: 'https://example.com/x', 画布名: undefined });
+  assert.deepEqual([v.rows[1], v.red[1]], ['画　布｜网址不对｜资产/出片设置.json 里记的不是即梦画布的网址，出片会被拦下', true]);
+  const [l0, wait] = S.card(null, 0, () => {});
+  assert.equal(l0.textContent + '｜' + wait.textContent, '用哪个号、哪张画布出｜在查用哪个即梦号、哪张画布…');
+});
+
 test('积分不够弹出来：说清差多少、没花积分；别的号照积分多少排，不够的、没登录的点不了；头一个能换的先选上', async () => {
   const p = page({ canvases: { benpao: [{ id: B1, name: '持械入宋' }, { id: B2, name: '别的项目' }] } });
   p.Swap.dlg({ 要: 180, 有: 137, 登录位: '', 账号: '用户597' });
