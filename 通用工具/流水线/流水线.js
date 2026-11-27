@@ -771,6 +771,7 @@ function openWrite(seg, name, hand, fork, look) {
   if (SHELL) SHELL.remove();
   const frame = h('iframe', { class: 'wf-shell-frame', title: '写提示词', src: encodeURI('/通用工具/项目管理_写稿试用.html') + '#open=' + [F.name, '提示词', segName(seg), name].map(encodeURIComponent).join('/') + (fork ? '&fork=1' : '') });
   const keep = async () => {   // 写稿页没存的字先存上；存不上返回 false，留在写稿页
+    if (!frame.contentDocument) return true;   // 写稿页没打开（本机服务那会儿断了，框里是浏览器的出错页、碰不得）：没有要存的字，照样回（11-26）
     try {
       const w = frame.contentWindow;
       if (w && typeof w.save === 'function' && await w.save() === false) { toast('草稿还未保存，请在写稿页处理后再离开', 'err'); return false; }
@@ -784,11 +785,25 @@ function openWrite(seg, name, hand, fork, look) {
     SHELL = null; document.body.classList.remove('wf-covered'); await refresh();
     if (PAGE.sides) PAGE.sides(new Set(['*']));   // 写稿页里挂的图、白模记在过程文件里：回来就重读，不等下一轮
   };
+  let note;
   SHELL = h('div', { class: 'wf-shell wf-write' },
     h('div', { class: 'wf-shell-h' }, h('button', { class: 'btn sm ink', type: 'button', onclick: close }, '← 回到流水线'),
       h('span', { class: 'wf-shell-t' }, '第' + seg + '段 · ' + (C.isPfFile(name) ? '初步剧本' : vpLabel(fork || name)) + (fork ? ' · 另存' : look ? ' · 只能看' : hand ? ' · 接着写' : ' · 进去改')), h('span', { class: 'sp' }),
-      h('span', { class: 'fn-note' }, fork ? '「' + vpLabel(name) + '」出过片，原稿不动。照它改，改了提示词或素材才存成「' + vpLabel(fork) + '」；一处没改就不另存，回来也不会多出一版。' : look ? '「' + vpLabel(name) + '」出过片，原稿锁着，只能看。要改点下面的「另存成…」，改了提示词或素材才存成新的一版。' : C.isPfFile(name) ? '这是初稿，想到哪写到哪：在哪、谁、做什么、说什么。写好点「提炼分镜」，AI 照它分镜头、列出场的人物场景道具。' : hand ? '你来写的稿：在自由模式写好事件脚本，点「交给 AI 写完」，AI 拆成分镜，生成目标、素材这几块一起写好。' : '这一条是 AI 写的，在这里自己改。改过以后，AI 估的每镜秒数可能不准，出片时会提醒。')),
+      note = h('span', { class: 'fn-note' }, fork ? '「' + vpLabel(name) + '」出过片，原稿不动。照它改，改了提示词或素材才存成「' + vpLabel(fork) + '」；一处没改就不另存，回来也不会多出一版。' : look ? '「' + vpLabel(name) + '」出过片，原稿锁着，只能看。要改点下面的「另存成…」，改了提示词或素材才存成新的一版。' : C.isPfFile(name) ? '这是初稿，想到哪写到哪：在哪、谁、做什么、说什么。写好点「提炼分镜」，AI 照它分镜头、列出场的人物场景道具。' : hand ? '你来写的稿：在自由模式写好事件脚本，点「交给 AI 写完」，AI 拆成分镜，生成目标、素材这几块一起写好。' : '这一条是 AI 写的，在这里自己改。改过以后，AI 估的每镜秒数可能不准，出片时会提醒。')),
     frame);
+  /* 写稿页没打开（本机服务断了那一会儿点开的，框里是浏览器的出错页，出错页也算打开完）：顶上说一声，隔两秒问一回服务，
+     回来了自己再开一次，不用人点；点了回去就不问了（11-26）。
+     再开：把框拿下来再放回去，浏览器才当新的开；照原网址再走一遍（frame.src = frame.src）出错页活不过来，实测过 */
+  const tip = note.textContent;
+  frame.addEventListener('load', async () => {
+    const dead = !frame.contentDocument;
+    note.className = dead ? 'fn-note warn' : 'fn-note';
+    note.textContent = dead ? '本机服务断了，写稿页没打开。等它回来这里会自己打开；不想等就点「回到流水线」。' : tip;
+    while (dead && frame.isConnected) {
+      await new Promise(r => setTimeout(r, 2000));
+      if (frame.isConnected && await LINK.up() && frame.isConnected) { frame.parentNode.append(frame); return; }   // 问的那一下点了回去的：不开
+    }
+  });
   SHELL.leave = keep;
   document.body.append(SHELL); document.body.classList.add('wf-covered');
 }
