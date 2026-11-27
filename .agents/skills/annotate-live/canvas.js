@@ -1,7 +1,7 @@
 'use strict';
 /* ============================================================
    即梦画布上的图（11-14 他要的：资产页能看到本地的和画布上的，一样的只摆本地的）。
-   只读画布：node find、node show、resource download，不建、不改、不删节点，不花积分。
+   只读画布：node ls（1.4.2 以前叫 node find）、node show、resource download，不建、不改、不删节点，不花积分。
    一样不一样看像素：画布下回来的是平台重新压过的 PNG，文件校验值和本地原图不同、像素一样，所以两边都解开比像素。
    本地比哪些图：资产页摆得出来的那几处——资产/人物和道具、资产/场景、资产/关键帧/第N段（本层和下一层），历史记录/资产 里同样的几处。
    接口（jobs.js 的 /api/jimeng 转过来，都是 GET，server.js 已经查过 X-Antou 头）：
@@ -19,6 +19,7 @@ const path = require('path');
 const os = require('os');
 const zlib = require('zlib');
 const crypto = require('crypto');
+const { unknown } = require('./jm-cmds.js');   // 即梦回的错是不是「不认这句命令」
 
 module.exports = function makeCanvas({ HOME, JM, run, log, AP = require(path.resolve(__dirname, '../../../通用工具/公用/资产路径.js')) }) {   // AP：公用/资产路径.js（资产放哪、节点名），jobs.js 照 TOOLS 传进来
   const CACHE = process.env.ANTOU_CANVAS_CACHE || path.join(os.tmpdir(), 'antou-canvas');
@@ -47,6 +48,7 @@ module.exports = function makeCanvas({ HOME, JM, run, log, AP = require(path.res
     try { j = JSON.parse(r.out); } catch (e) { /* 不是 JSON */ }
     if (r.code !== 0 || !j || j.ok === false) {
       const er = j && (j.error || (j.data && j.data.error));
+      if (unknown(er)) throw Object.assign(fail('即梦命令行不认「' + args.slice(0, 2).join(' ') + '」这句命令了，多半是它升级后改了名：把这句话发给 AI，让它照新版改'), { cmd: true });   // 不是没登录、不是网不好：再试也一样
       throw fail((er && (er.message || er.reason || er.code)) || (r.err || r.out || '').trim().slice(0, 300) || '即梦命令行出错（退出码 ' + r.code + '）');
     }
     return j.data || {};
@@ -86,8 +88,8 @@ module.exports = function makeCanvas({ HOME, JM, run, log, AP = require(path.res
     const order = [...new Set([...(typeof saved === 'string' ? [saved] : []), '', ...extra.filter(x => x !== 'default')])];
     const tried = [];
     for (const p of order) {
-      try { await cli(p, ['node', 'find', '--project-id', canvas, '--type', 'image', '--limit', '1']); known.set(canvas, p); return p; }
-      catch (e) { tried.push((p || '默认的') + '：' + e.message); }
+      try { await cli(p, ['node', 'ls', '--project-id', canvas, '--type', 'image', '--limit', '1']); known.set(canvas, p); return p; }
+      catch (e) { if (e.cmd) throw e; tried.push((p || '默认的') + '：' + e.message); }   // 命令行不认这句命令：换哪个登录位都一样，照实说
     }
     throw fail('这张画布哪个登录位都读不了（' + tried.join('；') + '）。到总览「即梦授权」看看登没登录、是不是这个号');
   }
@@ -96,7 +98,7 @@ module.exports = function makeCanvas({ HOME, JM, run, log, AP = require(path.res
   async function listCanvas(profile, canvas) {
     const nodes = [];
     for (let off = 0; off <= 1000;) {
-      const d = await cli(profile, ['node', 'find', '--project-id', canvas, '--type', 'image', '--limit', '50', '--offset', String(off)]);
+      const d = await cli(profile, ['node', 'ls', '--project-id', canvas, '--type', 'image', '--limit', '50', '--offset', String(off)]);
       const page = d.items || d.nodes || [];
       nodes.push(...page);
       if (!d.hasMore || !page.length) break;
@@ -293,7 +295,7 @@ module.exports = function makeCanvas({ HOME, JM, run, log, AP = require(path.res
     const findAll = async t => {   // 一个名字翻页查完：按名字查出来的还有 名字__时间、名字_上层 这些，只留一字不差的
       const got = [];
       for (let off = 0; off <= 1000;) {
-        const d = await call(profile, ['node', 'find', '--project-id', canvas, '--name', t, '--type', 'image', '--type', 'video', '--limit', '50', '--offset', String(off)]);
+        const d = await call(profile, ['node', 'ls', '--project-id', canvas, '--name', t, '--type', 'image', '--type', 'video', '--limit', '50', '--offset', String(off)]);
         const page = d.items || d.nodes || [];
         page.filter(n => n && n.nodeId && String(n.title || '').trim() === t).forEach(n => got.push(n.nodeId));
         if (!d.hasMore || !page.length) break;

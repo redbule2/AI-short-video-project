@@ -1088,6 +1088,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         const clipFile = core('clipName')(j.名, done), P = Object.assign({ 模型: 'Seedance 2.5 样片', 清晰度: '480p', 秒数: 15, 积分上限: 0 }, j.参数 || {});   // 样片和提示词同名（11-18 他定）：1_改3.txt 出的叫 1_改3.mp4
         const nth = clipFile.replace(/\.mp4$/i, '');   // 画布节点名里认它
         if (!/^(480p|720p|1080p)$/.test(str(P.清晰度)) || !(P.秒数 >= 4 && P.秒数 <= 30)) throw fail('清晰度或者时长不对');
+        await cmdsOk();   // 即梦命令行升级后还认不认流水线的命令（jm-cmds.js）
         if (!str(set.画布).trim()) {   // 项目还没写画布：新建一张、记进出片设置（11-17 他要；jm-check.js 的 create）
           j.步骤 = '项目还没有即梦画布，在新建';
           const nc = await jmCheck.create(j.项目, prof);
@@ -1159,6 +1160,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
         if (!j.续) {
           plan = await planOf(j.项目, j.段, sha256(await fsp.readFile(p)));
           if (!plan) throw fail('没找到这份任务书排的出片计划（任务书是旧的，或者排好以后又改过）：没出片、没花积分。刷新页面，再点一次「批准出片」');
+          await cmdsOk();
           j.步骤 = '在核对即梦账号和画布';   // 任务书排好以后改过号、画布的，这里拦下
           try { await jmCheck(plan.画布, plan.登录位); } catch (e) { throw e.plain ? fail(e.message + '。没出片，也没花积分；出片设置对上以后，再点「批准出片」') : e; }
           await noteShot(j);   // 记下这一回用的是哪一版提示词：样片待不待核对照它算
@@ -1999,7 +2001,9 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   }
   const jmCheck = require('./jm-check.js')({ jm, fail, str });   // 出片前核对即梦账号和画布（三条命令一起查，10 分钟内同号同画布不重查；11-16 挪出去）
   const canvas = require('./canvas.js')({ HOME, JM, run: jmRun, log, AP });   // 资产页看画布上的图（只读画布，11-14 加）；它只跑即梦命令行，一样直连
-  const JV = require('./jm-video.js')({ JM, run: jmRun, HOME, log, canvas, withFileLocks });   // 流水线自己出片（11-21）：传素材、建节点、报价、提交、等出完、下载
+  const jmCmds = require('./jm-cmds.js')({ JM, run: jmRun, log });   // 即梦命令行还认不认流水线的命令（11-26：命令行升级后「node find」改叫「node ls」，出片回回停在「没查成」）
+  const cmdsOk = async () => { const gap = await jmCmds.check(); if (gap) throw fail(gap + '。没出片、没花积分'); };   // 排任务书、出片前先对一遍：对不上就停，不往下撞
+  const JV = require('./jm-video.js')({ JM, run: jmRun, HOME, log, canvas, cmds: jmCmds, withFileLocks });   // 流水线自己出片（11-21）：传素材、建节点、报价、提交、等出完、下载
   /* 出片计划：出片任务书写在它那一回的任务文件夹（出片计划.json），照任务书的 SHA-256 认是哪一回排的（新的在前，最多看 60 个） */
   async function planOf(name, seg, bookSha) {
     const base = pj(name, '历史记录', 'AI任务'), tail = '_出片任务书_第' + seg + '段';

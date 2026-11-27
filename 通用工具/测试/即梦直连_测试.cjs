@@ -47,7 +47,7 @@ test('核对即梦账号、认画布节点：起命令时不带代理，别的�
       assert.deepEqual(proxyOf(s.env), [], '即梦命令行不该走代理：' + s.args.join(' '));
       assert.equal(s.env.ANTOU_测试变量, '留着');
     }
-    await canvasOpts().run(JM, ['--non-interactive', 'node', 'find'], { timeout: 1000 });   // canvas.js 拿到的 run 也一样
+    await canvasOpts().run(JM, ['--non-interactive', 'node', 'ls'], { timeout: 1000 });   // canvas.js 拿到的 run 也一样
     assert.deepEqual(proxyOf(spawned[2].env), []);
     assert.equal(spawned[2].env.ANTOU_测试变量, '留着');
   } finally {

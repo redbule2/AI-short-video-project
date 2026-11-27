@@ -11,6 +11,7 @@ const zlib = require('node:zlib');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), '画布认版本-'));
 process.env.ANTOU_CANVAS_CACHE = path.join(TMP, '缓存');
 const make = require('../../.agents/skills/annotate-live/canvas.js');
+const { missing } = require('../../.agents/skills/annotate-live/jm-cmds.js');
 const HOME = path.join(TMP, '项目'), NAME = '试片', CANVAS = '8fc4ccbd-cd27-4f1b-a4a6-f13c0e9b50d3';
 const P = (...x) => path.join(HOME, NAME, ...x);
 const put = (f, buf, mtime) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, buf); if (mtime) fs.utimesSync(f, mtime / 1000, mtime / 1000); return f; };
@@ -44,7 +45,8 @@ function fake(nodes) {
     calls.push(args.join(' '));
     const ok = data => ({ code: 0, out: JSON.stringify({ ok: true, data }), err: '' });
     const at = k => args[args.indexOf(k) + 1];
-    if (args.includes('find')) { const name = at('--name'); return ok({ items: nodes.filter(n => n.title.includes(name)).map(n => ({ nodeId: n.id, type: n.type, status: 'success', title: n.title })), hasMore: false }); }
+    assert.equal(missing(args), '');   // 流水线用到的命令都要记在 jm-cmds.js 的 USED 里
+    if (args.includes('ls')) { const name = at('--name'); return ok({ items: nodes.filter(n => n.title.includes(name)).map(n => ({ nodeId: n.id, type: n.type, status: 'success', title: n.title })), hasMore: false }); }
     if (args.includes('show')) {
       const ids = args.filter((a, i) => args[i - 1] === '--node-id');
       return ok({ nodes: ids.map(id => nodes.find(n => n.id === id)).filter(Boolean).map(n => ({ result: 'FOUND', node: { nodeId: n.id, type: n.type, title: n.title, status: 'success', resources: n.rid ? [{ resourceId: n.rid, type: n.type, status: 'success', createdAt: n.at || 0, [n.type]: {} }] : [] } })) });
@@ -167,7 +169,7 @@ function slowRun(nodes, ms) {
   const f = fake(nodes), seen = { now: 0, peak: 0 };
   const run = async (exe, args) => {
     seen.now++; seen.peak = Math.max(seen.peak, seen.now);
-    try { if (args.includes('find')) await new Promise(r => setTimeout(r, ms(args[args.indexOf('--name') + 1]))); return await f.run(exe, args); }
+    try { if (args.includes('ls')) await new Promise(r => setTimeout(r, ms(args[args.indexOf('--name') + 1]))); return await f.run(exe, args); }
     finally { seen.now--; }
   };
   return { c: make({ HOME, JM: process.execPath, run, log() {} }), seen };
@@ -191,4 +193,11 @@ test('名字再多也一次最多查 8 条', async () => {
   const items = ['甲', '乙', '丙'].map(x => ({ title: '人物和道具_' + x, titles: ['人物和道具_', '人物_', '道具_', '特效_'].map(h => h + x), cur: imgCur, sha: IMG_ITEM.sha, olds: [] }));
   assert.deepEqual(await ask(c, items), [[], [], []]);
   assert.equal(seen.peak, 8);
+});
+
+/* 11-26：即梦命令行升级后「node find」改叫「node ls」。命令行不认这句命令时照实说，不说成没登录、网不好 */
+test('即梦命令行不认这句命令（升级后改了名）：照实说是哪句，叫人发给 AI', async () => {
+  const run = async () => ({ code: 0, out: JSON.stringify({ schemaVersion: '2', ok: false, error: { code: 2, message: 'The request parameters are invalid.', diagnostics: [{ detail: 'The command contains an unrecognized subcommand.' }] } }), err: '' });
+  const c = make({ HOME, JM: process.execPath, run, log() {} });
+  await assert.rejects(ask(c, [IMG_ITEM]), e => e.plain && e.cmd && /^即梦命令行不认「node ls」这句命令了，多半是它升级后改了名：把这句话发给 AI/.test(e.message));
 });

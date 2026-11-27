@@ -20,8 +20,8 @@ const fsp = fs.promises;
 const path = require('path');
 const crypto = require('crypto');
 
-module.exports = function makeJmVideo({ JM, run, HOME, log = () => {}, canvas, withFileLocks = async (paths, fn) => fn(), now = () => Date.now(), WAIT_MAX = 40 * 60e3, PAUSE = 5000, TICK = 1000 }) {
-  /* 页面上的叫法 → 即梦命令行的模型名（2026-11-21 照 model list --type video） */
+module.exports = function makeJmVideo({ JM, run, HOME, log = () => {}, canvas, cmds = { check: async () => '' }, withFileLocks = async (paths, fn) => fn(), now = () => Date.now(), WAIT_MAX = 40 * 60e3, PAUSE = 5000, TICK = 1000 }) {   // cmds：jm-cmds.js（命令行还认不认流水线的命令）
+  /* 页面上的叫法 → 即梦命令行的模型名（2026-11-21 照 model ls --type video） */
   const MODELS = { 'Seedance 2.5 样片': 'seedance_2.5_draft', 'Seedance 2.5': 'seedance_2.5', 'Seedance 2.0 mini': 'seedance_2.0_mini', 'Seedance 2.0 VIP': 'seedance_2.0_vip' };
   const KIND = { 图片: 'image', 视频: 'video', 音频: 'audio' };
   const B32 = '0123456789abcdefghjkmnpqrstvwxyz';   // 节点编号：node_ 加 10 个小写 Crockford Base32（即梦命令行自己核这个格式）
@@ -59,7 +59,7 @@ module.exports = function makeJmVideo({ JM, run, HOME, log = () => {}, canvas, w
   /* 记命令：积分凭证不记，提示词只记多少字 */
   const scrub = args => 'dreamina-canvas ' + args.map((a, i) => args[i - 1] === '--credit-token' ? '<略>' : args[i - 1] === '--prompt' ? '<提示词 ' + a.length + ' 字>' : /\s/.test(a) ? JSON.stringify(a) : a).join(' ');
 
-  /* 模型收不收：照即梦现在的 model list 核分辨率、时长、提示词长短、素材多少（读不到就不核，存草稿时服务端还会核） */
+  /* 模型收不收：照即梦现在的 model ls 核分辨率、时长、提示词长短、素材多少（读不到就不核，存草稿时服务端还会核） */
   function specGap(list, P, M, text, n) {
     const m = (Array.isArray(list) ? list : []).find(x => x && x.model === M);
     if (!m) return '即梦现在没有「' + P.模型 + '」这个模型';
@@ -137,7 +137,7 @@ module.exports = function makeJmVideo({ JM, run, HOME, log = () => {}, canvas, w
     async function findExact(t, type) {   // 按名字查（也会查到提示词里带这个词的），只留名字一字不差、类型对的
       const got = [];
       for (let off = 0; off <= 1000;) {
-        const r = await cli(['node', 'find', '--project-id', cid, '--name', t, '--type', type, '--limit', '50', '--offset', String(off)], { timeout: 60e3 });
+        const r = await cli(['node', 'ls', '--project-id', cid, '--name', t, '--type', type, '--limit', '50', '--offset', String(off)], { timeout: 60e3 });   // 1.4.2 以前叫 node find
         if (!r.ok) throw fail('查画布上的「' + t + '」没查成：' + why(r) + '。没出片、没花积分，过一会儿再点「批准出片」');
         const page = (r.data && r.data.items) || [];
         page.filter(n => n && n.nodeId && n.type === type && String(n.title || '').trim() === t).forEach(n => got.push(n));
@@ -227,6 +227,8 @@ module.exports = function makeJmVideo({ JM, run, HOME, log = () => {}, canvas, w
       return SUBMITTED.test(String(d.state || '')) || /^(completed|in_progress)$/i.test(String((d.submission || {}).state || ''));
     };
 
+    const gap = await cmds.check();   // 即梦命令行升级后改了命令名的：先停下说清楚，不往下撞（11-26「node find」改叫「node ls」，回回停在「没查成」）
+    if (gap) throw fail(gap + '。' + left());
     await save();
     const out = abs(P.存到), clip = path.basename(out);
     const want = { title: P.节点名, prompt: '', mode: P.素材.length ? 'm2v' : 't2v', model: MODELS[P.模型] || '', ratio: '16:9', resolution: String(P.清晰度 || ''), secs: Number(P.秒数), refs: [] };
@@ -254,7 +256,7 @@ module.exports = function makeJmVideo({ JM, run, HOME, log = () => {}, canvas, w
       }
       halt();
       /* 二、素材：几个名字一起查（只读），改名、传图一样一样来。同一张画布一次只一条在认素材：两条一起查都没有、一起传，会传出两个同名节点 */
-      const specP = cli(['model', 'list', '--type', 'video'], { timeout: 60e3 });
+      const specP = cli(['model', 'ls', '--type', 'video'], { timeout: 60e3 });   // 1.4.2 以前叫 model list
       j.步骤 = '在等同一张画布上的另一条出片认完素材';
       await withFileLocks([path.join(base, '资产', '.即梦画布素材_' + cid)], async () => {
         step('在认画布上的素材');

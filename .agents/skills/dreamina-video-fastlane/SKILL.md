@@ -44,7 +44,7 @@ description: 即梦视频快线。用于将已选图片或视频上传即梦画�
   若用户明确要求“CLI 未登录或不可用就改走已登录网页”，不登录 CLI，直接使用可用的内置浏览器连接目标画布；网页要求登录、权限或授权时按用户边界停止。
   若浏览器返回 `The browser access host is unavailable`，可尝试直接打开目标画布一次；仍失败即报告浏览器连接不可用，不把它写成网站未登录，不改系统安全设置，也不使用 Windows 文件选择框绕过用户限制。
   网络超时按认证协议退避，最多额外两次；DNS/权限错误只在条件改变后复查，不切 region 或读写凭据来试错。
-- 认证后，只查本次视频模型：已知名称用 `model find ... --type video`，未知才用 `model list --type video`。
+- 认证后，只查本次视频模型：已知名称用 `model ls <名称> --type video`，未知才用 `model ls --type video`（CLI 1.4.2 起；1.3.0 及以前叫 `model find`、`model list`，新版不认）。
   使用返回的 canonical model 与真实 mode/限制；同一批次复用目录结果，服务端拒绝时再查对应变化。
 - 版本/schema 属于独立本地检查，可与本地文件哈希核对并行；模型查询必须在认证状态确认之后。
   无依赖读取可合并；画布写入、生成记录写入和有依赖动作按顺序执行，不为提速开无界并发。
@@ -179,7 +179,7 @@ description: 即梦视频快线。用于将已选图片或视频上传即梦画�
 
 以下路径已实测完成上传、保存、提交、生成和本地下载。用户明确禁止修改生成记录或运行 Git 时，遵从当轮限制，公开身份与回执保留在当前对话，不额外写记录文件。
 
-1. 用 `node find --project-id <projectId> --name <完整标题> --type video` 定位目标；完整标题无结果时再查一次短名。本次两次均无结果，才用 `node create video` 建同名目标。浏览器已有目标画布时直接复用该标签页。
+1. 用 `node ls --project-id <projectId> --name <完整标题> --type video` 定位目标（CLI 1.4.2 起；1.3.0 及以前叫 `node find`，新版不认）；完整标题无结果时再查一次短名。本次两次均无结果，才用 `node create video` 建同名目标。浏览器已有目标画布时直接复用该标签页。
 2. 核对本地视频 SHA-256，先照第 3 节查记录和画布，有就引用；没有才以稳定 UUID 执行 `resource upload --file <视频路径> --type video --project-id <projectId> --resource-id <resourceId> --import-kind local_upload`。用 `resource get <resourceId> --project-id <projectId>` 确认 `type=video`、`status=success` 及真实时长。上传后用 `node create video` 挂成独立视频节点，照 AGENTS.md 起名，再以 `--ref node:<id>` 引用。
 3. PowerShell 用 `[System.IO.File]::ReadAllText(<提示词路径>)` 读取全文，并把该字符串作为单个 `--prompt` 参数传入；保留换行和字面的 `@视频1`。本次正片参数为 `--mode m2v --model seedance_2.5 --ratio 16:9 --resolution 720p --duration 15 --count 1`，先保存，不带 `--run`。`seedance_2.5_draft` 是样片模型，不能用于该 720P 正片路径。
 4. `node show` 回读目标：将 `generation.prompt` 与文件全文做 Ordinal 相等比较，并核对 UTF-8 SHA-256、非空行数、去换行字数和 `@` 数量；检查 `generation.references` 仅一项、指向那个视频节点，模型、分辨率、比例、时长和数量均正确。核对失败就不提交。

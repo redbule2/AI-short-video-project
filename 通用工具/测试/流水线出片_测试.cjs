@@ -2,7 +2,7 @@
 /* annotate-live/jm-video.js（11-21）：流水线自己出片，不再交给 Codex。
    认素材（同名直接用、老名字先改名、没有才传）、存视频草稿、报价、确认积分、提交一次、等出完、下载核对、记生成记录；
    出错就停、说清花没花积分；服务重开后照 出片进度.json 接着做，提交过的只等、只下载。
-   假的即梦命令行（照 dreamina-canvas 1.3.0 回话的样子），真的临时文件夹；不连即梦、不花积分。 */
+   假的即梦命令行（照 dreamina-canvas 1.4.2 回话的样子：查节点叫 node ls、查模型叫 model ls），真的临时文件夹；不连即梦、不花积分。 */
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const fs = require('node:fs');
@@ -11,6 +11,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const make = require('../../.agents/skills/annotate-live/jm-video.js');
+const { missing } = require('../../.agents/skills/annotate-live/jm-cmds.js');
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
 const CID = '7bec76b5-4184-4d2c-9b1e-a332e7317853', NAME = '试片', TOKEN = 'TOKEN-只给这一回-9f8e7d';
 const BOM = String.fromCharCode(0xFEFF);
@@ -65,8 +66,8 @@ function fakeJimeng(o = {}) {
   function handle(a) {
     const f = k => { const i = a.indexOf(k); return i < 0 ? undefined : a[i + 1]; }, all = k => a.flatMap((x, i) => x === k ? [a[i + 1]] : []);
     const cmd = a[0] + ' ' + a[1];
-    if (cmd === 'model list') return ok({ items: MODELS });
-    if (cmd === 'node find') {   // 和真的一样：名字、提示词里带这个词的都算
+    if (cmd === 'model ls') return ok({ items: MODELS });
+    if (cmd === 'node ls') {   // 和真的一样：名字、提示词里带这个词的都算
       const t = f('--name'), ty = f('--type'), off = +f('--offset') || 0;
       const hit = [...nodes.values()].filter(x => x.type === ty && (x.title.includes(t) || String((x.generation || {}).prompt || '').includes(t)));
       return ok({ items: hit.slice(off, off + 50).map(x => ({ nodeId: x.nodeId, type: x.type, title: x.title, status: x.status })), hasMore: off + 50 < hit.length });
@@ -137,6 +138,7 @@ function fakeJimeng(o = {}) {
     assert.deepEqual(full.slice(-2), ['--format', 'json']);
     let a = full.slice(1, -2);
     if (a[0] === '--profile') a = a.slice(2);
+    assert.equal(missing(a), '');   // 流水线用到的命令都要记在 jm-cmds.js 的 USED 里（出片前拿它和命令行自己的清单对）
     calls.push(a);
     const ctx = { nodes, res, ops, calls, def: () => handle(a) };
     const r = o.hook && await o.hook(a[0] + ' ' + a[1] + (a[0] === 'node' && /^(create|edit)$/.test(a[1]) ? ' ' + a[2] : ''), a, ctx);
@@ -157,8 +159,8 @@ function locks() {
     return result;
   };
 }
-const go = (pr, jm, { plan = pr.plan, dir = pr.dir, j = { id: 'j1' }, lock, now, WAIT_MAX } = {}) =>
-  make({ JM: 'dreamina-canvas', run: jm.run, HOME: pr.HOME, canvas: jm.canvas, PAUSE: 0, TICK: 0, withFileLocks: lock, ...(now ? { now } : {}), ...(WAIT_MAX ? { WAIT_MAX } : {}) }).go(j, plan, dir);
+const go = (pr, jm, { plan = pr.plan, dir = pr.dir, j = { id: 'j1' }, lock, now, WAIT_MAX, cmds } = {}) =>
+  make({ JM: 'dreamina-canvas', run: jm.run, HOME: pr.HOME, canvas: jm.canvas, PAUSE: 0, TICK: 0, withFileLocks: lock, ...(now ? { now } : {}), ...(WAIT_MAX ? { WAIT_MAX } : {}), ...(cmds ? { cmds } : {}) }).go(j, plan, dir);
 const readJson = f => JSON.parse(fs.readFileSync(f, 'utf8'));
 const gen = (pr, refs, over = {}) => ({ mode: 'm2v', model: 'seedance_2.5_draft', prompt: PROMPT, references: refs.map(id => ({ kind: 'node', id, type: 'image' })), ratio: '16:9', resolution: '480p', durationSeconds: 10, outputCount: 1, ...over });
 
@@ -286,7 +288,7 @@ T('等出片时点了停：说清已经提交、即梦照样在出；服务重�
   const r = await go(pr, jm, { plan: null, j: { id: 'j1' } });   // 服务重开后接着做：plan 传 null，照 出片进度.json
   assert.match(r.结果, /^出好了：4-6\.mp4/);
   const again = jm.calls.slice(before).map(a => a[0] + ' ' + a[1]);
-  assert.ok(!again.some(c => /quote|confirm|node run|upload|node create|node find/.test(c)), again.join('，'));
+  assert.ok(!again.some(c => /quote|confirm|node run|upload|node create|node ls/.test(c)), again.join('，'));
   assert.ok(fs.existsSync(pr.P('成片', '第1-1段', '4-6.mp4')));
 });
 
@@ -394,4 +396,19 @@ T('纯文字出片（没挂素材）：t2v，不带 --ref', async () => {
   const mk = jm.named('node create video')[0];
   assert.equal(mk[mk.indexOf('--mode') + 1], 't2v');
   assert.ok(!mk.includes('--ref'));
+});
+
+/* 11-26：即梦命令行升级后改了命令名（node find 改叫 node ls），回回停在「没查成…过一会儿再点」。现在出片前先对命令（jm-cmds.js） */
+T('即梦命令行不认流水线的命令了：一条命令都不跑就停，明说再点也没用、没花积分；提交过的说清即梦照样在出', async () => {
+  const gap = '即梦命令行升级了（现在是 9.9.9 版），流水线有 1 处它不认了：「node ls」。再点也没用，把这句话发给 AI，让它照新版改';
+  const cmds = { check: async () => gap };
+  const pr = project(), jm = fakeJimeng();
+  await assert.rejects(go(pr, jm, { cmds }), e => e.plain && e.message === gap + '。还没提交，没花积分');
+  assert.equal(jm.calls.length, 0);
+  assert.ok(!fs.existsSync(pr.P('成片', '第1-1段', '4-6.mp4')));
+  const pr2 = project(), j = { id: 'j1' }, jm2 = fakeJimeng({ polls: 3, hook: c => { if (c === 'operation wait') j.停 = true; } });
+  await assert.rejects(go(pr2, jm2, { j }), /停掉了：已经提交了/);
+  const before = jm2.calls.length;
+  await assert.rejects(go(pr2, jm2, { plan: null, j: { id: 'j1' }, cmds }), e => e.plain && e.message.startsWith(gap + '。已经提交了，即梦那边照样在出（节点 node_'));
+  assert.equal(jm2.calls.length, before);
 });
