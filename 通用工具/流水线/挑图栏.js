@@ -80,8 +80,7 @@ const guessKind = x => FRAME_RE.test((x.组 || '') + x.名称) ? '关键帧' : /
    一样的不另摆，本地那一张标「画布有」；画布上有、本地没有一样的，摆在挑图栏「画布上的」那一页，点了看大图。只读画布，不传、不删、不下载进项目。
    登录位：先试默认的，再试总览「即梦授权」里加过的 ---------- */
 const CV = { name: '', st: '', sig: '', data: null, err: '', prog: null, poll: 0, paint: null };
-const cvJm = () => { try { return JSON.parse(localStorage.getItem('antou:flow:jm-list') || '[]').filter(x => typeof x === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(x)); } catch (e) { return []; } };
-const cvUrl = q => { const jm = cvJm(); return '/api/jimeng?' + q + '&p=' + encodeURIComponent(F.name) + (jm.length ? '&jm=' + encodeURIComponent(jm.join(',')) : ''); };
+const cvUrl = q => { const jm = jmNames(); return '/api/jimeng?' + q + '&p=' + encodeURIComponent(F.name) + (jm.length ? '&jm=' + encodeURIComponent(jm.join(',')) : ''); };
 const cvSame = () => new Set(((CV.name === F.name && CV.data && CV.data.一样) || []).map(x => x.file));
 const cvProgText = () => { const p = CV.prog || [0, 0]; return (CV.data ? '正在重读画布' : '正在读画布、和本地的图一张一张比（头一回要把画布上的图下下来，要几分钟）') + (p[1] ? '：比了 ' + p[0] + ' / ' + p[1] + ' 张' : '：先读画布上有哪些图') + '…'; };
 async function cvLoad(again) {

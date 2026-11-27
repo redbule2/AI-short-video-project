@@ -39,6 +39,7 @@
 <script src="历史记录.js"></script>
 <script src="审片弹窗.js"></script>
 <script src="镜头表浮窗.js"></script>
+<script src="换号出片.js"></script>
 <script>
 /* ============================================================
    流水线 · 提示词（一场的第四道工序，最后一道：2026-11-22 起审片是这里每条上的弹窗）
@@ -626,7 +627,9 @@ function priceOf(model, res, secs, vid) {
    点了「批准出片」，本机先排好任务书（不花积分，先核对即梦账号和画布），排好就出片（流水线自己传素材、报价、提交、等出完、下载，要花积分；11-21 起不再交给 Codex）。没排成就停下，不出片。
    秒数默认取 AI 写稿时估的每镜秒数的合计（11-15 他定，公用/秒数.js；估完以后稿子又改过的照填、提醒一句）；
    没估过的（老稿）取事件脚本写到的最后一秒；也没写秒数、挂了白模的取白模时长（11-15：白模可以只管其中几秒）。
-   用哪个即梦账号不在这里选：和画布一起记在项目的 资产/出片设置.json，服务排任务书时先核对这个号能不能改这张画布（11-14：两样分开选，出过对不上） */
+   用哪个即梦账号不在这里选：和画布一起记在项目的 资产/出片设置.json，服务排任务书时先核对这个号能不能改这张画布（11-14：两样分开选，出过对不上）。
+   11-26 他要：原来的号没积分了能换号——弹窗里写着用哪个号出、还剩多少积分，点「换个号」换到别的号和它的画布（号和画布还是一起换，换号出片.js）；
+   出片报完价才发现不够的，服务停在草稿、任务上记「缺积分」，这里问要不要换个号接着出（lackAsk） */
 async function approve(s, e) {
   const vids = vidRefs(e), gap = await gapOf(s, e), fix = !!gap && e.draft && !gap.p.blocked;   // 编号有空号：你来写的稿，生成以前先往前挪（11-15）
   let dur = 0, durs = [], end = 0, txt = '';
@@ -642,6 +645,16 @@ async function approve(s, e) {
     + (es.st === 'changed' ? '估完以后稿子又改过，秒数可能不准。' : es.st === 'missing' ? '镜头' + es.lack.join('、') + ' 没估。' : '') : '这份稿没估过秒数（AI 写稿、改稿时才估）。';
   const sec = h('input', { class: 'inp', type: 'number', min: '4', max: '30', value: String(def) }), cap = h('input', { class: 'inp', type: 'number', min: '0', value: '', placeholder: '比如 300' });
   const err = h('div', { class: 'fld-err' }), price = h('div', { class: 'fn-note' }), warn = h('div', { class: 'fn-note warn' });
+  const acctEl = h('div', { class: 'fn-note' }, '在查用哪个即梦号出…');   // 用哪个号出、还剩多少积分；估价比它多就标红，能点「换个号」（11-26）
+  let acct = null;
+  const paintAcct = () => {
+    if (!acct) return;
+    const p = priceOf(model.value, res.value, Math.round(+sec.value || 0), vids.length > 0), few = acct.on && acct.credits != null && !!p && p.total > acct.credits;
+    acctEl.className = 'fn-note' + (few || !acct.on ? ' warn' : '');
+    acctEl.replaceChildren(acct.on ? '用' + JmSwap.who(acct.p, acct.nick) + '出' + (acct.credits != null ? '，还剩 ' + acct.credits + ' 积分' : '') + (few ? '：估计不够出这一条。' : '。') : JmSwap.who(acct.p) + '没登录：到首页「即梦授权」登录，或者',
+      h('button', { class: 'fl-link', type: 'button', title: '换到别的即梦号，挑那个号名下的画布（没有就新建一张）。换了以后这个项目都用新号出', onclick: async () => { if (await JmSwap.dlg(null)) { acct = await JmSwap.now(); paintAcct(); } } }, '换个号'));
+  };
+  JmSwap.now().then(a => { acct = a; paintAcct(); });
   const gapNote = !gap ? null : h('div', { class: 'fn-note warn' }, fix ? RefNo.say(gap.p) + '点「批准出片」先挪好再出，改之前的一版收进历史记录。'
     : '编号没从 1 连着编，' + (gap.p.blocked ? '页面挪不了：' + gap.p.blocked + '。' : '这份是 AI 写的稿，页面不替它改字：写批注让 AI 改。') + '这样出片会被拦下。');
   const short = vids.filter((r, i) => durs[i] && durs[i] < 2);
@@ -655,13 +668,14 @@ async function approve(s, e) {
     const p = priceOf(model.value, res.value, Math.round(+sec.value || 0), vids.length > 0);
     price.textContent = p ? '估价：约 ' + p.total + ' 积分（' + (vids.length ? '带参考视频的' : '') + model.value + ' ' + res.value + ' 每秒 ' + p.per + '；照以往实扣估的，以即梦报价为准）' : '这种出法以前没实扣过，价钱以即梦报价为准。';
     warn.textContent = vids.length && /2\.0/.test(model.value) ? '2.0 这一家会把白模原样搬进片子（灰模、白柱子照出），带白模建议用 2.5。' : '';
+    paintAcct();
   };
   for (const x of [model, res, sec]) x.addEventListener('input', paint);
   paint();
   const r = await dialog(close => dlgShell('批准出片 · ' + e.label, '点「批准出片」：页面先排好任务书（用哪份提示词、挂哪几个素材、怎么出、存到哪），流水线再照它去即梦出一条样片：传素材、报价、提交、等出完、下载进成片。要花积分；出了错会停下说为什么。',
     [gapNote, kbNote, field('模型', model), field('清晰度', res, resHint), field('时长（秒）', sec, aiSay + (end ? '事件脚本写到第 ' + end + ' 秒；' : '') + (vids.length && dur ? '白模' + (vids.length > 1 ? '合计' : '') + ' ' + dur.toFixed(1) + ' 秒；' : '') + '可填 4 到 30'), price, warn,
       field('最多花多少积分', cap, '不填：报完价直接提交。填了：报价超过这个数就停在草稿，不花积分'),
-      h('div', { class: 'fn-note' }, '即梦账号和画布照这个项目的 资产/出片设置.json。排任务书时先核对这个号能不能改这张画布，对不上就停下，不出片。'), err],
+      acctEl, err],
     [h('button', { class: 'btn ghost', onclick: () => close(null) }, '取消'),
       h('button', { class: 'btn zhu', onclick: () => {
         const n = +sec.value;
@@ -672,6 +686,10 @@ async function approve(s, e) {
       } }, '批准出片')]));
   if (!r) return;
   if (fix && !(await fixGaps(s, e, gap))) return;
+  await issue(s, e, r);
+}
+/* 排任务书、出片：点了「批准出片」走这里；积分不够换了号接着出也走这里（r：模型、清晰度、秒数、积分上限） */
+async function issue(s, e, r) {
   const j = await startJob({ 事: '出片任务书', 段: s.段, 名: e.name, 参数: r }, true);
   if (!j) return;
   rerender();
@@ -680,6 +698,16 @@ async function approve(s, e) {
   const cut = await startJob({ 事: '出片', 段: s.段, 名: taskOf(e.name), 批准: '用户点了批准出片', 渠道: SELF_CH }, true);   // 11-21 起流水线自己出片（jm-video.js），不经 AI
   if (cut) toast('流水线在出片：传素材、报价、提交、等出完、下载，做到哪这一条上看得见；出了错会停下说为什么');
   rerender();
+}
+/* 积分不够（11-26 他要）：出片报完价、这个号的积分不够，服务停在草稿、任务上记着「缺积分」（差多少、原来怎么出的）。
+   问要不要换个号出（换号出片.js）；换了就照原来的出法重新排任务书、出片，用到的素材在新画布上重新传。
+   出片刚停下时自己弹（jobDone）；没赶上的，这一条上摆着「换个号出」 */
+const lackJob = (s, e) => { const j = jobOf('出片', s.段, x => x.名 === taskOf(e.name)); return j && j.状态 === '没成' && j.缺积分 && Date.now() - j.结束 < 30 * 60e3 ? j : null; };   // 和 jobFailed 一样：过了半小时不提了
+async function lackAsk(s, e, j) {
+  const sw = await JmSwap.dlg(j.缺积分);
+  if (!sw) return;
+  toast('换到' + JmSwap.who(sw.登录位, sw.账号) + '的画布「' + sw.画布名 + '」了' + (sw.新建 ? '（新建的）' : '') + '：接着出，素材在新画布上重新传');
+  await issue(s, e, j.缺积分.参数);
 }
 /* 等本机排完任务书（几秒钟）：流水线.js 照旧每两秒问一次进度，这里只等结果；换了页面也接着等 */
 async function jobEnd(id) {
@@ -1142,6 +1170,7 @@ function rowOf(s, e, made, list) {
     jobs.length ? h('div', { class: 'wf-jobs' }, jobs.map(j => h('div', null, jobLine(j), h('span', { class: 'fn-note' }, j.标题.replace(/ · .*/, ''))))) : null,
     busy ? null : jobFailed('写完提示词', s.段, j => j.名 === e.name) || jobFailed('写提示词', s.段, j => j.名 === e.name) || jobFailed('批注提示词', s.段, j => j.名 === e.name) || jobFailed('按批注改提示词', s.段, j => j.名 === e.name) || jobFailed('照审片批注另存', s.段, j => j.名 === e.name) || jobFailed('出片任务书', s.段, j => j.名 === e.name) || jobFailed('出片', s.段, j => j.名 === tf)
       || jobFailed('写字', s.段, j => (j.只提示词 || []).includes(e.name)) || jobFailed('出图', s.段, j => j.类别 === '关键帧' && kws.some(w => w.stem === j.文件名)) || jobFailed('改图', s.段, j => j.类别 === '关键帧' && kws.some(w => w.stem === j.文件名)),
+    busy || !lackJob(s, e) ? null : h('button', { class: 'btn sm zhu', type: 'button', style: 'margin-left:8px', title: '换到别的即梦号接着出：挑那个号名下的画布（没有就新建一张），素材在新画布上重新传', onclick: () => lackAsk(s, e, lackJob(s, e)) }, '换个号出'),
     note ? notesBox(s, e, note) : null);
 }
 /* 不常用的收进「⋯」（11-21 他定：那一行只摆 接着写、批准出片、看任务书、审片） */
@@ -1229,7 +1258,11 @@ function render() {
 start({
   name: '提示词', scene: true, render, leave: adLeave,   // leave：关键帧弹窗里改了没存的字，去别的页前先存上
   sides() { HistView.drop(); loadExtra().then(() => { if (!typing()) rerender(); else F.later = true; }); },   // 你正在写：写完再画（tick 里补）
-  jobDone() { loadExtra().then(rerender); },
+  jobDone(ended) {
+    loadExtra().then(rerender);
+    const s = sceneNow(), j = s && (ended || []).find(x => x.事 === '出片' && x.状态 === '没成' && x.缺积分 && x.段 === s.段), e = j && promptsOf(s.段).find(x => taskOf(x.name) === j.名);
+    if (e) lackAsk(s, e, j);   // 积分不够：问要不要换个号出
+  },
 }).then(() => loadExtra().then(() => { if (F.doc && sceneNow()) rerender(); }));
 HistView.ready = () => { if (!F.doc || !sceneNow()) return; if (!typing()) rerender(); else F.later = true; };   // 历史记录读好了
 

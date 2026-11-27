@@ -344,6 +344,16 @@ module.exports = function makeJmVideo({ JM, run, HOME, log = () => {}, canvas, c
         if (!Number.isFinite(total)) throw fail('即梦这回报不出价：' + why(q) + '。草稿在画布上（节点 ' + st.节点.id + '），没花积分');
         const cap = P.积分上限 > 0 ? Number(P.积分上限) : total;
         if (total > cap) throw fail('报价 ' + total + ' 积分，超过你填的上限 ' + cap + '：停在草稿，没花积分。要出就把上限改大，再点「批准出片」');
+        /* 这个号的积分够不够（11-26 他要：原来的号没积分了，弹窗问要不要换个号出）。不够就停在草稿，把差多少记在任务上（缺积分），页面照它弹窗。
+           查不到余额的不拦（交给即梦自己拦）；花团队空间积分的这里查不到团队的余额，也不拦 */
+        if (((q.data.consumptionSubject || {}).kind || 'personal') === 'personal') {
+          const ac = await cli(['auth', 'account']), raw = ac.ok && ac.data ? (ac.data.availableCredits != null ? ac.data.availableCredits : (ac.data.credits || {}).available) : null;
+          const have = raw == null || raw === '' ? NaN : Number(raw);
+          if (Number.isFinite(have) && total > have) {
+            j.缺积分 = { 要: total, 有: have, 登录位: profile, 账号: P.账号 || '', 参数: { 模型: P.模型, 清晰度: P.清晰度, 秒数: P.秒数, 积分上限: Number(P.积分上限) || 0 } };
+            throw fail('积分不够：这一条报价 ' + total + ' 积分，' + (profile ? '「' + profile + '」号' : '默认号') + (P.账号 ? '「' + P.账号 + '」' : '') + '只剩 ' + have + '。停在草稿，没花积分。换个号出，或者充好积分再点「批准出片」');
+          }
+        }
         Object.assign(st, { 报价: total, 上限: cap });
         if (!st.提交 || again) st.提交 = uuid();   // 提交编号先记下：回话丢了用它只读查，不重提
         await save();

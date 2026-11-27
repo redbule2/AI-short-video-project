@@ -19,7 +19,7 @@ const taskPath = pjt('提示词', '第1-1段', '4-6_出片任务.txt');
 const DIR = pjt('历史记录', 'AI任务', '20261121-120000_出片任务书_第1-1段');   // 这一回的任务文件夹：出片计划.json 写在这里（11-21）
 const fail = code => Object.assign(new Error(code), { code });
 
-function setup(dirs = {}) {
+function setup(dirs = {}, opt = {}) {
   const files = new Map([
     [promptPath, Buffer.from('【基础设定】\n写实。\n\n【事件脚本】\n0-13秒：洪七公把草药投进砂锅。\n')],
     [pjt('资产', '出片设置.json'), Buffer.from(JSON.stringify({ 画布: 'https://jimeng.jianying.com/ai-tool/ai-canvas/7bec76b5-4184-4d2c-9b1e-a332e7317853' }))],
@@ -38,7 +38,7 @@ function setup(dirs = {}) {
       async copyFile(from, to) { if (!files.has(from)) throw fail('ENOENT'); files.set(to, Buffer.from(files.get(from))); },
     },
   };
-  const jm = Object.assign(async () => ({ nick: '测试号', name: '测试画布' }), { create: async () => { throw Error('测试不新建画布'); } });
+  const jm = opt.jm || Object.assign(async () => ({ nick: '测试号', name: '测试画布' }), { create: async () => { throw Error('测试不新建画布'); } });   // opt.jm：换个假的即梦核对（换号出片那几条用）
   const gone = [];   // 交给 jm-video.js 出片的
   const box = { module: { exports: {} }, __dirname: path.dirname(backend), Buffer, process, setTimeout, clearTimeout,
     require: name => name === 'fs' ? mockFs : name === 'child_process' ? { spawn() { throw Error('测试不能调用外部命令'); } }
@@ -48,7 +48,7 @@ function setup(dirs = {}) {
   };
   vm.runInNewContext(source, box, { filename: backend });
   const api = box.module.exports({ ROOT: root, TOOLS: path.resolve(__dirname, '..'), log() {}, withFileLocks: async (paths, fn) => fn() });
-  return { K: api.KINDS, files, gone };
+  return { K: api.KINDS, files, gone, handle: api.handle };
 }
 async function bookOf(参数, dirs) {
   const s = setup(dirs);
@@ -217,6 +217,60 @@ const priceOf = vm.runInNewContext(priceCode + '\npriceOf;', {});
     assert.equal(s.gone[0].plan, null);   // 照 出片进度.json 里存的那份
     assert.equal(s.files.has(pjt('资产', '第1-1段_出片记录.json')), false);
     // 11-21 以前交给 Codex、重开前还在等它回话的：照旧接着等，任务存盘_测试.cjs 里试
+  });
+  /* 11-26 他要：原来的号没积分了，换个号出。页面问服务：那个号名下有哪些画布（GET canvases）、换过去（POST switch） */
+  const PRE = 'https://jimeng.jianying.com/ai-tool/ai-canvas/', OLD = '7bec76b5-4184-4d2c-9b1e-a332e7317853', NEW = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', MADE = '11111111-2222-4333-8444-555555555555';
+  const swapSetup = () => {
+    const calls = [], plain = m => Object.assign(new Error(m), { plain: true });
+    const jm = Object.assign(async (url, pf) => { calls.push('核对 ' + url.slice(-36) + ' ' + (pf || '默认')); if (pf === 'guest') throw plain('画布不在即梦登录位「guest」名下'); return { nick: pf ? '奔跑' : '测试号', name: url.endsWith(MADE) ? '测试' : '新号的画布' }; }, {
+      create: async (name, pf) => { calls.push('新建 ' + name + ' ' + (pf || '默认')); return { id: MADE, url: PRE + MADE, name }; },
+      urlOf: id => PRE + String(id).toLowerCase(),
+      list: async pf => { if (pf === 'guest') throw plain('查不到即梦登录位「guest」名下有哪些画布：没登录'); return [{ id: NEW, name: '新号的画布', url: PRE + NEW, 改于: 2 }]; },
+    });
+    const s = setup({}, { jm });
+    s.files.set(pjt(), Buffer.alloc(0));   // 内存里的假文件夹：项目在
+    const ask = async (method, qs) => { let out; await s.handle({ method }, {}, new URL('http://x/api/jimeng?' + qs), { json: (res, o) => { out = JSON.parse(JSON.stringify(o)); }, httpErr: (code, m) => Object.assign(new Error(m), { status: code }), readBody: async () => Buffer.alloc(0) }); return out; };
+    const setOf = () => JSON.parse(s.files.get(pjt('资产', '出片设置.json')).toString('utf8'));
+    return { s, calls, ask, setOf };
+  };
+  const P = 'p=' + encodeURIComponent('测试');
+  await check('换号出片：列出那个号名下的画布；查不到的照实说，不当成服务出错', async () => {
+    const { ask } = swapSetup();
+    assert.deepEqual(await ask('GET', 'canvases=1&profile=benpao'), { ok: true, items: [{ id: NEW, name: '新号的画布', url: PRE + NEW, 改于: 2 }] });
+    assert.deepEqual(await ask('GET', 'canvases=1&profile=guest'), { ok: false, error: '查不到即梦登录位「guest」名下有哪些画布：没登录' });
+  });
+  await check('换号出片：挑了那个号名下的一张——出片设置换成新的一对，换下来的记在「换下的」里；别的设置照留', async () => {
+    const { ask, setOf, calls } = swapSetup();
+    const r = await ask('POST', 'switch=1&' + P + '&profile=benpao&to=' + NEW.toUpperCase());
+    assert.deepEqual(r, { ok: true, 画布: PRE + NEW, 登录位: 'benpao', 账号: '奔跑', 画布名: '新号的画布', 新建: false });
+    const set = setOf();
+    assert.equal(set.画布, PRE + NEW);
+    assert.equal(set.登录位, 'benpao');
+    assert.equal(set.换下的.length, 1);
+    assert.deepEqual({ 画布: set.换下的[0].画布, 登录位: set.换下的[0].登录位 }, { 画布: PRE + OLD, 登录位: '' });
+    assert.match(set.换下的[0].换于, /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/);
+    assert.deepEqual(calls, ['核对 ' + NEW + ' benpao'], '挑现成的不新建');
+    await ask('POST', 'switch=1&' + P + '&profile=&to=' + OLD);   // 充了积分，换回原来的号
+    const back = setOf();
+    assert.equal(back.画布, PRE + OLD);
+    assert.equal(back.登录位, '');
+    assert.deepEqual(back.换下的.map(x => [x.画布, x.登录位]), [[PRE + NEW, 'benpao']], '换回去：原来那一对从「换下的」里拿掉，刚换下的记上，不越记越长');
+    await ask('POST', 'switch=1&' + P + '&profile=&to=' + OLD);   // 再点一回同样的：什么都不变
+    assert.deepEqual(setOf(), back);
+  });
+  await check('换号出片：没挑画布（那个号没有画布）——新建一张、名字写项目名，再换过去', async () => {
+    const { ask, setOf, calls } = swapSetup();
+    const r = await ask('POST', 'switch=1&' + P + '&profile=benpao');
+    assert.deepEqual(r, { ok: true, 画布: PRE + MADE, 登录位: 'benpao', 账号: '奔跑', 画布名: '测试', 新建: true });
+    assert.deepEqual(calls, ['新建 测试 benpao', '核对 ' + MADE + ' benpao']);
+    assert.equal(setOf().画布, PRE + MADE);
+  });
+  await check('换号出片：画布不在那个号名下、编号不对、没有这个项目——照实说，出片设置一个字不动', async () => {
+    const { ask, setOf } = swapSetup(), before = JSON.stringify(setOf());
+    assert.deepEqual(await ask('POST', 'switch=1&' + P + '&profile=guest&to=' + NEW), { ok: false, error: '画布不在即梦登录位「guest」名下' });
+    assert.deepEqual(await ask('POST', 'switch=1&' + P + '&profile=benpao&to=不是编号'), { ok: false, error: '画布编号不对' });
+    assert.deepEqual(await ask('POST', 'switch=1&p=' + encodeURIComponent('没有的项目') + '&profile=benpao&to=' + NEW), { ok: false, error: '没有这个项目' });
+    assert.equal(JSON.stringify(setOf()), before);
   });
   console.log(tested + ' 项检查通过；真实项目数据未读写。');
 })().catch(e => { console.error(e); process.exitCode = 1; });

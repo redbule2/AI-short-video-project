@@ -1669,7 +1669,7 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
   const idle = x => (!!x.交给 && !!x.交给.等 && x.交给.方式 !== 'deepseek') || !!x.等Claude || !!x.等即梦;   // 等即梦：流水线自己出片、在等即梦出完（11-21）
   const fileOf = j => KINDS[j.事].file ? j.项目 + '｜' + KINDS[j.事].file(j) : '';
   /* 旧：服务重开前了结的，照存下的那份给（job-store.js） */
-  const pub = j => j.旧 || ({ id: j.id, 事: j.事, 渠道: j.渠道, 渠道名: chLabel(j), 深度: depthOf(j), 模型: modelOf(j), 项目: j.项目, 段: j.段 || '', 标题: j.标题, 状态: j.状态, 步骤: j.步骤, 建: j.建, 开始: j.开始, 结束: j.结束, 错误: j.错误, 结果: j.结果, 产出: j.产出,
+  const pub = j => j.旧 || ({ id: j.id, 事: j.事, 渠道: j.渠道, 渠道名: chLabel(j), 深度: depthOf(j), 模型: modelOf(j), 项目: j.项目, 段: j.段 || '', 标题: j.标题, 状态: j.状态, 步骤: j.步骤, 建: j.建, 开始: j.开始, 结束: j.结束, 错误: j.错误, 结果: j.结果, 产出: j.产出, 缺积分: j.缺积分,   // 缺积分：出片报完价、这个号的积分不够（jm-video.js 记的，页面照它问换不换号）
     记录: j.dir ? path.relative(ROOT, j.dir).split(path.sep).join('/') : '', 人物: j.人物, 道具: j.道具, 批注: j.批注, 类别: j.类别, 名: j.名, 状态名: j.状态名, 视频: j.视频, 文件名: j.文件名, 只名: j.只名, 只: (j.只 || []).map(x => x.类别 + '/' + (x.图 ? stemOf(x.图) : x.状态名 ? x.名称 + '_' + x.状态名 : x.名称)), 只提示词: (j.只 || []).map(x => x.提示词 || ''), 本机: !!KINDS[j.事].local,
     交给: j.交给 && j.交给.等 ? { 方式: j.交给.方式, 等: j.交给.等, ...(j.交给.会话 ? { 会话: j.交给.会话 } : {}) } : null });   // 在等交给 AI 的回复：怎么交的（self 给我提示词 / claude / deepseek / codex）、等什么（你 / 发送 / 做）；会话：Codex 里是哪个对话
   function pump() {
@@ -2013,11 +2013,39 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
     }
     return null;
   }
+  /* 换个号出片（11-26 他要：原来的号没积分了，弹窗问要不要换到别的号；挑那个号名下的一张画布，没有就新建一张，素材出片时在新画布上重新传）。
+     只改 资产/出片设置.json 的「画布」「登录位」：这个项目以后都用新的这一对。换下来的那一对记在「换下的」里（新的在后），要换回去照样在页面上换。
+     cid：那个号名下的画布编号；空着就新建一张，名字写项目名（不花积分） */
+  async function switchCanvas(name, profile, cid) {
+    if (!name || /[<>:"\\/|?*\u0000-\u001f]/.test(name) || /^\.+$/.test(name) || !(await exists(pj(name)))) throw fail('没有这个项目');
+    if (cid && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cid)) throw fail('画布编号不对');
+    await cmdsOk();
+    const f = pj(name, '资产', '出片设置.json');
+    return withFileLocks([f], async () => {
+      let set = {};
+      try { set = JSON.parse(unbom(await fsp.readFile(f, 'utf8'))); } catch (e) { /* 没有就空着 */ }
+      const made = cid ? null : await jmCheck.create(name, profile), url = made ? made.url : jmCheck.urlOf(cid);
+      const ok = await jmCheck(url, profile);   // 这个号登着、画布在它名下才换
+      const was = { 画布: str(set.画布).trim(), 登录位: str(set.登录位).trim() };
+      if (was.画布.toLowerCase() !== url.toLowerCase() || was.登录位 !== profile) {
+        const same = (x, y) => str(x.画布).toLowerCase() === str(y.画布).toLowerCase() && str(x.登录位) === str(y.登录位);
+        const old = (Array.isArray(set.换下的) ? set.换下的 : []).filter(x => x && !same(x, was) && !same(x, { 画布: url, 登录位: profile }));
+        if (was.画布) old.push({ ...was, 换于: nowText() });
+        set = { ...set, 画布: url, 登录位: profile, 任务书目录: set.任务书目录 || '项目/' + name + '/提示词', 下载目录: set.下载目录 || '项目/' + name + '/资产', 换下的: old };
+        await writeFile(f, JSON.stringify(set, null, 2) + '\n');
+        log('换了出片用的即梦号和画布：' + name + ' → ' + (profile ? '「' + profile + '」号' : '默认号') + '「' + ok.nick + '」的画布「' + ok.name + '」' + (made ? '（新建的）' : ''));
+      }
+      return { ok: true, 画布: url, 登录位: profile, 账号: ok.nick, 画布名: ok.name, 新建: !!made };
+    });
+  }
   async function jimeng(req, res, q, { json, httpErr }) {
     if (req.method === 'GET' && (q.has('canvas') || q.has('img'))) return canvas.handle(req, res, q, { json, httpErr });
     const profile = q.get('profile') || '';
     if (!/^[A-Za-z0-9_-]{0,40}$/.test(profile)) throw httpErr(400, '登录位的名字只能是字母、数字、横线');
     const pf = profile ? ['--profile', profile] : [];
+    const say = p => p.catch(e => { if (!e.plain) throw e; return { ok: false, error: e.message }; });   // 说得清的错照实给页面，页面写在弹窗里
+    if (req.method === 'GET' && q.has('canvases')) return json(res, await say(jmCheck.list(profile).then(items => ({ ok: true, items }))));   // 这个号名下的画布（换号出片时挑）
+    if (req.method === 'POST' && q.has('switch')) return json(res, await say(switchCanvas(q.get('p') || '', profile, q.get('to') || '')));
     if (req.method === 'GET') {
       const status = await jm([...pf, 'auth', 'status']);
       const account = status.ok ? await jm([...pf, 'auth', 'account']) : null;

@@ -121,7 +121,7 @@ function scenesTable() {
    登录位是即梦命令行里放账号的位子：默认的一个，另外的号各起一个名字。这一页只记有哪几个名字，不退登、不清凭据 ---------- */
 const JM_NAME = /^[A-Za-z0-9_-]{1,40}$/;
 const JM = { list: [''], rows: new Map() };
-try { JM.list = ['', ...new Set(JSON.parse(localStorage.getItem('antou:flow:jm-list') || '[]').filter(x => typeof x === 'string' && JM_NAME.test(x)))]; } catch (e) { JM.list = ['']; }
+JM.list = ['', ...jmNames()];   // 登记过的登录位（流水线.js）
 const jmRow = p => { if (!JM.rows.has(p)) JM.rows.set(p, { res: null, busy: '', link: null, msg: '' }); return JM.rows.get(p); };
 const jmSaveList = () => store('antou:flow:jm-list', JM.list.length > 1 ? JSON.stringify(JM.list.slice(1)) : null);
 const jmGet = async (method, q, p) => { try { return await (await LINK.req(method, '/api/jimeng?' + q + '&profile=' + encodeURIComponent(p))).json(); } catch (e) { return { ok: false, error: e.message }; } };

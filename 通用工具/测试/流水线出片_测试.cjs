@@ -67,6 +67,7 @@ function fakeJimeng(o = {}) {
     const f = k => { const i = a.indexOf(k); return i < 0 ? undefined : a[i + 1]; }, all = k => a.flatMap((x, i) => x === k ? [a[i + 1]] : []);
     const cmd = a[0] + ' ' + a[1];
     if (cmd === 'model ls') return ok({ items: MODELS });
+    if (cmd === 'auth account') return o.credits === '查不到' ? bad(1, 'network error') : ok({ displayName: '测试号', availableCredits: String(o.credits == null ? 52643 : o.credits) });   // 这个号还剩多少积分
     if (cmd === 'node ls') {   // 和真的一样：名字、提示词里带这个词的都算
       const t = f('--name'), ty = f('--type'), off = +f('--offset') || 0;
       const hit = [...nodes.values()].filter(x => x.type === ty && (x.title.includes(t) || String((x.generation || {}).prompt || '').includes(t)));
@@ -105,7 +106,7 @@ function fakeJimeng(o = {}) {
       return ok({ nodeId: id });
     }
     if (cmd === 'node edit') { const x = nodes.get(f('--node-id')); if (!x) return bad(1, 'node not found'); x.title = f('--title'); return ok({ nodeId: x.nodeId }); }   // 改名
-    if (cmd === 'node quote') { const q = o.quote == null ? 90 : o.quote; return ok({ totalMaxCredits: q, items: [{ nodeId: f('--node-id'), maxCredits: q }], confirmable: true, confirmationRequired: true }); }
+    if (cmd === 'node quote') { const q = o.quote == null ? 90 : o.quote; return ok({ consumptionSubject: { kind: o.team ? 'team' : 'personal', userId: '1' }, totalMaxCredits: q, items: [{ nodeId: f('--node-id'), maxCredits: q }], confirmable: true, confirmationRequired: true }); }
     if (cmd === 'node confirm') return ok({ creditConfirmationToken: TOKEN, creditCeiling: +f('--credit-ceiling'), expiresAt: '2026-11-21T12:10:00Z' });
     if (cmd === 'node run') {
       assert.equal(f('--credit-token'), TOKEN);
@@ -411,4 +412,39 @@ T('即梦命令行不认流水线的命令了：一条命令都不跑就停，�
   const before = jm2.calls.length;
   await assert.rejects(go(pr2, jm2, { plan: null, j: { id: 'j1' }, cmds }), e => e.plain && e.message.startsWith(gap + '。已经提交了，即梦那边照样在出（节点 node_'));
   assert.equal(jm2.calls.length, before);
+});
+
+/* 11-26 他要：原来的号没积分了，弹窗问要不要换个号出。报完价先看这个号够不够：不够停在草稿、把差多少记在任务上（页面照它弹窗） */
+T('积分不够：报完价就停在草稿，不确认、不提交；任务上记下差多少、原来怎么出的（页面照它问换不换号）', async () => {
+  const pr = project(), jm = fakeJimeng({ credits: 50 }), j = { id: 'j1' };
+  await assert.rejects(go(pr, jm, { j }), e => e.plain && e.message === '积分不够：这一条报价 90 积分，默认号「测试号」只剩 50。停在草稿，没花积分。换个号出，或者充好积分再点「批准出片」');
+  assert.deepEqual(j.缺积分, { 要: 90, 有: 50, 登录位: '', 账号: '测试号', 参数: { 模型: 'Seedance 2.5 样片', 清晰度: '480p', 秒数: 10, 积分上限: 0 } });
+  assert.equal(jm.named('node confirm').length + jm.named('node run').length, 0);
+  assert.equal(jm.named('node create video').length, 1, '草稿留在画布上，充了积分再点接着用');
+  const pr2 = project(), jm2 = fakeJimeng({ credits: 50 }), j2 = { id: 'j2' };
+  await assert.rejects(go(pr2, jm2, { j: j2, plan: { ...pr2.plan, 登录位: 'benpao', 账号: '奔跑' } }), /，「benpao」号「奔跑」只剩 50。/);
+  assert.equal(j2.缺积分.登录位, 'benpao');
+});
+
+T('积分刚好够、余额查不到、花的是团队空间的积分：都照常出，不拦', async () => {
+  for (const o of [{ credits: 90 }, { credits: '查不到' }, { credits: 0, team: true }]) {
+    const pr = project(), jm = fakeJimeng(o), j = { id: 'j1' };
+    const r = await go(pr, jm, { j });
+    assert.match(r.结果, /^出好了/, JSON.stringify(o));
+    assert.equal(j.缺积分, undefined);
+    assert.equal(jm.named('auth account').length, o.team ? 0 : 1, '团队空间的不查个人余额');
+  }
+});
+
+T('换到新号的空画布：素材一样一样全传上去，接着出（不动原来那张画布）', async () => {
+  const pr = project(), old = fakeJimeng({ credits: 10 }), j = { id: 'j1' };
+  old.addImage('人物和道具_洪七公'); old.addImage('人物和道具_砂锅'); old.addImage('第1-1段_镜头1_首帧');
+  await assert.rejects(go(pr, old, { j }), /积分不够/);
+  const fresh = fakeJimeng(), NEW = '11111111-2222-4333-8444-555555555555';   // 新号上刚建的画布：一个节点都没有
+  const r = await go(pr, fresh, { dir: pr.dirOf('30'), j: { id: 'j2' }, plan: { ...pr.plan, 画布号: NEW, 登录位: 'benpao', 账号: '奔跑' } });
+  assert.match(r.结果, /^出好了：4-6\.mp4（10 秒，扣 90 积分）；新传了 3 样素材$/);
+  assert.equal(fresh.named('resource upload').length, 3);
+  assert.ok(fresh.calls.every(a => a.includes(NEW) || !a.includes('--project-id')), '每一句都落在新画布上');
+  assert.equal(old.named('resource upload').length, 0);
+  assert.equal(readJson(pr.P('资产', '生成记录.json'))['出片_第1-1段_4-6'].profile, 'benpao');
 });

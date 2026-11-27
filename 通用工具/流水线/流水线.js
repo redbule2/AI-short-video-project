@@ -832,6 +832,8 @@ const CH = window.Base.CH;   // 用哪个 AI、它的模型和推理深度：各
 const SELF_CH = CH.SELF;   // 「给我提示词」的渠道号
 const chNow = CH.now, chName = CH.name, handOf = CH.hand;
 const jobLive = j => !!j && (j.状态 === '排队' || j.状态 === '在做');
+/* 即梦的登录位：首页「即梦授权」里登记过的名字（默认的那个不在里面），记在这台电脑的浏览器里。资产页读画布、换号出片（换号出片.js）也用这份 */
+const jmNames = () => { try { return [...new Set(JSON.parse(localStorage.getItem('antou:flow:jm-list') || '[]').filter(x => typeof x === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(x)))]; } catch (e) { return []; } };
 /* 这件事（这一场）最近的一个任务 */
 const jobOf = (事, 段, pred) => AI.jobs.filter(j => j.事 === 事 && (段 == null || j.段 === 段) && (!pred || pred(j))).pop() || null;
 const chPicker = () => AI.ok ? window.UI.aiPicker('ai-ch', '点「让 AI ……」的时候交给谁。选「给我提示词」就不调 AI：把要交代的话给你，贴进你自己开的对话，它做完告诉项目。出图走 Codex，出片由流水线自己做') : null;

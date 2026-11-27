@@ -120,3 +120,15 @@ test('新建画布：没名字、登录位不对，不调命令行', async () =>
   await assert.rejects(check.create('甲', 'a b'), /登录位/);
   assert.equal(f.calls.length, 0);
 });
+
+/* 11-26：换个号出片时，列出那个号名下的画布给人挑 */
+test('list：这个号名下的画布翻到底，新改的在前；带上登录位；查不到、名字不对都说清楚', async () => {
+  const f = fake({ ms: 1, pages: [[{ projectId: ID, name: '李云龙大战外星人', updatedAt: 5 }, { name: '没编号的不要' }], [{ projectId: ID2, name: '新的', updatedAt: 9 }]] });
+  const check = make({ jm: f.jm, fail, str });
+  assert.deepEqual(await check.list('benpao'), [{ id: ID2, name: '新的', url: URL2, 改于: 9 }, { id: ID, name: '李云龙大战外星人', url: URL, 改于: 5 }]);
+  assert.deepEqual(f.calls, ['--profile benpao canvas ls --limit 100 --format json', '--profile benpao canvas ls --limit 100 --format json --cursor 1']);
+  assert.deepEqual(await make({ jm: fake({ ms: 1, pages: [[]] }).jm, fail, str }).list(''), [], '这个号一张画布都没有');
+  await assert.rejects(check.list('a b'), e => e.plain && /登录位的名字/.test(e.message));
+  await assert.rejects(make({ jm: async () => ({ ok: false, raw: 'Authentication is required' }), fail, str }).list(''), e => e.plain && /查不到即梦默认号名下有哪些画布：Authentication is required/.test(e.message));
+  assert.equal(check.urlOf(ID.toUpperCase()), URL);
+});

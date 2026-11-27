@@ -3,7 +3,8 @@
    11-16 他嫌点「批准出片」到拿到提示词要等十几秒：三条命令一起跑（原来一条接一条，约 6 秒）；
    同一个号、同一张画布 10 分钟内核过就不再查（生成任务书、交给 AI 前各核一遍，原来两遍都真查）。没核过的不记。
    11-17 他要：项目还没写画布，就新建一张（jmCheck.create，不花积分），名字写项目名；jobs.js 把网址记进出片设置。
-   写了网址、核对不过的（不在这个号名下、网址不对）照旧停下，不另建：多半是号或网址写错了。 */
+   写了网址、核对不过的（不在这个号名下、网址不对）照旧停下，不另建：多半是号或网址写错了。
+   11-26 他要：原来的号没积分了，换个号出——jmCheck.list 列出那个号名下的画布给他挑（没有就用 create 新建一张）。 */
 'use strict';
 const { randomUUID } = require('crypto');
 const PREFIX = 'https://jimeng.jianying.com/ai-tool/ai-canvas/';
@@ -27,6 +28,24 @@ module.exports = function ({ jm, fail, str, ttl = 10 * 60e3, now = Date.now, uui
     p.catch(() => made.delete(key));   // 没建成的不记，下回再试
     return p;
   };
+  const NAME = /^[A-Za-z0-9_-]{0,40}$/;
+  const lsOf = pf => cursor => jm([...pf, 'canvas', 'ls', '--limit', '100', '--format', 'json', ...(cursor ? ['--cursor', cursor] : [])]);   // 一页最多 100 张
+  jmCheck.urlOf = id => PREFIX + str(id).toLowerCase();
+  /* 这个号名下的画布：[{ id, name, url, 改于 }]，新改的在前（翻到底，最多 20 页） */
+  jmCheck.list = async function (profile) {
+    const pf = str(profile);
+    if (!NAME.test(pf)) throw fail('登录位的名字只能是字母、数字、横线');
+    const ls = lsOf(pf ? ['--profile', pf] : []), out = [];
+    let r = await ls('');
+    for (let i = 0; i < 20; i++) {
+      const d = r.data && r.data.data;
+      if (r.error || !r.ok || !d || !Array.isArray(d.items)) throw fail('查不到即梦' + (pf ? '登录位「' + pf + '」' : '默认号') + '名下有哪些画布：' + (r.error || r.raw || '没有回音').slice(0, 200));
+      for (const x of d.items) if (x && x.projectId) out.push({ id: str(x.projectId), name: str(x.name), url: PREFIX + x.projectId, 改于: Number(x.updatedAt) || 0 });
+      if (!d.hasMore || !d.nextCursor) break;
+      r = await ls(d.nextCursor);
+    }
+    return out.sort((a, b) => b.改于 - a.改于);
+  };
   return jmCheck;
   async function jmCheck(canvasUrl, profile) {
     const id = (/ai-canvas\/([0-9a-f-]{36})/i.exec(str(canvasUrl)) || [])[1];
@@ -35,7 +54,7 @@ module.exports = function ({ jm, fail, str, ttl = 10 * 60e3, now = Date.now, uui
     const key = profile + '|' + id, old = seen.get(key);
     if (old && now() - old.t < ttl) return old.r;
     const pf = profile ? ['--profile', profile] : [], who = profile ? '登录位「' + profile + '」' : '默认号';
-    const ls = cursor => jm([...pf, 'canvas', 'ls', '--limit', '100', '--format', 'json', ...(cursor ? ['--cursor', cursor] : [])]);
+    const ls = lsOf(pf);
     const [st, ac, first] = await Promise.all([jm([...pf, 'auth', 'status']), jm([...pf, 'auth', 'account']), ls('')]);
     if (st.error) throw fail(st.error);
     if (!(st.data && st.data.data && st.data.data.loggedIn)) throw fail('即梦' + who + '没登录：先到首页「即梦授权」登录');

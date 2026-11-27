@@ -19,7 +19,7 @@ const textOf = node => typeof node === 'string' ? node : Array.isArray(node) ? n
 const labelOf = b => b.attrs.class === 'fl-ib' ? '⋯' : textOf(b);
 
 /* made：这一版出过的样片；task：上回排过任务书；filmed：本机服务说这一版出过片（11-22，原稿不能改，只能另存） */
-function promptButtons(draft, busy, side, made = [], task = false, filmed = null, v = 25) {   // v：本机服务第几版
+function promptButtons(draft, busy, side, made = [], task = false, filmed = null, v = 25, lack = null) {   // v：本机服务第几版；lack：上一回出片停在「积分不够」的那个任务（11-26）
   const calls = [], fails = [], pops = [];
   const empty = () => [];
   const none = () => null;
@@ -40,6 +40,7 @@ function promptButtons(draft, busy, side, made = [], task = false, filmed = null
     openWrite: (...args) => calls.push(['编辑', ...args]),
     openShell: (...args) => calls.push(['查看', ...args]),
     approve: (...args) => calls.push(['出片', ...args]),
+    lackJob: () => lack, lackAsk: (...args) => calls.push(['换号', ...args]),
     go: (...args) => calls.push(['去', ...args]),
     outFrameDlg: (...args) => calls.push(['出关键帧', ...args]),
     removePrompt: (...args) => calls.push(['删除', ...args]),
@@ -294,4 +295,15 @@ test('几版都摆，一版一行（11-26 他定：删 11-12 点了五回删除�
   const del = script.slice(script.indexOf('async function removePrompt('), script.indexOf('/* ---------- 写稿页里加减镜头'));
   assert.match(del, /只删「' \+ vpLabel\(e\.name\) \+ '」这一版、这一行/);
   assert.doesNotMatch(del, /这一条回到「/);   // 删了不再是上一版顶上来
+});
+
+/* 11-26 他要：原来的号没积分了，弹窗问要不要换个号出（流水线/换号出片.js，另有 换号出片_测试.cjs） */
+test('积分不够：出片报完价这个号不够，这一条上多一个「换个号出」，点了问换不换号；没这回事、正在做的时候不摆', () => {
+  const lack = { 事: '出片', 状态: '没成', 缺积分: { 要: 180, 有: 137, 登录位: '', 账号: '测试号', 参数: { 模型: 'Seedance 2.5 样片', 清晰度: '480p', 秒数: 10, 积分上限: 0 } } };
+  const a = promptButtons(false, false, null, [], true, null, 25, lack), b = a.buttons.find(x => labelOf(x) === '换个号出');
+  assert.ok(b, a.buttons.map(labelOf).join('、'));
+  b.attrs.onclick();
+  assert.deepEqual(a.calls.pop(), ['换号', a.scene, a.entry, lack]);
+  assert.ok(!promptButtons(false, false).buttons.some(x => labelOf(x) === '换个号出'));
+  assert.ok(!promptButtons(false, true, null, [], true, null, 25, lack).buttons.some(x => labelOf(x) === '换个号出'), '正在做的时候不摆');
 });
