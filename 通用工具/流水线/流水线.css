@@ -49,6 +49,7 @@
 .fs-title { flex: 1; min-width: 0; padding: 0 2px; font: 600 18px/1.5 var(--serif); letter-spacing: .06em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fs-state { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 2px 11px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; letter-spacing: .06em; color: var(--ink-3); white-space: nowrap; }
 .fs-state.ok { color: var(--dai); border-color: var(--dai-line); background: var(--dai-soft); }
+.fs-state.fin { color: var(--on-dai); border-color: var(--dai); background: var(--dai); }   /* 已定稿（11-27）：比「已出片」重一档，实底 */
 .fs-state .ic { width: 12px; height: 12px; stroke-width: 1.9; }
 .fl-link { flex: none; padding: 0; border: 0; background: none; cursor: pointer; font-size: 12.5px; color: var(--link, var(--dai)); text-decoration: underline; text-decoration-color: var(--link-line, var(--dai-line)); text-underline-offset: 3px; white-space: nowrap; }
 .fl-link:hover { color: var(--ink); }

@@ -11,7 +11,7 @@ const read = f => fs.readFileSync(path.join(TOOLS, f), 'utf8');
 const P = (key, ...more) => ({ key, name: more.length ? more[more.length - 1] : key, vers: [key, ...more], label: key });
 
 /* 一页：成片里 here（名字 → 修改时间）、历史记录里 hist（名字 → 修改时间）、成片文件夹里还有 extra（批注、截图） */
-function page({ here = {}, hist = {}, extra = [], jobs = [], sel = null, moveFail = null, v = 27, pairs = { 提示词: [], 片: [], 挪了: [], 没挪: [] }, pairsFail = '' } = {}) {
+function page({ here = {}, hist = {}, extra = [], jobs = [], sel = null, moveFail = null, v = 27, pairs = { 提示词: [], 片: [], 挪了: [], 没挪: [] }, pairsFail = '', saveErr = '' } = {}) {
   const log = [], els = [];
   const el = (tag, attrs, ...kids) => ({ tag, attrs: attrs || {}, children: kids.flat(Infinity).filter(x => x != null), listeners: {}, removed: false,
     addEventListener(t, fn) { this.listeners[t] = fn; }, remove() { this.removed = true; log.push(['收起', tag]); } });
@@ -28,7 +28,7 @@ function page({ here = {}, hist = {}, extra = [], jobs = [], sel = null, moveFai
     AI: { jobs }, jobLive: () => true, segName: s => '第' + s + '段', at: parts => parts.join('/'),
     lister: () => { const fn = async () => [...Object.keys(here), ...extra].map(name => ({ name, kind: /截图$/.test(name) ? 'directory' : 'file' })); fn.failed = false; return fn; },
     FS: { move: async (a, b) => { if (moveFail && moveFail(a)) throw new Error(moveFail(a)); log.push(['挪', a, b]); } },
-    touch: () => log.push(['改了流水线']), flush: async () => {},
+    touch: () => log.push(['改了流水线']), flush: async () => { ctx.F.err = saveErr; log.push(['存流水线']); },   // saveErr：流水线没存上（11-27 定稿用）
     LINK: { v, req: async (m, u) => { log.push(['叫服务', m, decodeURIComponent(u)]); if (pairsFail) throw new Error(pairsFail); return { json: async () => pairs }; } },   // 同进同出（11-26）：/api/pairs
   };
   ctx.window = ctx;
@@ -186,6 +186,84 @@ test('这条不要了，挪不成的说为什么：已经不在了、AI 在用�
   assert.match(await c.RP.retire(c.s, '1.mp4'), /没移走：EBUSY.*剪映/);
   const d = page({ here: { '1.mp4': 1 }, moveFail: () => '那里已经有同名的了' });
   assert.doesNotMatch(await d.RP.retire(d.s, '1.mp4'), /剪映/);
+});
+
+/* ---------- 定稿（11-27 他要加回来：11-22 跟审片那一页一起拿掉的） ---------- */
+test('定稿：记在这一场的「选定」（原稿名 → 样片名）、马上存；一条提示词只定一条，再定别的就换过去；撤回只撤这一条', async () => {
+  const { RP, s, log } = page({ here: { '11-13_改2.mp4': 5, '11-13_改2_2.mp4': 7, '11-12_改1.mp4': 3 } });
+  assert.equal(RP.finalOf(s, L[1]), '');
+  assert.equal(await RP.final(s, L[1], '11-13_改2.mp4', true), '');
+  assert.deepEqual({ ...s.选定 }, { '11-13.txt': '11-13_改2.mp4' });
+  assert.deepEqual(log.map(x => x[0]), ['改了流水线', '存流水线']);
+  assert.equal(RP.finalOf(s, L[1]), '11-13_改2.mp4');
+  assert.equal(RP.finalOf(s, L[0]), '', '别的提示词不受影响');
+  assert.equal(await RP.final(s, L[1], '11-13_改2_2.mp4', true), '');
+  assert.deepEqual({ ...s.选定 }, { '11-13.txt': '11-13_改2_2.mp4' }, '再定另一条：换过去');
+  assert.equal(await RP.final(s, L[1], '11-13_改2.mp4', false), '');
+  assert.deepEqual({ ...s.选定 }, { '11-13.txt': '11-13_改2_2.mp4' }, '撤回的不是定稿那条：不动');
+  assert.equal(await RP.final(s, L[1], '11-13_改2_2.mp4', false), '');
+  assert.deepEqual({ ...s.选定 }, {});
+});
+
+test('定稿：只有留在成片里的能定；收进历史记录以后不再算定稿；老数据没有「选定」也能定', async () => {
+  const a = page({ here: { '11-13_改2.mp4': 5 }, hist: { '11-13_改1.mp4': 2 } });
+  assert.match(await a.RP.final(a.s, L[1], '11-13_改1.mp4', true), /不在成片里：留在成片里的才能定稿/);
+  assert.deepEqual({ ...a.s.选定 }, {});
+  assert.ok(!a.log.some(x => x[0] === '改了流水线'));
+  const b = page({ hist: { '11-13_改2.mp4': 4 }, sel: { '11-13.txt': '11-13_改2.mp4' } });
+  assert.equal(b.RP.finalOf(b.s, L[1]), '', '定稿的那条已经不在成片里');
+  const c = page({ here: { '8-9.mp4': 1 } });
+  delete c.s.选定;
+  assert.equal(c.RP.finalOf(c.s, L[2]), '');
+  assert.equal(await c.RP.final(c.s, L[2], '8-9.mp4', true), '');
+  assert.deepEqual({ ...c.s.选定 }, { '8-9.txt': '8-9.mp4' });
+});
+
+test('定稿：流水线没存上就改回去、说为什么（别这边写着定稿、盘上没有）', async () => {
+  const a = page({ here: { '11-13_改2.mp4': 5, '11-13_改2_2.mp4': 7 }, sel: { '11-13.txt': '11-13_改2.mp4' }, saveErr: '本机服务连不上' });
+  assert.equal(await a.RP.final(a.s, L[1], '11-13_改2_2.mp4', true), '流水线没存上，这回没记：本机服务连不上');
+  assert.deepEqual({ ...a.s.选定 }, { '11-13.txt': '11-13_改2.mp4' });
+  assert.match(await a.RP.final(a.s, L[1], '11-13_改2.mp4', false), /没存上/);
+  assert.deepEqual({ ...a.s.选定 }, { '11-13.txt': '11-13_改2.mp4' });
+  const b = page({ here: { '8-9.mp4': 1 }, saveErr: '盘满了' });
+  assert.match(await b.RP.final(b.s, L[2], '8-9.mp4', true), /盘满了/);
+  assert.deepEqual({ ...b.s.选定 }, {});
+});
+
+test('「已定稿」标签：定稿的那条是这一版出的、还在成片里才标（实底的 fin）；别的照旧标「已出片」', () => {
+  const { RP } = page();
+  const fin = RP.tag([{ vid: '11-13_改2.mp4', old: false }, { vid: '11-13_改2_2.mp4', old: false }], false, '11-13_改2_2.mp4');
+  assert.equal(textOf(fin), '已定稿');
+  assert.equal(fin.attrs.class, 'fs-state fin');
+  assert.match(fin.attrs.title, /^定稿的样片：11-13_改2_2\.mp4\n这一版出的样片：\n11-13_改2\.mp4\n11-13_改2_2\.mp4$/);
+  assert.equal(textOf(RP.tag([{ vid: '第1-1段_第3条_提示词01改2_样片480p.mp4', old: false }], false, '第1-1段_第3条_提示词01改2_样片480p.mp4')), '已定稿 第3条', '老名字的写明第几条');
+  const other = RP.tag([{ vid: '11-13_改1.mp4', old: false }], false, '11-13_改2.mp4');
+  assert.equal(textOf(other), '已出片', '定稿的是别的一版出的：这一行照旧');
+  assert.equal(other.attrs.class, 'fs-state ok');
+  assert.equal(textOf(RP.tag([{ vid: '11-13_改2.mp4', old: true }], false, '11-13_改2.mp4')), '已出片 · 片在历史记录', '片在历史记录里：不算定稿');
+  assert.equal(RP.tag([], false, '11-13_改2.mp4'), null);
+});
+
+test('弹窗给审片台的 DESK_HOST：从提示词那一行点开的能定稿（final 记到这一条名下）；历史记录里的一版不给', async () => {
+  const a = page({ here: { '11-13_改2.mp4': 5 } });
+  a.RP.open(a.s, L[1], L);
+  assert.equal(typeof a.ctx.DESK_HOST.final, 'function');
+  assert.equal(await a.ctx.DESK_HOST.final('11-13_改2.mp4', true), '');
+  assert.deepEqual({ ...a.s.选定 }, { '11-13.txt': '11-13_改2.mp4' });
+  const prev = page({ here: { '11-13_改1.mp4': 5 } });   // 前几版那一行（提示词.html 的 oldVer：照最新那一版的样子换成这一版，key 不变）
+  prev.RP.open(prev.s, { ...L[1], name: '11-13_改1.txt', old: '11-13_改2.txt' }, L);
+  assert.equal(await prev.ctx.DESK_HOST.final('11-13_改1.mp4', true), '');
+  assert.deepEqual({ ...prev.s.选定 }, { '11-13.txt': '11-13_改1.mp4' }, '记在原稿名下，不是这一版的名字');
+  const b = page();
+  b.RP.oldBtn(b.s, { file: '历史记录/提示词/第3-4段/11-13_改1__20261120-101010.txt', label: '镜头11-13 改1', name: '11-13_改1__20261120-101010.txt' }, [{ vid: '11-13_改1.mp4', old: false, mtime: 9 }]).attrs.onclick();
+  assert.equal(b.ctx.DESK_HOST.final, undefined);
+});
+
+test('这条不要了：定稿的那条移走，定稿跟着撤掉', async () => {
+  const { RP, s } = page({ here: { '11-13_改2.mp4': 5 } });
+  await RP.final(s, L[1], '11-13_改2.mp4', true);
+  assert.equal(await RP.retire(s, '11-13_改2.mp4'), '');
+  assert.deepEqual({ ...s.选定 }, {});
 });
 
 test('提示词那一页引了它；审片那一整页（第五步）删了', () => {

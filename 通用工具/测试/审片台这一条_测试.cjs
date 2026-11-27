@@ -32,11 +32,13 @@ function desk({ q, here = {}, hist = {}, prompts, sel = null, host = null, confi
   ctx.promptFams = () => ctx.Core.vpFams(prompts).map(({ key, vers }) => ({ key, name: vers[vers.length - 1], vers }));
   ctx.window = ctx;
   ctx.UI = {
-    h: (tag, attrs, ...kids) => ({ tag, attrs: attrs || {}, children: kids.flat(Infinity).filter(x => x != null) }),
+    h: (tag, attrs, ...kids) => ({ tag, attrs: attrs || {}, children: kids.flat(Infinity).filter(x => x != null),
+      ...(tag === 'header' ? { replaceWith(n) { log.push(['重画顶栏', all(n).filter(x => x.tag === 'button').map(textOf)]); } } : {}) }),   // 顶栏能照新的重画（11-27 定稿以后）
     toast: (t, k) => log.push(['提示', t, k || '']),
     popover: (anchor, build) => { const p = { anchor, closed: false }; p.el = build(() => { p.closed = true; }); pops.push(p); },
     confirmDlg: async o => { log.push(['问', o.title, o.body]); return confirm; },
     copyText: async (t, ok) => { log.push(['复制', t]); return true; },
+    icon: () => null,
   };
   ctx.Base = { C: { decodeText: () => ({ text: md }) }, LINK: { abs: 'E:\\AI短视频项目', v }, FS: { read: async () => ({ buf: new Uint8Array() }), isDir: async () => true } };
   vm.createContext(ctx);
@@ -71,13 +73,13 @@ test('顶栏：没有挑提示词的下拉；样片只有一条不摆「换」�
   one.ctx.D.prompt = '8-9.txt';
   const top = one.One.top({ tag: 'div', attrs: {}, children: [] }), els = all(top);
   assert.ok(!els.some(x => x.tag === 'select'), '不能换到别的提示词');
-  assert.deepEqual(els.filter(x => x.tag === 'button').map(textOf), ['关闭', '复制批注', '这条不要了']);
+  assert.deepEqual(els.filter(x => x.tag === 'button').map(textOf), ['关闭', '复制批注', '定稿', '这条不要了']);   // 「定稿」11-27 加回来
   assert.match(textOf(top), /审片 · 第3-4段 · 镜头8-9/);
   assert.match(textOf(top), /出自 镜头8-9/);
   const old = desk({ q: { p: '试验', s: '3-4', v: '11-13_改1.mp4', k: '11-13.txt', old: '1' }, here: HERE, hist: HIST, prompts: PR });
   await old.One.load();
   const b2 = all(old.One.top(null)).filter(x => x.tag === 'button').map(textOf);
-  assert.deepEqual(b2, ['关闭', '11-13_改1　3 / 3 ▾', '复制批注']);
+  assert.deepEqual(b2, ['关闭', '11-13_改1　3 / 3 ▾', '复制批注']);   // 历史记录里的也不摆「定稿」
 });
 
 test('换一条：只摆这一条的；先存批注再换，网址带着 k 和哪一版', async () => {
@@ -129,6 +131,92 @@ test('这条不要了，问的时候说清提示词怎么办（11-26 同进同�
   assert.match(older, /出它的提示词 11-12_改1\.txt 也一起收进历史记录/);
   assert.doesNotMatch(older, /回到|没了/, '不是最新一版：这一条照旧');
   assert.match(await ask({ q: { p: '试验', s: '3-4', v: '8-9.mp4', k: '8-9.txt' }, v: 26 }), /提示词留在原处/, '本机服务还是老的：不说跟着挪');
+});
+
+/* ---------- 定稿（11-27 他要加回来：11-22 跟审片那一页一起拿掉的） ---------- */
+const Q13 = { p: '试验', s: '3-4', v: '11-13_改2.mp4', k: '11-13.txt' }, Q13B = { ...Q13, v: '11-13_改2_2.mp4' };
+const btnOf = (One, label) => all(One.top(null)).find(x => x.tag === 'button' && textOf(x) === label);
+const said = log => log.filter(x => x[0] === '提示').at(-1);
+
+test('定稿：交给弹窗那一页记（host.final(样片名, true)），记好了顶栏换成「已定稿」；再点问一声才撤回', async () => {
+  const calls = [], host = { final: async (v, on) => { calls.push([v, on]); return ''; } };
+  const a = desk({ q: Q13, here: HERE, hist: HIST, prompts: PR, host });
+  await a.One.load();
+  const b0 = btnOf(a.One, '定稿');
+  assert.match(b0.attrs.class, /\bink\b/);
+  assert.match(b0.attrs.title, /就用这条样片当成品/);
+  await b0.attrs.onclick();
+  assert.deepEqual(calls, [['11-13_改2.mp4', true]]);
+  assert.ok(!a.log.some(x => x[0] === '问'), '头一回定稿不用问');
+  assert.match(said(a.log)[1], /^定稿了：11-13_改2。/);
+  assert.deepEqual(a.log.at(-1), ['重画顶栏', ['关闭', '11-13_改2　1 / 3 ▾', '复制批注', '已定稿', '这条不要了']]);
+  assert.equal(btnOf(a.One, '定稿'), undefined);
+  const b1 = btnOf(a.One, '已定稿');
+  assert.doesNotMatch(b1.attrs.class, /\bink\b/);
+  assert.match(b1.attrs.title, /再点一下撤回定稿/);
+  await b1.attrs.onclick();
+  assert.deepEqual(a.log.find(x => x[0] === '问').slice(0, 2), ['问', '撤回定稿']);
+  assert.deepEqual(calls.at(-1), ['11-13_改2.mp4', false]);
+  assert.equal(said(a.log)[1], '撤回定稿了');
+  assert.ok(btnOf(a.One, '定稿'), '撤回以后又是「定稿」');
+});
+
+test('定稿：打开时照流水线里记的认（这一场的「选定」）；定稿的那条不在成片里了不算', async () => {
+  const on = desk({ q: Q13, here: HERE, hist: HIST, prompts: PR, sel: { '11-13.txt': '11-13_改2.mp4' } });
+  await on.One.load();
+  assert.ok(btnOf(on.One, '已定稿'));
+  const pick = all(on.One.top(null)).find(x => x.tag === 'button' && /▾/.test(textOf(x)));   // 换一条的单子里，定稿的那条写明
+  pick.attrs.onclick({ currentTarget: pick });
+  assert.deepEqual(all(on.pops[0].el).filter(x => x.tag === 'button').map(x => /^定稿 · /.test(textOf(x.children[0].children[1]))), [true, false, false]);
+  const gone = desk({ q: Q13, here: HERE, hist: HIST, prompts: PR, sel: { '11-13.txt': '11-13_改1.mp4' } });   // 改1 审完收进历史记录了
+  await gone.One.load();
+  assert.match(btnOf(gone.One, '定稿').attrs.title, /就用这条样片当成品/);
+  const other = desk({ q: Q13, here: HERE, hist: HIST, prompts: PR, sel: { '11-12.txt': '11-12_改1.mp4' } });   // 别的提示词定的稿
+  await other.One.load();
+  assert.match(btnOf(other.One, '定稿').attrs.title, /就用这条样片当成品/);
+});
+
+test('定稿：这一条定过别的样片，问一声再换过来；撤回、换过来没点确定都不动', async () => {
+  const calls = [], host = { final: async (v, on) => { calls.push([v, on]); return ''; } }, sel = { '11-13.txt': '11-13_改2.mp4' };
+  const no = desk({ q: Q13B, here: HERE, hist: HIST, prompts: PR, host, sel, confirm: false });
+  await no.One.load();
+  const b = btnOf(no.One, '定稿');
+  assert.match(b.attrs.title, /定稿的是「11-13_改2」：点了改成这条/);
+  await b.attrs.onclick();
+  const ask = no.log.find(x => x[0] === '问');
+  assert.equal(ask[1], '改成这条定稿');
+  assert.match(ask[2], /现在定稿的是 11-13_改2\.mp4，改成 11-13_改2_2\.mp4。原来那条留在成片里不动/);
+  assert.deepEqual(calls, []);
+  const keep = desk({ q: Q13, here: HERE, hist: HIST, prompts: PR, host, sel, confirm: false });
+  await keep.One.load();
+  await btnOf(keep.One, '已定稿').attrs.onclick();
+  assert.deepEqual(calls, [], '撤回没点确定：不动');
+  assert.ok(btnOf(keep.One, '已定稿'));
+  const yes = desk({ q: Q13B, here: HERE, hist: HIST, prompts: PR, host, sel });
+  await yes.One.load();
+  await btnOf(yes.One, '定稿').attrs.onclick();
+  assert.deepEqual(calls, [['11-13_改2_2.mp4', true]]);
+  assert.ok(btnOf(yes.One, '已定稿'));
+});
+
+test('定稿：不是从弹窗打开的说一声；那一页没记上就照实说，顶栏不变', async () => {
+  const a = desk({ q: Q13, here: HERE, hist: HIST, prompts: PR });
+  await a.One.load();
+  await btnOf(a.One, '定稿').attrs.onclick();
+  assert.deepEqual(plain(said(a.log)), ['提示', '从「提示词」那一步点「审片」打开，才能定稿', 'err']);
+  const b = desk({ q: Q13, here: HERE, hist: HIST, prompts: PR, host: { final: async () => '流水线没存上，这回没记：本机服务连不上' } });
+  await b.One.load();
+  await btnOf(b.One, '定稿').attrs.onclick();
+  assert.deepEqual(plain(said(b.log)), ['提示', '流水线没存上，这回没记：本机服务连不上', 'err']);
+  assert.ok(!b.log.some(x => x[0] === '重画顶栏'));
+  assert.ok(btnOf(b.One, '定稿'));
+});
+
+test('这条不要了：定稿的那条，问的时候提醒一句；不是定稿的不提', async () => {
+  const ask = async sel => { const x = desk({ q: Q13, here: HERE, hist: HIST, prompts: PR, host: { retire: async () => '', close: () => {} }, sel }); await x.One.load(); await btnOf(x.One, '这条不要了').attrs.onclick(); return x.log.find(l => l[0] === '问')[2]; };
+  assert.match(await ask({ '11-13.txt': '11-13_改2.mp4' }), /名字不改。这条是定稿的：移走以后，这一条提示词就没有定稿的样片了。/);
+  assert.doesNotMatch(await ask(null), /定稿/);
+  assert.doesNotMatch(await ask({ '11-13.txt': '11-13_改2_2.mp4' }), /这条是定稿的/);
 });
 
 test('复制批注：没批注说一声；有批注连完整路径一起复制', async () => {
@@ -184,7 +272,7 @@ test('hp：顶栏写「收进历史记录的那一版」，不摆「这条不要
   assert.deepEqual(all(top).filter(x => x.tag === 'button').map(textOf), ['关闭', '11-13_改1　2 / 2 ▾', '复制批注']);
   const one = hdesk({ q: { p: '试验', s: '3-4', v: '11-13_改1_4.mp4', hp: HP1 } });
   await one.One.load();
-  assert.ok(!all(one.One.top(null)).some(x => textOf(x) === '这条不要了'), '成片里的也不摆：历史记录里的一版只看');
+  assert.ok(!all(one.One.top(null)).some(x => textOf(x) === '这条不要了' || textOf(x) === '定稿'), '成片里的也不摆：历史记录里的一版只看');
   assert.match(textOf(one.One.top(null)), /历史记录里的这一版读不了/);
 });
 

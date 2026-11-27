@@ -85,6 +85,8 @@
      或者以前在审片页选定过它，或者这一段只有一条。出过片的那一条标「已出片 第几条」。
      11-24 他问「没有出片的提示词为什么会有审片按钮」（11-12_改5、13b-14_改2 的片审完收进了历史记录，筛选算没出片，审片却能点）：
      筛选和标签改成和「审片」能不能点同一套（ReviewPop.madeOf）：历史记录/成片 里的也算，全在历史记录里的标「已出片 · 片在历史记录」。
+     11-27 加回「定稿」（他问「为什么没有定稿的按钮」；11-22 跟审片那一页一起拿掉的）：审片弹窗顶上点「定稿」，这一条就用那条样片当成品，
+     出它的那一版这一行「已出片」换成「已定稿」（记在这一场的「选定」：原稿名 → 样片名；流水线/审片弹窗.js 的 final、finalOf）。
    2026-11-19 筛选那一排最右边加「历史记录」（他要的：默认不摆，点了只看历史记录里收进去的视频提示词：看字、@图片 能点开、和现在的比；流水线/历史记录.js）。
      11-25 他问「历史记录里为什么只能看到提示词、看不到视频」：看历史记录时「全部 / 已出片 / 没出片」照样筛（数历史记录里的几版），
      出过片的那一版标「已出片」、点「审片」弹出审片台，左边放它出的样片、右边是那一版的字（哪一版出的照名字和出片时间认：公用/历史记录.js 的 made）。
@@ -737,14 +739,14 @@ async function removePrompt(s, e) {
   const clipGo = st => ClipOf.retireAs(mine, cnames, st), goVids = clipGo('').map(x => x[0]).filter(n => VIDEO_RE.test(n));
   const list = promptsOf(s.段), guess = ClipOf.scene(s).made(e, list).filter(v => !goVids.includes(v));   // 「已出片」算它的、名字又认不出：不挪
   const lastOne = !e.vers || e.vers.length < 2, others = lastOne ? [] : e.vers.filter(v => v !== e.name);   // 改过几版的：只删这一版那一行，别的几版各自那一行不动（11-26）
-  const sel = own(s.选定, e.key) ? s.选定[e.key] : '', picked = lastOne && sel && !goVids.includes(sel) ? sel : '';   // 以前在审片页选定的（11-22 起没有审片页了）
+  const sel = own(s.选定, e.key) ? s.选定[e.key] : '', picked = lastOne && sel && !goVids.includes(sel) ? sel : '';   // 给它定稿的那条样片（审片弹窗里点「定稿」；11-22 以前是审片页的「选定」）
   const later = lastOne && vpNo(e.name) > 0 && list.some(x => vpNo(x.name) > vpNo(e.name));
   const ok = await dialog(close => dlgShell('删除 · ' + e.label, [...rel, e.name].join(' / '),
     [h('p', { class: 'fn-note' }, '移进这个项目的「历史记录」，不是彻底删掉。' + (kin.length ? '它的' + kin.map(x => x[1]).join('、') + '一起移走。' : '')),
       goVids.length ? h('p', { class: 'fn-note' }, '它出的 ' + goVids.length + ' 条样片一起移进 历史记录 / ' + crel.join(' / ') + '（名字加上删的时间），批注、批注截图跟着走：' + goVids.join('、')) : null,
       guess.length ? h('p', { class: 'fn-note warn' }, '这几条样片名字认不出是不是它出的，留在成片里：' + guess.join('、')) : null,
       others.length ? h('p', { class: 'fn-note' }, '只删「' + vpLabel(e.name) + '」这一版、这一行；' + others.map(vpLabel).join('、') + ' 各自那一行不动。') : null,
-      picked ? h('p', { class: 'fn-note' }, '以前给它选定的样片「' + picked + '」不再算它的，样片还在成片里。') : null,
+      picked ? h('p', { class: 'fn-note' }, '给它定稿的样片「' + picked + '」不再算它的，样片还在成片里。') : null,
       later ? h('p', { class: 'fn-note' }, '后面几条不改名，还叫原来的第几条。') : null],
     [h('button', { class: 'btn ghost', 'data-focus': '', onclick: () => close(false) }, '取消'), h('button', { class: 'btn zhu', onclick: () => close(true) }, '删除')]));
   if (!ok) return;
@@ -875,7 +877,7 @@ function oldRowOf(s, e, made, list) {
   const tf = taskOf(e.name), fz = X.filmed.get(e.name), busy = AI.jobs.some(j => j.段 === s.段 && jobLive(j) && (j.名 === e.name || j.名 === tf));
   const btn = (label, fn, title, off) => h('button', { class: 'btn sm', type: 'button', title: title || null, disabled: !!off, onclick: fn }, label);
   return h('div', { class: 'wf-item', 'data-name': e.name },
-    h('div', { class: 'wf-item-h' }, h('div', { class: 'wf-item-t' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), ReviewPop.tag(made),
+    h('div', { class: 'wf-item-h' }, h('div', { class: 'wf-item-t' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), ReviewPop.tag(made, false, ReviewPop.finalOf(s, e)),
       h('span', { class: 'fs-state', title: '改稿、出片都用最新的「' + vpLabel(e.old) + '」；这一版只能看、审片、删' }, '前一版')),
       h('div', { class: 'wf-item-act' },
         fz ? btn('进去看', () => openWrite(s.段, e.name, false, false, true), '打开写稿页看这一版：出过片的锁着，不能改')
@@ -1143,7 +1145,7 @@ function rowOf(s, e, made, list) {
   const btn = (label, fn, cls, title, off) => h('button', { class: 'btn sm ' + (cls || ''), type: 'button', title: title || null, disabled: !!off, onclick: fn }, label);
   const hand = isHandDraft(e), fz = X.filmed.get(e.name);   // fz：这一版出过片（11-22），原稿不能改
   return h('div', { class: 'wf-item', 'data-name': e.name },
-    h('div', { class: 'wf-item-h' }, h('div', { class: 'wf-item-t' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), ReviewPop.tag(made),   // 出过片的标出来（审片弹窗.js，历史记录里的一版也用它）
+    h('div', { class: 'wf-item-h' }, h('div', { class: 'wf-item-t' }, h('b', null, e.label), h('span', { class: 'faint small' }, e.name), ReviewPop.tag(made, false, ReviewPop.finalOf(s, e)),   // 出过片的标出来（审片弹窗.js，历史记录里的一版也用它）
       hand ? h('span', { class: 'fs-state', title: '你来写的稿：在写稿页接着写事件脚本，写好点「交给 AI 写完」，分镜和生成目标、素材这几块由 AI 写' }, '手写稿')
         : e.draft ? h('span', { class: 'fs-state', title: '在写稿页里改过：AI 估的每镜秒数可能不准，出片时会提醒' }, '改过') : null,
       stale ? [h('span', { class: 'fs-state', style: 'color:var(--zhu);border-color:var(--zhu-line)', title: imp ? '剧本重新定稿了，AI 对新旧剧本说这一条要再看：' + imp.为什么 : ed.length ? '这一条写好以后，这几样资产又改了：' + AssetEdit.say(ed) + '。点下面「照新资产改」交给 AI 对一遍；打开看一眼还对得上就沿用' : '这一条写好以后，前面（剧本、资产、拍摄风格）又动过。打开看一眼还对得上' }, imp ? '剧本改了，待核对' : ed.length ? '资产改了，待核对' : '待核对'),

@@ -5,6 +5,7 @@
    「这条不要了」在这里挪（流水线.json 的选定、沿用跟着去掉）：移进 历史记录/成片/第N段，名字不改，批注、截图跟着走。
    11-26 起提示词和它出的样片同进同出（他定）：挪完片子叫本机服务理一遍（/api/pairs，pair-keeper.js），这一版没有片留在成片里了，提示词跟着收进历史记录。
    11-25 起历史记录里的一版也能审（oldBtn：网址带 hp＝那一版的文件，审片台照它摆字、只摆它出的样片）。
+   11-27 加回「定稿」（他要的；11-22 跟审片那一页一起拿掉的）：弹窗顶上点「定稿」，这一条提示词就用这条样片当成品，那一行标「已定稿」（final、finalOf、tag）。
    要先引 流水线.js、公用/样片归属.js、流水线/历史记录.js。测试：测试/审片弹窗_测试.cjs
    ============================================================ */
 (function () {
@@ -24,12 +25,30 @@ function firstOf(items) {
    （11-24 他问「没有出片的提示词为什么会有审片按钮」：筛选原来只数成片，审完收进历史记录的算成没出片，审片却能点） */
 const madeOf = (s, e, list, items = clipsFor(s, e, list)) => items.filter(x => x.ver === e.name);
 /* 出过片的那一条标出来（11-25 从 提示词.html 挪来，历史记录里的一版也用）：哪几条样片（悬停看名字）。made：[{ vid, old }]，
-   审完收进历史记录的也算（11-24），全在历史记录里的写明；inHist：历史记录里的一版（那一排都是历史记录里的，不再写「片在历史记录」） */
-function tag(made, inHist) {
+   审完收进历史记录的也算（11-24），全在历史记录里的写明；inHist：历史记录里的一版（那一排都是历史记录里的，不再写「片在历史记录」）；
+   fin：这一条定稿的样片（finalOf），是这一版出的、还在成片里，就标「已定稿」（11-27） */
+function tag(made, inHist, fin) {
   if (!made.length) return null;
   const here = made.filter(x => !x.old), nos = [...new Set(here.map(x => ClipOf.noOf(x.vid)).filter(Boolean))].sort((a, b) => a - b);
-  return h('span', { class: 'fs-state ok', title: '这一版出的样片：\n' + made.map(x => x.vid + (x.old ? '（在历史记录里）' : '')).join('\n') }, icon('check'),
+  const names = '这一版出的样片：\n' + made.map(x => x.vid + (x.old ? '（在历史记录里）' : '')).join('\n');
+  if (fin && here.some(x => x.vid === fin)) return h('span', { class: 'fs-state fin', title: '定稿的样片：' + fin + '\n' + names }, icon('check'), '已定稿' + (ClipOf.noOf(fin) ? ' 第' + ClipOf.noOf(fin) + '条' : ''));
+  return h('span', { class: 'fs-state ok', title: names }, icon('check'),
     '已出片' + (inHist ? '' : !here.length ? ' · 片在历史记录' : nos.length ? ' 第' + nos.join('、') + '条' : ''));
+}
+/* 定稿（11-27 他要加回来）：这一条提示词（e）定下用哪条样片当成品，记在流水线.json 这一场的「选定」（原稿名 → 样片名；
+   样片归属、删提示词、改名、这条不要了本来就认它，以前审片页的「选定」也是这一份）。一条提示词只定一条；只算还留在成片里的 */
+const finalOf = (s, e) => (own(s.选定, e.key) && clipsOf(s.段).vids.includes(s.选定[e.key]) ? s.选定[e.key] : '');
+/* on：true 定这条，false 撤回。给 '' 是记好了，不然是为什么没记（没存上就改回去：别这边写着定稿、盘上没有） */
+async function final(s, e, vid, on) {
+  if (on && !clipsOf(s.段).vids.includes(vid)) return '「' + vid + '」不在成片里：留在成片里的才能定稿';
+  const had = own(s.选定, e.key), was = had ? s.选定[e.key] : '';
+  if (!on && was !== vid) return '';
+  if (!s.选定 || typeof s.选定 !== 'object') s.选定 = {};
+  if (on) s.选定[e.key] = vid; else delete s.选定[e.key];
+  touch(); await flush();
+  if (!F.err) return '';
+  if (had) s.选定[e.key] = was; else delete s.选定[e.key];
+  return '流水线没存上，这回没记：' + F.err;
 }
 /* 那一行的「审片」：最新这一版出过片才能点。
    前几版出过、最新这一版还没出的也灰掉（11-22 晚他定：「没出片」里的不该能审）；能点以后，弹窗里几版的片照样都摆 */
@@ -49,7 +68,7 @@ function open(s, e, list, want) {
   const q = new URLSearchParams({ p: F.name, s: s.段, v: it.vid, k: e.key });
   if (it.ver) q.set('pr', it.ver);
   if (it.old) q.set('old', '1');
-  show(s, q, e.label);
+  show(s, q, e.label, e);
 }
 /* 历史记录里的一版（11-25 他要的：历史记录里也看片）：it 是 HistView 列的那一版（{ file: 历史记录/提示词/第N段/原名__时间.txt, label, name }），
    items：它出的样片 [{ vid, old, mtime }]（HistView.made）。审片台照网址的 hp 摆这一版的字、只摆这一版出的样片 */
@@ -59,8 +78,8 @@ function oldBtn(s, it, items) {
     title: items.length ? '弹出来看片：左边放这一版出的样片（' + say + '），右边对照这一版的字' : '这一版没出过片',
     onclick: () => { const x = items[0]; show(s, new URLSearchParams({ p: F.name, s: s.段, v: x.vid, hp: it.file, ...(x.old ? { old: '1' } : {}) }), it.label); } }, '审片');
 }
-/* 盖上审片台（iframe）：q 是它的网址参数 */
-function show(s, q, label) {
+/* 盖上审片台（iframe）：q 是它的网址参数；e：这一条提示词（给了才能定稿，历史记录里的一版不给） */
+function show(s, q, label, e) {
   closePop(); hideHov();
   if (SHELL) SHELL.remove();
   const frame = h('iframe', { class: 'wf-shell-frame', title: '审片 · ' + label, src: '审片台.html?' + q });
@@ -76,7 +95,7 @@ function show(s, q, label) {
     HistView.drop(); await refresh();
     if (PAGE.sides) PAGE.sides(new Set(['*']));   // 批注、移走的样片：回来就重读
   };
-  window.DESK_HOST = { close, retire: vid => retire(s, vid) };
+  window.DESK_HOST = { close, retire: vid => retire(s, vid), ...(e ? { final: (vid, on) => final(s, e, vid, on) } : {}) };
   box.leave = keep;   // 换页、换项目以前（流水线.js 的 go、pickProject）
   SHELL = box;
   document.body.append(box); document.body.classList.add('wf-covered');
@@ -110,5 +129,5 @@ async function retire(s, vid) {
   toast(left.length ? say + '。这几样没跟上：' + left.join('、') : say, left.length ? 'err' : undefined);
   return '';
 }
-window.ReviewPop = Object.freeze({ clipsFor, madeOf, firstOf, tag, btn, oldBtn, open, retire });
+window.ReviewPop = Object.freeze({ clipsFor, madeOf, firstOf, tag, btn, oldBtn, open, retire, final, finalOf });
 })();

@@ -36,7 +36,7 @@ function promptButtons(draft, busy, side, made = [], task = false, filmed = null
     frameLine: none, frameWordLine: none, jobFailed: k => { fails.push(k); return null; }, jobLine: none,
     icon: none, at: parts => parts, dirOf: () => ['提示词', '第1段'],
     promptsOf: () => ['这一段的几条'],
-    ReviewPop: { btn: (s, e, list) => ({ tag: 'button', attrs: { class: 'btn sm', disabled: !made.length, onclick: () => calls.push(['审片', s, e, list]) }, children: ['审片'] }), tag: none },   // 审片弹窗（流水线/审片弹窗.js，11-22；「已出片」标签 11-25 也挪过去了）：它自己的测试在 审片弹窗_测试.cjs
+    ReviewPop: { btn: (s, e, list) => ({ tag: 'button', attrs: { class: 'btn sm', disabled: !made.length, onclick: () => calls.push(['审片', s, e, list]) }, children: ['审片'] }), tag: none, finalOf: () => '' },   // 审片弹窗（流水线/审片弹窗.js，11-22；「已出片」标签 11-25 也挪过去了）：它自己的测试在 审片弹窗_测试.cjs
     openWrite: (...args) => calls.push(['编辑', ...args]),
     openShell: (...args) => calls.push(['查看', ...args]),
     approve: (...args) => calls.push(['出片', ...args]),
@@ -237,7 +237,8 @@ test('「已出片 / 没出片」筛选和标签照「审片」能不能点同�
   assert.doesNotMatch(r, /cl\.made\(/);
   assert.match(html, /成片、历史记录里有这一版的样片就算/);
   assert.doesNotMatch(script, /function madeTag\(/, '「已出片」标签 11-25 挪进 审片弹窗.js 的 ReviewPop.tag，历史记录那一页也用');
-  assert.match(rowCode, /ReviewPop\.tag\(made\)/);
+  assert.match(rowCode, /ReviewPop\.tag\(made, false, ReviewPop\.finalOf\(s, e\)\)/);   // 11-27 加回定稿：定稿的那条是这一版出的，「已出片」换成「已定稿」（它自己的测试在 审片弹窗_测试.cjs）
+  assert.match(script.slice(script.indexOf('function oldRowOf('), script.indexOf('async function diffDlg(')), /ReviewPop\.tag\(made, false, ReviewPop\.finalOf\(s, e\)\)/, '前几版那一行也标');
 });
 
 test('历史记录里也能筛「已出片 / 没出片」（11-25）：数法照 HistView.made，列表照同一个筛子摆', () => {
@@ -259,7 +260,7 @@ test('几版都摆，一版一行（11-26 他定：删 11-12 点了五回删除�
     famOf: (s, n) => [fam, one].find(x => x.vers.includes(n)) || null,
     X: { filmed: new Map([['11-12_改1.txt', { 出过片: true }]]), tasks: new Set([Core.vpTask('11-12_改1.txt')]) },
     AI: { jobs: [] }, jobLive: () => true, icon: () => null, at: p => p, dirOf: () => ['提示词', '第3-4段'],
-    ReviewPop: { tag: () => null, open: (...a) => calls.push(['审片', ...a]) },
+    ReviewPop: { tag: () => null, finalOf: () => '', open: (...a) => calls.push(['审片', ...a]) },
     openWrite: (...a) => calls.push(['进去看', ...a]), openShell: (...a) => calls.push(['看字', ...a]), showText: (...a) => calls.push(['任务书', ...a]),
     moreMenu: (...a) => calls.push(['⋯', ...a]),
   };

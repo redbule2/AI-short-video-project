@@ -322,7 +322,7 @@ body.dk { display: block; height: 100vh; overflow: hidden; background: var(--nig
    审片只批注、不出方案（2026-11-15 他定）：怎么改由他拿着批注和自己的 AI 商量，再回前面那一道重新走。
    只审这一条提示词（11-22 他定）：网址带 k＝这一条的原稿名，换样片、对照另一条样片都只摆这一条几版出的，换不到别的提示词（流水线/审片台这一条.js）。
    网址：审片台.html?p=项目&s=第几场&v=样片文件名&k=原稿名&pr=哪一版（pr、k 可不给：照名字认）
-   嵌在弹窗里时，弹窗那一页给 window.DESK_HOST（close 收起、retire 移走一条样片）；这一页给它 window.DESK.leave（没存的先存上）
+   嵌在弹窗里时，弹窗那一页给 window.DESK_HOST（close 收起、retire 移走一条样片、final 定稿或撤回）；这一页给它 window.DESK.leave（没存的先存上）
    ============================================================ */
 'use strict';
 const { C, LINK, FS, at, isComposing } = window.Base;
