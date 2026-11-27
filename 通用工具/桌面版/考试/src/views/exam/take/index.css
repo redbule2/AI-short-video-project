@@ -573,35 +573,6 @@
   opacity: 0.75;
 }
 
-/* 粘贴被拦下:朱砂横线抖一下,不静默吞掉动作(简答稿纸共用这套反馈,见 take-essay.is-rejected) */
-.take-page .take-fill-input.is-rejected {
-  background: color-mix(in srgb, var(--vermilion) 12%, transparent);
-  border-bottom-color: var(--vermilion);
-  animation: take-reject-shake 0.4s ease;
-}
-
-@keyframes take-reject-shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  25% {
-    transform: translateX(-3px);
-  }
-
-  75% {
-    transform: translateX(3px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .take-page .take-fill-input.is-rejected,
-  .take-page .take-essay.is-rejected {
-    animation: none;
-  }
-}
-
 /* 窄屏:行高放宽,横线之间不会挤成一团。
    句中空位**不能**再加高:input 是 inline 元素,长高的部分整块挂在基线以下,
    横线会掉到文字下一行去(实测 44px 时肉眼就是断成两行)。
@@ -658,14 +629,6 @@
 .take-page .take-essay:focus {
   outline: none;
   box-shadow: inset 3px 0 0 var(--azure);
-}
-
-/* 粘贴被拦下:左缘细线转朱砂并抖一下。不能像填空那样铺底色——稿纸的横线是背景渐变,
-   盖一层底色就把格线抹平了。必须排在 :focus 之后:两条选择器权重相同,
-   而被拦时输入框正处于聚焦态,靠后才压得住那条靛青线。 */
-.take-page .take-essay.is-rejected {
-  box-shadow: inset 3px 0 0 var(--vermilion);
-  animation: take-reject-shake 0.4s ease;
 }
 
 .take-page .take-essay::placeholder {

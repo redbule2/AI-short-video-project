@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { blankBoxWidth, layoutFillBlank } from "@/features/exam/fillBlanks";
-import { usePasteGuard } from "@/features/exam/pasteGuard";
 
 /**
  * 填空题作答格(卷面直答与专注模式共用一份;样式类挂 take-page 全局 css)。
@@ -9,8 +8,8 @@ import { usePasteGuard } from "@/features/exam/pasteGuard";
  * 两条产品决定写在这里,别再各自实现:
  * 1) 直接填空——空位能嵌进题干就嵌进去(所见即所填),嵌不进去才排在题干下面标「空 N」;
  *    填空不是简答,不该先点进专注模式再面对一张稿纸。
- * 2) 禁止粘贴——填空要考的是记不记得住,粘贴一律拦下;三路拦截与提示节流在
- *    `pasteGuard.ts`(简答那张稿纸用的是同一份守卫)。
+ * 2) 允许复制粘贴——2026-11-27 用户定「考试作答的时候允许复制」,作答格和普通输入框一样,
+ *    不拦粘贴、拖入(原先的粘贴守卫 pasteGuard.ts 已删,别再加回来)。
  */
 defineOptions({ name: "ExamFillBlankFields" });
 
@@ -35,7 +34,6 @@ const emit = defineEmits<{ update: [index: number, value: string] }>();
 const MaxBlankLength = 500;
 
 const layout = computed(() => layoutFillBlank(props.stem, props.blankCount));
-const paste = usePasteGuard("填空题");
 
 function valueAt(index: number) {
   return props.values?.[index] ?? "";
@@ -81,7 +79,6 @@ function onInput(index: number, event: Event) {
           v-else
           :id="blankId(segment.blankIndex)"
           class="take-fill-input"
-          :class="{ 'is-rejected': paste.isRejected(segment.blankIndex) }"
           type="text"
           autocomplete="off"
           spellcheck="false"
@@ -92,9 +89,6 @@ function onInput(index: number, event: Event) {
           :aria-label="blankLabel(segment.blankIndex)"
           :aria-describedby="stemId"
           @input="onInput(segment.blankIndex, $event)"
-          @paste="paste.onPaste(segment.blankIndex, $event)"
-          @drop="paste.onDrop(segment.blankIndex, $event)"
-          @beforeinput="paste.onBeforeInput(segment.blankIndex, $event)"
         />
       </template>
     </p>
@@ -114,7 +108,6 @@ function onInput(index: number, event: Event) {
           <input
             :id="blankId(blankIndex)"
             class="take-fill-input is-row"
-            :class="{ 'is-rejected': paste.isRejected(blankIndex) }"
             type="text"
             autocomplete="off"
             spellcheck="false"
@@ -125,9 +118,6 @@ function onInput(index: number, event: Event) {
             :aria-describedby="stemId"
             placeholder="在此作答"
             @input="onInput(blankIndex, $event)"
-            @paste="paste.onPaste(blankIndex, $event)"
-            @drop="paste.onDrop(blankIndex, $event)"
-            @beforeinput="paste.onBeforeInput(blankIndex, $event)"
           />
         </div>
       </div>

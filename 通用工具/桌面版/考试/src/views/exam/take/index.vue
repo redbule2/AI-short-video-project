@@ -11,7 +11,6 @@ import {
   normalizeBlankAnswers,
   resolveBlankCount
 } from "@/features/exam/fillBlanks";
-import { noPasteHintText, usePasteGuard } from "@/features/exam/pasteGuard";
 import {
   isQuestionGroupStart,
   questionMajorNo
@@ -84,9 +83,6 @@ function setBlank(question: TakingQuestionDto, index: number, value: string) {
   );
 }
 
-/** 简答稿纸同样禁止粘贴:与填空共用一份守卫(键在题目 id,换题不会串抖动)。 */
-const essayPaste = usePasteGuard("简答题");
-
 /** 简答:内容驱动稿纸自动增高(承诺什么就做什么【gpt-5.6-sol 采纳】)。 */
 function setEssay(question: TakingQuestionDto, event: Event) {
   const el = event.target as HTMLTextAreaElement;
@@ -151,11 +147,6 @@ function openQuestion(question: TakingQuestionDto) {
 
 /** 本卷是否有填空题:没有就不必在卷首讲填空的规矩(那句话已经够长了)。 */
 const hasFillBlank = computed(() => questions.value.some(isFillBlank));
-
-/** 卷首「不能粘贴」那句:按本卷真有的题型措辞(填空/简答/两者都有),没有就不说。 */
-const noPasteHint = computed(() =>
-  noPasteHintText(questions.value.map(question => question.type))
-);
 
 function judgeValue(question: TakingQuestionDto) {
   const value = answers.value[question.questionId]?.answer;
@@ -233,10 +224,7 @@ function answerSummary(question: TakingQuestionDto) {
         <p class="take-overview-hint">
           这是整张卷面。选择、判断点选项作答<template v-if="hasFillBlank"
             >,填空直接写在横线上</template
-          >;简答、实操点题目提笔作答,一次只看一题,随时可回卷面。<template
-            v-if="noPasteHint"
-            >{{ noPasteHint }}</template
-          >
+          >;简答、实操点题目提笔作答,一次只看一题,随时可回卷面。
         </p>
 
         <ol class="ov-questions">
@@ -551,10 +539,7 @@ function answerSummary(question: TakingQuestionDto) {
           </button>
         </div>
 
-        <!-- 填空的作答格已在题干里,这里只补一句规则说明 -->
-        <p v-else-if="isFillBlank(currentQuestion)" class="focus-type-hint">
-          填空题请自己键入,已停用粘贴。
-        </p>
+        <!-- 填空的作答格已在题干里,这里不再摆东西 -->
 
         <!-- 实操:按要求上传图片作答 -->
         <div
@@ -652,21 +637,13 @@ function answerSummary(question: TakingQuestionDto) {
           <textarea
             :ref="growEssay"
             class="take-essay"
-            :class="{
-              'is-rejected': essayPaste.isRejected(currentQuestion.questionId)
-            }"
             rows="8"
             :value="essayValue(currentQuestion)"
-            placeholder="从这里开始作答…(请自己键入,不能粘贴)"
+            placeholder="从这里开始作答…"
             @input="setEssay(currentQuestion, $event)"
-            @paste="essayPaste.onPaste(currentQuestion.questionId, $event)"
-            @drop="essayPaste.onDrop(currentQuestion.questionId, $event)"
-            @beforeinput="
-              essayPaste.onBeforeInput(currentQuestion.questionId, $event)
-            "
           />
           <div class="focus-essay-meta">
-            <span>本机已记录 · 自动同步 · 已停用粘贴</span>
+            <span>本机已记录 · 自动同步</span>
             <span class="exam-mono"
               >{{ essayValue(currentQuestion).length }} 字</span
             >
