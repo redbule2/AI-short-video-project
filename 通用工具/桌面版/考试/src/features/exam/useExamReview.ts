@@ -49,6 +49,8 @@ export function useExamReview() {
   const router = useRouter();
   const sheetId = computed(() => String(route.query.sheetId ?? ""));
   const isResultsReview = computed(() => route.query.source === "results");
+  /** 从「培训」排名表点进来的：看完回那一期培训(2026-11-27 加的) */
+  const isFromTraining = computed(() => route.query.from === "training");
   const sourcePaperId = computed(() => String(route.query.paperId ?? ""));
   const requestKey = computed(
     () => `${isResultsReview.value ? "owner" : "student"}:${sheetId.value}`
@@ -129,7 +131,11 @@ export function useExamReview() {
     return minutes > 0 ? `${minutes} 分 ${rest} 秒` : `${rest} 秒`;
   });
   const backLabel = computed(() =>
-    isResultsReview.value ? "成绩总览" : "我的考试"
+    isFromTraining.value
+      ? "培训"
+      : isResultsReview.value
+        ? "成绩总览"
+        : "我的考试"
   );
 
   /**
@@ -294,7 +300,7 @@ export function useExamReview() {
         const detail = await getExamSheetDetail(sheetId.value);
         if (!detail) {
           blocked.value = "notReady";
-          blockedText.value = "答卷不存在或已被撤销,请回成绩总览重新进入。";
+          blockedText.value = `答卷不存在或已被撤销,请回${isFromTraining.value ? "培训" : "成绩总览"}重新进入。`;
           return;
         }
         reviewStudentLabel.value =
@@ -344,6 +350,14 @@ export function useExamReview() {
   }
 
   function backToSource() {
+    if (isFromTraining.value) {
+      const trainingId = String(route.query.trainingId ?? "");
+      void router.push({
+        name: "ExamTrainings",
+        query: trainingId ? { trainingId } : {}
+      });
+      return;
+    }
     if (isResultsReview.value) {
       // 深链/收藏进来可能没带 paperId,退回答卷自身所属卷,别把主账号丢回默认第一张卷
       const paperId = sourcePaperId.value || loadedPaperId.value;

@@ -1,6 +1,7 @@
 // 壳子自己的（不是照搬的）：有哪几页、菜单摆哪几页、谁能进。旧项目的路由还管登录、动态菜单，这里只留考试、团队这几页。
 // 各页的地址、名字、谁能进（roles）、缓不缓存（keepAlive）照旧项目 router/modules/exam.ts、collaboration.ts，没动；
-// 这里自己的：多了「我的团队」一页（/team，人人能进）、「消息」一页（/chat，人人能进）；协作中心在菜单里改叫「账号管理」。
+// 这里自己的：多了「我的团队」一页（/team，人人能进）、「消息」一页（/chat，人人能进）；协作中心在菜单里改叫「账号管理」；
+// 考试里多了「培训」一页（/exam/trainings，人人能看排名，新建、修改、删除只有负责人有，2026-11-27）。
 // 桌面软件左边菜单里「考试」「我的团队」「消息」各是一项，开的是同一份页面、各进各的首页，顶上那排菜单也各摆各的；
 // 「消息」只有它一页，顶上不摆那一排（meta.bare），整页给聊天。
 import type { RouteRecordRaw } from "vue-router";
@@ -19,6 +20,12 @@ export const routes: RouteRecordRaw[] = [
     name: "ExamPapers",
     component: () => import("@/views/exam/papers/index.vue"),
     meta: { title: "试卷管理", roles: ["admin", "owner"], keepAlive: true }
+  },
+  {
+    path: "/exam/trainings",
+    name: "ExamTrainings",
+    component: () => import("@/views/exam/trainings/index.vue"),
+    meta: { title: "培训", keepAlive: true }
   },
   {
     path: "/exam/results",
@@ -90,9 +97,10 @@ export const routes: RouteRecordRaw[] = [
   { path: "/:rest(.*)*", redirect: HOME }
 ];
 
-/** 「考试」顶上那排菜单摆哪几页（旧网站侧边栏里摆出来的那几项，顺序照旧）。 */
+/** 「考试」顶上那排菜单摆哪几页（旧网站侧边栏里摆出来的那几项，顺序照旧；「培训」是这里新加的，排在试卷管理后面）。 */
 export const MENU = [
   "/exam/papers",
+  "/exam/trainings",
   "/exam/results",
   "/exam/manual-grading-tasks",
   "/exam/my"

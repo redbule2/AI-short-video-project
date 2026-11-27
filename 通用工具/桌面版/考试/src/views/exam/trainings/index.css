@@ -1,0 +1,729 @@
+/* 培训(共用底座见 ../exam-shared.css)。这里新写的:排名表 + 「新建 / 修改培训」小窗。
+   颜色一律走皮肤的变量,不写死;纸面的底只用 --sheet、--white、--warm。 */
+
+.trainings-page .trainings-sheet {
+  max-width: 1180px;
+}
+
+.trainings-page .trainings-loading {
+  padding: 8px 0;
+}
+
+.trainings-page .trainings-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.trainings-page .trainings-select {
+  width: 280px;
+  max-width: 100%;
+}
+
+/* ---------- 这一期的概况 ---------- */
+.trainings-page .trainings-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: var(--graphite);
+}
+
+.trainings-page .trainings-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: center;
+}
+
+.trainings-page .trainings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.trainings-page .trainings-actions .exam-link:disabled,
+.trainings-page .exam-empty .exam-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.trainings-page .trainings-description {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-body);
+}
+
+/* 我自己排第几:一条暖底的提示,放在表格上面,人再多也不用找 */
+.trainings-page .trainings-mine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  align-items: center;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--ink-body);
+  background: var(--warm);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--vermilion);
+  border-radius: 4px;
+}
+
+.trainings-page .trainings-mine b {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.trainings-page .trainings-mine-full {
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+/* ---------- 搜名字、按部门看 ---------- */
+.trainings-page .trainings-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.trainings-page .trainings-search,
+.trainings-page .trainings-department {
+  width: 200px;
+  max-width: 100%;
+}
+
+.trainings-page .trainings-filter-count {
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+/* ---------- 排名表 ----------
+   卷多了左右滚:名次、姓名两列钉在左边,总分钉在右边,表头钉在上面。
+   钉住的格子要有不透明的底,不然后面的字会透上来。 */
+.trainings-page .trainings-table-wrap {
+  max-height: min(72vh, 900px);
+  overflow: auto;
+  /* 用键盘一格格走时，别停在被钉住的表头、姓名列、总分列盖住的地方：滚的时候给它们让出位置 */
+  scroll-padding: 72px 96px 8px 216px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+
+.trainings-page .trainings-table-wrap:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+.trainings-page .trainings-table {
+  width: 100%;
+  font-size: 14px;
+  border-spacing: 0;
+  border-collapse: separate;
+}
+
+.trainings-page .trainings-table th,
+.trainings-page .trainings-table td {
+  padding: 9px 10px;
+  font-weight: 400;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  /* 用考试页自己那档纸色（平常就是 --sheet；校样台下考试页照原版，它跟着换），表身才不会比纸面还亮 */
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+}
+
+.trainings-page .trainings-table tbody tr:last-child th,
+.trainings-page .trainings-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.trainings-page .trainings-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  font-family: var(--exam-serif);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--graphite);
+  background: var(--white);
+  border-bottom: 1px solid var(--field-edge);
+}
+
+.trainings-page .trainings-table .col-rank {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 56px;
+  min-width: 56px;
+}
+
+.trainings-page .trainings-table .col-name {
+  position: sticky;
+  left: 56px;
+  z-index: 1;
+  min-width: 150px;
+  max-width: 220px;
+  text-align: left;
+  border-right: 1px solid var(--rule);
+}
+
+.trainings-page .trainings-table .col-total {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  min-width: 84px;
+  border-left: 1px solid var(--rule);
+}
+
+.trainings-page .trainings-table thead .col-rank,
+.trainings-page .trainings-table thead .col-name,
+.trainings-page .trainings-table thead .col-total {
+  z-index: 3;
+}
+
+.trainings-page .trainings-table .col-paper {
+  min-width: 96px;
+}
+
+.trainings-page .trainings-table thead .col-paper {
+  max-width: 132px;
+  white-space: normal;
+}
+
+.trainings-page .paper-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.trainings-page .paper-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  letter-spacing: 0;
+  color: var(--graphite);
+}
+
+.trainings-page .paper-meta.is-draft {
+  color: var(--azure);
+}
+
+/* 我自己那一行:暖底,一眼找到 */
+.trainings-page .trainings-table tbody tr.is-me th,
+.trainings-page .trainings-table tbody tr.is-me td {
+  background: var(--warm);
+}
+
+.trainings-page .training-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 4px;
+  font-size: 14px;
+  color: var(--ink-body);
+}
+
+/* 前三名:朱砂圈一下(有分的才圈,大家都是 0 分时不圈) */
+.trainings-page .training-rank.is-top {
+  font-weight: 600;
+  color: var(--vermilion);
+  border: 1.5px solid var(--vermilion);
+  border-radius: 14px;
+}
+
+.trainings-page .training-name {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-family: var(--exam-serif);
+  font-size: 15px;
+  line-height: 1.3;
+  color: var(--ink);
+  white-space: normal;
+}
+
+.trainings-page .training-username {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--graphite);
+  text-overflow: ellipsis;
+}
+
+.trainings-page .training-score {
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.trainings-page .training-score.is-below {
+  color: var(--vermilion);
+}
+
+.trainings-page button.training-score.is-link {
+  min-width: 44px;
+  min-height: 30px;
+  padding: 2px 6px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 1px dashed var(--field-edge);
+  border-radius: 3px 3px 0 0;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.trainings-page button.training-score.is-link:hover {
+  background: rgb(from var(--dai) r g b / 8%);
+  border-bottom-color: var(--azure);
+}
+
+.trainings-page button.training-score.is-link:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 1px;
+}
+
+.trainings-page .training-cell-note {
+  margin-left: 4px;
+  font-family: var(--exam-sans);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--azure);
+}
+
+.trainings-page .training-cell-state {
+  font-size: 12px;
+  color: var(--graphite);
+}
+
+.trainings-page .training-cell-state.is-absent {
+  color: var(--vermilion);
+}
+
+.trainings-page .training-cell-state.is-taking {
+  color: var(--azure);
+}
+
+.trainings-page .training-cell-state.is-unassigned {
+  opacity: 0.7;
+}
+
+.trainings-page .training-total {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.trainings-page .col-total .training-cell-note {
+  display: block;
+  margin: 2px 0 0;
+}
+
+.trainings-page .trainings-legend {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--graphite);
+}
+
+/* ---------- 「新建 / 修改培训」小窗(teleport 到 body,拿不到 .exam-page 的令牌,这里补上用到的几样) ---------- */
+.training-editor-dialog {
+  --rule: var(--line);
+  --jade: var(--lv);
+  --exam-serif:
+    georgia, "Source Han Serif SC", "Noto Serif SC", "Noto Serif CJK SC",
+    "Songti SC", simsun, serif;
+  --exam-mono:
+    "JetBrains Mono", "Cascadia Code", consolas, "Noto Sans Mono", monospace;
+}
+
+/* 小窗不高过窗口:中间那块自己滚,底下的「保存并发卷」一直看得见 */
+.training-editor-dialog.el-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.training-editor-dialog .el-dialog__body {
+  flex: 1;
+  min-height: 0;
+  padding-top: 6px;
+  overflow-y: auto;
+}
+
+.training-editor-dialog .training-editor-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 0 18px;
+}
+
+/* 左边勾试卷、右边勾人:两栏一样高,各滚各的 */
+.training-editor-dialog .training-editor-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 0 18px;
+  height: clamp(260px, calc(90vh - 420px), 470px);
+  margin-top: 2px;
+}
+
+.training-editor-dialog .training-editor-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.training-editor-dialog .training-editor-loading {
+  padding: 8px 0 20px;
+}
+
+.training-editor-dialog .assign-label {
+  display: block;
+}
+
+.training-editor-dialog .training-editor-row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.training-editor-dialog .training-editor-count,
+.training-editor-dialog .training-picker-count {
+  font-size: 12px;
+  color: var(--azure);
+  white-space: nowrap;
+}
+
+.training-editor-dialog .training-editor-count.is-over,
+.training-editor-dialog .training-picker-count.is-over {
+  color: var(--vermilion);
+}
+
+.training-editor-dialog .training-paper-search {
+  margin-bottom: 6px;
+}
+
+.training-editor-dialog .training-paper-list,
+.training-editor-dialog .training-picker-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--field-edge);
+  border-radius: 4px;
+}
+
+.training-editor-dialog .training-paper-list {
+  padding: 4px 10px;
+}
+
+.training-editor-dialog .training-picker-list {
+  padding: 4px 10px 8px;
+}
+
+.training-editor-dialog .training-picker {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.training-editor-dialog .training-paper .el-checkbox {
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-height: 32px;
+  margin-right: 0;
+}
+
+.training-editor-dialog .training-paper .el-checkbox__label {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  min-width: 0;
+  white-space: normal;
+}
+
+.training-editor-dialog .training-paper-title {
+  color: var(--ink);
+}
+
+.training-editor-dialog .training-paper.is-blocked .training-paper-title {
+  color: var(--ink-3);
+}
+
+.training-editor-dialog .training-paper + .training-paper {
+  border-top: 1px solid var(--rule);
+}
+
+.training-editor-dialog .training-paper-note {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* 勾不了的卷:原因另起一行写在卷名下面(「已在某某培训里」常常很长) */
+.training-editor-dialog .training-paper.is-blocked .training-paper-note {
+  flex-basis: 100%;
+  margin-left: 0;
+  white-space: normal;
+}
+
+.training-editor-dialog .training-paper.is-blocked .el-checkbox {
+  padding: 4px 0;
+}
+
+.training-editor-dialog .training-editor-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.training-editor-dialog .training-editor-tip.is-over {
+  color: var(--vermilion);
+}
+
+.training-editor-dialog .training-editor-drafts {
+  height: auto;
+  min-height: 30px;
+  margin: 6px 0 0;
+}
+
+.training-editor-dialog .training-editor-drafts .el-checkbox__label {
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: normal;
+}
+
+/* 参加的人 */
+.training-editor-dialog .training-picker-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.training-editor-dialog .training-picker-search {
+  flex: 1;
+  min-width: 120px;
+  max-width: 200px;
+}
+
+.training-editor-dialog .training-picker-count {
+  margin-left: auto;
+}
+
+.training-editor-dialog .training-group {
+  padding-left: calc(var(--training-depth, 0) * 20px);
+}
+
+.training-editor-dialog .training-group + .training-group {
+  border-top: 1px solid var(--rule);
+}
+
+.training-editor-dialog .training-group-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 36px;
+}
+
+.training-editor-dialog .training-group-head .el-checkbox {
+  height: auto;
+  margin-right: 0;
+}
+
+.training-editor-dialog .training-group-name {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  min-height: 32px;
+  padding: 2px 4px;
+  font-size: 14px;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 3px;
+}
+
+.training-editor-dialog .training-group-name:disabled {
+  cursor: default;
+}
+
+.training-editor-dialog .training-group-name:hover:not(:disabled) {
+  background: rgb(from var(--dai) r g b / 8%);
+}
+
+.training-editor-dialog .training-group-name:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 1px;
+}
+
+.training-editor-dialog .training-group-caret {
+  width: 12px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.training-editor-dialog .training-group-title {
+  font-weight: 500;
+}
+
+.training-editor-dialog .training-group-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.training-editor-dialog .training-people {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 0 12px;
+  padding: 0 0 6px 28px;
+}
+
+.training-editor-dialog .training-people .el-checkbox {
+  height: auto;
+  min-height: 30px;
+  margin-right: 0;
+}
+
+.training-editor-dialog .training-people .el-checkbox__label {
+  white-space: normal;
+}
+
+.training-editor-dialog .training-person-name {
+  color: var(--ink);
+}
+
+.training-editor-dialog .training-person-note {
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+/* 小窗底下:左边一句话说点下去会怎样,右边两个钮 */
+.training-editor-dialog .training-editor-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.training-editor-dialog .training-editor-hint {
+  flex: 1;
+  min-width: 220px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  text-align: left;
+}
+
+/* 发卷结果 */
+.training-editor-dialog .training-outcome-lead {
+  margin: 4px 0 10px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-2);
+}
+
+.training-editor-dialog .training-outcome-list {
+  padding: 0;
+  margin: 0 0 10px;
+  list-style: none;
+  border: 1px solid var(--field-edge);
+  border-radius: 4px;
+}
+
+.training-editor-dialog .training-outcome-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  padding: 8px 10px;
+}
+
+.training-editor-dialog .training-outcome-row + .training-outcome-row {
+  border-top: 1px solid var(--rule);
+}
+
+.training-editor-dialog .training-outcome-title {
+  color: var(--ink);
+}
+
+.training-editor-dialog .training-outcome-text {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.training-editor-dialog .training-outcome-text.is-failed {
+  color: var(--vermilion);
+}
+
+/* 窄屏:表格照样左右滚,操作钮换行 */
+@media (width <= 720px) {
+  .trainings-page .trainings-table .col-name {
+    min-width: 116px;
+  }
+
+  .training-editor-dialog .training-people {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 窗口窄:试卷、参加的人上下摆 */
+@media (width <= 820px) {
+  .training-editor-dialog .training-editor-top,
+  .training-editor-dialog .training-editor-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .training-editor-dialog .training-editor-cols {
+    height: auto;
+  }
+
+  .training-editor-dialog .training-paper-list {
+    flex: none;
+    max-height: 190px;
+  }
+
+  .training-editor-dialog .training-picker-list {
+    flex: none;
+    max-height: 260px;
+  }
+}

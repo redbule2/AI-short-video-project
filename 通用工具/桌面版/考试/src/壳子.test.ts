@@ -32,9 +32,10 @@ const menuOf = (accountType: string) => seen(MENU, accountType);
 afterEach(() => vi.unstubAllGlobals());
 
 describe("有哪几页", () => {
-  it("十二页都在，名字和页里写的一样（缓存靠这个名字认）", () => {
+  it("十三页都在，名字和页里写的一样（缓存靠这个名字认）", () => {
     expect(pages.map(route => route.path)).toEqual([
       "/exam/papers",
+      "/exam/trainings",
       "/exam/results",
       "/exam/manual-grading-tasks",
       "/exam/my",
@@ -56,6 +57,7 @@ describe("有哪几页", () => {
   it("答题、阅卷安排、人工阅卷每回重来，别的切走不重来", () => {
     expect(cachedPages).toEqual([
       "ExamPapers",
+      "ExamTrainings",
       "ExamResults",
       "ExamManualGradingTasks",
       "ExamMy",
@@ -75,9 +77,16 @@ describe("有哪几页", () => {
   });
 
   it("考试那一排：团队负责人看不到「我的阅卷」，成员看不到「试卷管理」；团队不在这一排了", () => {
-    expect(menuOf("owner")).toEqual(["/exam/papers", "/exam/results", "/exam/my"]);
-    expect(menuOf("sub")).toEqual(["/exam/results", "/exam/manual-grading-tasks", "/exam/my"]);
+    expect(menuOf("owner")).toEqual(["/exam/papers", "/exam/trainings", "/exam/results", "/exam/my"]);
+    expect(menuOf("sub")).toEqual(["/exam/trainings", "/exam/results", "/exam/manual-grading-tasks", "/exam/my"]);
     expect(allowed(routes.find(route => route.path === HOME)?.meta?.roles, [])).toBe(true);
+  });
+
+  it("「培训」：排在试卷管理后面，人人能进（排名大家都能看，新建、修改、删除由后台只认负责人）", () => {
+    const training = routes.find(route => route.path === "/exam/trainings");
+    expect([training?.meta?.title, training?.meta?.keepAlive, allowed(training?.meta?.roles, [])]).toEqual(["培训", true, true]);
+    expect(MENU.indexOf("/exam/trainings")).toBe(MENU.indexOf("/exam/papers") + 1);
+    expect(menuAt("/exam/trainings")).toBe(ALL_MENU);
   });
 
   it("我的团队那一排：人人有「我的团队」，「账号管理」只有团队负责人有", () => {
@@ -106,8 +115,8 @@ describe("有哪几页", () => {
     expect(ALL_MENU).toEqual([...MENU, "/team", "/collaboration"]);
     expect(menuAt("/exam/my")).toBe(ALL_MENU);
     expect(menuAt("/team")).toBe(ALL_MENU);
-    expect(seen(menuAt("/exam/my"), "owner")).toEqual(["/exam/papers", "/exam/results", "/exam/my", "/team", "/collaboration"]);
-    expect(seen(menuAt("/exam/my"), "sub")).toEqual(["/exam/results", "/exam/manual-grading-tasks", "/exam/my", "/team"]);
+    expect(seen(menuAt("/exam/my"), "owner")).toEqual(["/exam/papers", "/exam/trainings", "/exam/results", "/exam/my", "/team", "/collaboration"]);
+    expect(seen(menuAt("/exam/my"), "sub")).toEqual(["/exam/trainings", "/exam/results", "/exam/manual-grading-tasks", "/exam/my", "/team"]);
     expect(homeOf("/collaboration")).toBe(HOME); // 只有一排、一个首页
   });
 });

@@ -199,6 +199,18 @@
     "frontend.exam.manualGradingAssignments.switchPaper": 1,
     "frontend.exam.manualGradingAssignments.save": 1,
     "frontend.exam.manualGradingTasks.enter": 1,
+    "frontend.exam.trainingsPage.enter": 3,
+    "frontend.exam.trainings.switchTraining": 1,
+    "frontend.exam.trainings.refresh": 2,
+    "frontend.exam.trainings.reactivate": 2,
+    "frontend.exam.trainings.beforeEdit": 1,
+    "frontend.exam.trainings.sheetDetail": 0,
+    "frontend.exam.trainings.afterSave": 2,
+    "frontend.exam.trainings.delete": 1,
+    "frontend.exam.trainings.afterDelete": 2,
+    "frontend.exam.trainingEditor.open": 2,
+    "frontend.exam.trainingEditor.save": 1,
+    "frontend.exam.trainingEditor.pick": 0,
     "frontend.exam.gradingHandoff.enter": 0,
     "frontend.exam.gradingHandoff.copyClick": 1,
     "frontend.exam.gradingHandoff.peakConcurrencyMax": 1,
@@ -775,6 +787,42 @@
     ],
     "frontend.exam.manualGradingTasks.enter": [
       "frontend/src/features/exam/examRequestBudget.test.ts"
+    ],
+    "frontend.exam.trainingsPage.enter": [
+      "frontend/src/features/training/trainingPage.test.ts"
+    ],
+    "frontend.exam.trainings.switchTraining": [
+      "frontend/src/features/training/trainingPage.test.ts"
+    ],
+    "frontend.exam.trainings.refresh": [
+      "frontend/src/features/training/trainingPage.test.ts"
+    ],
+    "frontend.exam.trainings.reactivate": [
+      "frontend/src/features/training/trainingPage.test.ts"
+    ],
+    "frontend.exam.trainings.beforeEdit": [
+      "frontend/src/features/training/trainingPage.test.ts"
+    ],
+    "frontend.exam.trainings.sheetDetail": [
+      "frontend/src/features/training/trainingPage.test.ts"
+    ],
+    "frontend.exam.trainings.afterSave": [
+      "frontend/src/features/training/trainingPage.test.ts"
+    ],
+    "frontend.exam.trainings.delete": [
+      "frontend/src/features/training/trainingPage.test.ts"
+    ],
+    "frontend.exam.trainings.afterDelete": [
+      "frontend/src/features/training/trainingPage.test.ts"
+    ],
+    "frontend.exam.trainingEditor.open": [
+      "frontend/src/features/training/trainingPage.test.ts"
+    ],
+    "frontend.exam.trainingEditor.save": [
+      "frontend/src/features/training/trainingPage.test.ts"
+    ],
+    "frontend.exam.trainingEditor.pick": [
+      "frontend/src/features/training/trainingPage.test.ts"
     ],
     "frontend.exam.gradingHandoff.enter": [
       "frontend/src/features/exam/examGradingHandoff.test.ts"

@@ -105,6 +105,7 @@ const mock = http.createServer((req, res) => {
       if (!/^Bearer fake-access/.test(auths[p]) || (staleOnce && p === '/api/exam/my')) { staleOnce = false; res.writeHead(401); return res.end(); }
       if (p.startsWith(CHAT_API + '/')) return chatApi(req, res, p, j, send);
       if (p === '/api/exam/my') return send({ success: true, message: '', data: MY });
+      if (p === '/api/exam/trainings') return send({ success: true, message: '', data: { canManage: true, items: [] } });
       if (p === '/api/exam/sheets/s1/uploads') return send({ success: true, message: '已上传', data: { url: '/uploads/exam/s1/a.png', name: (/filename="([^"]*)"/.exec(body) || [])[1] || '', type: req.headers['content-type'] || '' } });
       if (p === '/api/collaboration/accounts') return send({ success: true, message: '', data: TEAM });
       if (p === '/api/collaboration/team') return send({ success: true, message: '', data: TEAM_VIEW });
@@ -405,7 +406,7 @@ try {
     const x = await connect(examT.webSocketDebuggerUrl);
     check(await until(() => evaluate(x, `(document.body ? document.body.innerText : '').includes('冒烟卷')`), 12000), '「我的考试」里摆出了服务器给的那张卷');
     check(/^Bearer fake-access-2$/.test(auths['/api/exam/my']) && seen.filter(u => u === '/api/exam/my').length === 2, '凭证是壳子带上的；头一回过期，自己续了一回再问', auths['/api/exam/my']);
-    check(await evaluate(x, `[...document.querySelectorAll('.shell-nav a')].map(a => a.textContent.trim()).join('、')`) === '试卷管理、成绩总览、我的考试', '团队负责人看到的考试菜单：试卷管理、成绩总览、我的考试（团队挪到左边菜单里单独一项了）');
+    check(await evaluate(x, `[...document.querySelectorAll('.shell-nav a')].map(a => a.textContent.trim()).join('、')`) === '试卷管理、培训、成绩总览、我的考试', '团队负责人看到的考试菜单：试卷管理、培训、成绩总览、我的考试（团队挪到左边菜单里单独一项了）');
     check(await evaluate(x, `typeof require === 'undefined' && !JSON.stringify({ ...localStorage }).includes('fake-') && Object.keys(window.desk).join() === 'info,login,register,logout,api,onChat,openChat'`), '考试页拿不到 Node，也拿不到凭证');
     check((await evaluate(x, `window.desk.api('GET', '/api/auth/login')`)).status === 400, '考试页也只许问考试、团队两块');
     s = await frameState(f);
@@ -417,6 +418,10 @@ try {
     const up = await evaluate(x, `window.desk.api('POST', '/api/exam/sheets/s1/uploads', { file: { name: '答题图.png', type: 'image/png', bytes: new Uint8Array([137, 80, 78, 71]).buffer } })`);
     check(up.ok && up.data.data.name === '答题图.png' && up.data.data.type.startsWith('multipart/form-data; boundary='), '传图：经壳子拼成表单发给服务器', JSON.stringify(up));
     check(winShot('窗口2e_考试'), '截了整个窗口（考试）');
+    await evaluate(x, `[...document.querySelectorAll('.shell-nav a')].find(a => a.textContent.trim() === '培训').click()`);
+    check(await until(() => evaluate(x, `location.hash === '#/exam/trainings' && (document.body ? document.body.innerText : '').includes('还没有培训')`), 12000) && seen.includes('/api/exam/trainings') && /^Bearer fake-access/.test(auths['/api/exam/trainings']), '点考试顶上的「培训」：这一页开了，问的是培训的接口，凭证是壳子带上的；还没有培训时说清怎么建', auths['/api/exam/trainings']);
+    check(await evaluate(x, `[...document.querySelectorAll('.trainings-page button')].some(b => b.textContent.trim() === '新建培训')`), '团队负责人在「培训」页有「新建培训」');
+    await shot(x, '5b_培训.png');
     await clickF(f, '#rail button[data-go="pipeline"]');
     s = await frameUntil(f, y => y.current === 'pipeline');
     check(!!s && await evaluate(x, `document.visibilityState`) === 'hidden' && await evaluate(c, `document.visibilityState`) === 'visible', '点回「流水线」：考试页收起来，没关');

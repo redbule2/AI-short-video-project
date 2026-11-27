@@ -510,7 +510,7 @@ function toError(response: ApiResponse<unknown>) {
 }
 
 /** 动作/必有数据的查询:失败或无数据即抛(带 kind)。 */
-function unwrap<T>(response: ApiResponse<T>): T {
+export function unwrap<T>(response: ApiResponse<T>): T {
   if (!response.success || response.data === null) {
     throw toError(response);
   }
@@ -518,7 +518,7 @@ function unwrap<T>(response: ApiResponse<T>): T {
 }
 
 /** 查询类:success:true + data:null 表示「不存在」,返回 null 走空态(规范 §3.1)。 */
-function unwrapNullable<T>(response: ApiResponse<T>): T | null {
+export function unwrapNullable<T>(response: ApiResponse<T>): T | null {
   if (!response.success) {
     throw toError(response);
   }
@@ -526,7 +526,7 @@ function unwrapNullable<T>(response: ApiResponse<T>): T | null {
 }
 
 /** 无数据动作:只关心成败。 */
-function unwrapAction(response: ApiResponse<unknown>): void {
+export function unwrapAction(response: ApiResponse<unknown>): void {
   if (!response.success) {
     throw toError(response);
   }

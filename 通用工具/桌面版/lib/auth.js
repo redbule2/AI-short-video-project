@@ -9,6 +9,8 @@ const API_OK = ['/api/exam/', '/api/collaboration/'];   // 页面能经 api() �
 const CRLF = String.fromCharCode(13, 10);
 const SLOW = 120000;   // 毫秒：传图、拿图等这么久（别的 10 秒，main.js 里定的）
 const LONG = { '/api/collaboration/chat/updates': 40000 };   // 等新消息：服务器最多挂 25 秒才回，这边多等一截
+const TRAINING = '/api/exam/trainings';   // 培训「保存并发卷」（POST、PUT）：最多 30 张卷逐张发，10 秒可能不够，等到 90 秒；读的照旧 10 秒
+const TRAINING_SAVE = 90000;
 
 const KEEP = ['accessToken', 'refreshToken', 'expires', 'username', 'nickname', 'avatar', 'accountType', 'ownerUsername'];
 const pick = d => Object.fromEntries(KEEP.filter(k => d && d[k] != null).map(k => [k, d[k]]));
@@ -92,6 +94,7 @@ function makeAuth({ api, fetch, store, log, now = () => Date.now() }) {
     const q = new URLSearchParams(Object.entries((opts && opts.query) || {}).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])).toString();
     const init = { method, headers: { Accept: opts && opts.binary ? '*/*' : 'application/json', Authorization: 'Bearer ' + saved.accessToken } };
     if (LONG[pathname]) init.timeout = LONG[pathname];
+    if ((pathname === TRAINING || pathname.startsWith(TRAINING + '/')) && /^(post|put)$/i.test(String(method))) init.timeout = TRAINING_SAVE;
     if (opts && opts.binary) init.timeout = SLOW;
     if (opts && opts.file) {
       const m = multipart(opts.file);

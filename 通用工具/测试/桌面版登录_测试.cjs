@@ -195,3 +195,14 @@ test('问服务器：等新消息（聊天）多等一截；拿图回的是图�
   await auth.api('GET', '/api/collaboration/chat/inbox');
   assert.equal(calls[3].timeout, undefined, '别的照常 10 秒（main.js 里定的）');
 });
+
+test('问服务器：培训「保存并发卷」多等一截（最多 30 张卷逐张发）；读列表、读排名、删培训照常 10 秒', async () => {
+  const ok = () => reply({ success: true });
+  const { auth, calls } = apiAuth([ok(), ok(), ok(), ok(), ok()]);
+  await auth.api('post', '/api/exam/trainings', { body: { name: '第一期' } });
+  await auth.api('PUT', '/api/exam/trainings/t1', { body: { name: '第一期' } });
+  await auth.api('GET', '/api/exam/trainings');
+  await auth.api('get', '/api/exam/trainings/t1/ranking');
+  await auth.api('DELETE', '/api/exam/trainings/t1');
+  assert.deepEqual(calls.map(c => c.timeout), [90000, 90000, undefined, undefined, undefined]);
+});

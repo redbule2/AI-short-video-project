@@ -210,6 +210,25 @@ describe("主账号查阅考生答卷(复用考生复盘页)", () => {
     });
   });
 
+  it("从「培训」排名表点进来的,看完回那一期培训(不是回成绩总览)", async () => {
+    routeState.query = {
+      sheetId: "s1",
+      source: "results",
+      paperId: "p1",
+      from: "training",
+      trainingId: "t1"
+    };
+
+    const review = await mountOwnerReview();
+    expect(review.backLabel.value).toBe("培训");
+    review.backToSource();
+
+    expect(routerPush).toHaveBeenCalledWith({
+      name: "ExamTrainings",
+      query: { trainingId: "t1" }
+    });
+  });
+
   it("未交卷答卷再次进入会重取快照,已交卷答卷不重复拉取", async () => {
     sheetState.detail = ownerSheet({
       status: "答题中",
