@@ -179,20 +179,29 @@ async function drawTests() {
 /* ---------- 四、往 Codex 里发：一次一个；发不出去改成给我提示词；报没发出、其实发出去了的认出来；服务重开后认出原来那个对话 ---------- */
 async function sendTests() {
   const meta = async (j, m) => { j.dir = path.join(TMP, j.id); put(path.join(j.dir, '自己交.json'), JSON.stringify(m)); };
-  const job = id => ({ id, 标题: '出图 · ' + id, 交给: { 方式: 'codex', 等: '发送', 开: Date.now() } });
+  const job = id => ({ id, 名: '图' + id, 标题: '出图 · ' + id, 交给: { 方式: 'codex', 等: '发送', 开: Date.now() } });
+  const talk = (j, id = j.id) => put(path.join(j.dir, '交给AI的话.txt'), '【对话名】\n这一张：人物「' + j.名 + '」\nnode "server.js" reply ' + id + '\n先出第一张给我看。\n');
   // 一次一个
-  let now = 0, most = 0;
+  let now = 0, most = 0, runs = 0;
   const { D } = deps({ async run(cmd, args) {
-    now++; most = Math.max(most, now);
+    runs++; now++; most = Math.max(most, now);
     await new Promise(r => setTimeout(r, 30));
     now--;
     const id = path.basename(path.dirname(args[args.indexOf('-PromptFile') + 1]));
     return { code: 0, out: 'RESULT_JSON {"ok":true,"status":"sent","thread_id":"' + UUID.slice(0, -2) + String(id).slice(-2).padStart(2, '0') + '"}', err: '' };
   } });
   const a = job('aa01'), b = job('bb02'), c = job('cc03');
-  for (const j of [a, b, c]) await meta(j, { id: j.id, 方式: 'codex' });
+  for (const j of [a, b, c]) { await meta(j, { id: j.id, 方式: 'codex' }); talk(j); }
   await Promise.all([a, b, c].map(j => D.link(j, path.join(j.dir, '交给AI的话.txt'))));
   assert.equal(most, 1, '一次只往 Codex 里发一个：用的是同一个输入框');
+  // 发之前核对（11-27）：话被别的任务盖了（reply 号不是自己的）就不发，算没成；号是前缀相同的别的号也不算
+  for (const other of ['zz10', 'zz0', 'zz09x']) {
+    const z = job('zz09'); await meta(z, { id: z.id, 方式: 'codex' }); talk(z, other);
+    const before = runs;
+    await assert.rejects(D.link(z, path.join(z.dir, '交给AI的话.txt')), /交给 Codex 的话不是「图zz09」这一样的（被别的任务盖了），没发/, other);
+    assert.equal(runs, before, '没往 Codex 里发：' + other);
+    assert.ok(!z.交给.会话, '没记对话号');
+  }
   assert.ok(a.交给.会话.endsWith('01') && b.交给.会话.endsWith('02') && a.交给.等 === '你');
   const m = JSON.parse(read(path.join(a.dir, '自己交.json')));
   assert.equal(m.会话, a.交给.会话); assert.equal(m.聊, true, '记下在 Codex 里聊：服务重开后接得上');

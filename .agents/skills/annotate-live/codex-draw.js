@@ -37,8 +37,16 @@ module.exports = function makeDraw(d) {
     try { x.resolve(await sendNow(x.j, x.msgFile)); } catch (e) { x.reject(e); }
     finally { sending = false; next(); }
   }
+  /* 发之前核对（11-27）：话里「reply 号」得是这一样自己的。被别的任务盖了（那回 7 样挤一个文件夹，7 个对话全出了集市）就不发、算没成。
+     没有这个文件的照旧交给 codex-chat 去报 */
+  async function ownMsg(j, msgFile) {
+    let t;
+    try { t = await fsp.readFile(msgFile, 'utf8'); } catch (e) { return; }
+    if (![...t.matchAll(/\breply\s+(\S+)\s*$/gm)].some(m => m[1] === j.id)) throw fail('交给 Codex 的话不是「' + label(j) + '」这一样的（被别的任务盖了），没发：再点一次出图');
+  }
   async function sendNow(j, msgFile) {
     if (j.停) throw fail('停掉了');
+    await ownMsg(j, msgFile);
     j.步骤 = '在往 Codex 里发：开一个新对话';
     const t0 = Date.now();
     let res = null, why = '';

@@ -1682,11 +1682,22 @@ module.exports = function makeJobs({ ROOT, TOOLS, log, withFileLocks = async (pa
       work(j);
     }
   }
+  /* 每个任务一个自己的文件夹（11-27：一次勾 8 样出图，7 样同一秒开工、挤进同一个文件夹，交给 AI 的话一个盖一个，7 个 Codex 对话全出了集市）。
+     名字照旧「时间_事_第N段」（resumeSelf、planOf、资产详情.js 都照这个样子认），撞了往后挪一秒；不带 recursive 的 mkdir 撞名就报 EEXIST，同一刻开工的也分得开。
+     测试：通用工具/测试/同一秒出图_测试.cjs */
+  async function newDir(j) {
+    const base = pj(j.项目, '历史记录', 'AI任务'), tail = '_' + j.事 + (j.段 ? '_第' + j.段 + '段' : '');
+    await fsp.mkdir(base, { recursive: true });
+    for (let t = Date.now(), n = 0; ; t += 1000, n++) {
+      const dir = path.join(base, stampOf(new Date(t)) + tail);
+      try { await fsp.mkdir(dir); return dir; } catch (e) { if (e.code !== 'EEXIST' || n >= 3600) throw e; }
+    }
+  }
   async function work(j) {
     const K = KINDS[j.事], ch = CHANNELS[j.渠道];
     j.状态 = '在做'; j.开始 = j.开始0 || Date.now(); j.步骤 = '在备材料';
     try {
-      if (!j.dir) j.dir = pj(j.项目, '历史记录', 'AI任务', stampOf() + '_' + j.事 + (j.段 ? '_第' + j.段 + '段' : ''));   // 服务重开后接着等回复的：还是原来那个文件夹
+      if (!j.dir) j.dir = await newDir(j);   // 服务重开后接着等回复的：还是原来那个文件夹
       await fsp.mkdir(j.dir, { recursive: true });
       if (K.run) {   // 不止一步的事（出图、出片、生成任务书）：自己管自己
         const r0 = await K.run(j);
