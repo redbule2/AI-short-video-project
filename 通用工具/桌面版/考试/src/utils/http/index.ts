@@ -70,3 +70,29 @@ export const http = {
   get: <T>(url: string, options?: Options) => request<T>("get", url, options),
   post: <T>(url: string, options?: Options) => request<T>("post", url, options)
 };
+
+function originOf(url: string) {
+  try {
+    const u = new URL(url);
+    return /^https?:$/.test(u.protocol) ? u.origin : "";
+  } catch {
+    return "";
+  }
+}
+
+/** 服务器在哪（桌面软件连的那一台，desk.info().api）：要把服务器地址写给页面外面的人用时（AI 阅卷提示词）问这里。
+ *  页面是本机服务开的，location.origin 是本机的流水线、不是服务器，不能拿来当服务器地址（2026-11-27 这样错过一回）。
+ *  问不到、或问到的就是页面自己，抛错，不猜。 */
+export async function serverOrigin() {
+  const desk = (window as unknown as { desk?: { info?: () => Promise<unknown> } }).desk;
+  if (!desk?.info) {
+    throw new Error("这一页要在桌面软件里打开");
+  }
+  const info = (await desk.info()) as { api?: unknown } | null;
+  const api = typeof info?.api === "string" ? info.api.trim().replace(/\/+$/, "") : "";
+  const origin = originOf(api);
+  if (!origin || origin === originOf(window.location.origin)) {
+    throw new Error("没问到服务器地址，阅卷提示词没生成");
+  }
+  return api;
+}

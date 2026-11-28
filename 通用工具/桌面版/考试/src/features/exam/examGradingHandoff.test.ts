@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import performanceBudgets from "../../../quality/performance-budgets.json";
 import {
   buildExamGradingPrompt,
@@ -19,10 +19,27 @@ const grantFixture = {
   expiresInSeconds: 600
 };
 
+/** 桌面软件里：页面是本机服务开的（127.0.0.1:8766），壳子连的服务器另在一处（desk.info().api） */
+const PAGE_ORIGIN = "http://127.0.0.1:8766";
+const deskInfo = vi.fn();
+function inDesk(info: unknown) {
+  deskInfo.mockResolvedValue(info);
+  vi.stubGlobal("window", {
+    desk: { info: deskInfo },
+    location: { origin: PAGE_ORIGIN }
+  });
+}
+
 describe("exam grading handoff", () => {
   beforeEach(() => {
     createExamGradingGrant.mockReset();
     createExamGradingGrant.mockResolvedValue(grantFixture);
+    deskInfo.mockReset();
+    inDesk({ api: "https://video8.online/" });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("页面进入只构造界面，不预拉授权", () => {
@@ -38,10 +55,7 @@ describe("exam grading handoff", () => {
   });
 
   it("显式点击只签发一次，并把单答卷授权写入两个专用端点", async () => {
-    const prepared = await prepareExamGradingPrompt(
-      grantFixture.sheetId,
-      "https://video8.online/"
-    );
+    const prepared = await prepareExamGradingPrompt(grantFixture.sheetId);
 
     expect(createExamGradingGrant).toHaveBeenCalledTimes(
       budgets["frontend.exam.gradingHandoff.copyClick"]
@@ -82,15 +96,11 @@ describe("exam grading handoff", () => {
         })
     );
 
-    const first = prepareExamGradingPrompt(
-      grantFixture.sheetId,
-      "https://video8.online"
-    );
-    const second = prepareExamGradingPrompt(
-      grantFixture.sheetId,
-      "https://video8.online"
-    );
+    const first = prepareExamGradingPrompt(grantFixture.sheetId);
+    const second = prepareExamGradingPrompt(grantFixture.sheetId);
 
+    // 先问壳子服务器在哪，再签发：等签发发出去了再数
+    await vi.waitFor(() => expect(createExamGradingGrant).toHaveBeenCalled());
     expect(createExamGradingGrant).toHaveBeenCalledTimes(
       budgets["frontend.exam.gradingHandoff.peakConcurrencyMax"]
     );
@@ -105,10 +115,48 @@ describe("exam grading handoff", () => {
     });
 
     await expect(
-      prepareExamGradingPrompt(
-        grantFixture.sheetId,
-        "https://video8.online"
-      )
+      prepareExamGradingPrompt(grantFixture.sheetId)
     ).rejects.toThrow("答卷 ID 不匹配");
+  });
+
+  it("提示词里写壳子连的服务器，不写页面自己的地址（本机服务）", async () => {
+    inDesk({ api: "http://43.143.83.166" });
+
+    const { prompt } = await prepareExamGradingPrompt(grantFixture.sheetId);
+
+    expect(prompt).toContain("Base URL: http://43.143.83.166\n");
+    expect(prompt).toContain(
+      "GET http://43.143.83.166/api/exam/grading/grant/sheets/"
+    );
+    expect(prompt).toContain(
+      "POST http://43.143.83.166/api/exam/grading/grant/submit"
+    );
+    expect(prompt).not.toContain("127.0.0.1");
+  });
+
+  it.each([
+    ["壳子不答", null],
+    ["壳子没说服务器在哪", {}],
+    ["说了个空的", { api: "  " }],
+    ["说的就是页面自己（本机服务）", { api: PAGE_ORIGIN }],
+    ["页面自己、带斜杠", { api: PAGE_ORIGIN + "/" }],
+    ["不是网址", { api: "video8" }],
+    ["不是 http", { api: "file:///C:/x" }]
+  ])("问不到服务器地址就停，不签发授权：%s", async (_, info) => {
+    inDesk(info);
+
+    await expect(
+      prepareExamGradingPrompt(grantFixture.sheetId)
+    ).rejects.toThrow("没问到服务器地址");
+    expect(createExamGradingGrant).not.toHaveBeenCalled();
+  });
+
+  it("不在桌面软件里：不签发授权", async () => {
+    vi.stubGlobal("window", { location: { origin: PAGE_ORIGIN } });
+
+    await expect(
+      prepareExamGradingPrompt(grantFixture.sheetId)
+    ).rejects.toThrow("桌面软件");
+    expect(createExamGradingGrant).not.toHaveBeenCalled();
   });
 });

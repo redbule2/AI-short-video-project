@@ -37,10 +37,7 @@ async function prepareAndCopyPrompt() {
   if (preparing.value) return;
   preparing.value = true;
   try {
-    const prepared = await prepareExamGradingPrompt(
-      normalizedSheetId.value,
-      window.location.origin
-    );
+    const prepared = await prepareExamGradingPrompt(normalizedSheetId.value);
     const copied = copyTextToClipboard(prepared.prompt);
     if (!copied) {
       throw new Error("复制失败，请重试。");

@@ -1,4 +1,5 @@
 import { createExamGradingGrant } from "@/api/exam";
+import { serverOrigin } from "@/utils/http";
 
 const activePreparations = new Map<
   string,
@@ -69,13 +70,16 @@ X-Exam-Grading-Grant: ${grantCode}
 /**
  * 消费者:ExamGradingHandoff 显式点击。
  * 页面进入=0 请求；每次点击=1 POST；同一答卷的重叠点击合并为 1 个在途请求。
+ * 提示词里的服务器地址只问壳子（serverOrigin），不收调用方传的：页面自己的地址是本机服务，写进去 AI 就找错门。
+ * 地址问不到就停在这里，不签发授权。
  */
-export function prepareExamGradingPrompt(sheetId: string, baseUrl: string) {
+export function prepareExamGradingPrompt(sheetId: string) {
   const normalizedSheetId = sheetId.trim();
   const inFlight = activePreparations.get(normalizedSheetId);
   if (inFlight) return inFlight;
 
   const preparation = (async () => {
+    const baseUrl = await serverOrigin();
     const grant = await createExamGradingGrant(normalizedSheetId);
     if (grant.sheetId !== normalizedSheetId) {
       throw new Error("临时授权返回的答卷 ID 不匹配，已停止复制。");
